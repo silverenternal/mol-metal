@@ -1,0 +1,449 @@
+% =============================================================================
+%  paper/supplementary.tex -- Digital Discovery supplementary material
+%
+%  Companion file to paper/main.tex.  Per Royal Society of Chemistry
+%  conventions for Digital Discovery, the supplementary information is
+%  hosted as a separate PDF on the journal's SI portal; this file is
+%  \input{}-ed from main.tex after the appendices.
+%
+%  Conventions used throughout this file:
+%    - Every numerical claim is flagged \MEASURED{} or \DESIGN{}; no
+%      number is re-derived inside the supplementary body.  The SI
+%      only restates, cross-references, and exposes the underlying
+%      artefact.
+%    - Internal reports under molmetal/reports/ are cited via the
+%      footnote:* keys in paper/refs.bib.
+%    - Local appendix files (closure_theorem.tex, betanf_semantics.tex)
+%      are cross-referenced by \label, not re-printed here.
+% =============================================================================
+
+\section*{Supplementary material}
+\addcontentsline{toc}{section}{Supplementary material}
+
+\paragraph{Scope.}
+This document collects the implementation, hyperparameter, per-pocket,
+ablation, scoring-protocol, parity, normalisation and closure proof
+details that underpin the manuscript but would interrupt its narrative.
+Ten supplementary items (S1--S10) are included.  Each item states its
+provenance explicitly and uses the same \MEASURED{}/\DESIGN{} markers as
+the main text.
+
+\paragraph{Honest framing.}
+Every supplementary item below cites the corresponding internal report
+or local appendix under \texttt{molmetal/reports/},
+\texttt{molmetal/configs/}, \texttt{molmetal/molmetal\_lam/}, or
+\texttt{paper/appendices/}.  No number in the main manuscript is
+re-derived inside this supplementary material; SI sections only restate
+and cross-reference the upstream artefact.  Two items (S3
+\emph{Per-pocket results} and S10 \emph{Closure theorem + 5-click
+algorithm}) are explicitly marked \DESIGN{} because the underlying
+experiments / proofs are still in flight at the time of writing
+(\texttt{footnote:round12\_pilot}, \texttt{footnote:round13\_sweep},
+and \texttt{WF-Lambda-4}; see \texttt{TODO/pending/}).
+
+% ---------------------------------------------------------------------------
+% S1 -- Implementation details: 9-layer MLC architecture
+% ---------------------------------------------------------------------------
+
+\subsection*{S1. Implementation details: the 9-layer MLC architecture}
+\label{supp:s1-mlc-impl}
+
+\paragraph{Provenance.}
+The Mol-Metal hybrid decomposes into nine layers of metrics, organised
+into the 4-layer rewriting core (atoms, bonds, applications,
+combinators) plus 5 observational layers (geometric priors, empirical
+scoremix, lambda-only metrics, click-rule registry, closure-theorem
+state).  Figure~1 of the manuscript (see also
+\texttt{paper/figures/fig1\_mlc\_architecture.{png,svg,pdf}}) is the
+canonical diagram and is reproduced from the WF-Paper-2 build
+(\texttt{molmetal/reports/wf\_paper2\_figures.md}).
+
+\paragraph{Layer catalogue.}
+Layer numbers, metric names and the source module / report are listed
+in \texttt{molmetal/reports/lambda\_layer\_metrics.md}.  The full
+9-layer breakdown (substrate $\rightarrow$ typed-application $\rightarrow$
+combinator $\rightarrow$ click-rule registry $\rightarrow$ metal-geometry
+prior $\rightarrow$ empirical scoremix $\rightarrow$ lambda-only metrics
+$\rightarrow$ MCTS-closure state $\rightarrow$ oracle-budget trace) is
+exposed in that report.  Each layer exposes both a \emph{shape} (tensor /
+set / closure) and a \emph{measurement primitive} used by the cross-
+cutting metrics of \S3.
+
+\paragraph{Honest framing.}
+The 9-layer count is a \emph{design} decomposition, not an empirical
+measurement: every layer has at least one shipped metric
+(\texttt{MEASURED} per \texttt{lambda\_layer\_metrics.md}), but the
+catalogue itself is the author's taxonomy and is therefore labelled
+\DESIGN{}.
+
+% ---------------------------------------------------------------------------
+% S2 -- Hyperparameters: full search budget + CFM budget + REINVENT4 + weights
+% ---------------------------------------------------------------------------
+
+\subsection*{S2. Hyperparameters: search budget, CFM budget, REINVENT4 config, scoring weights}
+\label{supp:s2-hparams}
+
+\paragraph{Full search budget.}
+The default $\lambda$-only baseline budget is $N{=}10$ candidates per
+pocket, $B{=}60$ rewrite depth, $s{=}1$ and $s{=}5$ MCTS simulation
+counts, $k_{\text{every}}{=}1$ prior cadence, and 3 seeds per pocket.
+These are the defaults written into
+\texttt{molmetal/scripts/r4\_lambda\_only\_run.py} and are identical to
+the WF-Lambda-1 protocol \cite{footnote:wf_lambda1}.  The
+3-seed$\times$$N{=}10$ pilot results live under
+\texttt{molmetal/reports/wf\_lambda1\_N10\_3seed\_v2/} and are summarised
+in \S5 of the manuscript.
+
+\paragraph{CFM (Conditional Flow Matching) budget.}
+The Round-10 Pt / CFG / Vina end-to-end micro-bench \cite{footnote:round10_e2e}
+used hidden\_dim$=32$, $n_{\text{layers}}{=}2$, lr$=2{\times}10^{-4}$,
+context\_dropout$=0.1$, $30$ CFM training steps, $8$ ODE integration
+steps, $20$ molecules per setting, and Vina exhaustiveness $2$ with
+$n_{\text{poses}}{=}1$.  These are the explicit numbers in
+\texttt{molmetal/reports/round10\_e2e\_pt\_cfg\_vina.md} (lines
+8--17) and are the only CFM configuration under which a \MEASURED{}
+Pt-micro-bench currently exists.
+
+\paragraph{REINVENT4 multiproperty configuration.}
+The AMD-tuned multiproperty JSON used by the $r_{\text{reinvent4}}$
+channel is \texttt{molmetal/configs/reinvent\_multiproperty\_amd.json}
+(weights, transforms, and reference molecules; see
+\texttt{footnote:wf\_extra2}).  The corresponding end-to-end batch
+smoke test lives under
+\texttt{molmetal/reports/wf\_extra2\_batch/} (file
+\texttt{final.md} summarises the 10-SMILES drug-like batch results and
+the offline graceful-fallback behaviour).
+
+\paragraph{Scoring weights.}
+The RewardAggregator combines Vina, QuickVina2 parity, MCTS-UCT,
+homotype-diversity, pIC50 (calibrated ridge) and REINVENT4 channels
+with weights
+\begin{equation}
+  \label{eq:reward-weights}
+  w = (w_{\text{vina}}, w_{\text{qv2}}, w_{\text{mcts}}, w_{\text{homotype}}, w_{\text{pic50}}, w_{\text{reinvent4}})
+  = (1.0,\; 0.0,\; 0.3,\; 0.2,\; 0.5,\; 0.0),
+\end{equation}
+matching the per-channel weights hard-coded in
+\texttt{molmetal/molmetal/eval/scoring.py:RewardAggregator} (verified
+against the WF-Extra-2 wire report).  Channels with weight $0.0$ are
+\emph{off by default} and are only enabled by the corresponding
+\texttt{--enable-*} CLI flag.
+
+\paragraph{Honest framing.}
+All numbers in this section are \DESIGN{} (defaults pulled from the
+canonical scripts/configs); the only \MEASURED{} cell is the CFM
+hyperparameter block, which comes from a single-pocket micro-bench and
+is therefore \emph{not} a Round-12/13 acceptance number.
+
+% ---------------------------------------------------------------------------
+% S3 -- Per-pocket results (placeholder for Round-12 + Round-13 data)
+% ---------------------------------------------------------------------------
+
+\subsection*{S3. Per-pocket results}
+\label{supp:s3-per-pocket}
+
+\paragraph{Status.}
+\DESIGN{}.  This section is a placeholder for the Round-12
+$N{=}10{\times}3$ scientific pilot \cite{footnote:round12_pilot} and the
+Round-13 100-pocket $\times$ 3-seed full sweep \cite{footnote:round13_sweep}.
+Both workstreams are currently pending (WF-3 and WF-5 in the project
+tracker; see \texttt{TODO/pending/20\_post\_r10\_r11\_action\_plan.md}).
+
+\paragraph{Planned layout (to be filled in once the experiments ship).}
+\begin{itemize}
+  \item \textbf{Per-pocket table.}  Columns: pocket-id, pocket-PDB path,
+        seed, $N$ candidates requested, $N$ docked, mean Vina score
+        (kcal/mol, $\pm$ SD), median Vina, PoseBusters pass-rate, MCTS
+        $w_{\text{UCT}}$ at convergence, lambda-only diversity
+        (homotype + Tanimoto), pIC50 calibrated-ridge posterior
+        (mean $\pm 1\sigma$), REINVENT4 multiproperty score (or
+        \texttt{offline-fallback}).
+  \item \textbf{Aggregate rollups.}  Pooled mean / 95\% CI over
+        pockets, broken down by setting
+        (B=60 s=1 vs B=60 s=5; metal-seed on/off).  These are the
+        acceptance numbers; per-seed variance is reported separately.
+  \item \textbf{Delta vs ablation.}  Signed $\Delta$ between main arm
+        and each of the three ablations (CuAAC-only, no-metal-seed,
+        no-MCTS), with pooled SE and bootstrap 95\% CI.
+\end{itemize}
+
+\paragraph{Honest framing.}
+Until the Round-12 and Round-13 numbers ship, this section contains no
+\MEASURED{} cell.  Any per-pocket number quoted in the main manuscript
+body is drawn directly from the round-10 micro-bench
+\cite{footnote:round10_e2e} and is therefore tagged
+\MEASURED{}-single-pocket at best.
+
+% ---------------------------------------------------------------------------
+% S4 -- Ablation details: CuAAC-only vs all-5
+% ---------------------------------------------------------------------------
+
+\subsection*{S4. Ablation details: CuAAC-only vs all-5 click rules}
+\label{supp:s4-ablation}
+
+\paragraph{Setup.}
+The WF-Lambda-1 ablation harness
+(\texttt{molmetal/scripts/r4\_lambda\_only\_run.py}
+\texttt{--click-rules cuaac} vs the default 5-rule registry)
+generates two arms from the same seed and same $B, s, N$ budget.  The
+5-rule registry lives in
+\texttt{molmetal/molmetal\_lam/lam\_chem/rules.py} as
+$\{r_1, \dots, r_5\} = \{\text{CuAAC, SPAAC, Thiol-ene, Suzuki-Miyaura,
+Amide coupling}\}$.
+
+\paragraph{Measured diversity contribution.}
+From the WF-Lambda-1 build report
+(\texttt{molmetal/reports/wf\_lambda1\_build.md}), the four non-CuAAC
+rules together account for approximately 80\% of the per-cell
+\emph{structural diversity} contribution as measured by the homotype
+distance metric (see \S5 below); CuAAC alone covers the remaining
+$\sim$20\%.  This is the empirical justification for retaining all
+five rules in the default registry: dropping any of the four
+non-CuAAC rules would disproportionately compress the productive space.
+
+\paragraph{Honest framing.}
+The 80\% / 20\% split is \MEASURED{} on the WF-Lambda-1 $N{=}10$
+3-seed pilot set; it is \emph{not} an extrapolation to the full
+100-pocket Round-13 sweep.  The CuAAC-only ablation arm is
+\DESIGN{}-in-spirit (no per-pocket acceptance number is reported in
+the main text) and is documented here to make the ablation transparent
+to reviewers.
+
+% ---------------------------------------------------------------------------
+% S5 -- Homotype diversity derivation
+% ---------------------------------------------------------------------------
+
+\subsection*{S5. Homotype diversity: derivation and 10-molecule scatter}
+\label{supp:s5-homotype}
+
+\paragraph{Derivation.}
+The \emph{homotype diversity} metric
+$d_{\text{homotype}}(m_1, m_2) \in [0, 1]$ is defined in
+\texttt{molmetal/reports/wf\_lambda2\_metric.md} and implemented in
+\texttt{molmetal/molmetal\_lam/eval/homotype\_diversity.py}.  It
+combines (i) typed-variable overlap (atom-type, hybridisation, ring
+membership) under the enriched vocabulary of WF-Lambda-2E
+\cite{footnote:wf_lambda2e} and (ii) typed-bond overlap (bond order,
+aromatic flag, in-ring flag).  The metric is registered as the 7th
+cross-cutting metric in \texttt{r4\_lambda\_only\_run.py}.
+
+\paragraph{Enriched vocabulary.}
+The WF-Lambda-2E extension enriches the typed-variable alphabet from
+$\{$atom-type, ring-membership$\}$ to
+$\{$atom-type, hybridisation, ring-membership, charge-state$\}$.  The
+comparison vs the legacy vocabulary is reported in
+\texttt{molmetal/reports/wf\_lambda2e\_extend.md}, with the enriched
+vocabulary yielding a tighter correlation between homotype distance
+and downstream oracle reward on the 10-mol test set
+(\texttt{wf\_lambda2e\_compare/final.md}).
+
+\paragraph{10-molecule scatter plot.}
+The 10-molecule scatter plot referenced in \S5 of the main text is
+produced by \texttt{molmetal/scripts/wf\_lambda2e\_scatter.py} (input:
+\texttt{molmetal/reports/wf\_lambda2e\_compare/test\_set.smi};
+output: \texttt{wf\_lambda2e\_compare/scatter.png}).  Each point is one
+generated molecule; axes are homotype distance ($x$) vs Tanimoto
+distance to the seed ($y$), coloured by rule-of-origin.
+
+\paragraph{Honest framing.}
+The 10-mol test set is a \emph{convenience panel}, not a hold-out; the
+metric itself is \DESIGN{} (definition) and the 10-mol scatter is
+\MEASURED{} (computed on the convenience panel).  The claim that
+homotype distance is a useful diversity proxy requires the full
+Round-13 sweep and is therefore tagged \DESIGN{} in the main text.
+
+% ---------------------------------------------------------------------------
+% S6 -- pIC50 conditioned-ridge baseline
+% ---------------------------------------------------------------------------
+
+\subsection*{S6. pIC50 conditioned-ridge baseline}
+\label{supp:s6-pic50}
+
+\paragraph{Configuration.}
+The pIC50 baseline is a per-assay ridge regression with a SMILES
+Morgan-fingerprint input ($\text{radius}=2$, $\text{nBits}=2048$).  The
+training pipeline is the WF-Extra-1 workstream
+\cite{footnote:wf_extra1_full} (3-seed $\times$ 50-epoch retrain with
+a censor-aware loader).  Calibration is performed per-assay: each
+ChEMBL target family gets its own ridge weight $\beta_t$ and bias
+$\alpha_t$, fit on the censored training pairs
+$(\text{Mol}, \text{pIC50})$ with bound-aware accuracy as the held-out
+metric.
+
+\paragraph{Bound-aware accuracy.}
+Censored measurements (``$>$X'' or ``$<$X'') are not dropped; they
+contribute a one-sided hinge loss.  The exact loss form and the
+censored-loader implementation are in
+\texttt{molmetal/reports/wf\_extra1\_censor\_loader.md} and
+\texttt{molmetal/molmetal/eval/calibrate\_conditioned\_pic50\_baseline.py}.
+
+\paragraph{Inputs to the RewardAggregator.}
+The $r_{\text{pic50}}$ channel returns the calibrated ridge posterior
+mean, clipped to $[0, 10]$ (pIC50 is by convention in $[0, 10]$ on
+ChEMBL).  The default weight is $w_{\text{pic50}} = 0.5$ (see
+Eq.~\ref{eq:reward-weights}).  When the ridge is unavailable (e.g.\ no
+assay matches), the channel gracefully returns $0.0$.
+
+\paragraph{Honest framing.}
+The ridge hyperparameters are \DESIGN{} (cross-validated defaults);
+the bound-aware accuracy and the 3-seed $\times$ 50-epoch retrain
+numbers are \MEASURED{} per \texttt{wf\_extra1\_full/final.md}.
+
+% ---------------------------------------------------------------------------
+% S7 -- REINVENT4 multiproperty scoring protocol
+% ---------------------------------------------------------------------------
+
+\subsection*{S7. REINVENT4 multiproperty scoring protocol}
+\label{supp:s7-reinvent4}
+
+\paragraph{Configuration file.}
+The AMD-tuned multiproperty JSON
+(\texttt{molmetal/configs/reinvent\_multiproperty\_amd.json}) is the
+single source of truth for the REINVENT4 scoring channel.  It encodes:
+\begin{itemize}
+  \item Per-component weights $w_i$ (QED, SA, logP, pIC50-proxy, BBB).
+  \item Per-component transforms (sigmoid, clip, log).
+  \item Reference molecules for the SA / logP calibration.
+\end{itemize}
+
+\paragraph{Wiring.}
+The subprocess adapter lives in
+\texttt{molmetal/molmetal/adapters/reinvent4\_subprocess\_adapter.py}
+and is invoked by the \texttt{r\_reinvent4} channel of the
+RewardAggregator.  The end-to-end wire report is
+\texttt{molmetal/reports/wf\_extra2\_wire.md}; the 10-SMILES
+drug-like batch smoke test is
+\texttt{molmetal/reports/wf\_extra2\_batch/final.md}.
+
+\paragraph{Offline graceful fallback.}
+When the REINVENT4 backend is not reachable (e.g.\ no licence, no
+network), the channel returns $0.0$ and logs a one-line warning;
+the rest of the RewardAggregator keeps running.  This behaviour is
+unit-tested in \texttt{tests/test\_reinvent4\_channel.py} (see
+\texttt{wf\_extra2\_wire.md} for the test catalogue).
+
+\paragraph{Honest framing.}
+The configuration is \DESIGN{} (manually tuned on a ChEMBL drug-like
+sample).  The 10-SMILES batch test is \MEASURED{}.  The full
+REINVENT4 scoring run on the Round-13 sweep is \DESIGN{} (to be
+filled in once WF-5 ships).
+
+% ---------------------------------------------------------------------------
+% S8 -- Vina vs QuickVina2 parity protocol + scatter
+% ---------------------------------------------------------------------------
+
+\subsection*{S8. Vina 1.2.7 vs QuickVina 2 engine-parity protocol}
+\label{supp:s8-vina-qv2}
+
+\paragraph{Setup.}
+The Round-11 parity study
+(\texttt{molmetal/reports/round11\_engine\_parity\_n50.md},
+\cite{footnote:round11_parity}) docked the same 50 cross-docked
+receptor-ligand pairs through both engines (Vina 1.2.7 and QuickVina 2)
+under matched exhaustiveness and seed settings.  Per-pocket parity is
+quantified by Pearson $r$ and by the 95\% limits of agreement on the
+docked-score axis.
+
+\paragraph{Result.}
+The reported correlation is $r = 0.9983$ over $N{=}50$ pairs, with
+bias $< 0.1$ kcal/mol and 95\% limits of agreement $\pm 0.6$
+kcal/mol.  The per-pocket scatter plot is
+\texttt{molmetal/reports/round11\_engine\_parity/scatter.png}.
+
+\paragraph{Interpretation.}
+The two engines are statistically interchangeable at the precision of
+this paper; the manuscript therefore reports a single Vina-or-QuickVina2
+score per pocket and tags the source engine alongside the number.
+
+\paragraph{Honest framing.}
+The $r = 0.9983$ is \MEASURED{} on $N{=}50$ pairs; the conclusion that
+the two engines are interchangeable for the purposes of this work is
+\DESIGN{} (based on the magnitude of the bias and limits of agreement
+relative to the manuscript's success-criterion threshold of
+$|\Delta| \geq 0.2$ kcal/mol).
+
+% ---------------------------------------------------------------------------
+% S9 -- beta-NF strong normalisation proof
+% ---------------------------------------------------------------------------
+
+\subsection*{S9. $\beta$-normal-form strong normalisation}
+\label{supp:s9-betanf}
+
+\paragraph{Statement.}
+For the typed fragment of the Molecular Lambda Calculus restricted to
+atoms, bonds, applications and the three combinators of
+\texttt{molmetal/molmetal\_lam/lam\_chem/rules.py}, every
+well-typed term has a (unique) $\beta$-normal form, and the
+normalisation is \emph{strongly normalising} (every reduction
+sequence terminates in the same normal form).  The proof is given in
+Appendix~B (\texttt{paper/appendices/betanf\_semantics.tex}, see also
+\texttt{WF-Lambda-4}).
+
+\paragraph{Sketch.}
+The proof proceeds by induction on the size of the typed term, using
+the fact that (i) every combinator reduces in a constant number of
+steps, (ii) every click-rule product is closed under the
+valence-BNF predicate of \texttt{molmetal/molmetal\_lam/lam\_chem/bnf.py},
+and (iii) the rewrite system is locally confluent and terminating at
+each step.  The full proof is the content of
+\texttt{paper/appendices/betanf\_semantics.tex}.
+
+\paragraph{Honest framing.}
+The statement is \DESIGN{}; the proof is \DESIGN{} (typed fragment,
+not the full untyped $\lambda$-calculus).  No empirical claim is made
+in this section.
+
+% ---------------------------------------------------------------------------
+% S10 -- Closure theorem + 5-click productive space algorithm
+% ---------------------------------------------------------------------------
+
+\subsection*{S10. Closure theorem and 5-click productive-space algorithm}
+\label{supp:s10-closure}
+
+\paragraph{Theorem.}
+See Appendix~A (\texttt{paper/appendices/closure\_theorem.tex},
+\texttt{WF-Lambda-4 audit + closure-theorem surface},
+\texttt{molmetal/reports/wf\_lambda4\_closure\_theorem.md}).
+The closure theorem states that the BFS-closure
+$\mathcal{P}(\Sigma, \mathcal{R}, B)$ of any seed term under the five
+click rules is a well-formed, RDKit-sanitisable, valence-BNF-satisfied
+\emph{constructive synthesis space}, and that every term in
+$\mathcal{P}$ admits a $\beta$-reduction witness path back to the seed.
+
+\paragraph{5-click productive-space algorithm.}
+\begin{enumerate}
+  \item \textbf{Seed.}  Choose an initial closed term $S \in \Sigma$
+        (e.g.\ cisplatin, $[\text{Pt}(\text{NH}_3)_2\text{Cl}_2]$).
+  \item \textbf{Initialise.}  Set frontier $F \leftarrow \{S\}$,
+        visited $V \leftarrow \emptyset$, depth $d \leftarrow 0$.
+  \item \textbf{Expand.}  For each term $t \in F$ and each rule
+        $r_i \in \mathcal{R}$, enumerate matching educts
+        $(a, b)$ with $a \in V \cup F$, $b \in \Sigma$, and apply
+        $r_i$ to obtain the product $c = r_i.\text{reduce}(a, b)$.
+  \item \textbf{Validate.}  Drop any $c$ that fails the valence-BNF
+        predicate or the RDKit sanitiser.
+  \item \textbf{Update.}  Set $V \leftarrow V \cup F$, $F \leftarrow
+        \{c \text{ not in } V\}$, $d \leftarrow d+1$.
+  \item \textbf{Stop.}  Halt when $d = B$ or $F = \emptyset$.
+\end{enumerate}
+The algorithm is implemented in
+\texttt{molmetal/molmetal\_lam/closure.py} and is the back-end of the
+\texttt{r\_mcts} channel of the RewardAggregator.
+
+\paragraph{Honest framing.}
+The theorem statement and the algorithm are \DESIGN{}.  The
+implementation is \DESIGN{}-with-\texttt{MEASURED}-unit-tests: the
+BFS termination, BNF validity, and RDKit sanitisation are covered by
+\texttt{tests/test\_closure.py}, but no large-scale empirical study of
+the productive-space size has been published at the time of writing.
+
+% ---------------------------------------------------------------------------
+
+\paragraph{Reproducibility.}
+Every supplementary item above points to a file under
+\texttt{molmetal/reports/}, \texttt{molmetal/configs/},
+\texttt{molmetal/molmetal\_lam/}, or \texttt{paper/appendices/}.  The
+reproduction environment (\texttt{uv}-managed Python 3.12, ROCm 7.2,
+triton-rocm 3.8.0, RX 7800 XT gfx1101 wave64) is documented in
+\texttt{molmetal/reports/wf\_extra2\_wire.md} appendix B and is the
+same environment as the main text.

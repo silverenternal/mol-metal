@@ -1,0 +1,27 @@
+{
+  "round": "R13",
+  "workflow": "wf_pb_mmff94_relax",
+  "date_utc": "2026-09-15",
+  "config": {
+    "method": "AllChem.MMFFOptimizeMolecule + MMFF94s force field",
+    "max_iters": 200,
+    "lit_basis": "Halgren 1996 (0.014 Å bond / 1.2° angle RMS error)"
+  },
+  "aggregate_metrics": {
+    "1pocket_click_tile_pb_pass_rate": 0.846,
+    "1pocket_n_pb_pass": 22,
+    "1pocket_n_pb_total": 26,
+    "1pocket_n_docked": 1,
+    "10x3_smoke_pb_pass_rate": null,
+    "10x3_smoke_n_pb_eligible": 0,
+    "10x3_smoke_n_total_cells": 30,
+    "search_bound_blocker": "n_distinct=1 collapse produces 0 PB-eligible candidates"
+  },
+  "verdict": {
+    "status": "WIRE_COMPLETE_PRODUCTION_BLOCKED_BY_SEARCH",
+    "summary": "MMFF94s relaxation ships (Halgren 1996 lit basis). 1-pocket smoke: 22/26 PB checks pass on click_tile. 10x3 production smoke: 0/30 PB-eligible because search-bound (n_distinct=1, no candidates). Real PB pass rate effect needs Phase 2 with n_simulations>=1000.",
+    "4_pb_failures_intra_ligand_only_relax_cannot_fix": true,
+    "production_recommendation": "Re-run after r4_lambda_only_run.py n_simulations >= 1000 + Path A/B fixes (no longer n_distinct=1 collapse)"
+  },
+  "source": "molmetal/reports/wf_pb_mmff94_relax/final.md"
+}

@@ -1,0 +1,9 @@
+{
+  "mode": "prior_nll",
+  "worker_python": "/mnt/storage/env-projects/reinvent4-rocm/.venv/bin/python",
+  "prior_path": "/mnt/storage/models/reinvent4/reinvent_v4.4.22.prior",
+  "prior_sha256": "b6513ec6dbc54c87ea45cdbf9b4aaefadd7652548b74175366b27f12ec5732fe",
+  "device": "cuda:0",
+  "expected_architecture": "gfx1101",
+  "timeout": 60.0
+}

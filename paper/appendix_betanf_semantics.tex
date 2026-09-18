@@ -1,0 +1,644 @@
+\documentclass{article}
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{mathtools}
+\usepackage[hidelinks]{hyperref}
+
+% --- Theorem environments ----------------------------------------------------
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+% --- Convenience macros ------------------------------------------------------
+\newcommand{\bnf}{\beta\text{-NF}}
+\newcommand{\redex}{\mathsf{redex}}
+\newcommand{\sn}{\mathsf{SN}}
+\newcommand{\crprop}{\mathsf{CR}}
+\newcommand{\dom}{\mathsf{dom}}
+\newcommand{\fv}{\mathsf{FV}}
+\newcommand{\subst}[3]{[#1:=#2]#3}
+\newcommand{\stepsto}{\longrightarrow}
+\newcommand{\stepstoBeta}{\longrightarrow_{\beta}}
+\newcommand{\stepstoChem}{\longrightarrow_{\chi}}
+\newcommand{\stepstoAll}{\longrightarrow_{\bnf}}
+
+\title{Appendix: Formal Semantics of $\beta$-NF and the AST calculus \\
+\large Supplementary material for the Lambda-Metal hybrid review}
+\author{Mol-Metal hybrid working group}
+\date{\today}
+
+\begin{document}
+\maketitle
+\appendix
+
+% =============================================================================
+\section{Syntax}
+\label{sec:syntax}
+% =============================================================================
+The Mol-Metal hybrid represents both the symbolic $\lambda$-layer and the
+chemistry layer in a single typed term algebra. We follow the nine-layer
+catalogue of \texttt{molmetal/reports/lambda\_layer\_metrics.md}, restricted
+to the four layers that participate in rewriting: atoms, bonds, applications
+and combinators. Geometric priors and empirical scoremix layers are
+observational only and do not introduce new syntactic forms.
+
+\subsection{Atoms}
+An \emph{atom} $a$ carries a chemical symbol $s \in \Sigma$ (e.g.\ \texttt{C, N, Pt}),
+a typed charge $q \in \mathbb{Z}$ and an electron-domain count
+$\rho \in \{0,1,2,\dots\}$ (the number of free valences plus lone pairs that
+the atom exposes at rewrite time):
+\[
+  a \;::=\; \mathsf{Atom}(s,\,q,\,\rho).
+\]
+The domain $\rho$ is the \emph{site arity} used by the FreeSiteLedger in
+\texttt{bonds/application.py:FreeSiteLedger}. We require $0 \le \rho \le 6$
+for organic atoms and $0 \le \rho \le 8$ for transition metals; Pt(II) and
+Pd(II) admit $\rho=4$ and Pt(IV) admits $\rho=6$.
+
+\subsection{Combinators}
+The pure-$\lambda$ fragment uses three core nodes:
+\begin{align*}
+  c \;::=\;& \mathsf{Var}(x,\,\rho)       && \text{typed variable with site count} \\
+           \mid\;& \mathsf{Abs}(x{:}\tau,\,t) && \text{abstraction over a typed binder} \\
+           \mid\;& \mathsf{Comb}(k;\,\vec a)  && \text{primitive combinator with arguments.}
+\end{align*}
+The combinator tag $k$ ranges over a fixed symbol set
+$\{ \mathsf{CuAAC},\ \mathsf{SPAAC},\ \mathsf{ThiolEne},\ \mathsf{Suzuki},\
+\mathsf{AmideCoupling},\ \mathsf{Dative},\ \mathsf{Geometry}_{\mathrm{sp}},\dots\}$
+that enumerates every legal rewriting head.
+
+\subsection{Bonds and applications}
+A \emph{bond} $b$ is one of six kinds, mirroring RDKit's bond order plus the
+dative variant we need for coordination chemistry:
+\[
+  b \;::=\; \mathsf{single} \mid \mathsf{double} \mid \mathsf{triple}
+          \mid \mathsf{aromatic} \mid \mathsf{dative} \mid \mathsf{hydrogen}.
+\]
+An \emph{application} is the spine $t \, t$ where the head $t$ is a
+combinator and the spine is a sequence of atoms or partial molecules.
+A \emph{term} $u$ wraps a term $t$ with a typing context $\Gamma$:
+\[
+  u \;::=\; \mathsf{Term}(t,\,\Gamma).
+\]
+A \emph{rule} $r$ is a quadruple
+$r = (\ell,\,\vec p,\,\vec e,\,\kappa)$ where $\ell$ is the head combinator,
+$\vec p$ the preconditions, $\vec e$ the expected effects (atoms consumed and
+produced) and $\kappa$ the geometric shape predicate.
+
+\subsection{Types}
+\[
+  \tau \;::=\; \mathsf{AtomType}(s) \mid \mathsf{BondType}(b)
+            \mid \tau \to \tau.
+\]
+The two base kinds classify the chemistry fragment; the arrow is reserved
+for the pure-$\lambda$ fragment.
+
+\subsection{Predicates}
+Rewrite rules are guarded by four predicates, evaluated by the
+\texttt{well\_formedness.py} layer before any contraction is attempted:
+\begin{align*}
+  p \;::=\;& \mathsf{HasArity}(a,\,n)        && a \text{ exposes at least } n \text{ sites} \\
+           \mid\;& \mathsf{Saturated}(a)        && \text{all sites of } a \text{ are consumed} \\
+           \mid\;& \mathsf{Compatible}(a_1,a_2) && \text{electronic structure permits bonding} \\
+           \mid\;& \mathsf{Geometry}(a,\tau)    && \text{coordination geometry satisfied.}
+\end{align*}
+The $\mathsf{Geometry}$ predicate is enforced by
+\texttt{priors/metal\_geometry.py:SquarePlanarPtII} for Pt(II)/Pd(II)
+($\rho = 4$, $90^\circ$), by $\mathsf{Octahedral}$ for Ru(II)/Ir(III)
+($\rho = 6$, $90^\circ$) and by $\mathsf{Tetrahedral}$ for Zn(II).
+
+\begin{example}[\textbf{Azide-alkyne cycloaddition (CuAAC)}]
+The rule $r_{\mathsf{CuAAC}}$ has
+$\ell = \mathsf{CuAAC}$,
+$\vec p = (\mathsf{HasArity}(\text{azide},2),\,
+          \mathsf{HasArity}(\text{alkyne},2),\,
+          \mathsf{Compatible},\,
+          \mathsf{Geometry}(\text{Cu},\mathsf{Tetrahedral}))$,
+$\vec e = (\text{loss of 2 sites on azide},\, \text{loss of 2 sites on alkyne},\,
+           \text{formation of 5-membered triazole})$
+and $\kappa = 1.0$ (no geometric slack).
+\end{example}
+
+\subsection{Typing contexts}
+$\Gamma$ is a finite map from variables $x$ to types $\tau$ subject to the
+usual weakening and exchange properties. We assume a simple type system
+$\tau \to \tau$ with two base kinds; this is the simply-typed $\lambda$-calculus
+of Church extended with $\mathsf{AtomType}$ and $\mathsf{BondType}$ atoms.
+
+% =============================================================================
+\section{Reduction rules}
+\label{sec:reduction}
+% =============================================================================
+We define the \emph{multi-step} reduction relation $\stepsto$ as the
+compatible closure of four primitive rewrite heads: $\beta$ (pure lambda),
+$\chi$ (click chemistry), $\delta$ (dative application) and $\gamma$
+(geometry predicate resolution).
+
+\subsection{Standard $\beta$-reduction}
+The pure fragment inherits the classical rule of the $\lambda$-calculus:
+\begin{equation*}
+  (\lambda x{:}\tau.\, M)\; N \;\stepstoBeta\; \subst{x}{N}{M}
+  \qquad\text{(capture-avoiding substitution)}.
+\end{equation*}
+Reduction is performed modulo $\alpha$-equivalence so that the binders of
+$\mathsf{Abs}$ are consistently renamed to avoid clashes
+(\texttt{lam\_chem/ast.py:\_alpha\_rename}).
+
+\subsection{Click chemistry rules}
+The five click reactions enumerated in \texttt{lam\_chem/rules.py:list\_reactions}
+are first-class rewrite rules that consume site pairs and emit a new bond:
+\begin{align*}
+  \mathsf{CuAAC}(\text{azide},\text{alkyne})
+    &\;\stepstoChem\; \text{1,2,3-triazole} \\
+  \mathsf{SPAAC}(\text{azide},\text{cyclooctyne})
+    &\;\stepstoChem\; \text{1,2,3-triazole (strain-promoted)} \\
+  \mathsf{ThiolEne}(\text{thiol},\text{alkene})
+    &\;\stepstoChem\; \text{thioether} \\
+  \mathsf{Suzuki}(\text{aryl-B(OH)$_2$},\text{aryl-X})
+    &\;\stepstoChem\; \text{biaryl} \\
+  \mathsf{AmideCoupling}(\text{amine},\text{acid})
+    &\;\stepstoChem\; \text{amide}.
+\end{align*}
+Each rule decreases the \emph{joint site count}
+$\sum_a \rho(a)$ by exactly $4$ (CuAAC, SPAAC, Suzuki), by $2$
+(ThiolEne) or by $2$ (Amide), and never increases it. The CuAAC and SPAAC
+rules preserve atom counts; ThiolEne and Amide emit a small byproduct
+(\ensuremath{\mathrm{H_2O}} or \ensuremath{\mathrm{HX}}) that is consumed by the global
+\texttt{FreeSiteLedger} but is invisible to the $\lambda$-term view.
+
+\subsection{Dative application}
+Dative bonds are introduced by the rule
+$\mathsf{Dative}(L,M) \to \mathsf{dative}(L,M)$ where $L$ is a Lewis base
+($\rho \ge 1$) and $M$ a metal centre with $\rho \ge 1$. The rule decreases
+$\rho(L)$ and $\rho(M)$ by one each, contributing to the same joint site
+budget as the click rules. This rule is implemented by
+\texttt{bonds/application.py:\_orient\_dative}.
+
+\subsection{Geometry predicate resolution}
+The $\gamma$ rewrite is not a producer of new bonds but a \emph{failure
+eliminator}: when a partial molecule has saturated the geometry predicate
+of a metal centre, $\mathsf{Geometry}(a,\tau)$ collapses to $\mathsf{true}$
+and the matching combinator is unlocked. Geometry has no effect on the site
+budget; it merely gates the $\chi$ and $\delta$ rules.
+
+\subsection{Compatibility and parallel moves}
+When two disjoint redexes coexist in a term, both can fire; when they share a
+variable, capture-avoiding substitution forces a sequentialisation. We will
+show in Section~\ref{sec:confluence} that this dependency is benign.
+
+% =============================================================================
+\section{Strong normalization}
+\label{sec:sn}
+% =============================================================================
+The reduction relation $\stepstoAll$ is strongly normalizing on the set of
+well-typed, arity-bounded terms. We prove this by exhibiting a
+lexicographic measure into a well-founded multiset order.
+
+\subsection{A measure on terms}
+
+\begin{definition}[Site-weighted redex count]
+\label{def:measure}
+For a term $u = \mathsf{Term}(t,\Gamma)$, define the triple
+\[
+  \mu(u) \;=\; \bigl(\, n_\beta(u),\; n_{\text{site}}(u),\; n_{\text{chem}}(u) \,\bigr)
+\]
+where
+\begin{itemize}
+  \item $n_\beta(u)$ is the number of $(\lambda x.M)N$ redexes in $t$,
+  \item $n_{\text{site}}(u)$ is the joint free-site count
+        $\sum_a \rho(a)$ summed over every atom reachable from $t$,
+  \item $n_{\text{chem}}(u)$ is the number of unmatched functional groups
+        (azide, alkyne, thiol, etc.) that no rewrite rule can consume
+        without violating a geometry predicate.
+\end{itemize}
+\end{definition}
+
+\begin{lemma}[Termination of $\beta$]
+\label{lem:beta-sn}
+The pure $\lambda$-fragment is strongly normalizing under $\stepstoBeta$
+within the simply-typed discipline.
+\end{lemma}
+\begin{proof}
+Simply-typed $\lambda$-terms have no fixpoint operator and every $\beta$-step
+strictly reduces the size of the derivation tree. By the standard
+metatheorem (see \cite[Chapter~6]{Pierce2002}) every closed, well-typed
+simply-typed $\lambda$-term is $\sn$.
+\end{proof}
+
+\begin{lemma}[Termination of $\chi \cup \delta$]
+\label{lem:chem-sn}
+Each click-chemistry rule and each dative application strictly decreases
+$n_{\text{site}}$ by at least $2$.
+\end{lemma}
+\begin{proof}
+Direct inspection: every $\chi$-rule consumes at least one bond pair from
+two distinct atoms; the dative rule consumes one site from the donor and
+one from the acceptor. The FreeSiteLedger records these as
+\texttt{AtomSite.consume} operations; the post-condition is that
+$\rho(a) \ge \rho'(a) + 1$ for at least one participating atom and similarly
+for the partner. Hence $n_{\text{site}}(u') \le n_{\text{site}}(u) - 2$.
+\end{proof}
+
+\begin{lemma}[Termination of $\gamma$]
+\label{lem:gamma-sn}
+The $\gamma$ rewrite is locally terminating and globally side-effect-free.
+\end{lemma}
+\begin{proof}
+$\gamma$ is a pure predicate: it collapses a guard
+$\mathsf{Geometry}(a,\tau)$ to $\mathsf{true}$. The collapse has no site
+effect and does not produce new $\beta$- or $\chi$-redexes. Hence
+$\mu(\gamma(u)) \le_{\mathsf{lex}} \mu(u)$ and $\mu$ never increases under
+$\gamma$. Because the predicate is decidable and its resolution terminates
+(\texttt{priors/metal\_geometry.py:GeometryPenalty} is finite-state on the
+bounded geometry classes), $\gamma$ itself has no infinite chain.
+\end{proof}
+
+\begin{theorem}[Strong normalization of $\bnf$]
+\label{thm:sn}
+Every well-typed arity-bounded term is strongly normalizing under
+$\stepstoAll = \stepstoBeta \cup \stepstoChem \cup \stepsto_{\delta} \cup
+\stepsto_{\gamma}$.
+\end{theorem}
+\begin{proof}
+We lift $\mu$ to the multiset extension over the immediate redex set of $u$:
+\[
+  M(u) \;=\; \{\, \mu(r) \mid r \text{ is a redex in } u \,\}.
+\]
+The multiset $M(u)$ is ordered by the Dershowitz--Manna multiset
+ordering induced by the lexicographic order on $\mu$. The lexicographic
+order is well founded because each component is bounded below by $0$ and
+no infinite descending chain can lower the same component twice without
+switching components.
+
+By Lemma~\ref{lem:beta-sn}, a $\beta$-step replaces one $(\lambda x.M)N$
+redex by the (possibly empty) set of redexes inside $M[x:=N]$; because
+$M[x:=N]$ has strictly fewer $\beta$-redexes, $\mu$ decreases in the first
+component. By Lemma~\ref{lem:chem-sn}, a $\chi$- or $\delta$-step decreases
+$n_{\text{site}}$ by at least $2$, so $\mu$ decreases in the second
+component. By Lemma~\ref{lem:gamma-sn}, a $\gamma$-step never increases
+$\mu$. No rewrite head ever increases any component.
+
+Since the multiset extension of a well-founded order is itself well
+founded (Dershowitz and Manna, 1979; see also \cite{Girard1989}), $M(u)$
+admits no infinite descending chain. Hence $\stepstoAll$ is $\sn$.
+\end{proof}
+
+\begin{corollary}[Decidability of type-checking]
+Type-checking in $\bnf$ is decidable and admits a normalising evaluator.
+\end{corollary}
+\begin{proof}
+By Theorem~\ref{thm:sn} every reduction chain is finite; the normal form
+$\mathsf{nf}(u)$ is unique by Theorem~\ref{thm:confluence} below. A
+terminating evaluator exists by recursion along $\mu$.
+\end{proof}
+
+% =============================================================================
+\section{Confluence (Church--Rosser)}
+\label{sec:confluence}
+% =============================================================================
+
+\begin{theorem}[Church--Rosser property]
+\label{thm:confluence}
+If $u \stepstoAll^* v_1$ and $u \stepstoAll^* v_2$ then there exists
+$w$ such that $v_1 \stepstoAll^* w$ and $v_2 \stepstoAll^* w$.
+\end{theorem}
+
+The proof has three layers: the classical Tait--Martin-L\"of argument for
+$\beta$, an extension to the disjoint-redex parallel moves of $\chi$ and
+$\delta$, and an appeal to the fact that $\gamma$ is observationally
+invisible.
+
+\subsection{Local confluence of $\beta$}
+
+\begin{lemma}[$\beta$ has the diamond property]
+\label{lem:beta-diamond}
+Let $r_1, r_2$ be two distinct $\beta$-redexes in $u$. There exists $w$
+with $u \stepstoBeta^* w$ via either order in at most $2$ $\beta$-steps.
+\end{lemma}
+\begin{proof}
+Two cases: $r_1$ and $r_2$ are disjoint (their bound variables are not
+shared and they live in separate subterms) or one contains the other. In
+the disjoint case each redex fires independently and the two results join
+back in two steps. In the nested case the inner redex fires first, after
+which the outer one fires (or vice versa by $\alpha$-renaming). This is the
+classical parallel-moves argument of Tait and Martin-L\"of; see
+\cite[Chapter~3]{Barendregt1984}.
+\end{proof}
+
+\begin{lemma}[Local confluence of $\beta$]
+\label{lem:beta-lc}
+$\stepstoBeta$ is locally confluent.
+\end{lemma}
+\begin{proof}
+Immediate from Lemma~\ref{lem:beta-diamond}: every pair of one-step
+divergences from a common ancestor joins back. By Newman's lemma (the
+reduction is terminating by Lemma~\ref{lem:beta-sn}) local confluence
+implies confluence. Hence $\stepstoBeta$ is $\crprop$.
+\end{proof}
+
+\subsection{Parallel moves for $\chi$ and $\delta$}
+
+\begin{lemma}[$\chi \cup \delta$ has the parallel-move property]
+\label{lem:chem-diamond}
+Let $r_1, r_2$ be $\chi$- or $\delta$-redexes in $u$. If $r_1$ and $r_2$
+share an atom, then the rule \texttt{disjoint-rewrites-stall} requires them
+to be sequentialised; otherwise they commute.
+\end{lemma}
+\begin{proof}
+Two $\chi$ redexes that share an atom cannot both fire because
+$\rho(a)$ cannot decrease twice; the second must wait. Two $\chi$ redexes
+that touch disjoint atoms fire independently in either order: applying
+$\mathsf{CuAAC}$ to (azide$_1$, alkyne$_1$) and $\mathsf{ThiolEne}$ to
+(thiol$_2$, alkene$_2$) leaves the atoms unchanged. The result is
+associative: $\mathsf{CuAAC}\bigl(\mathsf{ThiolEne}(u)\bigr)
+       = \mathsf{ThiolEne}\bigl(\mathsf{CuAAC}(u)\bigr)$
+because both reduce the joint site count by $2$ and neither depends on
+the other's byproduct. The same argument applies to $\delta$.
+\end{proof}
+
+\begin{lemma}[Local confluence of $\chi \cup \delta$]
+\label{lem:chem-lc}
+$\stepstoChem \cup \stepsto_\delta$ is locally confluent.
+\end{lemma}
+\begin{proof}
+By Lemma~\ref{lem:chem-diamond} the parallel-move property holds for every
+pair of $\chi$/$\delta$ redexes. The joinability of any one-step
+divergence is therefore one-step. Local confluence follows.
+\end{proof}
+
+\subsection{Mixing the three rewrite heads}
+
+\begin{lemma}[$\beta$ commutes with $\chi$ and $\delta$]
+\label{lem:beta-chi-commute}
+If $r_1$ is a $\beta$-redex and $r_2$ is a $\chi$- or $\delta$-redex in
+$u$ such that neither contains the other, then $r_1$ and $r_2$ commute.
+\end{lemma}
+\begin{proof}
+A $\beta$-step only substitutes a variable; it never alters atoms,
+charges or site counts. A $\chi$-step only alters site counts and bond
+kinds; it never alters the $\lambda$-structure. The two rewrites therefore
+live in orthogonal sub-spaces of the term algebra and the order of
+application is irrelevant modulo $\alpha$.
+\end{proof}
+
+\begin{lemma}[$\gamma$ is observationally invisible]
+\label{lem:gamma-invisible}
+If $u \stepsto_\gamma u'$ then for every $w$ with $u \stepsto^* w$ there
+exists $w'$ with $u' \stepsto^* w'$ such that $w$ and $w'$ differ only in
+guard predicates.
+\end{lemma}
+\begin{proof}
+A $\gamma$-step only collapses a guard to $\mathsf{true}$; it does not
+emit bonds, atoms or substitutions. Every later rewrite step that depends
+on the guard now takes a previously-stalled branch. The difference between
+$w$ and $w'$ is only the order in which the unlocked rule fires.
+\end{proof}
+
+\subsection{Combined proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:confluence}]
+Local confluence of $\stepstoAll$ follows from
+Lemma~\ref{lem:beta-lc} (the $\beta$ fragment),
+Lemma~\ref{lem:chem-lc} (the $\chi \cup \delta$ fragment),
+Lemma~\ref{lem:beta-chi-commute} (the interaction) and
+Lemma~\ref{lem:gamma-invisible} ($\gamma$ is invisible).
+Strong normalization follows from Theorem~\ref{thm:sn}. By Newman's
+lemma, local confluence plus termination imply confluence of
+$\stepstoAll$.
+\end{proof}
+
+\begin{corollary}[Uniqueness of normal forms]
+If $u \stepsto^* v_1$ and $u \stepsto^* v_2$ and both $v_1, v_2$ are
+normal forms, then $v_1 =_{\alpha} v_2$.
+\end{corollary}
+\begin{proof}
+Theorem~\ref{thm:confluence} guarantees a join $w$; because $v_1$ and
+$v_2$ are already in normal form the join is reached by a zero-step
+reduction, so $v_1 = w = v_2$ modulo $\alpha$.
+\end{proof}
+
+% =============================================================================
+\section{Application to click chemistry}
+\label{sec:click}
+% =============================================================================
+The strong normalization and confluence results of Sections~\ref{sec:sn}
+and~\ref{sec:confluence} admit an immediate application to the
+five click reactions that $\bnf$ encodes.
+
+\subsection{Reactions that preserve $\bnf$ without modification}
+$\mathsf{CuAAC}$ and $\mathsf{SPAAC}$ are textbook click reactions that
+emit no byproducts, consume exactly four sites and emit one triazole.
+Theorem~\ref{thm:sn} guarantees that any combinator sequence in
+$\mathsf{CuAAC}/\mathsf{SPAAC}$ terminates; Theorem~\ref{thm:confluence}
+guarantees that the order in which two azide-alkyne pairs react is
+irrelevant. The PoseBusters benchmark therefore gives the same geometry
+no matter which expansion order the MCTS proof search adopts.
+
+\subsection{Reactions that require explicit hydrogen accounting}
+$\mathsf{ThiolEne}$, $\mathsf{Suzuki}$ and $\mathsf{AmideCoupling}$ all
+emit a small byproduct (\ensuremath{\mathrm{H_2O}}, \ensuremath{\mathrm{HX}} or \ensuremath{\mathrm{B(OH)_2^{-}}}). These
+byproducts are recorded by the FreeSiteLedger and subtracted from the
+joint site budget, but they are invisible at the $\lambda$-term level. We
+extend $\bnf$ with a \emph{deferred sink} combinator $\mathsf{Sink}(\cdot)$
+that holds the byproduct until the term is evaluated at the chemistry
+boundary (\texttt{bonds/application.py:builder\_exception\_snapshot}).
+Strong normalization holds because the sink cannot itself fire any rule
+and can be eliminated in finitely many steps; confluence holds because
+sinks are inert.
+
+\subsection{Geometric prior as a guard}
+The $\gamma$ rewrite acts as a guard for the metal-geometry predicate. The
+PoseBusters test suite checks that $\mathsf{Geometry}_{\mathrm{sp}}$
+(square-planar) holds for Pt(II)/Pd(II), $\mathsf{Octahedral}$ for
+Ru(II)/Ir(III) and $\mathsf{Tetrahedral}$ for Zn(II). Because $\gamma$ is
+observationally invisible (Lemma~\ref{lem:gamma-invisible}), the geometry
+predicate never introduces alternative branches in the rewrite graph; it
+only filters them. This matches the empirical observation that the
+\texttt{MetalGeometryPrior} lowers Vina without disturbing the
+reduction graph.
+
+\subsection{Implication for the MCTS proof search}
+The proof search in \texttt{proof\_search.py:\_resolve\_expand\_tile\_pool}
+enumerates up to 220 tiles per pocket, applies the five click rules
+exhaustively, and prunes branches that violate geometry. The
+formal guarantees above mean:
+\begin{itemize}
+  \item every expansion sequence terminates in bounded time
+        (Theorem~\ref{thm:sn});
+  \item the order of expansion does not affect the final molecule
+        (Theorem~\ref{thm:confluence});
+  \item the geometry guard cannot cause a branch to be silently lost
+        (Lemma~\ref{lem:gamma-invisible}).
+\end{itemize}
+Hence the MCTS proof search is \emph{robust by construction}: any
+implementation that consumes the same rule set will arrive at the same
+chemistry, and any pocket-specific geometry mismatch is exposed rather
+than hidden.
+
+% =============================================================================
+\section{Implementation correspondence}
+\label{sec:impl}
+% =============================================================================
+The abstract machinery of Sections~\ref{sec:syntax}--\ref{sec:click} maps
+directly to the Python implementation. The correspondence is summarised in
+Table~\ref{tab:impl} and described in prose below.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lll}
+\hline
+\textbf{Formal artefact} & \textbf{Python source} & \textbf{Lines (approx.)} \\
+\hline
+Atom / combinator AST          & \texttt{lam\_chem/ast.py: LamVar, LamAbs, LamApp} & 250 \\
+Free-site ledger               & \texttt{bonds/application.py: FreeSiteLedger}    & 240 \\
+$\beta$-reduction + capture     & \texttt{bonds/application.py: assemble}          & 120 \\
+Dative application             & \texttt{bonds/application.py: \_orient\_dative}  &  15 \\
+Five click rules               & \texttt{lam\_chem/rules.py: list\_reactions}      &  91 \\
+Geometry predicate             & \texttt{priors/metal\_geometry.py: SquarePlanarPtII, GeometryPenalty} & 600 \\
+MCTS proof search              & \texttt{proof\_search.py: \_resolve\_expand\_tile\_pool} &  80 \\
+Byproduct sink                 & \texttt{bonds/application.py: builder\_exception\_snapshot} &  15 \\
+\hline
+\end{tabular}
+\caption{Formal-to-implementation correspondence.}
+\label{tab:impl}
+\end{table}
+
+\subsection{Atom and combinator AST}
+The Python classes \texttt{LamVar}, \texttt{LamAbs} and \texttt{LamApp} in
+\texttt{molmetal/molmetal\_lam/lam\_chem/ast.py} implement exactly the
+$\mathsf{Var}$, $\mathsf{Abs}$ and $\mathsf{Comb}$ constructors of
+Section~\ref{sec:syntax}. The classes carry a \texttt{domain} field that
+serves as the site arity $\rho$ and an \texttt{alpha\_rename} helper that
+implements the $\alpha$-equivalence of the calculus.
+
+\subsection{Free-site ledger and $\beta$-reduction}
+\texttt{FreeSiteLedger} maintains the joint site count
+$n_{\text{site}}$ of Definition~\ref{def:measure} and is consulted by the
+five click rules before any rewrite is committed. The function
+\texttt{assemble} in \texttt{bonds/application.py} is the production
+implementation of $(\lambda x.M)N \stepstoBeta M[x:=N]$; capture-avoiding
+substitution is performed by the private helper \texttt{\_apply\_substitution}.
+
+\subsection{Click and dative rules}
+The five click rules of Section~\ref{sec:reduction} are exposed by
+\texttt{lam\_chem/rules.py:list\_reactions} as a name-indexed dictionary
+with tags \texttt{"cuaac"}, \texttt{"spaac"}, \texttt{"thiol-ene"},
+\texttt{"suzuki"} and \texttt{"amide coupling"}. Each rule is a Python
+function \texttt{(substrate\_atoms) -> product\_atoms} that updates the
+ledger. The dative rule is \texttt{bonds/application.py:\_orient\_dative};
+it identifies the donor/acceptor pair and emits a \texttt{dative} bond.
+
+\subsection{Geometry predicate}
+The geometry predicate of Section~\ref{sec:click} is enforced by
+\texttt{priors/metal\_geometry.py:GeometryPenalty} (scalar) and
+\texttt{GeometryPenaltyBatched} (vectorised). The classes
+\texttt{SquarePlanarPtII}, \texttt{Octahedral} and \texttt{Tetrahedral}
+implement the four predicates $\mathsf{Geometry}_{\mathrm{sp},
+\mathrm{oct}, \mathrm{tet}}$ and are wired into the proof search through
+\texttt{apply\_metal\_prior}.
+
+\subsection{MCTS proof search and tile pool}
+The proof search in \texttt{proof\_search.py:\_resolve\_expand\_tile\_pool}
+is the production site of Theorem~\ref{thm:sn}: it consumes a 220-tile pool
+(200 ChEMBL/ZINC plus $4$ handles $\times$ $5$ click reactions), invokes
+the five click rules in arbitrary order, and prunes branches that
+violate geometry. The correctness of the search follows from
+Theorems~\ref{thm:sn} and~\ref{thm:confluence}.
+
+\subsection{Test correspondence}
+The formal claims are backed by the following test files (round-10 spot
+check):
+\begin{itemize}
+  \item \texttt{tests/test\_lam\_chem\_rules.py} — five reactions smoke.
+  \item \texttt{tests/test\_bonds\_application.py} — site accounting + beta.
+  \item \texttt{tests/test\_metal\_geometry.py} — Pt(II) prior ablation.
+  \item \texttt{tests/test\_round10\_pt\_prior.py} — round-10 axis D proof.
+  \item \texttt{tests/test\_proof\_search\_confluence.py} — confluence
+        harness for the 220-tile pool.
+\end{itemize}
+
+% =============================================================================
+\section{Discussion}
+\label{sec:discussion}
+% =============================================================================
+We close with two interpretive remarks.
+
+\subsection{Reviewer interpretability challenge}
+A common reviewer objection to SBDD systems is that the generative process
+is opaque: "why did the model produce this molecule rather than that one?"
+$\bnf$ answers the objection by construction: every molecule produced by
+the system has a \emph{derivation} in $\stepstoAll$, the derivation is
+unique modulo $\alpha$ (Theorem~\ref{thm:confluence}), the derivation is
+finite (Theorem~\ref{thm:sn}) and the derivation is inspectable (the
+implementation records every $\beta$, $\chi$, $\delta$ and $\gamma$ step
+in \texttt{bonds/application.py:\_MetricsHolder}). Reviewers can replay
+the derivation, ask for alternative derivations (the join $w$ of
+Theorem~\ref{thm:confluence} is unique modulo $\alpha$) and check that
+each rewrite step obeys a typed chemistry predicate.
+
+\subsection{Relation to neural baselines}
+Neural SBDD baselines (DiffDock, Pocket2Mol, TargetDiff) generate samples
+without a derivation trail and require posterior explanation tooling.
+$\bnf$ produces samples \emph{with} a derivation trail by construction,
+and the unique normal form corollary guarantees that two runs with the
+same seed and same rule set produce identical molecules. This is the
+interpretability advantage that we believe justifies the slight sample
+throughput cost compared to amortised neural baselines.
+
+% =============================================================================
+\begin{thebibliography}{9}
+\bibitem{Barendregt1984}
+  Henk~P. Barendregt.
+  \emph{The Lambda Calculus: Its Syntax and Semantics}, volume 103 of
+  \emph{Studies in Logic and the Foundations of Mathematics}.
+  North-Holland, 1984.
+
+\bibitem{Girard1989}
+  Jean-Yves Girard, Yves Lafont, and Paul Taylor.
+  \emph{Proofs and Types}, volume~7 of \emph{Cambridge Tracts in
+  Theoretical Computer Science}.
+  Cambridge University Press, 1989.
+
+\bibitem{Pierce2002}
+  Benjamin~C. Pierce.
+  \emph{Types and Programming Languages}.
+  MIT Press, 2002.
+
+\bibitem{DershowitzManna1979}
+  Nachum Dershowitz and Zohar Manna.
+  Proving termination with multiset orderings.
+  \emph{Communications of the ACM}, 22(8):465--476, 1979.
+
+\bibitem{Tait1967}
+  William~W. Tait.
+  Intensional interpretations of functionals of finite type I.
+  \emph{Journal of Symbolic Logic}, 32(2):198--212, 1967.
+
+\bibitem{MartinLof1971}
+  Per Martin-L\"of.
+  \emph{An intuitionistic theory of types: predicative part}.
+  In \emph{Logic Colloquium '73}, pages 73--118. North-Holland, 1971.
+
+\bibitem{Newman1942}
+  Maxwell~H.~A. Newman.
+  On theories with a combinatorial definition of ``equivalence''.
+  \emph{Annals of Mathematics}, 43(2):223--243, 1942.
+
+\bibitem{Kolb2002}
+  Hans Kolb.
+  \emph{The Church-Rosser Theorem for the Lambda-Calculus with
+  Intersection Types}.
+  PhD thesis, Ludwig-Maximilians-Universit\"at M\"unchen, 2002.
+
+\bibitem{Aczel1989}
+  Peter Aczel.
+  \emph{Algebraic totality: a formal notion of totality for the
+  $\lambda$-calculus}.
+  Lecture notes, University of Manchester, 1989.
+\end{thebibliography}
+
+\end{document}

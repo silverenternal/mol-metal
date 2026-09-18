@@ -1,0 +1,37 @@
+{
+  "round": "R13/R14",
+  "workflow": "wf_cfm_path_b_decoder_rework",
+  "date_utc": "2026-09-15",
+  "config": {
+    "decoder": "ReworkedDecoder (3 chem-aware priors: soft_distance_mask + type_compat_mask + valence_log_barrier)",
+    "test": "synthetic CFM-style atom clouds (10 atoms, 1-5 Å spread)",
+    "n_samples": 192,
+    "train_steps": 500,
+    "hidden_dim": 64,
+    "input": "random_pt_click_clouds_NOT_real_trained_cfm"
+  },
+  "aggregate_metrics": {
+    "path_a_decode_ratio": 0.0,
+    "path_b_decode_ratio_bond_bearing": 1.0,
+    "path_b_decode_ratio_rdkit_strict": 0.5,
+    "absolute_lift_a_to_b_bond_bearing": 1.0,
+    "absolute_lift_a_to_b_rdkit_strict": 0.5,
+    "relative_lift": "infinity (path_a = 0/192 floor)",
+    "status_counts_path_a": {
+      "disconnected_distance_graph": 16,
+      "connectivity_or_valence_failure:AtomValenceException": 175,
+      "radical_graph": 1
+    },
+    "status_counts_path_b": {
+      "disconnected_distance_graph": 96,
+      "rework_sanitize_failed:AtomValenceException": 96
+    }
+  },
+  "verdict": {
+    "status": "PARTIAL_LIFT_SYNTHETIC_ONLY",
+    "summary": "Path B lifts decode_ratio_bond_bearing from 0/192 to 192/192 on synthetic Pt-click clouds. BUT: (a) 96/192 RDKit-strict fail on overvalent atoms in synthetic clouds, (b) no Vina lift measured (Vina lift gated on full retrain), (c) tested on synthetic not trained-CFM coordinates.",
+    "design_claim": "Path B will lift on trained-CFM distribution (extrapolation, not measurement)",
+    "vina_lift": "UNMEASURED"
+  },
+  "source": "molmetal/reports/wf_cfm_path_b_decoder_rework/final.md"
+}

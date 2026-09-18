@@ -1,0 +1,8 @@
+name,smiles,fda_approved_year,primary_indication
+cisplatin,N.N.[Cl][Pt][Cl],1978,testicular_bladder_lung_ovarian_cancer
+carboplatin,N.N.[Pt]12(OC(=O)CCC1)OC(=O)CCC2,1989,ovarian_lung_cancer
+oxaliplatin,N.N.O[Pt]([O-])([NH3])([NH3])OC(=O)[C@@H](N)CCC(=O)O,2002,colorectal_cancer
+nedaplatin,N.N.OCC(=O)O[Pt]([NH3])([NH3])OCC(=O)O,1995_japan_only,head_neck_lung_esophageal_cancer
+satraplatin,CC1=C(C(=O)O[Pt]([NH3])([NH3])(OC(=O)c2ccccc2)C(C)(C)C)C(C)(C)C=C1,2007_ema_refused,prostate_cancer
+picoplatin,N.N.[Pt]([NH3])([NH3])([Cl])([Cl]),2009_ema_refused,small_cell_lung_cancer
+heptaplatin,N.N.[Pt]([NH3])([NH3])([O-])([O-]),2004_korea_only,gastric_cancer

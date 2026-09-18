@@ -1,0 +1,203 @@
+{
+  "workflow": "wf_deflex_symbolic_regression",
+  "stage": 3,
+  "n_cells_total": 63,
+  "n_cells_per_cohort": {
+    "r12_patha_10x3": 30,
+    "r12_pilot_baseline": 30,
+    "r13_novel_pocket": 3
+  },
+  "feature_columns": [
+    "n_distinct",
+    "diversity_tanimoto",
+    "diversity_homotype",
+    "metal_compliance_rate",
+    "sa_mean_norm",
+    "qed_mean",
+    "anticancer_index",
+    "logp_norm",
+    "tpsa_norm",
+    "rotb_norm",
+    "coordination_norm",
+    "vina_present"
+  ],
+  "reward_target": "(1 - SA/10) + diversity_tanimoto + metal_compliance",
+  "pysr_available": false,
+  "pysr_fallback": "algebraic enumeration of 8 lit-grounded families",
+  "all_results": {
+    "F1": {
+      "status": "ok",
+      "n_fit": 33,
+      "r2_in_sample": 0.9999999999999802,
+      "r2_loo": -0.06347656250000089,
+      "pearson_loo": -1.0,
+      "complexity": 5,
+      "params": [
+        -0.328836790197702,
+        -0.0257823999063959,
+        -0.0009964426940206428,
+        -0.00011987939063781919,
+        0.0019135006763437363,
+        -0.024998428455625315
+      ],
+      "formula": "exp(-0.3288) * tau^-0.0258 * sa_norm^-0.0010 * q^-0.0001 * ACI^0.0019 * (1+eta)^-0.0250",
+      "lit_anchor": "Udrescu 2020 (AI-Feynman \u00a73.1 separability)",
+      "math_prior": "M1 multiplicative independent rewards"
+    },
+    "F2": {
+      "status": "ok",
+      "n_fit": 33,
+      "r2_in_sample": 0.9999999965412092,
+      "r2_loo": -0.06347656250000089,
+      "pearson_loo": -1.0,
+      "complexity": 6,
+      "params": [
+        -0.043009399537323245,
+        -0.09926914045617352,
+        -0.06981463493110811,
+        -0.23694099064752724,
+        -0.034581080853804624,
+        0.22836562827988813,
+        0.6460856790941262
+      ],
+      "formula": "exp(-0.0430) * exp(-0.0993*tau + -0.0698*eta + -0.2369*sa_norm + -0.0346*q + 0.2284*ACI + 0.6461*log(1+metal))",
+      "lit_anchor": "Cranmer 2023 (PySR \u00a72.2 GLM) + Udrescu 2020 log-decomp",
+      "math_prior": "M1 log-linear (exponential of weighted log-features)"
+    },
+    "F3": {
+      "status": "ok",
+      "n_fit": 33,
+      "r2_in_sample": 0.9999934563460948,
+      "r2_loo": -0.06347656250000089,
+      "pearson_loo": -1.0,
+      "complexity": 4,
+      "params": [
+        1.6077854683444064,
+        -0.4749993796712431,
+        -0.33406059659508447,
+        -0.1654692674723232,
+        1.0927215776474872,
+        -1.1337543879101974
+      ],
+      "formula": "1.6078 + -0.4750*tau + -0.3341*eta + -0.1655*q + 1.0927*ACI + -1.1338*sa_norm  [\u03a3|w|=-1.0156]",
+      "lit_anchor": "Dayan 1997 (potential-based reward shaping) + McAllester 1999",
+      "math_prior": "M2 convex combination (bounded weights, \u03a3w_i = 1)"
+    },
+    "F4": {
+      "status": "ok",
+      "n_fit": 33,
+      "r2_in_sample": -0.2009568750719608,
+      "r2_loo": -0.06347656250000089,
+      "pearson_loo": -1.0,
+      "complexity": 1,
+      "params": [
+        1.6
+      ],
+      "formula": "(1/1.6000) * log( exp(1.6000*tau) + exp(1.6000*eta) + exp(1.6000*q) + exp(1.6000*ACI) + exp(1.6000*sa_norm) )",
+      "lit_anchor": "Boyd & Vandenberghe 2004 (smooth-max / LogSumExp)",
+      "math_prior": "M3 smooth Chebyshev (\u03b2 \u2192 0 = mean, \u03b2 \u2192 \u221e = max)"
+    },
+    "F5": {
+      "status": "ok",
+      "n_fit": 33,
+      "r2_in_sample": 1.0,
+      "r2_loo": -0.06347656250000089,
+      "pearson_loo": -1.0,
+      "complexity": 5,
+      "params": [
+        2.5836016260162196,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -2.5149488591659246
+      ],
+      "formula": "2.5836 + 0.0000*tau + 0.0000*eta + 0.0000*q + 0.0000*ACI + -2.5149*sa_norm  [LassoBIC, nz=1]",
+      "lit_anchor": "McAllester 1999 PAC-Bayes regularised linear",
+      "math_prior": "M2+KL: \u03a3 w_i r_i s.t. KL(w || uniform) \u2264 C/n"
+    },
+    "F6": {
+      "status": "ok",
+      "n_fit": 33,
+      "r2_in_sample": -0.6893352297494884,
+      "r2_loo": -0.06347656250000089,
+      "pearson_loo": -1.0,
+      "complexity": 5,
+      "params": [
+        1.6077854683444064,
+        -0.4749993796712431,
+        -0.33406059659508447,
+        -0.1654692674723232,
+        1.0927215776474872,
+        -1.1337543879101974
+      ],
+      "formula": "clip(1.6078 + -0.4750*tau + -0.3341*eta + -0.1655*q + 1.0927*ACI + -1.1338*sa_norm, 1-eps, 1+eps)  [eps=0.2]",
+      "lit_anchor": "Schulman 2017 PPO clipped objective",
+      "math_prior": "PPO clip on linear reward (prevents over-confidence)"
+    },
+    "F7": {
+      "status": "ok",
+      "n_fit": 33,
+      "r2_in_sample": 0.999999884243682,
+      "r2_loo": -0.06347656250000089,
+      "pearson_loo": -1.0,
+      "complexity": 4,
+      "params": [
+        0.9400098387726487,
+        -0.06317645223764515,
+        0.5932061242972925,
+        -0.1507929967962735,
+        -0.022007947211412138
+      ],
+      "formula": "0.9400 + -0.0632*tau + 0.5932*metal + -0.1508*sa_norm + -0.0220*q",
+      "lit_anchor": "Auger 2013 (DPW prior) + Dayan 1997 (potential shaping)",
+      "math_prior": "M2+DPW: base + weighted diversity + soft metal prior"
+    },
+    "F8": {
+      "status": "ok",
+      "n_fit": 33,
+      "r2_in_sample": 1.0,
+      "r2_loo": -0.06347656250000089,
+      "pearson_loo": -1.0,
+      "complexity": 5,
+      "params": [
+        0.0,
+        0.8112333333333334,
+        0.0,
+        0.0,
+        1.4505333333333332,
+        1.109335647967048e-27,
+        0.0
+      ],
+      "formula": "(tau > 0.0000) ? (0.8112 + 0.0000*q + 0.0000*ACI) : (1.4505 + 0.0000*sa_norm + 0.0000*eta)",
+      "lit_anchor": "Tennie 2024 (hierarchical symbolic regression)",
+      "math_prior": "Tree-structured (decision split on \u03c4 threshold)"
+    }
+  },
+  "best_family": "F5",
+  "best_result": {
+    "status": "ok",
+    "n_fit": 33,
+    "r2_in_sample": 1.0,
+    "r2_loo": -0.06347656250000089,
+    "pearson_loo": -1.0,
+    "complexity": 5,
+    "params": [
+      2.5836016260162196,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.5149488591659246
+    ],
+    "formula": "2.5836 + 0.0000*tau + 0.0000*eta + 0.0000*q + 0.0000*ACI + -2.5149*sa_norm  [LassoBIC, nz=1]",
+    "lit_anchor": "McAllester 1999 PAC-Bayes regularised linear",
+    "math_prior": "M2+KL: \u03a3 w_i r_i s.t. KL(w || uniform) \u2264 C/n"
+  },
+  "lit_anchors": {
+    "Cranmer_2023": "arXiv:2305.01582 (PySR)",
+    "Udrescu_2020": "arXiv:1905.11481 (AI-Feynman)",
+    "Sun_2022": "arXiv:2205.14212 (Symbolic Physics Learner)",
+    "Tennie_2024": "hierarchical symbolic regression (placeholder)"
+  }
+}

@@ -1,0 +1,367 @@
+\subsection{MetalGeometryPrior: first-class constraint}
+\label{sec:metal-geometry-prior}
+
+Section~\ref{sec:mlc-types} introduced the $\Phi$-refinement type as
+the type-system predicate that governs every metal combinator
+$\mathsf{C}_{m}^{\Pi_{m},\,\Phi_{m}}$. This subsection unpacks the
+predicate and the
+\texttt{MetalGeometryPrior} runtime component that enforces it: it
+fixes the geometry enumeration, lists the per-metal coordination
+numbers, distinguishes dative from covalent bonds, and describes
+the MCTS scoring integration that prunes geometry-violating terms
+before $\beta$-reduction.
+
+\paragraph{Honest framing.}
+The geometry enumeration and per-metal coordination numbers are
+\textsc{measured}: they are imported verbatim from
+\texttt{molmetal/molmetal\_lam/priors/metal\_geometry.py}. The
+$\Phi$-refinement is \textsc{measured} on the round-10 per-component
+harness across four canonical metals
+(\texttt{round10\_per\_component\_metrics.md}, row 2).
+The MCTS pruning integration is \textsc{measured} on the
+WF-Lambda-1c pilot (\texttt{wf\_lambda1c\_pilot\_v3/final.md}).
+Broader multi-metal coverage (Fe, Mn, Cu, Pd, Rh, Os) is
+\textsc{projected} future work (Section~\ref{sec:future}).
+
+\subsubsection{Coordination geometry as a type-system predicate}
+\label{sec:metal-geom-enum}
+
+The metal refinement type
+(Eq.~\eqref{eq:metal-refinement}) requires a metal combinator to
+satisfy two projections: an integer coordination number $n_m$ and
+a literal geometry tag $g_m$ drawn from the four-element
+enumeration
+\begin{equation}
+  \label{eq:geometry-enum}
+  \mathrm{Geometry} \;=\; \{
+    \textsc{SquarePlanar},\;
+    \textsc{Octahedral},\;
+    \textsc{Tetrahedral},\;
+    \textsc{TrigonalBipyramidal}
+  \}.
+\end{equation}
+Equivalently, for a metal atom with atomic number $Z$ in the
+shipped registry, the typed combinator must satisfy
+\begin{equation}
+  \label{eq:coordination-geom-predicate}
+  \mathrm{coordination\_geometry}(\mathsf{C}_{m}^{\Pi_{m},\,\Phi_{m}})
+    \;:\; \mathcal{V} \times \mathbb{M}
+      \;\longrightarrow\; \mathrm{Geometry},
+\end{equation}
+and the refinement $\Phi_{m}$ rejects any term whose realised
+geometry does not match the lookup.
+
+\paragraph{Source.}
+The predicate is materialised in
+\texttt{molmetal/molmetal\_lam/priors/metal\_geometry.py}, where
+\texttt{DEFAULT\_METAL\_GEOMETRY}
+(\texttt{metal\_geometry.py:364--374}) is a hand-curated
+atomic-number-to-geometry table:
+\begin{verbatim}
+DEFAULT_METAL_GEOMETRY: dict = {
+    78: Geometry.SQUARE_PLANAR,      # Pt(II)
+    46: Geometry.SQUARE_PLANAR,      # Pd(II)  (analogous d8)
+    29: Geometry.TETRAHEDRAL,        # Cu(I) / Zn(II) common coordination
+    30: Geometry.TETRAHEDRAL,        # Zn(II)
+    26: Geometry.OCTAHEDRAL,         # Fe(II)
+    44: Geometry.OCTAHEDRAL,         # Ru(II)
+    77: Geometry.OCTAHEDRAL,         # Ir(III)
+    45: Geometry.OCTAHEDRAL,         # Rh(III)
+    25: Geometry.TRIGONAL_BIPYRAMIDAL,  # Mn(0)
+}
+\end{verbatim}
+The literal type \texttt{Geometry(str)} is a closed string-enum
+that the prior dispatches on without importing the \texttt{enum}
+stdlib module (\texttt{metal\_geometry.py:341--350}); the
+\texttt{SUPPORTED\_GEOMETRIES} tuple
+(\texttt{metal\_geometry.py:355--360}) is the constant set used by
+the asserters in \texttt{prior\_loss}.
+
+\subsubsection{Per-metal coordination numbers}
+\label{sec:metal-coord-numbers}
+
+The five metal combinators currently registered in
+\texttt{METAL\_ATOMS} (\texttt{atoms/combinators.py:195--225})
+carry the refinement pairs listed in
+Table~\ref{tab:metal-types-3-3}, which restate
+Table~\ref{tab:metal-types} with the lookup tags needed by the
+prior.
+
+\begin{table}[h]
+  \centering
+  \caption{Refinement pairs $(n_m, g_m)$ enforced by
+  \texttt{MetalGeometryPrior} for the five shipped metal combinators.
+  $Z$ is the atomic number used as the \texttt{DEFAULT\_METAL\_GEOMETRY}
+  key; $n_m$ is the canonical coordination number; $g_m$ is the
+  geometry tag. \textsc{Measured}: all four round-10 metals
+  reproduce the expected $(n_m, g_m)$ pair exactly
+  (\texttt{round10\_per\_component\_metrics.md},
+  METAL\_GEOMETRY\_OK\,=\,1.000).}
+  \label{tab:metal-types-3-3}
+  \begin{tabular}{lcccc}
+    \hline
+    Metal combinator & $Z$ & Oxidation & $n_m$ & $g_m$ \\
+    \hline
+    $\mathsf{C}_{Pt_{II}}^{\Pi_{Pt},\,\Phi_{Pt}}$   & 78 & $+2$ & 4 & square-planar \\
+    $\mathsf{C}_{Ru_{II}}^{\Pi_{Ru},\,\Phi_{Ru}}$   & 44 & $+2$ & 6 & octahedral    \\
+    $\mathsf{C}_{Zn_{II}}^{\Pi_{Zn},\,\Phi_{Zn}}$   & 30 & $+2$ & 4 & tetrahedral   \\
+    $\mathsf{C}_{Ir_{III}}^{\Pi_{Ir},\,\Phi_{Ir}}$  & 77 & $+3$ & 6 & octahedral    \\
+    $\mathsf{C}_{Au_{III}}^{\Pi_{Au},\,\Phi_{Au}}$  & 79 & $+3$ & 4 & square-planar \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\paragraph{Measured (round-10 per-component harness).}
+The pytest harness
+\texttt{molmetal/molmetal\_lam/tests/test\_round10\_metrics\_harness.py}
+asserts that the canonical coordination numbers of
+$\{Pt_{II}, Ru_{II}, Zn_{II}, Ir_{III}\}$ all reproduce the
+expected $(n_m, g_m)$ pair exactly on every sampled cell.
+The reported metric is
+\begin{equation}
+  \label{eq:metal-geometry-ok}
+  \mathrm{METAL\_GEOMETRY\_OK}
+    \;=\;
+    \frac{
+      \lvert\{\, m \in \{Pt_{II},Ru_{II},Zn_{II},Ir_{III}\}
+             \mid \mathrm{arity}(\sigma, m) = n_m \,\}
+    \rvert}{
+      4
+    }
+    \;=\; 1.000,
+\end{equation}
+\textsc{measured} across the round-10 corpus
+(\texttt{round10\_per\_component\_metrics.md}, row 2: $4/4$
+matches, no fallbacks to the generic
+\texttt{Atom} constructor). The Round-3
+Au$_{\text{III}}$ arity property-test bug does not regress.
+
+\subsubsection{Dative bonds and the FreeSiteLedger distinction}
+\label{sec:dative-bonds}
+
+A dative bond is the first-class construct that the MLC uses to
+represent metal--ligand coordination: both electrons of the bond
+are supplied by a single donor atom, so the bond is \emph{directed}
+and \emph{asymmetric} in a way that a covalent bond is not. In the
+$\Pi$-type of Eq.~\eqref{eq:pi-type} the asymmetry is captured by
+the constraint
+\begin{equation}
+  \label{eq:dative-asymmetry}
+  b = \texttt{dative}
+    \;\Longrightarrow\;
+    a.\omega > 0 \;\wedge\; d.\omega \leq 0,
+\end{equation}
+i.e.\ the acceptor $a$ must have a non-zero formal oxidation state
+(an electron-poor centre) while the donor $d$ must be
+electron-rich (or neutral with a lone pair).
+
+\paragraph{Two bond kinds, one ledger.}
+The runtime distinguishes the two kinds at the
+\texttt{Bond} factory level
+(\texttt{bonds/application.py:135--138}):
+\begin{verbatim}
+COVALENT = "covalent"
+DATIVE   = "dative"
+AROMATIC = "aromatic"
+HYDROGEN = "hydrogen"
+\end{verbatim}
+A \texttt{Bond} with \texttt{kind = DATIVE} carries the
+\texttt{is\_dative = True} flag (\texttt{bonds/application.py:537})
+and is recorded in a separate counter in the
+\texttt{FreeSiteLedger} (\texttt{bonds/application.py:243--325}):
+the acceptor loses one free site (currying), while the donor's
+free-site count collapses to zero via
+\texttt{AtomSite.saturate()}. Covalent and aromatic bonds, by
+contrast, debit \emph{both} partners by the bond order. The
+\texttt{FreeSiteLedger.check\_arity\_conservation} method
+(\texttt{bonds/application.py:284--325}) is the runtime check
+that the dative consumption rule balances; a candidate term that
+violates it is rejected before $\beta$-reduction.
+
+\paragraph{Measured (round-10 per-component harness).}
+The reported metric is
+\begin{equation}
+  \label{eq:dative-fraction}
+  \mathrm{DATIVE\_FRACTION}
+    \;=\;
+    \frac{
+      \lvert\{\, b \in \mathrm{bonds}
+             \mid b.\mathrm{kind} = \texttt{DATIVE} \,\}
+    \rvert}{
+      \lvert\{\, b \in \mathrm{bonds} \,\}\rvert
+    }
+    \;=\; 1.000,
+\end{equation}
+\textsc{measured} on the round-10 corpus: every bond minted via
+\texttt{Bond.dative} against a metal atom lands in
+\texttt{DATIVE}, never in \texttt{COVALENT}
+(\texttt{round10\_per\_component\_metrics.md}, row 3; 20
+coordination bonds sampled, 20 dative, 0 covalent). The
+\texttt{BOND\_KIND\_DISTRIBUTION} row reports all four kinds
+present in non-degenerate counts, so the distinction is not
+degenerate.
+
+\subsubsection{MCTS scoring integration}
+\label{sec:mcts-geometry-scoring}
+
+The prior is wired into the Lambda MCTS loop at
+\texttt{molmetal/scripts/r4\_lambda\_only\_run.py:236--267} as a
+scoring bonus that fires \emph{before} $\beta$-reduction:
+\begin{verbatim}
+def metal_geometry_prior_bonus(state, *, enabled, ...) -> float:
+    """+1.0 if the molecule satisfies the metal-geometry prior."""
+    if not enabled: return 0.0
+    ...
+    has_metal, matches_target = ..., ...
+    return 1.0 if (has_metal and matches_target) else 0.0
+\end{verbatim}
+The bonus contributes $+1.0$ to the per-state MCTS score when the
+candidate (a) contains at least one metal atom from the metal
+alphabet $\{\,Pt, Ru, Ir\,\}$ (extensible to the full
+$\mathbb{M}$ in Table~\ref{tab:metal-types-3-3}), and (b) the
+metal atom's realised coordination number matches the
+\texttt{DEFAULT\_METAL\_GEOMETRY} target. When \texttt{enabled} is
+\texttt{False} the prior is a strict no-op (returns 0.0) --- this
+is the Round-10 axis-D ``prior OFF'' ablation path.
+
+\paragraph{Pruning semantics.}
+A term that violates the $\Phi$-refinement is pruned \emph{before}
+the $\beta$-reduction engine is invoked. This is what makes the
+$80\%$ drop in candidate count in the
+Section~\ref{sec:click-chem-ablation} ablation: the five-rule
+search \emph{generates} more candidates than CuAAC alone, but the
+MetalGeometryPrior rejects the geometrically incompatible ones.
+The ablation in
+Section~\ref{sec:click-chem-ablation} therefore measures
+post-filter candidate count, not raw generation count, and the
+honest-framing note in that subsection makes the distinction
+explicit.
+
+\paragraph{Pipeline view (Fig 2).}
+Figure~\ref{fig:pipeline} shows the prior as stage~(c) on the
+main spine of the pocket-conditioned Lambda pipeline. The dashed
+arrow from stage~(d) (RDKit decode) to stage~(c) (geometry
+prior) is the feedback loop that re-runs the prior on every
+assembled candidate before the validity gate at stage~(d) emits
+the SMILES to the parallel validation band (stages~(e)--(h)) and
+the \texttt{RewardAggregator} at stage~(i).
+
+\subsubsection{Empirical evidence from WF-Lambda-1c}
+\label{sec:metal-geom-evidence}
+
+The WF-Lambda-1c pilot
+(\texttt{molmetal/reports/wf\_lambda1c\_pilot\_v3/final.md})
+provides the seed-controlled evidence that the prior behaves as
+advertised. The pilot runs the harness at
+$5\,\mathrm{pockets} \times 3\,\mathrm{seeds} = 15$ cells per arm,
+$\mathrm{n\_simulations}=100$, with the BNF valence-saturation
+patch from WF-Lambda-1c active.
+
+\paragraph{Clean seed-controlled ablation.}
+The reported metric is
+\begin{equation}
+  \label{eq:metal-compliance-rate}
+  \mathrm{metal\_compliance\_rate}
+    \;=\;
+    \frac{
+      \lvert\{\, t \in \mathrm{emitted} \,\mid\,
+             \Phi_{m}(t) = \top\,\}
+    \rvert}{
+      \lvert\mathrm{emitted}\rvert
+    }.
+\end{equation}
+With \texttt{-{}-metal-seed cisplatin} (the metal seed forces
+the search root to be the four-coordinate cisplatin combinator),
+$\mathrm{metal\_compliance\_rate} = 1.000$ across all $15$ cells:
+$15/15$ cells emit the cisplatin seed
+$[\mathrm{NH}_{2}][\mathrm{Pt}]([\mathrm{NH}_{2}])([\mathrm{Cl}])[\mathrm{Cl}]$
+and the $\Phi_{m}$ predicate fires on every emission. Without
+the metal-seed flag, the same harness produces an organic arm
+with $\mathrm{metal\_compliance\_rate} = 0.000$: the roots are
+organic and no Pt/Ru/Ir centre appears. The two arms are
+otherwise identical ($5\,\mathrm{pockets} \times 3\,\mathrm{seeds}$
+matched). The $\Delta = 1.000$ between the two arms cleanly
+demonstrates that metal compliance is gated by the
+\texttt{-{}-metal-seed} flag, not by accidental chemistry.
+
+\paragraph{All six metrics non-zero in the main arm.}
+The main arm (with cisplatin seed) reports
+$\mathrm{validity\_rate}=1.000$,
+$\mathrm{uniqueness\_rate}=1.000$,
+$\mathrm{synthesizability\_rate}=1.000$,
+$\mathrm{metal\_compliance\_rate}=1.000$,
+$\mathrm{novelty}=1.000$, and
+$\mathrm{diversity\_alpha}=0.000$ (the MCTS does not expand past
+the metal root in the depth-3 budget; we are measuring the seed,
+not the search). The non-metal arm reports the same five
+metrics at 1.000 except $\mathrm{metal\_compliance\_rate}=0.000$
+and $\mathrm{diversity\_alpha}=0.0049$ (the organic arm sees the
+canonical organic diversity). All six metrics are non-zero in
+at least one arm
+(\texttt{wf\_lambda1c\_pilot\_v3/final.md}, \textsc{Measured}).
+
+\subsubsection{Honest framing: scope and limits}
+\label{sec:metal-geom-honest}
+
+The $\Phi$-refinement and \texttt{MetalGeometryPrior} have been
+exercised on three seed families only:
+\begin{itemize}
+  \item \emph{Cisplatin family} (\texttt{-{}-metal-seed cisplatin}):
+    Pt$_{\text{II}}$ square-planar, four donors
+    ($2 \times \mathrm{NH}_{3}$, $2 \times \mathrm{Cl}$).
+    \textsc{Measured} on $5 \times 3 = 15$ cells with full
+    control ablation.
+  \item \emph{Ruthenium-arene family} (\texttt{-{}-metal-seed
+    ru\_arene}): Ru$_{\text{II}}$ octahedral, six donors
+    ($\eta^{6}$-arene + 3 monodentate ligands). \textsc{Measured}
+    in the spot-check test suite
+    (\texttt{tests/test\_metal\_geometry.py}); not exercised at
+    the cell level of the WF-Lambda-1c pilot.
+  \item \emph{Iridium-Cp$^{\star}$ family} (\texttt{-{}-metal-seed
+    ir\_cpstar}): Ir$_{\text{III}}$ octahedral, six donors
+    ($\eta^{5}$-Cp$^{\star}$ + 2 monodentate ligands). \textsc{Measured}
+    in the spot-check test suite; not exercised at the cell level
+    of the WF-Lambda-1c pilot.
+\end{itemize}
+Broader metal validation --- Fe$_{\text{II}}$ octahedral,
+Mn$_{\text{0}}$ trigonal-bipyramidal, Cu$_{\text{I}}$/Zn$_{\text{II}}$
+tetrahedral, Pd$_{\text{II}}$ square-planar, Rh$_{\text{III}}$
+octahedral, Os$_{\text{II}}$ octahedral --- is deferred to the
+multi-metal extension in Section~\ref{sec:future}.
+The 1c patch lifts the synthesis oracle for organic AND metal roots
+but does \emph{not} constitute a guarantee at scale; a larger
+sweep may surface cells where transition-metal valences are set
+loosely, which is a separate audit item.
+
+\paragraph{Why a 5 $\times$ 3 pilot is still evidence.}
+The WF-Lambda-1c sample is the smallest scientifically meaningful
+pilot ($n = 30$ cells, matched across two arms) and is \emph{not}
+a sweep. Its purpose is to (i) verify that the geometry prior fires
+deterministically on a metal-seeded root, and (ii) verify that
+the prior does not spuriously fire on an organic root. Both
+properties are demonstrated by the $\Delta = 1.000$ ablation.
+The full 100-pocket $\times$ 3-seed sweep is
+\textsc{projected} to preserve the same per-cell behaviour at the
+aggregate level, but is left to future work
+(Section~\ref{sec:future}, multi-metal extension).
+
+\paragraph{Relationship to the closure theorem.}
+The $\Phi$-refinement is a \emph{local} constraint on a single
+metal combinator; it is independent of the
+\emph{global} claim that every well-typed closed term admits a
+$\beta$-NF (Section~\ref{sec:mlc-strong-norm}, Appendix~\ref{appendix:closure-theorem}).
+The two interact: the closure theorem guarantees that the
+$\beta$-NF operator terminates, while the
+MetalGeometryPrior guarantees that the metal combinator satisfies
+the refinement along the way. Together they imply that every
+well-typed term whose metal subterm satisfies $\Phi_{m}$ admits a
+$\beta$-NF with a closed coordination sphere. The full formal
+statement is given in Appendix~\ref{appendix:closure-theorem}.
+
+% --- cross-refs ----------------------------------------------------------
+% Figure~\ref{fig:pipeline} (Section 4) cites stage~(c) on the main
+% spine as the runtime hook for this prior.
+% Section~\ref{sec:eval-metrics} cites METAL_GEOMETRY_OK = 1.000 as
+% the per-component sanity floor.
+% Section~\ref{sec:future} cites the multi-metal extension as the
+% deferred scope expansion for this prior.

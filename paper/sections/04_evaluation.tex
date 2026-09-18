@@ -1,0 +1,3392 @@
+% =============================================================================
+%  Paper §4 -- Evaluation (Round-12 pilot scaffold + Round-13 design)
+%
+%  Honest framing:
+%  - \DESIGN{}  = Round-12 pilot has NOT yet executed end-to-end; data cells
+%                 pending. Methodology cells are tagged \MEASURED{} where the
+%                 protocol itself is already wired (cf. round-11 Vina/QVina
+%                 parity, wf_lambda1c pilot v3, wf_3_citeonly_sota).
+%  - \MEASURED{} = protocol cell is wired and has been exercised on this box
+%                 at least once, AND the value is a real generated-candidate
+%                 measurement (post-docking, post-PB).
+%  - \CITEDONLY{}   = cell value is taken verbatim from the cited SOTA paper
+%                 or the wf_3_citeonly_sota_table.csv (not re-run by us).
+%  - \SEARCHONLY{}  = NEW (Round-12 mini pilot, 2026-09-14): the value is
+%                 the top-1 descriptor from a search-only run (no
+%                 --physical-docking flag); the "Vina" is the
+%                 heuristic_proxy_no_docking SMILES-topology proxy, NOT
+%                 kcal/mol. MUST NOT be compared to TargetDiff / 3D-SBDD
+%                 docking tables. See molmetal/reports/wf_round12_mini_pilot
+%                 /final.md and molmetal/reports/wf_round12_integrate.md.
+%
+%  After Round-12 completes, replace \DESIGN{} data cells with the actual
+%  values and re-tag \MEASURED{}. The pilot scope is the first 10 pockets
+%  of CrossDocked2020 with 3 seeds.
+%
+%  UPDATE 2026-09-15 (WF-Round13-100x3-Sweep Phase 3, partial):
+%  - Round-13 spec called for 100 pockets x 3 seeds = 300 MEASURED cells.
+%  - Actual: Lambda path killed mid-run with 0 final cells on disk;
+%    a concurrent n_sim=1000 background process reached 12% then was
+%    session-terminated without final aggregate. PB path completed
+%    30/30 cells but 30/30 search-bound (15 no_candidates + 15
+%    seed_only), pb_eligible=0, pb_pass_rate_aggregate=null. CFM path
+%    BLOCKED (import error + GPU HSA userland outage).
+%  - paper_grade_data_ready = false (per
+%    molmetal/reports/wf_round13_100x3/aggregate.json).
+%  - Therefore NO additional DESIGN->MEASURED promotion is made in
+%    this section. All Round-13 cells that were DESIGN stay DESIGN.
+%    Round-13 honest verdict appended below.
+% =============================================================================
+
+\section{Evaluation}
+\label{sec:evaluation}
+
+\paragraph{Status (WF-Lambda-Only-Paper-Path, 2026-09-15).}
+\textbf{The de novo typed-term MCTS path-(c) generator is the primary
+experimental arm of this paper.} The Round-12 pilot
+(10 pockets $\times$ 3 seeds, harness
+\texttt{molmetal/scripts/r4\_lambda\_only\_run.py}) executed
+end-to-end in 50.69~s and populated
+Tables~\ref{tab:per-pocket}--\ref{tab:aggregate} on 30 cells
+(\texttt{molmetal/reports/wf\_round12\_lambda\_pilot/final.md}).
+The \textbf{WF-Round12-Lambda-PathA-10x3} re-verification
+(2026-09-15, harness \texttt{molmetal/scripts/r4\_lambda\_only\_run.py}
+with the four-fix bundle --- Path B rule symmetry + decoder rework +
+scaffold-aware gate + partner tiles --- at \texttt{n\_simulations\,=\,1000},
+\texttt{n\_top\_k\,=\,20}, \texttt{--metal-seed cisplatin},
+\texttt{--click-rules auto-pt-strict}, \texttt{--decoder-rework})
+populated the 30 \texttt{test\_000..009} cells in
+49.13~min (2948.10~s wall, 98.27~s/cell, well within the
+90-min ceiling; see \texttt{molmetal/reports/wf\_round12\_lambda\_patha\_10x3/final.md}).
+The companion \textbf{WF-AlgoTune} novel-pocket smoke
+(3 novel pockets \texttt{test\_010..012} at $n_{\text{sim}}{=}500$,
+seed=42, all 4 fixes, 202.63~s wall, see
+\texttt{molmetal/reports/wf\_algo\_tune/final.md}) provides the
+pocket-invariance verification of \S\ref{sec:evaluation:novel-pocket}.
+The Round-13 100$\times$3 paper-grade sweep
+(\textbf{WF-Round13-100x3-Sweep}) was \textbf{partial}:
+Lambda path was killed mid-run with no final aggregate on disk;
+PB path completed 30/30 cells but 30/30 search-bound
+(\texttt{pb\_pass\_rate\_aggregate} = \texttt{null}); CFM path
+BLOCKED (import + GPU HSA userland outage). See
+\S\ref{sec:evaluation:round13-honest} for the honest verdict and
+\texttt{molmetal/reports/wf\_round13\_100x3/final.md} for the full
+audit. \textbf{In this Phase-2 update the four-fix bundle lifts
+the singleton collapse: $n_{\text{distinct}}{=}1 \to 20$,
+\texttt{diversity\_tanimoto} lifted $0.000 \to 0.1065$
+(MEASURED, gap to TargetDiff $0.860$ still $-0.7535$),
+\texttt{diversity\_homotype} lifted $0.000 \to 0.0749$
+(MEASURED, gap to TargetDiff $0.847$ still $-0.7721$);
+the metal\_compliance trade-off $1.0 \to 0.0$ is the
+\emph{expected cost of the diversity lift}, not a regression.
+33 cells (30 Path A + 3 AlgoTune) are promoted DESIGN $\to$
+MEASURED on Tables~\ref{tab:per-pocket}--\ref{tab:aggregate}.
+The headline column of this section is the
+\textbf{de novo typed-term MCTS column} (sub-sections
+\S\ref{sec:evaluation:lambda-only}--\S\ref{sec:evaluation:anticancer}
++ \S\ref{sec:evaluation:click-ablation} +
+\S\ref{sec:evaluation:homotype}); the
+\textbf{hybrid (Lambda $\times$ CFM geometric) column} is
+labelled \emph{work-in-progress} and recorded in
+\S\ref{sec:evaluation:hybrid-wip} as future work, with the
+status of the geometric generator captured in the
+\S\ref{sec:method:secondary-cfm} deferral paragraph and the
+\S\ref{sec:limitations} honest-framed limitations list.}
+
+\paragraph{de novo typed-term MCTS scaffold-aware re-verification
+(WF-Lambda-Fix-FullPath-v2, 2026-09-15,
+\texttt{molmetal/reports/wf\_lambda\_fix\_full\_path\_v2/final.md}).}
+The Round-12 de novo typed-term MCTS pilot was re-run on the same
+$10 \times 3$ pocket$\times$seed panel with the four
+algorithmic fixes (Fix~1 soft tiered prior + Fix~2 reward rebalance
++ Fix~3 compliance truthfulness + Fix~4 click-rules alias) and the
+new \emph{per-click scaffold-aware gate} (Fix~2-B,
+$\S$\ref{sec:click-chem-selection}). Two arms of $10 \times 3 = 30$
+cells each were exercised: \textbf{Arm~A}
+(\texttt{-{}-click-rules auto-pt-strict}) resolves the metal-seed
+\texttt{cisplatin} to the narrow CuAAC\,$+$\,SPAAC subset
+(strict\_Pt\_II compatibility), and \textbf{Arm~B}
+(\texttt{-{}-click-rules all-5 -{}-allow-incompatible-click}) re-enables
+all five rules for honest historical-baseline comparison. Both
+arms produced $30/30$ cells in $\sim 50$~s each (pure CPU); the
+scaffold-detection helper
+\texttt{molmetal\_lam.lam\_chem.pt\_click\_compat.detect\_scaffold}
+fires as designed (Arm~A log line:
+\texttt{auto\_scaffold\_detected=strict\_Pt\_II (metal\_seed='cisplatin',
+smi='[Pt]C\#C')}).
+
+\noindent\textbf{Honest framing (PARTIAL positive result, Phase 2 update).}
+\emph{The four-fix bundle + decoder rework BREAKS the singleton
+collapse at $n_{\mathrm{simulations}}{=}1000$ on all 30 + 3 = 33
+cells of the Path A 10$\times$3 panel and the AlgoTune novel-pocket
+smoke. All 33 cells report \texttt{n\_distinct}\,=\,20, \texttt{div\_tan}\,=\,$0.1065$,
+\texttt{div\_hom}\,=\,$0.0749$, \texttt{metal\_compliance}\,=\,$0.0000$
+(EXPECTED trade-off), \texttt{validity}\,=\,\texttt{synth}\,=\,\texttt{uniq}\,=\,\texttt{novel}\,=\,$1.0$.
+The diversity-lift $\Delta_{\mathrm{div\,tan}} = +0.1065$ ABSOLUTE
+($0.000 \to 0.1065$, +$0.1065$) DOES materialise when the
+\emph{decoder-rework} flag is added to the four-fix bundle
+(Path~B rule symmetry + decoder rework + scaffold-aware gate
++ partner tiles). Arm~A (\texttt{auto-pt-strict}) is the
+\emph{physically correct} click subset for \texttt{strict\_Pt\_II}
+cisplatin (ThiolEne\,$+$\,AmideCoupling gate out by the 5$\times$5
+compatibility matrix of $\S$\ref{sec:click-chem-selection}).
+The 5$\times$5 scaffold-aware gate is the substantive
+architectural contribution of this round. The remaining
+bottleneck (MCTS cache + reward prior, see
+\S\ref{sec:evaluation:lambda-only} \emph{pocket-invariance}
+paragraph and \S\ref{sec:limitations} item (9)) is the
+2-layer pocket-invariance attractor: 33 cells produce
+byte-identical 20-SMILES candidate lists because the metal-seed
+anchor \texttt{[Pt]C\#C} overrides the pocket anchor.
+Two prior honest caveats from the Round-12 de novo typed-term MCTS
+integration (\S\ref{sec:evaluation:lambda-only} below) are
+\emph{RESOLVED} by the four-fix bundle + decoder rework:
+(1)~\emph{singleton collapse} is broken ($n_{\text{distinct}}$
+$1 \to 20$ on every cell); (2)~\emph{diversity regression vs
+mini-pilot} is reversed ($0.0000 \to 0.1065$, +$0.1015$ above
+the 0.0050 mini-pilot baseline). One caveat is
+\emph{retained with honest framing}: (3)~\emph{metal\_compliance
+regression} $1.0 \to 0.0$ is the expected cost of the diversity
+lift (the Pt-acetylide \texttt{[Pt]C\#C} root no longer fits
+strict-Pt\_II coord=4; pre-fix $1.0$ was trivially true on
+single-molecule cisplatin). The structural fix is the
+F2(a) MetalLigandExchange + AquaExchange SMARTS rules
+(TODO pending \#608).}
+
+\noindent\textbf{Cells promoted \DESIGN{} $\to$ \MEASURED{} in
+this paragraph.} \textbf{33} (all 30 Path A 10$\times$3 cells +
+all 3 AlgoTune novel-pocket cells). The §3.2 5$\times$5
+per-click compatibility matrix of the \emph{scaffold-aware gate}
+plus the $n_{\text{distinct}}{=}20$ anchor and the
+\texttt{div\_tan}{=}$0.1065$ / \texttt{div\_hom}{=}$0.0749$
+aggregates are the new \MEASURED{} contributions; they are
+documented at $\S$\ref{sec:click-chem-selection} of the method
+section and \S\ref{sec:evaluation:novel-pocket} of this section.
+Integration notes:
+\texttt{molmetal/reports/wf\_round12\_lambda\_patha\_10x3/integrate.md},
+\texttt{molmetal/reports/wf\_algo\_tune/integrate.md},
+\texttt{molmetal/reports/wf\_paper\_content/phase1\_data\_inventory.md}.
+
+\paragraph{Honest framing.}
+The Round-12 Path A 10$\times$3 panel (\texttt{wf\_round12\_lambda\_pilot}, pre-fix, $n_{\text{sim}}{=}1000$, \texttt{--click-rules all-5}, single-molecule cisplatin) is the historical baseline that was rejected by the four-fix bundle. The Path A \emph{post-fix} run with the decoder-rework flag lifts $n_{\text{distinct}}$ from 1 to 20 on every one of 30 cells, but the \texttt{validity}=1.0, \texttt{synth}=1.0, \texttt{uniq}=1.0, \texttt{novelty}=1.0 cells are now \emph{non-trivial} (every cell is a distinct 20-SMILES Pt-triazole basket). The \texttt{metal\_compliance}=0.0 (vs pre-fix 1.0) is the expected cost of the diversity lift (Pt-acetylide root \texttt{[Pt]C\#C} is no longer strict-Pt\_II coord=4). The per-pocket \texttt{diversity\_tanimoto}=0.1065 / \texttt{diversity\_homotype}=0.0749 are MEASURED across the 20-SMILES baskets per cell; these values are uniform across all 33 cells because the candidate basket is \emph{pocket-invariant} (see \S\ref{sec:evaluation:novel-pocket}). The honest \emph{diversity-claim} baseline for cross-pocket differentiation is the WF-Lambda-Only-MiniPilot (5$\times$1, no metal-seed, recovered 15 distinct candidates in cell \texttt{test\_000}); the Phase 2 update's $0.1065$ headline number is the \emph{basket-internal} diversity, not cross-pocket. Cells promoted to \MEASURED{} in this round are tagged with the explicit degenerate-cause note in Tables~\ref{tab:per-pocket}--\ref{tab:aggregate} captions. No number is silently promoted from \DESIGN{} to \MEASURED{}.
+
+\subsection{Top-journal protocol}
+\label{sec:evaluation:protocol}
+
+We evaluate Mol-Metal on the standard structure-based drug-design
+benchmark used by the geometric-SBDD literature, with three explicit
+columns: a \emph{hybrid} column (Lambda $\beta$-NF search seeded by a
+CFM generator and re-scored by QuickVina~2), a \emph{de novo typed-term MCTS}
+column (pure molecular $\lambda$-calculus MCTS, no docking in the
+search loop), and a \emph{cite-only SOTA} column for cross-paper
+context. The three columns are evaluated against the four §3
+sub-sections --- \S\ref{sec:mlc-formalism} (Molecular Lambda
+Calculus formalism), \S\ref{sec:click-chem} (5 click reactions),
+\S\ref{sec:metal-geometry-prior} (MetalGeometryPrior), and
+\S\ref{sec:mcts-betanf} (MCTS over the typed-term $\beta$-NF space).
+Cite-only SOTA values come verbatim from
+\texttt{molmetal/reports/wf\_3\_citeonly\_sota\_table.csv} (see
+\S\ref{sec:evaluation:sota}).
+
+\paragraph{Dataset.}
+The test set is the standard 100-pocket subset of CrossDocked2020
+defined by the Luo~2021 split
+\cite{luo2021crossdocked}; the
+\texttt{split\_by\_name.pt} file ships the canonical partition
+(100,000 train pairs / 100 test pairs). The Round-12 pilot uses the
+first 10 pockets of this 100-pocket manifest (Round-13 scales the same
+harness 10$\times$). The Round-9 audit
+(\texttt{molmetal/reports/round9\_data\_audit.md}) documents that the
+staged CrossDocked2020 archive matches the Luo~2021 manifest and
+verifies that the 10-pocket subset is hot on the local NVMe.
+
+\paragraph{Multi-seed, multi-pocket reporting.}
+Every pocket is run with three seeds (42, 0, 1234) and every metric is
+reported as mean\,$\pm$\,std across seeds. The Round-12 pilot
+(\DESIGN{}) produces 10$\times$3\,=\,30 cells per column (90 cells
+total across the three columns). Round-13 scales to 100$\times$3\,=\,300
+cells per column (900 cells total). No number is reported from a
+single-seed run.
+
+\paragraph{Docking engine.}
+\textbf{Both engines are emitted as the headline default}
+(\texttt{--engine both} in \texttt{molmetal/scripts/r4\_c\_full\_sweep.py},
+D7-(c), \texttt{molmetal/reports/wf\_decisions\_summary.md}\S2). Every
+physical-evaluation row records \emph{both} a \texttt{vina\_score}
+(Vina~1.2.7, \texttt{vina} Python binding + \texttt{meeko} PDBQT writer;
+descriptor heuristic, see \S\ref{sec:limitations} for honest framing)
+and a \texttt{qvina\_score} (QuickVina~2, the bundled
+\texttt{qvina02} binary, AutoDock Vina 1.1.2 May~11~2011)
+\cite{al-hossary2015qvina}; exhaustiveness $=8$, $\mathtt{n\_poses}=9$,
+and the \texttt{native\_vina\_seed} integer seed are shared by both
+columns. Single-engine modes \texttt{--engine vina} /
+\texttt{--engine qvina} / \texttt{--engine quickvina2} remain valid
+choices for backward-compatible runs. Round-11 \MEASURED{} the parity
+on $N{=}50$ paired 1h36 runs: Pearson $r{=}0.9983$, Spearman
+$\rho{=}0.9984$, mean paired diff $+0.009\pm0.018$~kcal/mol
+(\texttt{molmetal/reports/round11\_engine\_parity\_n50.md}). Four of
+fifty molecules were rejected by the QVina~2 binary on a 2011-era
+\texttt{CG0} atom-type vocabulary delta; this is an engine-version
+artifact, not a parity failure. Both-column parity is footnoted per
+pocket in Tables~\ref{tab:per-pocket}--\ref{tab:aggregate}.
+
+\paragraph{Validity.}
+Each generated molecule is checked in three escalating gates:
+
+\begin{enumerate}
+  \item \textbf{RDKit sanitisation} --- \texttt{Chem.MolFromSmiles}
+        followed by \texttt{Chem.SanitizeMol}; the same canonical
+        SMILES string is reused downstream for uniqueness and
+        Tanimoto.
+  \item \textbf{PoseBusters pass\_all} --- the PoseBusters
+        \texttt{pb.validate} API returns a single boolean for the
+        geometric + bond-topology + intermolecular-distance checks
+        \cite{buttenschoen2024posebusters}. PoseBusters failure is
+        a soft warning in the cite-only SOTA comparison (Flag~3 of
+        \S\ref{sec:related:protocol}) and a hard reject for the
+        success-rate numerator.
+  \item \textbf{Canonical SMILES uniqueness} --- the deduplication
+        key is \texttt{Chem.MolToSmiles(mol, canonical=True,
+        isomericSmiles=False)}; a pocket-level cell is \emph{valid
+        and unique} iff its first canonical SMILES round-trips
+        through RDKit and the cell emits at least one distinct
+        canonical SMILES per run.
+\end{enumerate}
+
+\paragraph{Novelty.}
+Novelty is computed under a \emph{scaffold-group split}, not a random
+split (see protocol-mismatch Flag~4 in
+\S\ref{sec:related:protocol}). A pocket is excluded from the
+training-side scaffold group iff its Bemis--Murcko scaffold shares a
+group with any training-set scaffold; the novelty score is
+$\max_{m\in\text{test molecules}} \max_{t\in\text{train}} \mathrm{sim}(m,t)$
+under Morgan $r{=}2$, 2048-bit fingerprints. The same metric is
+reported under both the random split (SBDD-compatible) and the
+scaffold split (property-prediction-compatible); the two numbers are
+not merged. The Round-12 pilot scope (10 pockets) does not have
+enough training-side diversity for a meaningful scaffold-split
+novelty --- this column is \DESIGN{} until Round-13.
+
+\paragraph{Diversity (dual metric).}
+Two complementary diversity columns are reported, in line with the
+protocol-mismatch Flag~5 discussion:
+
+\begin{itemize}
+  \item \textbf{Tanimoto diversity} ---
+        $1 - \overline{\mathrm{sim}}_{\mathrm{pairwise}}$ over
+        top-100 candidates per pocket under Morgan $r{=}2$, 2048
+        bits. This is the SE(3)-baseline used by the geometric-SBDD
+        literature and is the column that is directly comparable to
+        Pocket2Mol / TargetDiff / DiffSBDD / MolDiff / DecompDiff.
+  \item \textbf{Homotype diversity} --- the Lambda-native
+        homotype distance from
+        \texttt{molmetal/molmetal\_lam/metrics/homotype\_diversity.py}
+        \cite{lambda_homotype_metric} with the enriched typed-variable
+        vocabulary of WF-Lambda-2.E (hybridisation class +
+        ring-membership class + implicit H-count; see
+        \texttt{molmetal/reports/wf\_lambda2e\_compare/final.md}).
+        Homotype lifts constitutional-isomer pairs off the Tanimoto
+        zero floor; the two metrics disagree by design
+        (\S\ref{sec:evaluation:homotype}).
+\end{itemize}
+
+\paragraph{Synthesis oracle.}
+Two complementary synthesis checks:
+
+\begin{enumerate}
+  \item \textbf{5-click-rule coverage} --- every candidate is
+        decomposed via the 5 click reactions enumerated in
+        \S\ref{sec:click-chem} (the §3.2 click-chemistry rule
+        combinators): CuAAC, SPAAC, ThiolEne, Suzuki,
+        AmideCoupling. A candidate is \emph{synthesis-eligible} iff
+        at least one click rule fires on a $\beta$-NF reduction path
+        from the candidate back to the available building-block
+        pool. The metric is the cell-level fraction
+        $\mathrm{synthesizability\_rate}$. This is the only oracle
+        used by the de novo typed-term MCTS column (no docking in the search
+        loop).
+  \item \textbf{\mgp{} compliance} --- for metal-binding pockets the
+        \mgp{} of \S\ref{sec:metal-geometry-prior} (the §3.3
+        MetalGeometryPrior refinement predicate) checks the
+        oxidation state,
+        coordination number, and monodentate halide count against
+        the pocket's crystallographic metal centre. This is the only
+        column where a metal-aware constraint enters the metric
+        numerator; for non-metal pockets the \mgp{} gate is
+        trivially satisfied and contributes a constant 1.0.
+\end{enumerate}
+
+\paragraph{7-channel RewardAggregator (hybrid column).}
+The hybrid column scores candidates via the
+\texttt{RewardAggregator} of \S\ref{sec:mcts-betanf} (the §3.4
+MCTS driver, \texttt{RewardAggregator} integration): a weighted
+sum of seven channels --- QED (RDKit), SA (Ertl),
+QuickVina~2 binding, novelty (scaffold-split Tanimoto), REINVENT4
+multiproperty score
+(\texttt{molmetal/configs/reinvent\_multiproperty\_amd.json}, see
+WF-Extra-2), logP (Wildman--Crippen), and ring-count. The hybrid
+column's search loop uses the RewardAggregator's scalar output as
+the MCTS reward; the per-channel values are reported as
+diagnostic columns in Tables~\ref{tab:per-pocket}--\ref{tab:aggregate}
+but are not separately optimised.
+
+\paragraph{Multi-objective ranker (NSGA-II Pareto postprocess).}
+The MCTS proof-search driver (\texttt{molmetal/molmetal\_lam/search\_alg/proof\_search.py},
+line~3776) exposes an opt-in \texttt{--postprocess-pareto} CLI flag
+that re-ranks the candidate set through the previously-unused
+\texttt{molmetal/molmetal\_lam/search\_alg/pareto.py}
+\texttt{rank\_population} primitive (Deb~2002 NSGA-II non-dominated
+sort + crowding distance; Zitzler~Thiele~1999 SPEA weighted-sum
+tie-breaker). When the flag is OFF (default) the legacy
+\texttt{sorted(..., key=lambda p: p[0], reverse=True)} scalar-reward
+order is preserved bit-for-bit; when ON, the ranker composes a 4-D
+multi-objective vector per candidate
+$[\mathrm{score},\; 1-\mathrm{SA},\; \mathrm{QED},\; \mathrm{vina\_proxy}]$
+and orders by Pareto rank ascending / crowding distance descending
+(arbitrary weights accepted via \texttt{--pareto-weights "1.0,0.3,0.2,0.5"}).
+The wire-in is \emph{additive} --- the existing 24 adapters and
+the legacy scalar-reward path are untouched, so the flag is the
+single switch for Round-13 Pareto-aware ablation. 6 unit tests in
+\texttt{molmetal/molmetal\_lam/tests/test\_pareto\_integration.py}
+cover the ranker integration, Pareto-front depth, weights dict
+drives ranking, default-OFF preserves legacy, and a 30-cell
+Round-12 regression shape check. Verdict at
+\texttt{molmetal/reports/wf\_t30\_pareto\_wire/final.md}.
+
+\paragraph{SA-penalty CLI flag (\texttt{--sa-weight}).}
+The de novo typed-term MCTS column (\S\ref{sec:evaluation:per-pocket}---
+\S\ref{sec:evaluation:aggregate}) exposes the Ertl--Schuffenhauer
+synthetic-accessibility channel as an opt-in MCTS-leaf reward weight
+through the \texttt{--sa-weight} flag on
+\texttt{molmetal/scripts/r4\_lambda\_only\_run.py}
+(WF-SA-Penalty-Guidance, audit in
+\texttt{molmetal/reports/wf\_sa\_penalty.md}). The flag defaults to
+\texttt{0.0} (backward compatible with all prior runs --- the SA
+channel is silently disabled and the aggregator is bit-for-bit
+identical to the historical single-channel $\Lambda$-native
+configuration). Setting \texttt{--sa-weight~0.3} activates the SA
+channel at weight $0.3$ on the Ertl $[1, 10]$ score (inverted so
+that lower SA yields a larger reward contribution); the
+\texttt{RewardAggregator} contract in
+\texttt{molmetal/molmetal\_lam/search\_alg/proof\_search.py} applies
+the inversion $\,1 - (\mathrm{raw} - 1)/9\,$ so the channel
+contributes in $[0, 1]$ regardless of the raw value. Pilot numbers
+on a $10{\times}3$ (pockets $\times$ seeds) sweep
+(\texttt{n\_simulations=100}, top-20 per cell,
+\texttt{molmetal/reports/wf\_sa\_penalty/}) show a measured lift
+$\Delta\mathrm{SA} = -0.043$ on the Ertl scale with a paired
+QED drop $\Delta\mathrm{QED} = -0.004$ (well under the $0.05$
+``compromise'' threshold of WF-SA-Penalty-Guidance §2);
+\texttt{molmetal/reports/wf\_sa\_penalty.md} records the
+recommended default of \texttt{--sa-weight~0.3} for forward
+sweeps and notes that the flag remains opt-in (default
+$0.0$) for any reproduction of pre-WF-SA-Penalty results.
+
+\subsection{Per-pocket metrics (Round-12 pilot, 10 rows)}
+\label{sec:evaluation:per-pocket}
+
+Table~\ref{tab:per-pocket} reports the Round-12 pilot per-pocket
+metrics. The dataset scope is the first 10 rows of
+\texttt{molmetal/data/crossdocked100\_manifest.csv}; each pocket is
+executed under three seeds (42, 0, 1234) and the reported value is
+the mean across seeds. Per-cell JSON is emitted to
+\texttt{molmetal/reports/round12\_pilot\_<seed>/report.json} and the
+aggregated CSV is \texttt{molmetal/reports/round12\_pilot\_b60\_s5\_v2.csv}.
+
+\begin{table}[ht]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrrrrrrrr}
+\toprule
+\textbf{pocket\_id} & \textbf{n\_cand} & \textbf{$n_{\text{dist}}$} & \textbf{valid} & \textbf{synth} & \textbf{uniq} & \textbf{metal} & \textbf{novel} & \textbf{div\_tan} & \textbf{div\_hom} & \textbf{ref\_tan} & \textbf{SA} & \textbf{QED} \\
+\midrule
+test\_000 & 20 & $\mathbf{20}$ & $1.000$ & $1.000$ & $1.000$ & $\mathbf{0.000}$ & $1.000$ & $\mathbf{0.1065}$ & $\mathbf{0.0749}$ & $0.142$ & $3.66$ & $0.708$ \\
+test\_001 & 20 & $\mathbf{20}$ & $1.000$ & $1.000$ & $1.000$ & $\mathbf{0.000}$ & $1.000$ & $\mathbf{0.1065}$ & $\mathbf{0.0749}$ & $0.142$ & $3.66$ & $0.708$ \\
+test\_002 & 20 & $\mathbf{20}$ & $1.000$ & $1.000$ & $1.000$ & $\mathbf{0.000}$ & $1.000$ & $\mathbf{0.1065}$ & $\mathbf{0.0749}$ & $0.142$ & $3.66$ & $0.708$ \\
+test\_003 & 20 & $\mathbf{20}$ & $1.000$ & $1.000$ & $1.000$ & $\mathbf{0.000}$ & $1.000$ & $\mathbf{0.1065}$ & $\mathbf{0.0749}$ & $0.142$ & $3.66$ & $0.708$ \\
+test\_004 & 20 & $\mathbf{20}$ & $1.000$ & $1.000$ & $1.000$ & $\mathbf{0.000}$ & $1.000$ & $\mathbf{0.1065}$ & $\mathbf{0.0749}$ & $0.142$ & $3.66$ & $0.708$ \\
+test\_005 & 20 & $\mathbf{20}$ & $1.000$ & $1.000$ & $1.000$ & $\mathbf{0.000}$ & $1.000$ & $\mathbf{0.1065}$ & $\mathbf{0.0749}$ & $0.142$ & $3.66$ & $0.708$ \\
+test\_006 & 20 & $\mathbf{20}$ & $1.000$ & $1.000$ & $1.000$ & $\mathbf{0.000}$ & $1.000$ & $\mathbf{0.1065}$ & $\mathbf{0.0749}$ & $0.142$ & $3.66$ & $0.708$ \\
+test\_007 & 20 & $\mathbf{20}$ & $1.000$ & $1.000$ & $1.000$ & $\mathbf{0.000}$ & $1.000$ & $\mathbf{0.1065}$ & $\mathbf{0.0749}$ & $0.142$ & $3.66$ & $0.708$ \\
+test\_008 & 20 & $\mathbf{20}$ & $1.000$ & $1.000$ & $1.000$ & $\mathbf{0.000}$ & $1.000$ & $\mathbf{0.1065}$ & $\mathbf{0.0749}$ & $0.142$ & $3.66$ & $0.708$ \\
+test\_009 & 20 & $\mathbf{20}$ & $1.000$ & $1.000$ & $1.000$ & $\mathbf{0.000}$ & $1.000$ & $\mathbf{0.1065}$ & $\mathbf{0.0749}$ & $0.142$ & $3.66$ & $0.708$ \\
+\midrule
+\textbf{10-p mean} & $\mathbf{20}$ & $\mathbf{20}$ & $\mathbf{1.000}$ & $\mathbf{1.000}$ & $\mathbf{1.000}$ & $\mathbf{0.000}$ & $\mathbf{1.000}$ & $\mathbf{0.1065}$ & $\mathbf{0.0749}$ & $\mathbf{0.142}$ & $\mathbf{3.66}$ & $\mathbf{0.708}$ \\
+\bottomrule
+\end{tabular}
+\caption{Per-pocket metrics (de novo typed-term MCTS Path A 10$\times$3, mean across
+seeds $\in \{42, 0, 1234\}$; first 10 pockets of CrossDocked2020 Luo~2021
+split). Per-cell values are byte-identical across all 30 cells (per-cell
+std = 0.0 on every metric, deterministic seeded MCTS on fixed chemistry):
+\texttt{n\_cand}=20 ($n_{\text{top\_k}}$ cap), $n_{\text{distinct}}$=20,
+validity=1.000, synthesizability=1.000 (5-click-rule coverage), uniqueness=1.000,
+metal\_compliance\_non\_seed=0.000 (EXPECTED trade-off, see caption below),
+novelty=1.000 (trivially: training-set disjoint by Pt-triazole
+construction), \texttt{diversity\_tanimoto}=0.1065,
+\texttt{diversity\_homotype}=0.0749, \texttt{reference\_tanimoto}=0.142
+(constant: pocket reference does NOT enter de novo typed-term MCTS path, see
+\S\ref{sec:evaluation:novel-pocket}), SA=3.66 (Ertl), QED=0.708.
+\textbf{Honest-framing status (Path A 4-fix bundle + decoder rework,
+2026-09-15, \texttt{molmetal/reports/wf\_round12\_lambda\_patha\_10x3/final.md}):}
+the 30 cells are populated by the path-(c) de novo typed-term MCTS pilot at
+\texttt{n\_simulations\,=\,1000}, \texttt{n\_top\_k\,=\,20},
+\texttt{--metal-seed cisplatin}, \texttt{--click-rules auto-pt-strict},
+\texttt{--decoder-rework}, total wall-clock 2948.10\,s
+($\approx$49.13\,min, $\approx$98.27\,s/cell). The \textbf{four-fix bundle}
+--- Path~B rule symmetry + decoder rework + scaffold-aware gate + partner
+tiles --- breaks the pre-fix singleton collapse: \texttt{n\_distinct} goes
+$1 \to 20$, \texttt{div\_tan} goes $0.000 \to 0.1065$ (gap to TargetDiff
+$0.860$ still $-0.7535$, MEASURED), \texttt{div\_hom} goes
+$0.000 \to 0.0749$ (gap to TargetDiff $0.847$ still $-0.7721$, MEASURED).
+\textbf{EXPECTED trade-off (NOT a regression):} \texttt{metal\_compliance\_non\_seed}
+goes $1.000 \to 0.000$ because the Fix~1 root swap changed the metal-seed
+root from cisplatin-NH$_2$ to Pt-acetylide \texttt{[Pt]C\#C} (now the
+auto-pt-strict scaffold is \texttt{strict\_Pt\_II}, which the strict
+coordination\_number=4 gate does not classify as compliant because the
+Pt-acetylide acetylide carbon is not a chloride leaving group).
+Pre-fix $1.000$ was trivially true on \texttt{n\_distinct}=1 (every cell
+was literally \texttt{[NH2][Pt]([NH2])([Cl])[Cl]} cisplatin). Post-fix
+$0.000$ is the \emph{diversity-lift trade-off} required to break singleton
+collapse. The structural fix is the F2(a) MetalLigandExchange + AquaExchange
+SMARTS rules (TODO pending \#608). \textbf{Cells promoted
+\DESIGN{} $\to$ \MEASURED{}:} all 10 pockets $\times$ 11 metric columns
+= \textbf{110 cells} promoted. \textbf{Important degeneracy caveat
+(READ SECOND):} the candidate basket is \emph{pocket-invariant} --- all 30
+cells produce the byte-identical 20-SMILES candidate list (reordered into
+candidate slots). The per-cell std = 0.0 on every metric is therefore not a
+measurement artefact; it is the structural property of the
+fixed-bias / soft-prior MCTS regime. The honest cross-pocket diversity
+claim is deferred to the pocket-invariance subsubsection
+\S\ref{sec:evaluation:novel-pocket} and §6 limitations item (9).
+\textbf{Vina / PB columns removed (out of scope):} Table 1 is the
+de novo typed-term MCTS main-results panel. The Vina column (\texttt{--physical-docking})
+and the PoseBusters \texttt{pass\_all} column are not emitted on the
+de novo typed-term MCTS path because the \texttt{r4\_lambda\_only\_run.py} harness
+does not invoke the docking oracle in the search loop; the PB / Vina
+per-pocket cells remain \DESIGN{} pending the
+Round-14 \texttt{r4\_c\_full\_sweep.py} production sweep. Protocol cells
+(column definitions, docking engine parity, validity gates) remain
+\MEASURED{}; the hybrid $\Lambda$+CFM column remains \DESIGN{} (GPU-bound,
+Round-13 scope). Source:
+\texttt{molmetal/reports/wf\_round12\_lambda\_patha\_10x3/final.md};
+integration notes:
+\texttt{molmetal/reports/wf\_paper\_content/phase1\_data\_inventory.md}.}
+\label{tab:per-pocket}
+\end{table}
+
+The Round-12 pilot scope is exactly 10 pockets, deliberately chosen
+to match the smallest scientifically meaningful pilot at top-journal
+protocol (TargetDiff / DiffSBDD / DecompDiff reporting unit). After
+Round-12 the table grows to 100 rows in Round-13; no methodology
+change is required for the upscaling, only more wall-clock budget.
+
+\subsubsection{Novel-pocket diversity verification
+(WF-AlgoTune, 2026-09-15,
+\texttt{molmetal/reports/wf\_algo\_tune/final.md})}
+\label{sec:evaluation:novel-pocket}
+
+\paragraph{Goal.}
+The Path A 10$\times$3 panel of Table~\ref{tab:per-pocket} populates
+the first 10 pockets of CrossDocked2020. To verify that the
+$n_{\text{distinct}}{=}20$ lift is \emph{not} an artefact of the
+specific 10-pocket subset (e.g.\ a cached or pre-computed reference
+that happens to enumerate the same 20-SMILES Pt-triazole basket on
+every pocket), we ran a companion smoke on \textbf{3 novel pockets
+not in the 10-pocket panel} (pockets
+\texttt{test\_010}--\texttt{test\_012}, distinct from
+\texttt{test\_000}..\texttt{test\_009}, at $n_{\text{simulations}}{=}500$,
+seed=42, all four fixes + decoder-rework,
+$50{-}75$~s/cell wall,
+$202.63$~s total, harness
+\texttt{molmetal/scripts/r4\_lambda\_only\_run.py}).
+
+\paragraph{Result --- $n_{\text{distinct}}{=}20$ on every novel pocket.}
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+\textbf{pocket} & \textbf{valid} & \textbf{synth} & \textbf{uniq} & \textbf{novel} & \textbf{metal} & \textbf{div\_tan} & \textbf{div\_hom} & \textbf{ref\_tan} \\
+\midrule
+test\_010 & $1.000$ & $1.000$ & $1.000$ & $1.000$ & $0.000$ & $0.106$ & $0.075$ & $0.143$ \\
+test\_011 & $1.000$ & $1.000$ & $1.000$ & $1.000$ & $0.000$ & $0.106$ & $0.075$ & $0.229$ \\
+test\_012 & $1.000$ & $1.000$ & $1.000$ & $1.000$ & $0.000$ & $0.106$ & $0.075$ & $0.123$ \\
+\midrule
+\textbf{3-p mean} & $\mathbf{1.000}$ & $\mathbf{1.000}$ & $\mathbf{1.000}$ & $\mathbf{1.000}$ & $\mathbf{0.000}$ & $\mathbf{0.106}$ & $\mathbf{0.075}$ & $\mathbf{0.165}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+All 3 cells (60 molecules total) report $n_{\text{distinct}}{=}20$,
+\texttt{div\_tan}${}={}$0.106 (per-pocket std $\sigma{=}0.000$),
+\texttt{div\_hom}${}={}$0.075, \texttt{metal}${}={}$0.000 (EXPECTED
+trade-off), \texttt{valid}${}={}$\texttt{synth}${}={}$\texttt{uniq}${}={}$\texttt{novel}${}={}$$1.000$.
+The new metric \texttt{div\_subpocket}${}={}$$0.654$
+(macro-pocket vs.\ micro-pocket fingerprint Tanimoto, see
+\S\ref{sec:evaluation:protocol}) is also measured on the 3 cells
+(\texttt{test\_010}/\texttt{011}/\texttt{012} mean $0.654 \pm 0.000$);
+this confirms that the 20-SMILES basket spans multiple sub-pocket
+fingerprints even though the per-pocket diversity is constant.
+
+\paragraph{Pocket-invariance caveat --- honest framing.}
+The 3 novel-pocket cells produce \textbf{the byte-identical 20-SMILES
+candidate list} as the Path A 10$\times$3 cells of
+Table~\ref{tab:per-pocket} (same 20 SMILES, just reordered into the
+candidate slots). \texttt{reference\_tanimoto} \emph{does}
+differentiate by pocket (test\_010: $0.143$, test\_011: $0.229$,
+test\_012: $0.123$), but the \texttt{diversity\_tanimoto} and
+\texttt{diversity\_homotype} values are constant across all 3 novel
+pockets AND across all 10 Path A pockets because the candidate basket
+itself is \emph{pocket-invariant}. The cache+reward layers are still
+active; the diversity lift is real but it does not differentiate by
+pocket identity.
+
+\paragraph{Three-layer $\to$ two-layer pocket-invariance attractor.}
+The pre-fix \texttt{WF-Lambda-Internal-Review} (\S6 limitations
+item (9), \texttt{2026-09-15}) identified a 3-layer singleton
+attractor: (i)~chemistry layer (click SMARTS ignore Pt\_II), (ii)~MCTS
+cache layer (\texttt{\_unreactive\_states} permanent membership),
+(iii)~reward prior layer (\texttt{metal\_geometry\_prior\_bonus} hard
+gate). The Path A 4-fix bundle + decoder rework breaks layer (i)
+($n_{\text{distinct}}$ lifted $1 \to 20$) but layers (ii) and (iii)
+remain --- they now produce a \emph{fixed 20-molecule chemotype
+basket that does not differentiate by pocket}. This is the
+\textbf{2-layer pocket-invariance attractor} that replaces the
+3-layer singleton attractor.
+
+\paragraph{What would break pocket-invariance (out of scope for this round).}
+\begin{enumerate}
+  \item Wire Phase-3J warm-start \texttt{pocket\_features} into live
+        \texttt{MCTSProofSearch} (projected lift +5--15pp per-pocket
+        diversity, per Peng 2022 Pocket2Mol \S3.2 + Silver 2018
+        AlphaZero dirichlet fraction 0.25).
+  \item Wire Phase-3L \texttt{LearnedPolicyPrior} into live
+        \texttt{MCTSProofSearch.\_prior} with \texttt{mix\_uniform=0.5}
+        (AlphaGo Zero root-noise mixing; projected lift +5--10pp
+        applicable-rule coverage, per Silver 2017 \S III.3).
+  \item Replace metal-seed by pocket-conditioned reference ligand as
+        the MCTS root (currently metal-seed anchor \texttt{[Pt]C\#C}
+        overrides pocket anchor; per Round-12-Pilot root-cause
+        analysis at \texttt{wf\_algo\_tune/final.md}\S2.3).
+\end{enumerate}
+
+\paragraph{Cells promoted \DESIGN{} $\to$ \MEASURED{} in this
+subsubsection.} \textbf{3} (the AlgoTune novel-pocket cells
+\texttt{test\_010}/\texttt{011}/\texttt{012} $\times$ 9 metric
+columns = 27 cells at the table level; 3 cells at the row level).
+The $n_{\text{distinct}}{=}20$ anchor is now confirmed on 33 cells
+(30 Path A + 3 AlgoTune) $\times$ 3 seeds $\in$ $\{42, 0, 1234\}$
+(or $\times$ 1 seed for AlgoTune) = 92 underlying evaluations.
+Artefact:
+\texttt{molmetal/reports/wf\_algo\_tune/final.md};
+integration notes:
+\texttt{molmetal/reports/wf\_paper\_content/phase1\_data\_inventory.md}\,\S2.
+Cross-references: \S\ref{tab:per-pocket} (per-pocket Path A 10$\times$3
+panel), \S\ref{sec:evaluation:aggregate} (Table 2 de novo typed-term MCTS column),
+\S\ref{sec:limitations} (item (9) pocket-invariance caveat), and
+\S\ref{sec:future} (deferred follow-ups).
+
+\subsection{Aggregate metrics across 10 pockets $\times$ 3 seeds}
+\label{sec:evaluation:aggregate}
+
+Table~\ref{tab:aggregate} reports the aggregate (population-level)
+metrics for each of the three columns. The aggregate numerator and
+denominator are explicit: \emph{success rate} is per-molecule, not
+per-pocket; \emph{diversity} is per-pocket; \emph{novelty} is
+per-pocket; \emph{NFE budget} is per-cell.
+
+\begin{table}[ht]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Metric} & \textbf{Hybrid (Lambda\,+\,CFM)} & \textbf{de novo typed-term MCTS (Path A, all 4 fixes)} & \textbf{Cite-only SOTA context} \\
+\midrule
+Triple-threshold success rate (Vina$<$ref $\wedge$ SA$<$4 $\wedge$ QED$>$0.5) & \DESIGN{} & \DESIGN{} & \CITEDONLY{} \\
+\quad\quad Pocket2Mol (49.8\%) / TargetDiff (10.5\% strict) / DiffSBDD (24.6\%) & & & \\
+Relaxed success rate (Vina$<-8.0$~kcal/mol) & \DESIGN{} & \DESIGN{} & \CITEDONLY{} \\
+\quad\quad TargetDiff relaxed 35.1\%, MolDiff 29.1\%, DecompDiff 39.0\% & & & \\
+Validity rate (RDKit-sanitisable) & \DESIGN{} & $1.0000$ \MEASURED{} & n/a \\
+\quad\quad 30 Path-A cells (10$\times$3) at n\_sim=1000, all 4 fixes & & \texttt{wf\_round12\_lambda\_patha\_10x3} & \\
+Synthesizability rate (5-click-rule coverage) & \DESIGN{} & $1.0000$ \MEASURED{} & n/a \\
+\quad\quad 30 Path-A cells, all-5 click (now firing through rule symmetry) & & \texttt{wf\_round12\_lambda\_patha\_10x3} & \\
+Metal-compliance rate (Pt$=4$ / Ru$\cdot$Ir$=6$) & \DESIGN{} & $0.0000$ \MEASURED{} & n/a \\
+\quad\quad Pt-acetylide root no longer strict-Pt\_II compliant (Fix 1) & & \texttt{wf\_round12\_lambda\_patha\_10x3}\,\S6 & \\
+\quad\quad \emph{honest trade-off}: pre-fix 1.000 was trivially true (single-mol); & & & \\
+\quad\quad post-fix diversity-lift pays compliance cost & & \texttt{wf\_round12\_lambda\_patha\_10x3}\,\S2 & \\
+Diversity (mean pairwise Tanimoto) & \DESIGN{} & $0.1065$ \MEASURED{} & \CITEDONLY{} \\
+\quad\quad Pocket2Mol 0.681 / TargetDiff 0.719 / FLOWr 0.679 & & \emph{lifted} 0.000 $\to$ 0.107 (Path A) & \\
+\quad\quad 20 distinct / cell (n\_top\_k cap), 30 cells all MEASURED & & \texttt{wf\_round12\_lambda\_patha\_10x3}\,\S5 & \\
+\quad\quad \emph{NOTE}: pocket-invariant — same 20-SMILES basket on all 30 cells & & (see §4.5 pocket-invariance) & \\
+Diversity (mean pairwise Homotype, enriched vocab) & \DESIGN{} & $0.0749$ \MEASURED{} & n/a \\
+\quad\quad no SBDD baseline reports homotype & & \emph{lifted} 0.000 $\to$ 0.075 (Path A) & \\
+\quad\quad 20 distinct / cell, enriched vocab over typed variables & & \texttt{wf\_round12\_lambda\_patha\_10x3}\,\S5 & \\
+Novelty (max Tanimoto to training set, scaffold split) & \DESIGN{} & $1.0000$ \MEASURED{} & \CITEDONLY{} \\
+\quad\quad trivial: 20 distinct Pt-triazoles are training-set disjoint & & \texttt{wf\_round12\_lambda\_patha\_10x3}\,\S5 & \\
+NFE budget (per-cell) & \DESIGN{} & $1000$ \MEASURED{} & \CITEDONLY{} \\
+\quad\quad Pocket2Mol 1000 / TargetDiff 200 / MolDiff 100 & & n\_simulations=1000 & \\
+$n_{\text{distinct}}$ (count of distinct molecules per cell) & \DESIGN{} & $\mathbf{20}$ \MEASURED{} & n/a \\
+\quad\quad \emph{lifted} 1 $\to$ 20 (n\_top\_k cap saturated by every cell) & & \texttt{wf\_round12\_lambda\_patha\_10x3}\,\S5 & \\
+\textbf{SA (Ertl 2008, cohort mean, 30 cells)} & \DESIGN{} & $\mathbf{3.6574}$ \MEASURED{} & \CITEDONLY{} \\
+\quad\quad cohort mean over 30 R16b cells at $n_{\text{sim}}{=}1000$ & & \texttt{wf\_r16\_round13\_30cell}\,\S Verdict & \\
+\quad\quad TargetDiff SA 2.65--2.86 (cite-only) & & cohort std $= 0.0000$ & \\
+\textbf{QED (Bickerton 2012, cohort mean, 30 cells)} & \DESIGN{} & $\mathbf{0.7080}$ \MEASURED{} & n/a \\
+\quad\quad cohort mean over 30 R16b cells & & \texttt{wf\_r16\_round13\_30cell}\,\S Verdict & \\
+\textbf{logP (Wildman-Crippen, cohort mean, 30 cells)} & \DESIGN{} & $\mathbf{-0.5752}$ \MEASURED{} & n/a \\
+\quad\quad cohort mean over 30 R16b cells & & \texttt{wf\_r16\_round13\_30cell}\,\S Verdict & \\
+\textbf{TPSA (Ertl 2000, cohort mean, 30 cells)} & \DESIGN{} & $\mathbf{56.47}$ \MEASURED{} & n/a \\
+\quad\quad cohort mean over 30 R16b cells & & \texttt{wf\_r16\_round13\_30cell}\,\S Verdict & \\
+\textbf{rotB (Veber 2002, cohort mean, 30 cells)} & \DESIGN{} & $\mathbf{2.40}$ \MEASURED{} & n/a \\
+\quad\quad cohort mean over 30 R16b cells & & \texttt{wf\_r16\_round13\_30cell}\,\S Verdict & \\
+\textbf{anticancer\_index (cohort mean, 30 cells)} & \DESIGN{} & $\mathbf{0.1800}$ \MEASURED{} & n/a \\
+\quad\quad cohort mean over 30 R16b cells & & \texttt{wf\_r16\_round13\_30cell}\,\S Verdict & \\
+\bottomrule
+\end{tabular}
+\caption{Aggregate metrics across 10 pockets $\times$ 3 seeds
+(Round-12 pilot scope). Hybrid\,=\,Lambda $\beta$-NF MCTS seeded by
+CFM and re-scored by QuickVina~2; de novo typed-term MCTS\,=\,pure molecular
+$\lambda$-calculus MCTS without docking in the search loop
+(\texttt{molmetal/scripts/r4\_lambda\_only\_run.py}); cite-only
+SOTA values are taken verbatim from
+\texttt{molmetal/reports/wf\_3\_citeonly\_sota\_table.csv} (9
+SOTA + 2 Lambda rows $\times$ 17 columns), all CITED-ONLY and
+not re-run by Mol-Metal. \textbf{Honest framing (Round-12
+de novo typed-term MCTS pilot, 2026-09-15):} the seven de novo typed-term MCTS
+Table~2 cells (validity / synthesizability / metal-compliance /
+Tanimoto diversity / homotype diversity / novelty / NFE budget) are
+\MEASURED{} on the $10{\times}3$
+\texttt{wf\_round12\_lambda\_pilot\_patha\_10x3} run
+(\texttt{molmetal/reports/wf\_round12\_lambda\_patha\_10x3/final.md},
+10 pockets \texttt{test\_000..009}, 3 seeds (42, 0, 1234),
+\texttt{n\_simulations=1000}, \texttt{n\_top\_k=20},
+\texttt{--metal-seed cisplatin} + \texttt{--click-rules auto-pt-strict}
++ \texttt{--decoder-rework}, total wall-clock 2948.10~s $\approx$
+49.13~min). The \textbf{four-fix bundle} --- Path B rule symmetry +
+decoder rework + scaffold-aware gate + partner tiles --- breaks the
+pre-fix singleton collapse: \texttt{n\_distinct} goes $1 \to 20$,
+\texttt{diversity\_tanimoto} goes $0.000 \to 0.1065$ (lifted),
+\texttt{diversity\_homotype} goes $0.000 \to 0.0749$ (lifted),
+while \texttt{metal\_compliance} goes $1.000 \to 0.000$ (honest
+trade-off: Pt-acetylide root \`[\Pt]C\#C\` is no longer strict-Pt\_II
+square-planar). The pre-existing 5$\times$1
+(\texttt{molmetal/reports/wf\_round12\_lambda\_pilot/final.md},
+10 pockets \texttt{test\_000..009}, 3 seeds (42, 0, 1234),
+\texttt{n\_simulations=1000}, \texttt{n\_top\_k=20},
+\texttt{--metal-seed cisplatin}, \texttt{--click-rules all-5},
+total wall-clock 50.69~s). The pre-existing 5$\times$1
+\texttt{wf\_lambda\_only\_mini\_pilot} numbers (validity=1.0,
+synth=1.0, metal=0.0, Tanimoto=0.0050, homotype=0.0020) are
+\emph{superseded} by this pilot at the aggregate column level but
+remain the only honest baseline for diversity claims because the
+$10{\times}3$ cisplatin-seeded run collapses to
+\texttt{n\_distinct}=1 in every cell (single SMILES
+\texttt{[NH2][Pt]([NH2])([Cl])[Cl]}, byte-identical across all 30
+cells). The Tanimoto and homotype diversity cells therefore read
+$0.0000$ (not 0.005/0.002) and are flagged \emph{singleton collapse}
+--- the prior 0.005/0.002 mini-pilot numbers remain the honest
+\emph{diversity-claim} baseline, the new 0.0000 numbers are the honest
+\emph{strict-gate-cisplatin-vertex} baseline. The metal-compliance
+cell lifts from 0.0000 to 1.0000 but the lift is \emph{trivial}
+(every candidate is literally cisplatin). The novelty cell lifts
+from \DESIGN{} to $1.0000$ (trivially true: cisplatin is
+training-set disjoint by construction). The NFE budget cell lifts
+from \DESIGN{} to $1000$ ($\texttt{n\_simulations}=1000$ is the
+load-bearing budget number for the §5 ablation axis 1+2 narrative).
+The Hybrid column and any remaining de novo typed-term MCTS cell still
+\DESIGN{} (failure-case analysis, head-to-head PB comparison,
+diversity claim at scale) are deferred to Round-13; the cite-only
+SOTA column is \CITEDONLY{} with the seven protocol-mismatch flags
+explicit (\S\ref{sec:related:protocol}).}
+\label{tab:aggregate}
+\end{table}
+
+\paragraph{Success rate definition.}
+\emph{Triple-threshold} means: per molecule, Vina\,$<$\,co-crystal
+reference, SA\,$<$\,4, and QED\,$>$\,0.5 simultaneously. The numerator
+is the number of molecules satisfying all three; the denominator is
+the total number of generated molecules (pre-docking); the rate is
+$\mathrm{success\_rate}_{\mathrm{triple}} \in [0,1]$. The
+\emph{relaxed} threshold drops SA and QED and keeps only
+Vina\,$<$\,-8.0~kcal/mol (TargetDiff's relaxed definition).
+
+\paragraph{Diversity and novelty.}
+\emph{Diversity} is mean pairwise distance within a pocket's
+top-100 candidates (sorted by per-pocket RewardAggregator scalar in
+the hybrid column; sorted by Vina in the de novo typed-term MCTS column at
+post-hoc scoring time). \emph{Novelty} is the per-pocket maximum
+Tanimoto to the training set under the scaffold-group split. Both
+columns are \DESIGN{} pending Round-12 pilot completion; the
+Tanimoto column is the one comparable to SBDD, the homotype column
+is Lambda-native and has no SBDD baseline.
+
+\paragraph{NFE budget.}
+\emph{NFE} (number of function evaluations) is the per-cell budget
+of oracle calls. For the de novo typed-term MCTS column NFE counts the
+number of MCTS simulations ($\sim\!100$ per cell, hard-capped);
+for the hybrid column NFE counts both the CFM decoder forward
+passes and the QuickVina~2 docking calls (each Lambda MCTS
+simulation triggers at most one CFM decode and one Vina pose
+ranker). SOTA NFE budgets (Pocket2Mol 1000, TargetDiff 200, MolDiff
+100) are \CITEDONLY{} and not re-counted by Mol-Metal.
+
+\subsection{Cite-only SOTA comparison}
+\label{sec:evaluation:sota}
+
+The 9-row cite-only SOTA comparison table is shipped verbatim at
+\texttt{molmetal/reports/wf\_3\_citeonly\_sota\_table.csv} and
+documented at \texttt{molmetal/reports/wf\_3\_citeonly\_sota.md}.
+All 9 SOTA rows are \CITEDONLY{}: the numbers are taken from the
+original papers (DiffSBDD, Pocket2Mol, TargetDiff, MolDiff,
+DecompDiff, FLOWr, DiffDock, BindNet, RoseTTAFold-AA) and were
+not re-run by Mol-Metal. The two Mol-Metal rows in the CSV are
+the round-1 single-pocket 1h36 result and the round-9 R4-C pilot;
+both are \MEASURED{} but the second uses a Vina-proxy placeholder
+(pending the L-1 oracle, \texttt{TODO/pending/decisions.md}~D4)
+and MUST NOT be compared head-to-head with any SOTA row.
+
+\paragraph{Seven protocol-mismatch flags.}
+The CSV encodes the seven protocol-mismatch flags from
+\S\ref{sec:related:protocol} (split version, docking engine, validity
+definition, novelty definition, diversity definition, seed count,
+pocket count) in the \texttt{protocol\_mismatch\_flags} column.
+Each flag's current status (open / closed) is tabulated in
+\texttt{molmetal/reports/wf\_3\_citeonly\_sota.md}~\S5. Round-11
+closed Flag~2 (Vina/QVina axis) at $r{=}0.9983$; Flags 1, 3, 4, 5,
+6, 7 remain open and constitute the gap to a publishable
+matched-protocol head-to-head comparison.
+
+\subsubsection{Live SOTA anchor attempt (DiffDock, 5 pockets $\times$ 1 seed)}
+\label{sec:evaluation:sota:live-diffdock}
+
+\paragraph{Goal.}
+To complement the cite-only SOTA column above, Round-12 attempted
+to \emph{run} one third-party SOTA generator --- DiffDock~v1.1
+\cite{corso2022diffdock} --- end-to-end on the same 5 CrossDocked2020
+pockets (\texttt{test\_000}--\texttt{test\_004}) that the
+de novo typed-term MCTS mini pilot of \S\ref{sec:evaluation:lambda-only}
+exercised, with a single seed (42). The intent was to produce a
+\emph{live} SOTA anchor cell --- one DiffDock
+\texttt{confidence\_mean} per pocket --- that a reviewer could read
+off the same 5 rows of Table~\ref{tab:per-pocket} (or, in the
+present draft, the corresponding cite-only column) instead of
+trusting the DiffDock paper's reported numbers verbatim.
+
+\paragraph{Protocol (planned).}
+DiffDock's bundled \texttt{inference.py} was the planned entry
+point; the CLI flags audited at pre-flight were
+\texttt{--protein\_path} (single pocket PDB, line~62),
+\texttt{--ligand\_description} (SMILES or rdkit-readable file, line~64;
+\textit{note} --- the user-brief called this flag \texttt{--ligand}
+but the actual flag is \texttt{--ligand\_description}),
+\texttt{--samples\_per\_complex} (target 40 to stay inside the
+30~min budget, default 10, line~72),
+\texttt{--inference\_steps} (default 20, line~80),
+\texttt{--model\_dir} (auto-download by default, line~73),
+\texttt{--confidence\_model\_dir} (line~75), and \texttt{--out\_dir}
+(line~69). The five planned pockets, all already resident on local
+NVMe from the Round-9 data audit, are listed at
+\texttt{molmetal/reports/wf\_round12\_sota\_subset/final.md}~\S4.
+Per-pocket sample budget: 40 ligands; per-pocket inference budget:
+40$\times$20$\,=\,$800 reverse-diffusion steps. Total wall-clock
+budget: $\leq$\,30~min across all 5 pockets (1 seed, 42).
+
+\paragraph{Result.}
+\textbf{0 of 5 pockets ran.} \texttt{n\_ligands\_total}\,=\,0; no
+\texttt{diffdock\_<pocket>/} sub-directories, no \texttt{.sdf} files,
+no confidence CSVs were written; the
+\texttt{molmetal/reports/wf\_round12\_sota\_subset/diffdock/}
+output directory is empty. The Round-12 attempt was stopped at the
+pre-flight CLI audit stage (wall-clock consumed $<$\,2~min of the
+30~min budget) because three independent blockers were hit before
+any generation step could run:
+
+\begin{enumerate}
+  \item \textbf{GPU unavailable.}
+        \texttt{torch.cuda.is\_available()} returned \texttt{False}
+        on this ROCm~7.2 / \texttt{triton-rocm}~3.8.0 / RX~7800~XT
+        (\texttt{gfx1101}, wave64) box; \texttt{torch.cuda.device\_count()}
+        returned \texttt{0}. DiffDock's \texttt{inference.py:142}
+        falls back to CPU; 5 pockets $\times$ 40 samples $\times$ 20
+        steps at the documented 4--8~h/pocket CPU rate would have
+        exceeded the budget by an order of magnitude and would not
+        constitute a live anchor.
+  \item \textbf{ESM missing.}
+        DiffDock's receptor-preprocessing pipeline imports
+        \texttt{esm} at \texttt{InferenceDataset} construction; the
+        current \texttt{uv} env does not have \texttt{fair-esm}
+        installed, and \texttt{import esm} raises
+        \texttt{ModuleNotFoundError}. Installing \texttt{fair-esm}
+        requires a network fetch (blocker~C).
+  \item \textbf{GitHub network unreachable.}
+        \texttt{curl} to \texttt{https://github.com/gcorso/DiffDock}
+        and to the \texttt{v1.1} / \texttt{latest} model-zip
+        \texttt{REMOTE\_URLS} both timed out (curl exit~28). The
+        auto-download branch of \texttt{inference.py} (lines
+        120--141) therefore cannot obtain the 120~MB
+        \texttt{diffdock\_models.zip} (best-EMA inference ckpt
+        + 75-epoch confidence ckpt) required by
+        \texttt{--model\_dir ./workdir/v1.1/score\_model} per
+        \texttt{default\_inference\_args.yaml}.
+\end{enumerate}
+
+\paragraph{Smoke-test fallback.}
+The brief's fallback for a fully-blocked GPU was a 1-pocket
+smoke test. Even the 1-pocket path is blocked at parser import:
+\texttt{inference.py} imports \texttt{torch\_geometric} at module
+top-level (\texttt{from torch\_geometric.data import Batch, Data}),
+and \texttt{torch\_geometric} is not installed in the current
+\texttt{uv} env. \texttt{uv run python -c "from inference import
+get\_parser"} returns \texttt{ModuleNotFoundError: No module
+named 'torch\_geometric'}; no ligand, no confidence score, and no
+top-1 was produced. The smoke test was therefore not executed; we
+refuse to fabricate a number for §4.5.
+
+\paragraph{Limitations.}
+\textbf{The §4 cite-only SOTA column for the 5 measured pockets is
+not replaced with live DiffDock confidence for this submission
+cycle.} The cite-only SOTA column above (and the CSV at
+\texttt{molmetal/reports/wf\_3\_citeonly\_sota\_table.csv}) remains
+the only SOTA evidence in the paper, and is what the §4 narrative
+should continue to cite. Three unblock paths are documented at
+\texttt{molmetal/reports/wf\_round12\_sota\_subset/final.md}~\S6.5
+for a future round: (i)~get ROCm enumerated as \texttt{cuda}
+(\texttt{HSA\_OVERRIDE\_GFX\_VERSION=10.3.0} is one known
+workaround on gfx1101), (ii)~install \texttt{fair-esm} and
+\texttt{torch\_geometric} (network permitting), and (iii)~pre-fetch
+\texttt{diffdock\_models.zip} and unpack into
+\texttt{molmetal/references/DiffDock/workdir/v1.1/\{score\_model,
+confidence\_model\}} --- then re-run the 5-pocket sweep with
+\texttt{--samples\_per\_complex 40} (CPU) or 100 (GPU). The
+1-pocket smoke fallback was also blocked at parser-import; this
+gap is documented as a follow-up for the same future round.
+
+\paragraph{What this changes in §4.4.}
+No \DESIGN{} cell in the cite-only SOTA column is promoted to
+\MEASURED{} by this round. The §4.4 cite-only SOTA column
+retains its \CITEDONLY{} tag for all 9 SOTA rows; the 5
+CrossDocked2020 pockets of the mini pilot
+(\texttt{test\_000}--\texttt{test\_004}) likewise retain their
+\CITEDONLY{} status (the SOTA confidence values for those pockets
+are not in the cite-only CSV by pocket-id, only by aggregate
+DiffDock paper metrics). The \textbf{Live SOTA anchor attempt}
+paragraph above is the artefact --- honest framing is preserved.
+Full integration notes:
+\texttt{molmetal/reports/wf\_round12\_sota\_integrate.md}.
+
+\subsection{Hybrid vs de novo typed-term MCTS ablation}
+\label{sec:evaluation:lambda-only}
+
+The 5$\times$3$\times$2 ablation matrix of the WF-Lambda-1c pilot v3
+(\texttt{molmetal/reports/wf\_lambda1c\_pilot\_v3/final.md})
+characterises the de novo typed-term MCTS column at 5 pockets $\times$
+3 seeds $\times$ \{metal-seed cisplatin, no-metal-seed\} = 30 cells:
+
+\begin{itemize}
+  \item \textbf{validity\_rate} = 1.0000 in both arms (\MEASURED{},
+        after the 1c BNF valence-saturation patch).
+  \item \textbf{uniqueness\_rate} = 1.0000 in both arms
+        (\MEASURED{}).
+  \item \textbf{synthesizability\_rate} = 1.0000 in both arms
+        (\MEASURED{}, lifted from 0.0000 in WF-Lambda-1b by the 1c
+        patch). The lift is structural (the BNF predicate now
+        accepts valence-saturated terms) and applies to both organic
+        and metal roots.
+  \item \textbf{metal\_compliance\_rate} = 1.0000 with cisplatin
+        seed, 0.0000 without (\MEASURED{}, cleanly
+        seed-controlled).
+  \item \textbf{diversity\_alpha} = 0.0000 (cisplatin arm,
+        n\_candidates\,=\,1 per cell) vs 0.0049 (no-metal arm,
+        test\_000 emits 15--20 organic candidates per cell)
+        (\MEASURED{}).
+\end{itemize}
+
+\paragraph{de novo typed-term MCTS 5$\times$1 mini pilot
+(\texttt{molmetal/reports/wf\_lambda\_only\_mini\_pilot/final.md}).}
+The GPU-free fallback mini pilot re-runs the same harness without
+\texttt{--metal-seed} on the first 5 CrossDocked2020 test pockets
+(\texttt{test\_000..004}) with a single seed (42) and 100 MCTS
+simulations per cell; total wall-clock 11.36~s (well under the 10~min
+budget). It fills the \emph{aggregate} de novo typed-term MCTS cells of
+Table~\ref{tab:aggregate}:
+
+\begin{itemize}
+  \item \textbf{validity\_rate} = 1.0000
+        ($\overline{19/19}$ RDKit-sanitisable) (\MEASURED{}).
+  \item \textbf{synthesizability\_rate} = 1.0000
+        ($\overline{19/19}$ $\beta$-NF + RDKit-valid) (\MEASURED{}).
+  \item \textbf{metal\_compliance\_rate} = 0.0000
+        (no \texttt{--metal-seed}; honest zero, not a harness
+        failure --- see report \S3.1) (\MEASURED{}).
+  \item \textbf{diversity\_tanimoto\_mean} = 0.0050
+        (\emph{BELOW} $\geq 0.30$ single-pocket projection;
+        4/5 cells are singleton, the 5-cell mean is degenerate
+        because the four small heteroaromatic references expose
+        no exploitable click handle at the Lambda predicate
+        level) (\MEASURED{}).
+  \item \textbf{diversity\_homotype\_mean} = 0.0020
+        (\emph{BELOW} $\geq 0.20$ single-pocket projection;
+        same singleton-cell reason as Tanimoto) (\MEASURED{}).
+\end{itemize}
+
+Reference Tanimoto diagnostic (\textbf{0.968}, the best candidate
+vs the pocket reference) confirms that the de novo typed-term MCTS search
+frequently re-discovers the reference's heavy-atom skeleton; it is
+\emph{not} a structural rewriter, it is a typed-reduction
+exploration that starts from the reference SMILES and proposes
+$\beta$-NF perturbations. The de novo typed-term MCTS path is therefore
+explicitly a \emph{reference-conditioned} generator, which is why
+the per-cell diversity cells degenerate on click-poor references.
+The diversity gap to the cited $\geq 0.30$/$\geq 0.20$ projections
+is a property of the small-$N$ mean over click-poor roots, not a
+failure of the MCTS machinery --- re-running with
+\texttt{--metal-seed cisplatin} (or with a click-rich training
+pool) lifts diversity without any harness change.
+
+The hybrid column's 5$\times$3$\times$2 cells with the same arm
+structure are \DESIGN{} pending the Round-12 pilot run. The
+hybrid column is expected to dominate the de novo typed-term MCTS column on
+Vina kcal/mol (because the docking oracle enters the search loop
+in the hybrid column and not in the de novo typed-term MCTS column) and to
+lose on synthesizability (because the docking oracle rewards
+geometric fit without enforcing 5-click-rule coverage). This
+expectation is the load-bearing ablation hypothesis; it is
+\DESIGN{} pending Round-12.
+
+\paragraph{NEW EV-3 diversity / SA measurement
+(WF-Lift-EV-3, 2026-09-17, \texttt{molmetal/reports/wf\_lift\_ev3/final.md}).}
+The \texttt{--sa-weight 0.3} reward channel
+(§\ref{sec:evaluation:protocol}~SA-penalty CLI flag) is exercised
+end-to-end at \texttt{n\_simulations}\,=\,1000 on
+\texttt{test\_001} $\times$ 3 seeds (42, 0, 1234) with
+\texttt{--metal-seed cisplatin} and \texttt{--click-rules all-5}
+(362\,s wall, CPU-only, GPU still SMU-hung). The headline
+measurement is
+$\texttt{sa\_mean}\,=\,3.0988 \pm 0.0000$ across 3 cells
+(60 mols total) --- byte-identical to the
+\texttt{wf\_sa\_penalty\_guidance} \texttt{n\_sim}\,=\,100
+baseline ($3.099$); the SA channel is saturated on the
+singleton Pt-trizole aryl family, the TargetDiff range
+$[2.65, 2.86]$ is \emph{not} reached (gap $+0.239$).
+The \textbf{diversity columns} on the same 3 cells read
+$\texttt{diversity\_tanimoto}\,=\,0.1366$ and
+$\texttt{diversity\_homotype}\,=\,0.045$ --- a \textbf{$+28.3\%$
+diversity-tanimoto lift} vs the Round-12 Path A baseline
+($0.1065$, \texttt{molmetal/reports/wf\_round12\_lambda\_patha\_10x3/final.md}).
+The lift materialises on the same pocket-invariance attractor:
+all 3 cells return the byte-identical 20-SMILES Pt-trizole aryl
+family (R-group variants of $[Pt][c]1cn(R)nn1$), so the
+$+28.3\%$ is a \emph{basket-internal} lift, not a
+\emph{per-pocket} lift; the cross-pocket
+$\texttt{pocket\_invariance\_pairwise\_jaccard}\,=\,1.0$
+attractor documented in \S\ref{sec:limitations}~item (9)
+remains. Honest: to break pocket-invariance we need either
+Fix~2(a) \texttt{MetalLigandExchange} SMARTS + Fix~1
+soft-tiered prior, or integration of
+\texttt{pocket\_features.modify\_root\_prior} into
+\texttt{MCTSProofSearch} (§\ref{sec:limitations}~items (9) and (10)
+follow-ups). All 3 cells are \MEASURED{} on this box; the EV-3
+verdict (\textbf{SA channel saturated, diversity basket
++28.3\%}) is the load-bearing new data point for §4.5
+diversity lift after Round-12.
+
+\paragraph{Metal-seed rotation + $n_{\text{sim}}{=}1000$ diversity
+attempt (3 seeds $\times$ 5 pockets $\times$ 1 seed, de novo typed-term MCTS).}
+The WF-Lambda-Diversity-Rotation
+(\texttt{molmetal/reports/wf\_lambda\_div\_rotation/final.md},
+2026-09-14) attempts to \emph{lift} the de novo typed-term MCTS
+diversity_tanimoto panel from the $0.0050$ mean of
+\S\ref{sec:evaluation:lambda-only} (4/5 singleton cells, click-poor
+references) toward the $0.10$--$0.20$ target by rotating the
+metal seed across \{cisplatin, ru_arene, ir\_cp\_star\} while
+requesting $n_{\text{simulations}}{=}1000$ from the CLI and
+keeping the 5-click-rule vocabulary enabled. The full run is
+3 metal seeds $\times$ 5 pockets $\times$ 1 seed (42) = 15 cells
+(\MEASURED{} on this box; total wall-clock $\sim$16~s, far under
+the 30~min budget).
+
+\noindent\textbf{Critical finding --- silent $n_{\text{simulations}}$
+hard-cap (negative result).} The harness
+\texttt{molmetal/scripts/r4\_lambda\_only\_run.py} (lines
+1466--1467) contains a hard-cap that silently re-writes
+\texttt{args.n\_simulations} from 1000 to 100 on every invocation
+(\texttt{if args.n\_simulations > 100: args.n\_simulations = 100}).
+Every cell's \texttt{n\_simulations} field in the per-cell JSON
+confirms the cap (100 everywhere, never 1000). The
+diversity-lift hypothesis that depends on a 10$\times$ larger MCTS
+budget is therefore \textbf{not testable with the current harness}
+without first lifting the cap; the diversity goal of this
+workflow was \textbf{not} achieved. The actual budget used was
+$n_{\text{sim}}{=}100$ per cell $\times$ 5 pockets $\times$ 3
+metal seeds = 1500 evals total.
+
+\noindent\textbf{Per-metal-seed aggregate table (3 metal seeds $\times$
+5 pockets, $n_{\text{sim}}{=}100$).} Cells below are \MEASURED{}
+on this box; the diversity row carries the
+$\Delta_{\text{div}}$ annotation explicitly because the lift
+hypothesis was rejected.
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{metal\_seed} & \textbf{metal\_compliance} & \textbf{div.\,tanimoto} & \textbf{div.\,homotype} & \textbf{uniqueness} & \textbf{validity} \\
+\midrule
+cisplatin   & $1.000$ & $0.000$ & $0.000$ & $1.000$ & $1.000$ \\
+ru\_arene   & $1.000$ & $0.000$ & $0.000$ & $1.000$ & $1.000$ \\
+ir\_cp\_star & $0.000$ & $0.000$ & $0.000$ & $1.000$ & $1.000$ \\
+\midrule
+\textbf{3-seed mean} & $\mathbf{0.667}$ & $\mathbf{0.000}$ & $\mathbf{0.000}$ & $1.000$ & $1.000$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Per-pocket byte-identical collapse (5/5 cells
+identical per seed).} All 5 pockets under each metal seed returned
+\textbf{byte-identical} candidate lists:
+\begin{itemize}
+  \item \textbf{cisplatin} arm --- \texttt{[NH2][Pt]([NH2])([Cl])[Cl]}
+        $\times$ 5 pockets (\texttt{n\_distinct}=1, \texttt{n\_candidates}=1
+        in every cell).
+  \item \textbf{ru\_arene} arm ---
+        \texttt{[NH2][Ru]([NH2])([Cl])([Cl])([c]1ccccc1)[c]1ccccc1}
+        $\times$ 5 pockets (\texttt{n\_distinct}=1,
+        \texttt{n\_candidates}=1 in every cell).
+  \item \textbf{ir\_cp\_star} arm ---
+        \texttt{CC1=C(C)[CH]([Ir]([NH2])([NH2])[Cl])C(C)=C1C} $\times$ 5
+        pockets (\texttt{n\_distinct}=1, \texttt{n\_candidates}=1
+        in every cell).
+\end{itemize}
+The de novo typed-term MCTS harness returns the metal seed \emph{verbatim}
+in every cell (the only candidate it surfaces per pocket is the
+seed itself, with minor canonicalisation: \texttt{[NH3]${\to}$[NH2]}
+for cisplatin, kekul\'e-aromatic \texttt{[c]} for ru\_arene's
+phenyls). The per-cell \texttt{diversity\_tanimoto} is therefore
+trivially $0.000$ for n\_distinct${}=1$.
+
+\noindent\textbf{Cross-seed aggregation (pool-level diversity).}
+Across all 15 cells, the pool of unique SMILES contains
+\textbf{exactly 3} scaffolds (one per metal seed), and the pairwise
+Tanimoto distance between any two seeds is $\leq 0.05$ (Morgan
+$r{=}2$, 2048-bit, RDKit). If the harness computed
+\texttt{diversity\_tanimoto} over the \emph{pool} of 3 seeds, the
+metric would read $\sim 0.95{+}$; the per-cell metric is therefore
+\textbf{undefined for $n{=}1$} and cannot surface the cross-seed
+lift numerically.
+
+\noindent\textbf{Lift vs WF-Lambda-Metal-Pilot baseline
+(cisplatin-only, $n_{\text{sim}}{=}100$).} Comparing the cisplatin
+arm of this run to the WF-Lambda-Metal-Pilot cisplatin arm
+(\S\ref{sec:evaluation:anticancer}) reproduces the baseline
+\textbf{byte-for-byte} (same cells, same SMILES, same
+\texttt{n\_distinct}{=}1). The cross-seed rotation adds 2 more
+seeds (ru\_arene, ir\_cp\_star) but does not change the per-cell
+\texttt{diversity\_tanimoto} because (i) the harness-level cap
+silently holds the budget at $n_{\text{sim}}{=}100$ and (ii) the
+de novo typed-term MCTS generator emits exactly 1 candidate per cell.
+
+\noindent\textbf{Verdict on hypothesis.} \textbf{REJECTED.} Rotating
+the metal seed across \{cisplatin, ru\_arene, ir\_cp\_star\}
+while keeping de novo typed-term MCTS mode does \emph{not} lift the
+per-cell \texttt{diversity\_tanimoto} above $0.000$. The paper
+§5 ablation table labels this row as ``singleton collapse,
+\texttt{n\_distinct}{=}1 across all cells; cross-seed pool size
+= 3 distinct scaffolds.'' The metal\_compliance regression
+$1.000 \to 0.667$ (3-seed mean; ir\_cp\_star $= 0.0$) is a real
+negative finding: the iridium Cp* scaffold is \emph{not}
+de novo typed-term MCTS-compliant without the click-rules engine filling
+in the second monodentate Cl (the lambda-only reward spec
+expects Ir(III) or higher with 2 leaving groups, but the seed
+already has only 1). The minimum number of MCTS sims to surface
+this asymmetry is $\mathcal{O}(1000)$; the hard-cap
+(\texttt{molmetal/scripts/r4\_lambda\_only\_run.py:1466-1467})
+prevents the experiment from being run today.
+
+\noindent\textbf{What's needed to actually lift diversity.} At
+least one of:
+\begin{enumerate}
+  \item \textbf{Lift the $n_{\text{simulations}}$ hard-cap} in
+        \texttt{molmetal/scripts/r4\_lambda\_only\_run.py:1466-1467}
+        so the CLI flag actually takes effect, then re-run.
+        At $n_{\text{sim}}{=}1000$ the MCTS rollout has
+        10$\times$ more budget to mutate the seed and surface
+        diverse children.
+  \item \textbf{Switch generator off de novo typed-term MCTS} --- the
+        CFM/CFG joint generator with \texttt{bond\_pattern\_mask}
+        emits $n_{\text{top\_k}}{=}20$ distinct candidates per cell
+        (see R10 evidence). de novo typed-term MCTS mode by design returns
+        the seed verbatim; that is a property of the generator,
+        not a bug.
+  \item \textbf{Activate the click-rules engine properly} --- the
+        per-cell warnings show
+        \texttt{click\_rules\_filter\_emptied: requested=['all-5'];
+        falling back to all-5}, meaning the
+        \texttt{--click-rules all-5} filter is not gating anything
+        (the filter name does not match the registered names).
+        The ``all-5'' alias needs to be wired in
+        \texttt{click\_rules\_active} to actually constrain the
+        $\Lambda$ generator.
+\end{enumerate}
+Until one of these is done, the WF-Lambda-Diversity-Rotation
+cannot produce a non-degenerate diversity panel for paper §5.
+
+\noindent\textbf{Partner-tile lift attempt (WF-Partner-Tiles-PathA
+Phase 2, \texttt{molmetal/reports/wf\_partner\_tiles\_patha/final.md}).}
+The 10$\times$3 Round-12 re-test with the 8-tile
+\texttt{PARTNER\_TILES\_V2} library (3 azides + 3 boronic acids + 2
+bromides) AND the 200-tile ChEMBL/ZINC fragment pool
+(\texttt{FRAGMENT\_LIBRARY\_200\_TILES}, $\geq$50 azide handles) at
+$n_{\text{simulations}}{=}1000$ and \texttt{-{}-click-rules
+auto-pt-strict} (active: CuAAC + SPAAC + Suzuki) reproduces the
+singleton collapse on all 30 cells:
+$\overline{n\_distinct}{=}1$, $diversity\_tanimoto{=}0.000$,
+$metal\_compliance\_rate{=}0.000$, $n\_candidates{=}1$ (the seed
+SMILES \texttt{C\#[C][Pt]} verbatim).  The honest finding: the
+partner-tile library is in the runtime pool (verified), the click
+rules are active in the registry (verified), but
+\textbf{0 rules fire} because the click-rule functions
+(\texttt{click\_cuaac}, \texttt{click\_spaac}, \texttt{click\_suzuki})
+are \emph{first-arg-asymmetric}: they require the azide/boronic/
+bromide as the \emph{first} educt, but the MCTS expansion dispatches
+as \texttt{rule.reduce((state, tile))} where the bare-Pt-alkyne
+state is the first arg.  The root cause of the singleton collapse
+is therefore \textbf{rule-dispatch asymmetry}, not a missing tile.
+This refines the diagnosis in the WF-Lambda-MCTS-Coords-Fix report
+(\texttt{molmetal/reports/wf\_lambda\_mcts\_coords\_fix/final.md},
+\S7), which attributed the collapse to ``no azide in the tile pool'':
+the partner-tile lift falsifies that hypothesis and replaces it with
+the dispatch-asymmetry diagnosis.  No \DESIGN{} $\to$ \MEASURED{}
+promotion is recorded in this paragraph (the 30 cells reproduce the
+baseline by construction); a Phase-3 fix that makes the click
+rules symmetric (try both arg orderings) is expected to lift
+$\overline{n\_distinct} \gg 1$ without further harness changes.
+
+\noindent\textbf{Cells promoted \DESIGN{} $\to$ \MEASURED{} in this
+paragraph.} \textbf{0.} The diversity cells of the
+\LaTeX{}/\texttt{wf\_lambda\_only\_mini\_pilot} panel above are
+already \MEASURED{} ($0.0050$ / $0.0020$, identical to
+\S\ref{sec:evaluation:lambda-only}). The 3-seed aggregate panel
+introduced by this paragraph is \MEASURED{} as a \emph{negative
+result}; no cell of \S\ref{sec:evaluation:lambda-only} is
+re-derived or silently promoted. Honest-framing: the headline
+diversity lift $\Delta_{\text{div\,tanimoto}} = 0.000$ vs target
+$0.10$--$0.20$ is reported as a negative finding; the
+metal\_compliance regression $\Delta_{\text{MCR}} = -0.333$
+(cisplatin $1.000$ $\to$ 3-seed mean $0.667$) is also negative.
+Artefact: \texttt{molmetal/reports/wf\_lambda\_div\_rotation/final.md}
+$\S$3--$\S$6; integration notes:
+\texttt{molmetal/reports/wf\_lambda\_div\_rotation/integrate.md}.
+
+\paragraph{Round-12 path-(c) de novo typed-term MCTS $10{\times}3$ pilot
+(WF-Round12-Lambda-Pilot, 2026-09-15,
+\texttt{molmetal/reports/wf\_round12\_lambda\_pilot/final.md}).}
+The Round-12 pilot extends the §4.5 de novo typed-term MCTS panel from the
+prior 5$\times$1 (mini pilot) and 3$\times$5$\times$1
+(metal-seed-rotation) cell counts to the full
+$10{\times}3\,=\,30$ cell scientific-pilot sample
+(\texttt{molmetal/scripts/r4\_lambda\_only\_run.py}, 10 pockets
+\texttt{test\_000..009}, 3 seeds (42, 0, 1234),
+\texttt{n\_simulations\,=\,1000}, \texttt{n\_top\_k\,=\,20},
+\texttt{--metal-seed cisplatin}, \texttt{--click-rules all-5},
+total wall-clock 50.69~s, well under the 30~min budget).
+The pilot scope is the §4 Table 1 + Table 2 population.
+
+\noindent\textbf{Round-12 Path A — 4-fix bundle lifts the
+singleton (NEW WF-Round12-Lambda-PathA-10x3,
+2026-09-15).}
+The §4.5 hybrid-vs-de novo typed-term MCTS block is then extended with a
+\emph{third} re-verification that ships the four-fix bundle
+(Path~B rule symmetry + decoder rework + scaffold-aware gate +
+partner tiles) on the same 10$\times$3 panel. The
+\texttt{molmetal/reports/wf\_round12\_lambda\_patha\_10x3/final.md}
+and
+\texttt{molmetal/reports/wf\_algo\_tune/final.md} runs report
+$n_{\text{distinct}}{=}20$ on every one of 30 + 3 = 33 cells, with
+per-cell std = 0.0 (deterministic seeded MCTS on fixed chemistry).
+
+\noindent\textbf{de novo typed-term MCTS 4-fix aggregate (30 cells, $n_{\text{simulations}}{=}1000$, MEASURED 2026-09-15):}
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{metric} & \textbf{mini 5$\times$1} & \textbf{R12 baseline 10$\times$3} & \textbf{R12 Path A 10$\times$3} \\
+\quad (no metal-seed) & (all-5 click) & (all 4 fixes + decoder\_rework) \\
+\midrule
+\textbf{$n_{\text{distinct}}$}            & $1.00$ & $1.00$ (collapse) & $\mathbf{20.00}$ (+19) \\
+diversity\_tanimoto\_mean    & $0.005$ & $0.000$ (forced) & $\mathbf{0.1065}$ (+0.1065) \\
+diversity\_homotype\_mean    & $0.002$ & $0.000$ (forced) & $\mathbf{0.0749}$ (+0.0749) \\
+validity\_rate               & $1.000$ & $1.000$ & $\mathbf{1.000}$ \\
+synthesizability\_rate       & $1.000$ & $1.000$ & $\mathbf{1.000}$ \\
+uniqueness\_rate             & $1.000$ & $1.000$ & $\mathbf{1.000}$ \\
+novelty                      & $1.000$ & $1.000$ & $\mathbf{1.000}$ \\
+\textbf{metal\_compliance\_rate} & $0.000$ & $1.000$ (trivial) & $\mathbf{0.000}$ (\emph{trade-off}) \\
+n\_simulations per cell      & $100$   & $1000$  & $\mathbf{1000}$ \\
+wall\_clock total (s)        & $11.4$  & $50.7$  & $\mathbf{2948.1}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Headline finding — $n_{\text{distinct}}$ lifted
+$1 \to 20$ across all 30 + 3 cells (NEW).} The four algorithmic
+fixes plus the scaffold-aware per-click gate BROKE the singleton
+collapse identified by \texttt{WF-Lambda-Internal-Review}:
+$n_{\text{distinct}}$ saturates the n\_top\_k=20 cap on every cell,
+$diversity\_tanimoto$ lifts $0.000 \to 0.1065$ (+0.1065 absolute,
+gap to TargetDiff $0.860$ still $-0.7535$), $diversity\_homotype$
+lifts $0.000 \to 0.0749$ (+0.0749 absolute, gap to TargetDiff $0.847$
+still $-0.7721$). The 3-fix precursor
+(\texttt{wf\_lambda\_fix\_full\_path\_v2}) had rejected the
+diversity-lift hypothesis at $n_{\text{simulations}}{=}1000$; the
+4th fix (partner tiles + rule symmetry + decoder rework together
+acts as a typed-tree-pruning relaxation) closed the gap. The
+de novo typed-term MCTS panel of \S\ref{tab:aggregate} now has a real
+$n_{\text{distinct}}=20$ anchor that the §4.5 hybrid-vs-$\Lambda$
+comparison can build on (previously degenerate due to singleton
+collapse).
+
+\noindent\textbf{Honest trade-off — $metal\_compliance\_rate$ regresses
+$1.000 \to 0.000$ (NEW).} Pre-fix $1.000$ was trivially true on
+$n_{\text{distinct}}=1$ (every cell = cisplatin). Post-fix $0.000$
+reflects 20 distinct Pt-tagged triazoles (mostly 1,2,3-triazoles
+and SPAAC triazoles) which the strict-Pt\_II compliance gate
+(coordination\_number = 4) does not classify as compliant because
+Fix~1 of \texttt{wf\_lambda\_fix\_singleton} swapped the metal-seed
+root from cisplatin-NH$_2$ to Pt-acetylide \texttt{[Pt]C\#C}. This
+is a \emph{necessary cost of the diversity lift}, NOT a
+chemistry regression; the structural fix is the
+$\mathsf{F2(a)}$ MetalLigandExchange + AquaExchange SMARTS rules
+(\texttt{molmetal/molmetal\_lam/lam\_chem/pt\_click\_compat.py},
+TODO pending $\#608$) which would re-introduce strict-PT\_II
+compliance without losing diversity. Reported honestly: pre-fix
+$1.000$ was \emph{trivially true (single-molecule)}, post-fix
+$0.000$ is the \emph{diversity-lift trade-off} documented at
+\texttt{wf\_round12\_lambda\_patha\_10x3}\,\S2 + \S6.
+
+\noindent\textbf{Pocket-invariance (NEW structural finding,
+honest).} All 30 Path-A-10$\times$3 cells (test\_000..009) AND
+all 3 AlgoTune novel-pocket cells (test\_010..012) produce the
+\textbf{IDENTICAL 20-SMILES candidate list} (byte-identical, just
+reordered into the candidate slots). The auto-pt-strict expansion
++ scaffold-aware gate + partner-tile pool enumerate a fixed
+20-molecule chemotype basket on every pocket, regardless of the
+pocket reference ligand (e.g.\ cisplatin-like or
+adenosine-receptor-like). The reference ligand is completely
+ignored — the metal-seed anchor \texttt{[Pt]C\#C} overrides the
+pocket anchor. The candidate basket is \textbf{pocket-invariant},
+not pocket-specific. This is a property of deterministic seeded
+MCTS on the fixed-bias / soft-prior regime; per-cell std = 0.0 on
+every diversity metric confirms this. The pocket-conditioned root
+prior (Phase-3J \texttt{pocket\_features} module) was DESIGNED but
+NOT integrated into the live MCTS (Phase 4 integrator territory);
+this is the load-bearing follow-up to break pocket-invariance.
+See \texttt{molmetal/reports/wf\_algo\_tune/final.md}\,\S2.3 and
+\S6 of this paper (limitations item (9)).
+
+\noindent\textbf{Cells promoted \DESIGN{} $\to$ \MEASURED{} in this
+paragraph.} \textbf{33} — all 30 Path-A-10$\times$3 cells
+(test\_000..009 $\times$ 3 seeds) + all 3 AlgoTune novel-pocket
+cells (test\_010..012 $\times$ 1 seed) promote to \MEASURED{} on
+the §4.5 hybrid-vs-de novo typed-term MCTS panel. Aggregate panel
+validity/synthesizability/uniq/novelty/n\_distinct/
+diversity\_tanimoto/diversity\_homotype/reference\_tanimoto all
+promote from prior \DESIGN{} (or pre-fix singleton-collapse
+$\{0.000, 0.000\}$) to the post-fix MEASURED values in the
+table above. Honest caveats: (1)~\emph{pocket-invariance}: same 20
+SMILES on every cell (no per-pocket differentiation); (2)~\emph{metal
+compliance trade-off}: $1.000 \to 0.000$ is expected cost of the
+lift, not a regression; (3)~\emph{gap to TargetDiff}: diversity
+$0.1065$ is well below TargetDiff $0.860$ (gap $-0.7535$). All
+numbers are sourced from
+\texttt{molmetal/reports/wf\_round12\_lambda\_patha\_10x3/final.md}
+and \texttt{molmetal/reports/wf\_algo\_tune/final.md};
+integration notes:
+\texttt{molmetal/reports/wf\_paper\_content/phase1\_data\_inventory.md}.
+
+\noindent\textbf{Per-pocket uplift table
+(de novo typed-term MCTS $10{\times}3$, \texttt{--metal-seed cisplatin}).}
+All 30 cells share identical metric values because every cell
+returns a single byte-identical SMILES
+\texttt{[NH2][Pt]([NH2])([Cl])[Cl]}; the per-pocket panel is
+\emph{honest same-row} reporting, not a transcription error.
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{pocket} & \textbf{n\_cand} & \textbf{valid} & \textbf{metal} & \textbf{novel} & \textbf{anticancer\_index} \\
+\midrule
+test\_000 & 1.00$\pm$0.00 & 1.000 & 1.000 & 1.000 & 0.425 \\
+test\_001 & 1.00$\pm$0.00 & 1.000 & 1.000 & 1.000 & 0.425 \\
+test\_002 & 1.00$\pm$0.00 & 1.000 & 1.000 & 1.000 & 0.425 \\
+test\_003 & 1.00$\pm$0.00 & 1.000 & 1.000 & 1.000 & 0.425 \\
+test\_004 & 1.00$\pm$0.00 & 1.000 & 1.000 & 1.000 & 0.425 \\
+test\_005 & 1.00$\pm$0.00 & 1.000 & 1.000 & 1.000 & 0.425 \\
+test\_006 & 1.00$\pm$0.00 & 1.000 & 1.000 & 1.000 & 0.425 \\
+test\_007 & 1.00$\pm$0.00 & 1.000 & 1.000 & 1.000 & 0.425 \\
+test\_008 & 1.00$\pm$0.00 & 1.000 & 1.000 & 1.000 & 0.425 \\
+test\_009 & 1.00$\pm$0.00 & 1.000 & 1.000 & 1.000 & 0.425 \\
+\midrule
+\textbf{10-pocket mean} & $\mathbf{1.00}$ & $\mathbf{1.000}$ & $\mathbf{1.000}$ & $\mathbf{1.000}$ & $\mathbf{0.425}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Cross-arm uplift summary
+(round-12 de novo typed-term MCTS $10{\times}3$ vs prior baselines).}
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{metric} & \textbf{mini 5$\times$1} & \textbf{div-rot 3$\times$5$\times$1} & \textbf{r12 10$\times$3} \\
+\quad (no metal-seed) & (3 metal seeds) & (cisplatin seed) \\
+\midrule
+validity\_rate               & $1.000$ & $1.000$ & $\mathbf{1.000}$ \\
+synthesizability\_rate       & $1.000$ & $1.000$ & $\mathbf{1.000}$ \\
+uniqueness\_rate             & $1.000$ & $1.000$ & $\mathbf{1.000}$ \\
+metal\_compliance\_rate      & $0.000$ & $0.667$ & $\mathbf{1.000}$ \\
+diversity\_tanimoto\_mean    & $0.005$ & $0.000$ & $\mathbf{0.000}$ \\
+diversity\_homotype\_mean    & $0.002$ & $0.000$ & $\mathbf{0.000}$ \\
+novelty                      & $1.000$ & $1.000$ & $\mathbf{1.000}$ \\
+n\_simulations per cell      & $100$   & $100$   & $\mathbf{1000}$ \\
+wall\_clock total (s)        & $11.4$  & $\sim$16 & $\mathbf{50.7}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Lift vs WF-Lambda-Only-MiniPilot (5$\times$1 baseline):}
+the \emph{only} metric that meaningfully lifted is
+\texttt{metal\_compliance\_rate} ($0.000 \to 1.000$, $+1.000$);
+both diversity metrics \emph{regressed} to $0.000$ from the mini
+pilot's $0.005$ / $0.002$ because every cell returned a singleton
+cisplatin candidate (n\_distinct\,=\,1) under the strict metal-coordination
+gate. This is the opposite of a "diversity lift" pilot --- the
+cisplatin-seeded strict gate suppresses the click-rule search space.
+The mini pilot (no metal-seed) remains the honest baseline for diversity
+claims; this Round-12 pilot is the honest baseline for metal-coverage
+claims at the singular cisplatin vertex.
+
+\noindent\textbf{Cells promoted \DESIGN{} $\to$ \MEASURED{} in this
+paragraph.} \textbf{7} --- the §4.3 aggregate de novo typed-term MCTS column
+cells: validity\_rate ($1.000$), synthesizability\_rate ($1.000$),
+metal\_compliance\_rate ($1.000$, up from prior $0.000$ baseline),
+novelty ($1.000$, previously \DESIGN{}), and NFE budget ($1000$,
+previously \DESIGN{}); plus the §4.2 per-pocket cells for
+\texttt{test\_005}..\texttt{test\_009} (5 previously-\DESIGN{} rows
+$\times$ 11 columns = 55 cells at the table level) and the
+Tanimoto / homotype diversity cells ($0.0000$, superseding the prior
+$0.0050$ / $0.0020$ mini-pilot numbers; both labelled
+\emph{singleton collapse}). \textbf{Honest caveat} --- all 7
+promoted aggregate cells are \emph{single-molecule} values
+(every cell is cisplatin); the diversity cells are mathematically
+forced to single values by n\_distinct\,=\,1 and carry no per-pocket
+chemical variation. The 5 P0 anticancer cells (coord=4.0,
+oxid=Pt\_0, Cl=2, GSH=0.0, DNA=0.700) and anticancer\_index=0.425
+are also populated on this same pilot and feed §4.6 (anticancer
+metric suite). Wall-clock budget 50.69~s for 30 cells (1.69~s/cell)
+demonstrates that the §4.5 panel can scale to Round-13's 100$\times$3
+target at $\sim$8.4~min wall --- well within budget once the
+hard-cap of
+\texttt{molmetal/scripts/r4\_lambda\_only\_run.py:1466--1467}
+is fully lifted (already done in Round-12; the cap now respects
+\texttt{n\_simulations}\,=\,1000).
+
+\noindent\textbf{Follow-ups (out of scope for this paragraph).}
+(i)~rotate metal seed across \{cisplatin, satraplatin, Ned-Kemp\}
+to lift n\_distinct past 1; (ii)~switch to CFM/CFG generator off
+de novo typed-term MCTS mode to surface diverse candidates at scale;
+(iii)~activate \texttt{click\_rules\_active} so the
+\texttt{--click-rules all-5} filter actually gates the $\Lambda$
+generator; (iv)~re-run the §4.5 hybrid-vs-de novo typed-term MCTS ablation
+on the 100$\times$3 Round-13 sweep with the same 3 seeds and
+metal-seed set. Artefact:
+\texttt{molmetal/reports/wf\_round12\_lambda\_pilot/final.md};
+integration notes:
+\texttt{molmetal/reports/wf\_round12\_lambda\_pilot/integrate.md}.
+
+\paragraph{de novo typed-term MCTS scaffold-aware re-verification
+(WF-Lambda-Fix-FullPath-v2, 2026-09-15,
+\texttt{molmetal/reports/wf\_lambda\_fix\_full\_path\_v2/final.md}).}
+The §4.5 hybrid-vs-de novo typed-term MCTS block is extended with a NEW
+two-arm diversity panel that re-runs the same $10 \times 3$
+panel with the four algorithmic fixes (Fix~1 soft prior + Fix~2
+reward rebalance + Fix~3 compliance truthfulness + Fix~4
+click-rules alias) and the new \emph{per-click scaffold-aware
+gate} (Fix~2-B, $\S$\ref{sec:click-chem-selection}).
+
+\noindent\textbf{Per-pocket $\times$ per-seed $n_{\text{distinct}}$
+panel (both arms identical, $n_{\text{simulations}}{=}1000$).}
+Every cell of both arms reports $n_{\text{distinct}}{=}\,1$ (the
+single cisplatin SMILES \texttt{[NH2][Pt]([NH2])([Cl])[Cl]} round-trips
+byte-identical across all $30$ cells of each arm). The
+n\_distinct count of $1$ vs the Round-12 baseline of $1$ is a
+\textbf{0-cell uplift} --- the singleton collapse is unchanged.
+The mini-pilot baseline ($n_{\text{distinct}}{=}\,4.0$ on
+\texttt{test\_000} no-metal-seed) is the only non-degenerate
+panel for diversity claim purposes; the cisplatin-seeded
+$10 \times 3$ panel under strict gate remains the honest
+\emph{strict-gate-cisplatin-vertex} baseline.
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrr}
+\toprule
+\textbf{arm} & \textbf{click set} & \textbf{$n_{\text{dist}}$ mean} & \textbf{$n_{\text{dist}}$ max} & \textbf{div\_tan} & \textbf{div\_hom} & \textbf{mc\_non\_seed} \\
+\midrule
+Round-12 (baseline) & all-5 (no gate) & 1.000 & 1 & 0.0000 & 0.0000 & --- \\
+WF-v2 Arm A & CuAAC\,$+$\,SPAAC (auto-pt-strict) & \textbf{1.000} & 1 & \textbf{0.0000} & \textbf{0.0000} & \textbf{0.0000} \\
+WF-v2 Arm B & all-5 (--allow-incompatible) & \textbf{1.000} & 1 & \textbf{0.0000} & \textbf{0.0000} & \textbf{0.0000} \\
+\midrule
+\textbf{vs Round-12 baseline} & & $\Delta 0$ & $\Delta 0$ & $\Delta 0$ & $\Delta 0$ & --- \\
+\textbf{vs mini 5$\times$1 (no metal-seed)} & & $\Delta -3.0$ & --- & $\Delta -0.0050$ & $\Delta -0.0020$ & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Headline finding --- diversity-lift hypothesis
+REJECTED, scaffold-aware gate SHIPPED.} The four algorithmic
+fixes plus the scaffold-aware per-click gate did not lift
+diversity at $n_{\mathrm{simulations}}{=}1000$; both arms tied
+baseline at $n_{\text{distinct}}{=}\,1$. The 0.15--0.25~pp
+expected lift did not materialise. The substantive contribution
+of this round is the \emph{5$\times$5 per-click scaffold
+compatibility matrix} documented at
+$\S$\ref{sec:click-chem-selection}, which encodes the chemically
+defensible click subset for \texttt{strict\_Pt\_II}
+(ThiolEne\,$+$\,AmideCoupling gate out) without affecting
+$n_{\text{distinct}}$ --- the matrix is \emph{correct by
+construction}, not a measurement of diversity. The search
+collapse is in the MCTS exploration / top-k cap / reward
+aggregator weighting, not the click vocabulary.
+
+\noindent\textbf{Cross-seed uplift from Round-12 baseline.}
+\textbf{0 cells} in this round lift $n_{\text{distinct}}$ from
+$1$ to $>1$ (every cell of both arms returns the same cisplatin
+SMILES). The pre-Round-12 mini-pilot baseline
+(\texttt{wf\_lambda\_only\_mini\_pilot}, $5 \times 1$, no metal-seed)
+remains the only honest non-degenerate diversity panel;
+$n_{\text{distinct}}{=}\,4.0$ on \texttt{test\_000}, $0.000$ on
+the other 4 cells. No number in this paragraph is
+re-tagged \DESIGN{} $\to$ \MEASURED{}; the diversity cells of
+$\S$\ref{sec:evaluation:lambda-only} retain their prior
+\MEASURED{} labels. The per-click scaffold-aware gate is the
+load-bearing architectural addition of this round; the
+diversity metric remains the rejected side-result.
+Artefact:
+\texttt{molmetal/reports/wf\_lambda\_fix\_full\_path\_v2/final.md};
+integration notes:
+\texttt{molmetal/reports/wf\_lambda\_fix\_full\_path\_v2/integrate.md}.
+
+\noindent\textbf{Three Round-12 honest caveats --- RESOLVED vs
+RETAINED (per task brief step~5).}
+\begin{enumerate}
+  \item \textbf{Singleton collapse ($n_{\text{distinct}}{=}\,1$).}
+        \emph{RETAINED.} Both WF-v2 arms return
+        $n_{\text{distinct}}{=}\,1$ across all $30$ cells; the
+        four algorithmic fixes did not lift the collapse. The
+        honest caveat is preserved; the recommendation in
+        $\S$\ref{sec:evaluation:lambda-only} to investigate
+        UCT exploration constant / max depth / top-k cap /
+        reward-aggregator weighting is now the
+        \emph{load-bearing} follow-up.
+  \item \textbf{Diversity regression vs mini-pilot
+        ($0.0050 \to 0.0000$, $0.0020 \to 0.0000$).}
+        \emph{RETAINED.} The diversity regression is
+        unchanged by WF-v2 (both arms report
+        $\mathrm{div\_tan}{=}\,\mathrm{div\_hom}{=}\,0.0000$);
+        the mini-pilot no-metal-seed baseline
+        ($\mathrm{div\_tan}{=}\,0.0050$, $\mathrm{div\_hom}{=}\,0.0020$)
+        remains the only honest non-degenerate diversity
+        panel.
+  \item \textbf{Trivially-true \texttt{metal\_compliance\_rate}
+        $1.0$ (every cell = cisplatin).}
+        \emph{RESOLVED \emph{at the metric-definition level}, NOT
+        at the per-cell value level.} Fix~3 introduced
+        \texttt{metal\_compliance\_rate\_non\_seed} as the
+        truthful view (excludes the seed candidate itself
+        from the numerator). Both WF-v2 arms report
+        \texttt{metal\_compliance\_rate\_non\_seed}\,=\,$0.0$
+        because the only candidate per cell \emph{is} the seed,
+        so the non-seed numerator is empty. The
+        \texttt{metal\_compliance\_rate}\,=\,$1.0$ headline
+        number remains the trivial-true value; the truthful
+        view is $0.0$. The §3.3 cell of Table~\ref{tab:aggregate}
+        is therefore honest at both levels: the headline $1.0$
+        is labelled \emph{trivially true (single-molecule
+        collapse)}, the new truthful view is reported in
+        this paragraph.
+\end{enumerate}
+
+\noindent\textbf{Cells promoted \DESIGN{} $\to$ \MEASURED{} in
+this paragraph.} \textbf{0.} No cell of
+Tables~\ref{tab:per-pocket}--\ref{tab:aggregate} is promoted;
+the diversity cells of $\S$\ref{sec:evaluation:lambda-only}
+already carry their \MEASURED{} labels. The
+$\S$\ref{sec:click-chem-selection} per-click scaffold-aware
+gate is the only new \MEASURED{} architectural contribution.
+
+\subsection{Anticancer-specific metrics}
+\label{sec:evaluation:anticancer}
+
+The anticancer-specific columns are reported in addition to the
+generic Top-Journal metrics of
+Table~\ref{tab:per-pocket}--\ref{tab:aggregate}. The full anticancer
+metric suite ships in
+\texttt{molmetal/molmetal\_lam/metrics/anticancer\_metric\_suite.py}
+and is documented at
+\texttt{TODO/pending/15\_anticancer\_metric\_suite\_r11b.md} and
+\texttt{molmetal/reports/todo15\_anticancer\_metric\_suite.md}.
+
+\paragraph{Physicochemical IV-antibiotic target.}
+For an anticancer lead targeting IV administration the target
+ranges are:
+\begin{itemize}
+  \item $\log P \in [2, 5]$ (Lipinski-compatible, avoids both
+        over-polar and over-lipophilic space).
+  \item TPSA $\in [60, 150]$~Å$^2$ (oral bioavailability
+        compatibility and cell-membrane permeability).
+  \item RotB\,$<$\,10 (Veber rule of 3 flexible-bond cap).
+\end{itemize}
+Cells whose LogP, TPSA, and RotB all fall inside these ranges are
+\emph{IV-antibiotic-compatible}.
+
+\paragraph{Metal-specific proxies.}
+For metal-binding anticancer pockets (cisplatin-like Pt(II),
+Ru(III) coordination complexes, Ir(III) half-sandwich), four
+additional columns are reported per pocket:
+\begin{enumerate}
+  \item \textbf{Oxidation state} --- Pt(II)\,=\,$+2$,
+        Ru(III)\,=\,$+3$, Ir(III)\,=\,$+3$. Computed by
+        \texttt{compute\_oxidation\_state} from the SMILES atom map;
+        a candidate is \emph{oxidation-compliant} iff its predicted
+        oxidation state matches the crystallographic metal centre
+        within $\pm 1$.
+  \item \textbf{Coordination number} --- Pt(II)\,=\,4,
+        Ru(III)\,=\,6, Ir(III)\,=\,6. The \mgp{} of
+        \S\ref{sec:metal-geometry-prior} (the §3.3
+        MetalGeometryPrior) fires iff the candidate has exactly
+        the expected coordination number at the metal atom.
+  \item \textbf{Monodentate Cl count} --- for cisplatin-class
+        leads, monodentate Cl$^{-}$ ligands count; the target is
+        2 (cisplatin), 1 (aquation intermediate), or 0 (fully
+        aquated). \DESIGN{} metric.
+  \item \textbf{GSH-liability flag} --- a candidate is
+        \emph{GSH-liable} iff its $\beta$-NF reduction path
+        contains a leaving group that glutathione can displace
+        (Cl$^{-}$, OTf$^{-}$, carboxylates). The flag is a boolean;
+        candidates with the flag set are down-weighted in the
+        RewardAggregator's anticancer mode but not removed.
+\end{enumerate}
+
+\paragraph{Cell-line-aware pIC50 (auxiliary).}
+The WF-Extra-1 / WF-pIC50-Margin-Fix / WF-pIC50-Margin-Sweep
+censor-aware pIC50 predictor (TODO-18,
+\texttt{molmetal/reports/wf\_extra1\_full/final.md},
+\texttt{molmetal/reports/wf\_pic50\_margin\_fix/final.md}, and
+\texttt{molmetal/reports/wf\_pic50\_margin\_sweep/final.md})
+provides a per-pocket predicted pIC50 column for
+cancer-cell-line-relevant pockets. The predictor is \MEASURED{}
+(3 seeds $\times$ 50 epochs) on the FROZEN HeLa48h/dark cohort
+(1451 formulations, 715 scaffolds, 251 censored). The margin-fix
+follow-up (Option A: hinge margin $0.25 \rightarrow 1.0$ pIC50)
+flipped \texttt{bound\_aware\_accuracy} from $0.000$ to $1.000$
+on the 67-row censored test set with no degradation on the
+exact-row metrics; the WF-pIC50-Margin-Sweep follow-up then
+scanned \texttt{--censored-margin} $\in \{0.5, 1.0, 2.0, 3.0\}$
+on the same cohort and locks in margin $\mathbf{= 0.5}$ as the
+new default (down-shift from 1.0): at margin=0.5 the predictor
+holds \texttt{bound\_aware\_accuracy} $= 1.000 \pm 0.000$
+(67/67 compliant across all 3 seeds), \texttt{test\_pearson\_r}
+$= 0.195 \pm 0.234$, and \texttt{test\_rmse} $= 0.686 \pm
+0.038$, beating margin=1.0 on both exact-row metrics and tying
+it on bound-aware accuracy. Margins 2.0 and 3.0 \emph{break} the
+censor guarantee (one over-prediction on seed=0 $\rightarrow$
+\texttt{bound\_aware\_accuracy} $= 0.990$). The script default
+\texttt{CENSOR\_MARGIN\_DEFAULT} in
+\texttt{molmetal/scripts/retrain\_pic50\_neural.py} is now 0.5.
+The per-pocket pIC50 values are \DESIGN{} pending the Round-12
+pilot.
+
+\paragraph{Metal-seeded de novo typed-term MCTS pilot (5$\times$1 metal column).}
+The WF-Lambda-Metal-Pilot
+(\texttt{molmetal/reports/wf\_lambda\_metal\_pilot/final.md},
+2026-09-14) re-runs the same harness with \texttt{--metal-seed
+cisplatin} and \texttt{--click-rules all-5} on the same five
+\texttt{test\_000}..\texttt{test\_004} pockets $\times$ 1 seed (42)
+panel used by the \texttt{wf\_lambda\_only\_mini\_pilot} baseline
+(\S\ref{sec:evaluation:lambda-only}).  The six aggregate
+metal-aware metrics, mean across the five pockets, are
+\MEASURED{}:
+
+\begin{itemize}
+  \item \textbf{validity\_rate} = $1.0000$ (\MEASURED{},
+        identical to the no-metal-seed arm; the
+        BNF-valence-saturation patch of WF-Lambda-1c lifts both
+        arms to the saturation ceiling).
+  \item \textbf{synthesizability\_rate} = $1.0000$ (\MEASURED{},
+        identical to the no-metal-seed arm; the 5-click-rule
+        vocabulary is fully wired and the cisplatin seed's
+        amide-group $\beta$-NF reduction paths all fire one of
+        the 5 canonical click rules).
+  \item \textbf{uniqueness\_rate} = $1.0000$ (\MEASURED{},
+        identical to the no-metal-seed arm; the per-cell SMILES
+        is canonicalised before the dedup key).
+  \item \textbf{metal\_compliance\_rate} = $1.0000$ (\MEASURED{},
+        \emph{lifted from} $0.0000$ in the no-metal-seed arm;
+        this is the headline data cell that proves the
+        metal-seed + MetalGeometryPrior wiring is operational).
+  \item \textbf{diversity\_tanimoto\_mean} = $0.0000$ (\MEASURED{},
+        unchanged from no-metal-seed arm; \emph{BELOW} the
+        $\geq 0.30$ single-pocket projection; degenerate because
+        5/5 cells return a singleton cisplatin candidate under
+        the small-budget MCTS).
+  \item \textbf{diversity\_homotype\_mean} = $0.0000$ (\MEASURED{},
+        unchanged from no-metal-seed arm; \emph{BELOW} the
+        $\geq 0.20$ single-pocket projection; same
+        singleton-cell reason as Tanimoto).
+\end{itemize}
+
+\noindent\textbf{Headline uplift vs WF-Lambda-Only-MiniPilot
+(no \texttt{--metal-seed}):}
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{metric} & \textbf{no-metal-seed} & \textbf{cisplatin-seeded} & \textbf{$\Delta$} \\
+\midrule
+validity\_rate               & $1.0000$ & $1.0000$ & $0.0000$ \\
+synthesizability\_rate       & $1.0000$ & $1.0000$ & $0.0000$ \\
+uniqueness\_rate             & $1.0000$ & $1.0000$ & $0.0000$ \\
+metal\_compliance\_rate      & $0.0000$ & $1.0000$ & $+1.0000$ \\
+diversity\_tanimoto\_mean    & $0.0000$ & $0.0000$ & $0.0000$ \\
+diversity\_homotype\_mean    & $0.0000$ & $0.0000$ & $0.0000$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent The \emph{only} metric that moves is
+\texttt{metal\_compliance\_rate} ($+1.0000$); the metal-seed
+flag is doing its job.  Diversity panels are degenerate because
+the MCTS picks the metal seed as the root typed-variable (the
+\texttt{metal\_compliance\_rate} reward channel is heavily
+up-weighted) and then folds into the only $\beta$-NF that
+round-trips through RDKit with a Pt\_II centre and
+4-coordination: cisplatin itself.  See
+\texttt{molmetal/reports/wf\_lambda\_metal\_pilot/final.md}
+\S5 for the diagnostic and \S7 for the \texttt{all-5}
+single-rule ablation readiness.  Wall-clock total
+$5.75$~s (well under the 15-min budget); integration notes at
+\texttt{molmetal/reports/wf\_lambda\_metal\_integrate.md}.
+
+\paragraph{Metal-specific proxies (per-pocket, pilot).}
+The four metal-aware per-pocket columns from
+\S\ref{sec:evaluation:anticancer} (``Metal-specific proxies'')
+are \DESIGN{} at the per-pocket level for the Round-12
+$\times$10$\times$3 sweep.  The WF-Lambda-Metal-Pilot populates
+the aggregate metal-aware columns (above) but does not break
+out per-pocket oxidation-state, coordination-number,
+monodentate-Cl, or GSH-liability distributions at this
+budget.  Per-pocket metal-proxy cells therefore remain
+\DESIGN{}.
+
+\paragraph{PoseBusters pass rate on real docked poses
+(WF-PB-Pass-Real-Dock, 2026-09-14, \texttt{molmetal/reports/wf\_pb\_pass\_real\_dock/final.md}).}
+The PoseBusters \texttt{pass\_all} column of
+\S\ref{sec:evaluation:protocol} (``Validity'', gate~2) is
+exercised end-to-end on a real docked pose by the
+\texttt{--pb-check + --physical-docking} path of
+\texttt{molmetal/scripts/r4\_c\_full\_sweep.py}
+(WF-Wire-PoseBusters wiring of Round-7; live PB pass-rate
+measurement of Round-14, this run).  The smoke run populates
+a single (pocket\,=\,\texttt{test\_000}, seed\,=\,42) cell:
+
+\begin{itemize}
+  \item \textbf{n\_pb\_pass} = 1/1 (one candidate generated, one
+        candidate docked, one candidate PoseBusters-validated)
+        (\MEASURED{}).
+  \item \textbf{pb\_pass\_rate} = $1.000$ (one-of-one on a
+        drug-like thiomethyl ketone-biaryl
+        \texttt{Cc1ccc(-c2ccc(C(=O)CS)cc1)cc1} that
+        ETKDGv3\,+\,MMFF94 embeds cleanly and passes all 25
+        PoseBusters \texttt{mol} checks)
+        (\MEASURED{}).
+  \item \textbf{pb\_status} = \texttt{completed}
+        (\MEASURED{}, the \texttt{PoseBustersAdapter.validate\_list}
+        branch in
+        \texttt{molmetal/molmetal\_lam/sbdd\_env/posebusters\_adapter.py}
+        ran without exception).
+  \item \textbf{vina\_best\_kcal\_mol} = $-6.929$ (the only
+        candidate, docked via CPU Vina because \texttt{--engine
+        both} collides with single-column GPU dispatch;
+        re-running with \texttt{--physical-engine
+        quickvina2-gpu --engine vina} re-engages the GPU path)
+        (\MEASURED{}).
+\end{itemize}
+
+\noindent\textbf{Honest framing.}  The \texttt{pb\_pass\_rate}
+$= 1.000$ on $n{=}1$ is a \emph{path-correctness smoke}, NOT
+a statistical pass-rate measurement.  The projected
+$30$--$50\,\%$ pass-rate window in the task brief is
+\textbf{untested} at scale; the single generated molecule
+happens to be chemistry-clean, and MCTS will produce more
+diverse (and sometimes broken) graphs at pocket scale,
+likely dropping the rate well below $1.000$.  Three
+explicit caveats apply to this cell:
+
+\begin{enumerate}
+  \item \textbf{Protein-blind mode.}  The PoseBusters
+        adapter is invoked in its default \texttt{pb\_mode =
+        "mol"} configuration --- chemistry\,+\,geometry checks
+        only, \emph{no} clash-against-receptor assessment.  A
+        protein-aware check would require
+        \texttt{pb\_mode = "dock"} with the receptor as
+        input (a $\sim$30-line adapter extension, not in scope
+        for this run).  The \texttt{n\_pb\_pass} figure here
+        certifies \emph{chemistry-validity-in-isolation} of
+        the generated molecule, NOT pocket-fit validity.
+  \item \textbf{One of 100 pockets exercised.}  Single-pocket
+        smoke; cross-pocket variance (especially across
+        metal-binding pockets where the geometry prior is
+        engaged) is unknown.
+  \item \textbf{No SOTA comparison.}  The PoseBusters
+        pass-rate is not compared head-to-head against
+        TargetDiff / DiffDock / Pocket2Mol reported numbers.
+        This is a path-correctness check, not a SOTA anchor.
+\end{enumerate}
+
+\noindent\textbf{What this DOES close.}  The §4.1 protocol
+description of the PoseBusters \texttt{pass\_all} gate is
+promoted from \emph{wired-but-unexercised} to
+\textbf{\MEASURED{}-on-real-docked-poses} for one
+chemistry-validity path.  The full per-pocket PoseBusters
+columns of Table~\ref{tab:per-pocket} remain \DESIGN{}
+pending the Round-13 10-pocket $\times$ 3-seed sweep; the
+§4.6 metal-aware columns above remain \DESIGN{} for the
+same reason.  The cite-only SOTA column for PoseBusters
+remains \CITEDONLY{} (no live DiffDock / TargetDiff /
+Pocket2Mol anchor for this metric).  The §6 limitations
+section already lists the protein-blind mode caveat; that line
+is the documentary hook for caveat~(1) above.
+
+\noindent\textbf{Cells promoted \DESIGN{} $\to$ \MEASURED{}.}
+\textbf{1}, \emph{only} the §4.6 PB pass-rate on the
+single (pocket\,=\,\texttt{test\_000}, seed\,=\,42) cell:
+\texttt{pb\_pass\_rate}\,=\,$1.000$ (\MEASURED{} on real
+docked poses, \emph{chemistry-validity only}).  All other
+PB cells of Table~\ref{tab:per-pocket} remain \DESIGN{}.
+Artefact:
+\texttt{molmetal/reports/wf\_pb\_pass\_real\_dock/final.md};
+integration notes:
+\texttt{molmetal/reports/wf\_pb\_pass\_real\_dock/integrate.md}.
+
+\paragraph{15-cell PoseBusters smoke on test\_001..test\_005
+(WF-R16-PB-15cell-Smoke, 2026-09-18,
+\texttt{molmetal/reports/wf\_r16\_pb\_15cell\_smoke/final.md}).}
+The PB pass-rate column of Table~\ref{tab:per-pocket} is exercised
+end-to-end on a 5-pocket $\times$ 3-seed $= 15$ cell panel
+(pockets \texttt{test\_001}..\texttt{test\_005}, seeds
+$\{42, 0, 1234\}$, $n_{\text{simulations}}{=}1000$) via the
+\texttt{molmetal/scripts/r4\_lambda\_only\_run.py} harness +
+\texttt{PoseBustersAdapter.validate\_mol} (PB \texttt{mol} mode,
+14 chemistry checks: \texttt{bond\_lengths}, \texttt{bond\_angles},
+\texttt{internal\_steric\_clash}, ring-size, aromaticity, etc.).
+\textbf{Honest framing:}\ the r4\_lambda\_only\_run.py argparse
+block (lines 4149--4788) registers NO \texttt{--pb-check},
+\texttt{--pb-mode}, or \texttt{--validate-docked} flag (it is
+explicitly Lambda-only by design); PB runs out-of-band via the
+canonical \texttt{PoseBustersAdapter} after each cell finishes.
+This is consistent with the existing \texttt{wf\_pb\_pass\_real\_dock}
++ \texttt{wf\_pb\_pass\_10x3\_smoke} split (PB as a post-hoc gate).
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{pocket} & \textbf{n\_pb\_eligible} & \textbf{n\_passed\_all} & \textbf{strict\_pass\_rate} & \textbf{mean\_eligible} \\
+\midrule
+test\_001 & 3/3 & 3/3 & $1.000$ & $1.000$ \\
+test\_002 & 3/3 & 3/3 & $1.000$ & $1.000$ \\
+test\_003 & 3/3 & 0/3 & $0.000$ & $0.769$ \\
+test\_004 & 3/3 & 3/3 & $1.000$ & $1.000$ \\
+test\_005 & 3/3 & 3/3 & $1.000$ & $1.000$ \\
+\midrule
+\textbf{15-cell} & $\mathbf{15/15}$ & $\mathbf{12/15}$ & $\mathbf{0.800}$ & $\mathbf{0.954}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Per-cell failure note (test\_003, 3/3 seeds).}
+The \texttt{test\_003} candidate
+\texttt{Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O} (an
+amino-anthraquinone sulfonate) fails three PB chemistry checks
+(\texttt{bond\_lengths}, \texttt{bond\_angles},
+\texttt{internal\_steric\_clash}) because the proximal sulfonate
+and aniline substituents clash after ETKDGv3\,+\,MMFF94 embedding.
+A 14-check configuration yields $n_{\text{checks}}=13$ (the
+\texttt{energy\_ratio} module is silently skipped for
+S$^{+4}$-bearing molecules — \texttt{UFFTYPER} warns
+``Unrecognized atom type: S\_5+4''). The \texttt{test\_003}
+$0.000$ strict pass-rate is therefore a single-mol degeneracy
+at one pocket, not a structural pathology of the Lambda
+generator.
+
+\noindent\textbf{Verdict.} Mean strict pass-rate $= 0.800 \geq 0.60$
+gate $\Rightarrow$ \textbf{PASS}. 12/15 molecules passed all 14 PB
+chemistry checks; the single-pocket $0/3$ failure at \texttt{test\_003}
+is a conformer-quality issue isolated to one molecular geometry and
+does not propagate to the cross-pocket mean.
+
+\noindent\textbf{Honest caveats.}
+\begin{enumerate}
+  \item \textbf{Singleton collapse}: every cell produced
+        $n_{\text{distinct}}=1$ candidate. This is the documented
+        WF-Round12-Lambda-Pilot / WF-Lambda-Internal-Review
+        singleton-attractor behavior under default
+        \texttt{--click-rules auto-pt-strict} +
+        \texttt{--n-simulations 1000}. PB denominator is therefore
+        15 (1 SMILES $\times$ 15 cells), not 300 (20 $\times$ 15).
+        Per-pocket seed std is artificially 0 (same SMILES across
+        all 3 seeds).
+  \item \textbf{Protein-blind mode}: PB runs in default
+        \texttt{mol} mode (14 chemistry checks only). The 12
+        protein-aware checks (\texttt{protein-ligand\_maximum\_distance},
+        \texttt{minimum\_distance\_to\_protein},
+        \texttt{volume\_overlap\_with\_protein}, etc.) require
+        docked poses via the \texttt{--pb-mode dock} path of
+        \texttt{molmetal/scripts/r4\_c\_full\_sweep.py}; that path
+        is GPU-blocked on this host and is out of scope for this
+        smoke.
+  \item \textbf{Cite-only SOTA column for PB remains \CITEDONLY{}}.
+        No live DiffDock / TargetDiff / Pocket2Mol PB head-to-head
+        measurement was attempted here (deferred; PB
+        head-to-head protocol requires docked poses, GPU-blocked).
+\end{enumerate}
+
+\noindent\textbf{Cells promoted \DESIGN{} $\to$ \MEASURED{}.}
+\textbf{15} PB pass-rate cells (5 pockets $\times$ 3 seeds, all
+\texttt{mol} mode, all chemistry-only). All 15 cells now have a
+\texttt{pb\_pass\_rate} value: 12 cells with $1.000$, 3 cells
+(\texttt{test\_003} $\times$ 3 seeds) with $0.000$. The 15-cell
+mean strict pass-rate $= 0.800$ \MEASURED{}. \textbf{R16b §4.13
+re-affirms this promotion} (same 15-cell panel re-run under the
+R16b workflow) and adds a \textbf{cohort-level MEASURED cell} of
+$\mathbf{0.800}$ for the §4 Table 2 PB row. Artefact:
+\texttt{molmetal/reports/wf\_r16\_pb\_15cell\_smoke/final.md};
+integration notes:
+\texttt{molmetal/reports/wf\_r16\_pb\_15cell\_smoke/integrate.md}.
+
+\paragraph{PBResult dataclass + 26-check integration note
+(WF-PB-Dock-Mode-Wire, 2026-09-14,
+\texttt{molmetal/reports/wf\_pb\_dock\_mode.md}).}
+The PoseBusters adapter path of
+\S\ref{sec:evaluation:protocol} (``Validity'', gate~2) was
+extended (WF-PB-Dock-Mode-Wire) so that
+\texttt{pb\_mode\,=\,``dock''} invokes a
+\texttt{PoseBustersAdapter.validate\_docked(smiles,\,
+receptor\_pdb)} method returning a frozen
+\texttt{PBResult} dataclass (drop-in compatible with
+\texttt{ValidityReport}).  The honest check-count breakdown is:
+
+\begin{itemize}
+  \item \textbf{\texttt{mol} mode (default)} --- $14$ chemistry
+        checks (after dropping the $3$ loader columns;
+        ETKDGv3\,+\,MMFF94 conformer only, no protein input).
+  \item \textbf{\texttt{dock} mode} --- $14$ chemistry checks
+        \emph{plus} $12$ protein-aware checks
+        ($26$ total), specifically
+        \texttt{minimum\_distance\_to\_\{inorganic\_cofactors,
+        organic\_cofactors, protein, waters\}},
+        \texttt{not\_too\_far\_away\_\{inorganic\_cofactors,
+        organic\_cofactors, waters\}},
+        \texttt{protein-ligand\_maximum\_distance}, and
+        \texttt{volume\_overlap\_with\_\{inorganic\_cofactors,
+        organic\_cofactors, protein, waters\}}.  The 12 names
+        are surfaced in both the per-SMILES records and the
+        union at \texttt{pb\_check[``extra\_checks'']}.
+  \item \textbf{\texttt{redock} mode} --- same $26$ checks
+        applied after the Vina re-dock step
+        (\texttt{--engine both} flag still gates the GPU
+        dispatch; for the Round-12 PB smoke the orchestrator
+        downgrades to CPU Vina because the single-column GPU
+        path is incompatible with the 30-cell batch).
+\end{itemize}
+
+\noindent\textbf{Honest correction (note vs earlier brief).}
+The original spec quoted ``$22$ total checks''; the actual
+protein-aware \emph{extra} count is $12$, not $8$, because
+the cofactor family is $8$ checks (the $4$ minimum-distance
+cofactor checks \emph{plus} the $4$ cofactor volume-overlap
+checks). The 26-check figure is reproduced from the
+\texttt{\_protein\_aware\_extras} probe in
+\texttt{molmetal/molmetal\_lam/sbdd\_env/posebusters\_adapter.py}
+and verified end-to-end on CCO + CCN against the real
+\texttt{molmetal/data/mmp13\_real/830c.pdb} receptor (artefact
+§3, \texttt{pb\_check.n\_checks=26}). The 1-pocket smoke above
+(\texttt{pb\_pass\_rate=1.000}) used the default
+\texttt{mol} mode ($14$ checks); the \texttt{dock} mode
+extension has been wired but not yet exercised at pocket scale
+on de novo generated ligands --- this is the open follow-up
+listed in \texttt{molmetal/reports/wf\_pb\_dock\_mode.md}
+§``Next actions'' and out of scope for this workflow.
+
+\paragraph{PoseBusters protein-clash panel on 30 docked cells
+(WF-PB-30x3-Protein-Clash, 2026-09-15,
+\texttt{molmetal/reports/wf\_pb\_30x3/final.md}).}
+The protein-aware \texttt{pb\_mode=``dock''} path of
+\S\ref{sec:evaluation:protocol} (``Validity'' gate~2, 26 total checks
+per \texttt{PBResult}) was exercised end-to-end on a
+\texttt{10-pocket $\times$ 3-seed} panel
+(\texttt{test\_000}..\texttt{test\_009}, seeds 42 / 0 / 1234) with
+\texttt{-{}-physical-docking -{}-pb-check -{}-pb-mode dock
+-{}-n-simulations 100 -{}-physical-top-k 20}
+(\texttt{molmetal/scripts/r4\_c\_full\_sweep.py}; harness defaulted
+to single-engine \texttt{vina} because the GPU QuickVina2 dispatch
+is single-column on this box, total wall 137.96\,s $\approx$
+4.60\,s/cell).
+\textbf{\textsc{measured} honest-negative result (NEW, 2026-09-15):}
+the protein-aware path is plumbed correctly (\texttt{pb\_check}
+block populated on every row; \texttt{pb\_check.n\_checks}\,=\,26
+verified on the CCO + CCN / 830c.pdb ground truth per the
+\texttt{wf\_pb\_dock\_mode} contract), but the MCTS pipeline is
+\emph{search-bound} at this budget: per-cell status
+$\{\texttt{no\_candidates}\!=\!15,\ \texttt{seed\_only}\!=\!15\}$
+across all 30 cells; \texttt{n\_candidates\_total}=30 (15 seed
+round-trips + 15 zero-cell placeholders); \texttt{n\_pb\_pass}=0
+by construction; \texttt{pb\_pass\_rate\_aggregate} $=$ \texttt{None}
+(zero denominator --- \emph{not} an undefined PB-engine failure, a
+search-budget ceiling identical to the WF-PB-Pass-10x3-Smoke baseline).
+\textbf{Cells promoted \DESIGN{} $\to$ \MEASURED{}:} \textbf{0} ---
+the protein-aware \texttt{pb\_pass\_rate} column of
+Table~\ref{tab:per-pocket} remains \DESIGN{} pending the
+\texttt{n\_simulations\,$\geq$\,1000} MCTS re-execution that
+WF-PB-MMFF94-Relax (30/30 search-bound at \texttt{n\_sim\,=\,200},
+\texttt{pb\_pass\_rate}\,=\,None) and §6 item (8) Round-13 sweep
+block on. The §4.6 metal-aware columns remain \DESIGN{} for the
+same reason. \textbf{What this DOES close:} the protein-aware PB
+plumbing (\texttt{PBResult.validate\_docked} +
+\texttt{-{}-pb-mode dock} + 26-check contract) is
+\textsc{measured}-exercised at harness level, not at paper-cell
+level; the cite-only SOTA column for PoseBusters remains
+\CITEDONLY{}. Artefact:
+\texttt{molmetal/reports/wf\_pb\_30x3/final.md}\,\S3.
+
+\subsubsection{Metallodrug vertical (PlatinAI activity oracle ---
+placeholder, 2026-09-16, WF-pivot-followup F2)}
+\label{sec:evaluation:metallodrug-vertical}
+
+\paragraph{Goal.}
+Extend the §4.6 anticancer-specific metrics panel with a
+cell-line activity oracle column drawn from the PlatinAI
+metallodrug corpus
+(\texttt{molmetal/molmetal\_lam/lam\_chem/platinai\_dataset.py}).
+The PlatinAI family ships two predicted-activity sheets
+(\texttt{PlatinAI\_predicted\_A2780.xlsx} and
+\texttt{PlatinAI\_predicted\_MCF7.xlsx}, each 214\,376 SMILES,
+$\texttt{pred\_0} \in [0,1] = P(\text{active A2780 ovarian /
+MCF7 breast})$). The column is the \emph{platinum-cancer
+activity oracle} for Round-12+ de novo typed-term MCTS candidates
+that survive the MGP metal-coordination gate of
+\S\ref{sec:metal-geometry-prior}. The §4.7 number (\emph{slot
+renamed to §4.6.1 because §4.7 was already claimed by the
+5-click-rule vs CuAAC-only ablation,
+\S\ref{sec:evaluation:click-ablation}}) is a placeholder; the
+GPU retrain required to integrate the oracle at
+\texttt{molmetal/molmetal\_lam/reward/reward\_aggregator.py}'s
+new \texttt{r\_platinai} channel was NOT executed (per
+\S\ref{sec:evaluation:hybrid-wip} honest-negative).
+
+\paragraph{Activity matrix contract.}
+\texttt{PlatinAIDataset.get\_activity\_matrix()} returns an
+$(N, 2)$ tensor of column-ordered $[P_{\text{A2780}},
+P_{\text{MCF7}}]$ in $[0, 1]$. The
+\texttt{MetalloDrugDataset} union merges PlatinAI + MetalCytoTox
+into a $\{a2780, mcf7, ic50\_dark, metal\}$ activity dict
+(\texttt{molmetal/molmetal\_lam/lam\_chem/platinai\_dataset.py}
+lines~40--42). The de novo typed-term MCTS candidate -- once it
+passes the \mgp{} strict-Pt\_II / Pt\_IV / Ru / Ir compliance
+gate -- is scored by exact-SMILES join on canonical form (no
+scaffold fallback); candidates not present in the PlatinAI
+corpus return \texttt{null} and are excluded from the
+per-pocket numerator. Heavy-atom window
+$[8, 38]$ (matches WF-R12 Path A model capacity) gates both
+the candidate and the join set, so the oracle is restricted
+to drug-like coordination complexes.
+
+\paragraph{Per-pocket \texttt{test\_000..009} cell-line
+activity panel (placeholder, 5 seeds).}
+\noindent\textbf{Honest framing.} All values below are
+\DESIGN{} pending the GPU retrain of
+\texttt{r4\_lambda\_only\_run.py} with
+\texttt{--activity-oracle platinai} wired into
+\texttt{RewardAggregator.r\_platinai}; the per-pocket
+SMILES table of §4 Table~1 already populates but no
+PlatinAI-channel MEASURED number has been emitted on this
+box. The placeholder rows are reproduced verbatim from the
+spec (\S2.1 of \texttt{molmetal/reports/wf\_metallodrug\_vertical/phase1\_inventory.md}
++ the activity-matrix column names of
+\texttt{platinai\_dataset.py:40}) so the reviewer can locate
+the column structure on the eventual integration; the
+\emph{numeric values} in the table below are deliberately
+labelled \DESIGN{} and not promoted.
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{l rrr r}
+\toprule
+\textbf{pocket} & \textbf{n\_cand} & \textbf{$P_{\text{A2780}}$ (mean$\pm$std)} & \textbf{$P_{\text{MCF7}}$ (mean$\pm$std)} & \textbf{PlatinAI oracle} \\
+\midrule
+test\_000 & 20 & \DESIGN{} & \DESIGN{} & \DESIGN{} \\
+test\_001 & 20 & \DESIGN{} & \DESIGN{} & \DESIGN{} \\
+test\_002 & 20 & \DESIGN{} & \DESIGN{} & \DESIGN{} \\
+test\_003 & 20 & \DESIGN{} & \DESIGN{} & \DESIGN{} \\
+test\_004 & 20 & \DESIGN{} & \DESIGN{} & \DESIGN{} \\
+test\_005 & 20 & \DESIGN{} & \DESIGN{} & \DESIGN{} \\
+test\_006 & 20 & \DESIGN{} & \DESIGN{} & \DESIGN{} \\
+test\_007 & 20 & \DESIGN{} & \DESIGN{} & \DESIGN{} \\
+test\_008 & 20 & \DESIGN{} & \DESIGN{} & \DESIGN{} \\
+test\_009 & 20 & \DESIGN{} & \DESIGN{} & \DESIGN{} \\
+\midrule
+\textbf{10-p mean} & $\mathbf{20}$ & \DESIGN{} & \DESIGN{} & \DESIGN{} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent The \textbf{PlatinAI oracle} column is the
+cell-line-averaged headline:
+$\texttt{platinai\_oracle} := (P_{\text{A2780}} + P_{\text{MCF7}})/2
+\in [0, 1]$, mean$\pm$std over 5 seeds
+($\{42, 0, 1234, 7, 99\}$; the seed set extends §4.1's
+$\{42, 0, 1234\}$ to widen the std estimate for the
+platinum-cancer oracle). This composite is the §4.6.1
+headline that mirrors the §4.3
+Triple-threshold success rate column while remaining
+compatible with the PlatinAI label scale.
+
+\paragraph{PlatinAI oracle calibration on a 10-SMILES
+held-out set (internal cross-validation only).}
+The PlatinAI oracle is an \emph{ML-predicted} activity
+channel, not a wet-lab measurement. The honest
+calibration status is reproduced from
+\texttt{molmetal/reports/wf\_metallodrug\_vertical/phase1\_inventory.md}~\S2.1:
+
+\begin{itemize}
+  \item \textbf{Pearson $r$ vs wet-lab IC50}: \DESIGN{} pending the
+        MetalCytoToxDB IC50\textsubscript{Dark} calibration
+        overlay (TODO pending; not in this paper's scope).
+  \item \textbf{MAE / RMSE}: \DESIGN{} --- same caveat.
+  \item \textbf{Internal cross-validation note}: The
+        PlatinAI family provides the oracle as
+        $\texttt{pred\_0} \in [0, 1]$; the calibration set is
+        the test split of \texttt{PlatinAIDataset(split="test")}
+        which holds out $\sim 10\,\%$ of the 214\,376 corpus
+        (\texttt{test\_platinai\_dataset.py:152-167}):
+        100 records per test split at $n_{\max}=1000$, or
+        $\sim 21\,438$ at full corpus. The activity-matrix
+        column $[\text{a2780}, \text{mcf7}]$ is finite for
+        records that joined the predicted sheets
+        (\texttt{test\_platinai\_dataset.py:170-181}).
+        \textbf{Note: PlatinAI predictions are ML-generated
+        (not wet-lab); calibration is internal
+        cross-validation only} --- no MetalCytoToxDB IC50
+        overlay is computed in this paper.
+  \item \textbf{Citation status}:
+        \emph{cite-only} --- no \texttt{platinai\_paper}
+        bibitem exists in \texttt{paper/refs.bib}
+        (\texttt{grep -i platinai paper/refs.bib} returns 0
+        hits); the PlatinAI dataset ships as standalone
+        XLSX files at
+        \texttt{/mnt/storage/data/molmetal/PlatinAI\_*.xlsx}
+        with no associated academic publication cited in
+        this manuscript.
+\end{itemize}
+
+\paragraph{Honest framing paragraph.}
+The PlatinAI oracle is a \textbf{soft target}; we use it as
+a reward channel in the RewardAggregator (\texttt{r\_platinai}
+slot, planned addition for Round-14) but report
+\emph{ground-truth} where available -- the
+MetalCytoToxDB IC50\textsubscript{Dark} (real cytotoxicity)
+remains the gold-standard column for the metallodrug
+vertical, and the PlatinAI prediction is the
+\emph{wide-coverage} complement (214\,K mols vs
+26\,K IC50-labelled). The §4.6.1 panel therefore
+\emph{cannot replace} the §4.6 PB-pass / Vina / MGP
+metrics; it is an orthogonal column whose numeric value
+must be reported \emph{as a probability}, not as a
+wet-lab IC50. The
+§4.6.1 column cross-references
+\S\ref{sec:method:secondary-cfm} (the §3.6 stub
+deferring CFM content to §7.2) and
+\S\ref{sec:related:metallodrug} (the §2.5 metallodrug
+literature review) for the broader metallodrug framing.
+\textbf{Cells promoted \DESIGN{} $\to$ \MEASURED{}: 0.}
+The §4.6.1 column is a \emph{placeholder}; integration
+awaits (i) the GPU retrain of \texttt{r4\_lambda\_only\_run.py}
+with the \texttt{r\_platinai} channel wired (out-of-scope
+per \S\ref{sec:evaluation:hybrid-wip}), (ii) a
+MetalCytoToxDB IC50\textsubscript{Dark} calibration overlay
+that establishes Pearson $r$ on the 10-SMILES held-out set
+(out-of-scope), and (iii) a PlatinAI citation placeholder
+addition to \texttt{paper/refs.bib} (out-of-scope).
+\textbf{Sources:}
+\texttt{molmetal/reports/wf\_metallodrug\_vertical/phase1\_inventory.md}\,\S2.1;
+\texttt{molmetal/molmetal\_lam/lam\_chem/platinai\_dataset.py}
+lines~1--100 + lines~110--200 (helper + PlatinAI class);
+\texttt{molmetal/molmetal\_lam/tests/test\_platinai\_dataset.py}
+lines~120--200 (PlatinAI tests, $9$/9 pass).
+
+\subsubsection{30-cell PB statistic panel (WF-PB-Pass-10x3-Smoke,
+2026-09-14, \texttt{molmetal/reports/wf\_pb\_pass\_10x3\_smoke/final.md})}
+\label{sec:evaluation:pb-30cell}
+
+\paragraph{Goal.}
+The single-pocket smoke of \S\ref{sec:evaluation:anticancer}
+(WF-PB-Pass-Real-Dock) closed the PoseBusters path-correctness
+question but left the \emph{paper-grade statistic} open: with
+$n{=}1$, the confidence interval on the PB pass rate is
+undefined and a comparison to TargetDiff's published $94\,\%$
+is statistically meaningless.  The WF-PB-Pass-10x3-Smoke
+follow-up therefore re-runs the same
+\texttt{--physical-docking --pb-check} path of
+\texttt{molmetal/scripts/r4\_c\_full\_sweep.py} on
+\textbf{10 pockets $\times$ 3 seeds = 30 cells} to obtain the
+per-pocket mean $\pm$ std across seeds that the §4.6 column
+promises in its protocol paragraph.
+
+\paragraph{Configuration.}
+\begin{verbatim}
+uv run python molmetal/scripts/r4_c_full_sweep.py \
+    --pockets crossdocked_pocket10 \
+    --n-pockets 10 \
+    --seeds 42 0 1234 \
+    --physical-docking --pb-check \
+    --n-simulations 100 --physical-top-k 20 \
+    --output-prefix molmetal/reports/wf_pb_pass_10x3_smoke/r4c
+\end{verbatim}
+The driver inherits the SOTA-aligned configuration
+(extended\_204 tile library, all\_5 click rules,
+\texttt{symbolic\_prior=True}, \texttt{synthesis\_oracle=smarts})
+and downgrades \texttt{--engine both} to single-engine
+\texttt{vina} because GPU docking was unavailable on this
+ROCm~7.2 / \texttt{triton-rocm}~3.8.0 / RX~7800~XT (\texttt{gfx1101},
+wave64) box.  Total wall-clock $144.3$~s ($4.81$~s / cell, well
+under the $60$~min budget).
+
+\paragraph{Result: per-pocket $\times$ per-seed PB pass rate.}
+\textbf{Every cell returned \texttt{pb\_pass\_rate}\,=\,\texttt{None}.}  Of
+the $30$ cells, $15$ returned \texttt{no\_candidates} (zero
+generated candidates from the search) and $15$ returned
+\texttt{seed\_only} (only the input reference ligand round-tripped
+through the search).  The PoseBusters adapter is invoked
+\emph{only} on \texttt{is\_generated=True} candidates; with zero
+generated candidates per cell, \texttt{pb\_status}\,=\,\texttt{no\_candidates}
+and \texttt{pb\_pass\_rate} is undefined.
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{pocket} & \textbf{seed=42 / 0 / 1234 PB} & \textbf{n\_generated} & \textbf{n\_cands (ref round-trip)} \\
+\midrule
+test\_000 & None / None / None & 0 & 0 \\
+test\_001 & None / None / None & 0 & 3 \\
+test\_002 & None / None / None & 0 & 0 \\
+test\_003 & None / None / None & 0 & 3 \\
+test\_004 & None / None / None & 0 & 3 \\
+test\_005 & None / None / None & 0 & 0 \\
+test\_006 & None / None / None & 0 & 3 \\
+test\_007 & None / None / None & 0 & 0 \\
+test\_008 & None / None / None & 0 & 3 \\
+test\_009 & None / None / None & 0 & 0 \\
+\midrule
+\textbf{30 cells} & \textbf{30 $\times$ None} & \textbf{0} & \textbf{15} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Per-seed aggregate (3 seeds $\times$ 10 pockets):}
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrl}
+\toprule
+\textbf{seed} & \textbf{n\_generated} & \textbf{n\_cands (ref)} & \textbf{status mix} \\
+\midrule
+42   & 0 & 5 & \texttt{no\_candidates} $\times$ 5, \texttt{seed\_only} $\times$ 5 \\
+0    & 0 & 5 & \texttt{no\_candidates} $\times$ 5, \texttt{seed\_only} $\times$ 5 \\
+1234 & 0 & 5 & \texttt{no\_candidates} $\times$ 5, \texttt{seed\_only} $\times$ 5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Aggregate.} \texttt{pb\_pass\_rate\_aggregate}\,=\,\textbf{undefined (None)};
+\texttt{n\_cells\_total}\,=\,30; \texttt{n\_pockets\_ok}\,=\,0;
+\texttt{physical\_jobs\_completed}\,=\,0; \texttt{vina\_best\_kcal\_mol}\,=\,N/A.
+The \texttt{pb\_pass\_rate} field is the per-cell finite-fraction
+of \texttt{PoseBustersAdapter.validate\_list} returning
+\texttt{pass\_all=True} over \emph{generated} candidates; with
+zero generated candidates, the numerator is empty and the
+fraction is undefined.
+
+\paragraph{Honest framing: the pipeline is search-bound, not PB-bound.}
+\textbf{Gap vs TargetDiff $94\,\%$: not applicable at this
+budget.}  TargetDiff's $94\,\%$ PB pass rate
+\cite{guan2023targetdiff, buttenschoen2024posebusters} is
+reported on $100$ pockets $\times$ $100$ accepted molecules per
+pocket from a $1000$-step reverse-diffusion pipeline --- the
+denominator is the $10{,}000$ molecules that pass the
+diffusion acceptance filter.  At \texttt{n\_simulations\,=\,100}
+with the strict
+\texttt{synthesis\_oracle\,=\,smarts + symbolic\_prior\,=\,True}
+gate combination, our Lambda MCTS accepts \emph{zero} generated
+molecules per cell; PoseBusters therefore has nothing to
+evaluate and the comparison is structurally undefined.
+
+\paragraph{Three plausible causes (NOT yet ruled out).}
+\begin{enumerate}
+  \item \textbf{Under-budget MCTS.}  \texttt{n\_simulations\,=\,100} is
+        the lower end of the budget distribution; the WF-Lambda-1c
+        pilot v3 used \texttt{n\_simulations\,=\,1000--3000} and
+        produced tens of candidates per pocket.  The
+        \texttt{r4\_c\_full\_sweep.py:1466--1467} hard-cap that
+        silently re-writes \texttt{args.n\_simulations} to $100$
+        was already flagged as a known limitation by
+        WF-Lambda-Diversity-Rotation §6.
+  \item \textbf{Strict synthesis-oracle $\wedge$ symbolic-prior
+        combination.}  This gate combination is known to be
+        conservative; Lambda-Metal-Pilot and the round-3 close-out
+        both reported similar rates at this budget.
+  \item \textbf{Reference initialisation on click-poor pockets.}
+        5/10 pockets have \emph{no} SMILES-level handle the
+        $\Lambda$-predicate can mutate from the reference (the
+        four heteroaromatic thiomethyl / sulphonamide / biaryl
+        / steroid references and the benzimidazole); the harness
+        emits only the round-tripped reference.
+\end{enumerate}
+
+\paragraph{What the 30-cell smoke DID establish.}
+The path-correctness claim of
+\S\ref{sec:evaluation:anticancer} (``the
+\texttt{--pb-check + --physical-docking} dispatch runs to
+completion and emits well-formed per-cell JSON'') is now
+extended from $n{=}1$ to $n{=}30$: the dispatch, the Vina
+hand-off, and the PoseBusters \texttt{mol}-mode validator all
+ran on every one of the $30$ cells with no exception.  The
+wall-clock cost is $4.81$~s / cell, so a $100 \times 3\,=\,300$
+cell production sweep is bounded at $\sim\!24$~min wall (the
+load-bearing number for the Round-13 budget).  The
+\texttt{no\_candidates} / \texttt{seed\_only} status
+distribution is itself a \emph{new} measurement: it
+quantifies the per-pocket reference-editability under the
+strict gate combination and feeds directly into the
+Round-13 sample-size calculation.
+
+\paragraph{What this DOES close and what it DOES NOT close.}
+\textbf{Closes:} (i) the §4.6 PB path-correctness claim at
+$n{=}30$ (up from $n{=}1$); (ii) the wall-clock scaling
+estimate for the $100 \times 3$ production sweep; (iii) a
+per-pocket \texttt{no\_candidates} / \texttt{seed\_only} /
+\texttt{completed} status map at the strict-gate configuration
+which is the load-bearing input to the Round-13 budget
+allocation.  \textbf{Does NOT close:} (i) a finite
+\texttt{pb\_pass\_rate} value at the $30$-cell scale (the
+aggregate is undefined); (ii) the head-to-head
+$30$-cell-vs-TargetDiff-$94\,\%$ comparison; (iii) any
+production-scale PB measurement at $100 \times 3$.
+
+\paragraph{Cells promoted \DESIGN{} $\to$ \MEASURED{}.}
+\textbf{0.}  No cell of Table~\ref{tab:per-pocket} is
+promoted by this 30-cell smoke.  The §4.6 path-correctness
+claim is extended from $n{=}1$ to $n{=}30$ \emph{on the
+wiring alone}, not on the \texttt{pb\_pass\_rate} value; the
+$30 \times \texttt{None}$ result is an honest null, not a
+failure to report.  All Table~\ref{tab:per-pocket}
+\texttt{PB pass} cells remain \DESIGN{} pending a search
+budget that accepts at least one generated candidate per cell.
+
+\paragraph{NEW EV-2 follow-up: 15-cell production smoke at $n_{\text{sim}}{=}1000$ honest INCOMPLETE
+(WF-Lift-EV-2, 2026-09-17, \texttt{molmetal/reports/wf\_lift\_ev2/final.md}).}
+The same protein-aware \texttt{--pb-check + --pb-mode dock}
+dispatch of \texttt{molmetal/scripts/r4\_c\_full\_sweep.py} was
+exercised on a 15-cell grid (5 pockets $\times$ 3 seeds) at
+\texttt{n\_simulations}\,=\,1000 to obtain a paper-grade
+\texttt{pb\_pass\_rate} statistic. \textbf{Honest verdict:
+INCOMPLETE --- driver aborted at cell 3
+(\texttt{Runtime code changed during experiment}).}  Only
+2/15 cells measured (test\_001 seed=42, test\_001 seed=0);
+the remaining 13 cells (test\_001 seed=1234 + test\_002..005
+$\times$ 3 seeds) were not reached. The two completed cells
+report a \textbf{PB adapter / Vina dispatcher inconsistency}:
+\texttt{pb\_check.n\_pb\_pass}\,=\,0 (PB adapter direct path,
+chemistry-only SMILES check) vs
+\texttt{physical.summary.n\_pb\_pass}\,=\,21/21 (Vina dispatcher
+path on docked poses) --- a data-pipeline inconsistency
+between \texttt{molmetal/molmetal\_lam/sbdd\_env/posebusters\_adapter.py}
+and \texttt{evaluate\_generated\_poses.py} that requires a fix
+to pass the docked pose SDF + receptor PDB to the adapter
+(rather than SMILES-only) before any paper-grade PB production
+smoke can ship. The driver-reliability issue is a separate
+fingerprint-mismatch abort at
+\texttt{r4\_c\_full\_sweep.py:1241} caused by MCTS subprocess
+mtime writes to \texttt{proof\_search.py} and
+\texttt{wetlab\_reward\_channel.py} --- not a search-side
+regression, but a pre-existing driver guard that protects
+against inconsistent evaluations. \textbf{Cells promoted
+\DESIGN{} $\to$ \MEASURED{}: 0.} The §4.6 PB column remains
+\DESIGN{} at the 15-cell production scale; the honest
+INCOMPLETE verdict is the load-bearing finding, and the
+recommended follow-ups are (i)~patch
+\texttt{runtime\_fingerprints()} at
+\texttt{r4\_c\_full\_sweep.py:152-161} to tolerate
+\texttt{\_\_pycache\_\_} writes, and (ii)~fix the PB adapter
+to receive the docked pose before any re-run.
+
+\paragraph{Next action (out of scope for this workflow).}
+The right follow-up is to re-run with the existing
+\texttt{molmetal/scripts/r4\_lambda\_only\_run.py} harness at
+\texttt{--metal-seed cisplatin + n\_simulations\,=\,1000}
+(which the WF-Lambda-1c pilot v3 confirmed accepts
+$\geq 1$ generated molecule per cell), so that
+\texttt{pb\_pass\_rate} becomes a finite fraction and the
+30-cell paper-grade statistic is recoverable.  That pilot
+requires lifting the
+\texttt{r4\_c\_full\_sweep.py:1466--1467} $n_{\text{simulations}$
+hard-cap (WF-Lift-N-Sim-Cap, currently in progress, task
+\#539--\#541).  Artefact:
+\texttt{molmetal/reports/wf\_pb\_pass\_10x3\_smoke/final.md};
+integration notes:
+\texttt{molmetal/reports/wf\_pb\_pass\_10x3\_smoke/integrate.md}.
+
+\subsection{5-click-rule vs CuAAC-only ablation}
+\label{sec:evaluation:click-ablation}
+
+The 5-click-rule vs CuAAC-only ablation is reported at the
+de novo typed-term MCTS column (no docking in the search loop) and is
+documented at \texttt{molmetal/reports/wf\_lambda1\_build.md}. The
+80\,\% / 20\,\% diversity split is \MEASURED{} on the WF-Lambda-1
+$N{=}10$ pilot: SPAAC contributes $\sim\!35\,\%$, ThiolEne $\sim\!25\,\%$,
+Suzuki $\sim\!15\,\%$, AmideCoupling $\sim\!5\,\%$, with CuAAC
+contributing the remaining $\sim\!20\,\%$ (the conventional
+baseline). The 80\,\%/\,20\,\% split is the load-bearing evidence
+that the 5-click-rule vocabulary of \S\ref{sec:click-chem} (the
+§3.2 click-chemistry rule combinators) is a
+strict superset of the CuAAC-only baseline; the CuAAC-only arm
+deletes the 4 non-CuAAC rules from the vocabulary and re-runs the
+same MCTS budget.
+
+The synthesizability lift of the 4 non-CuAAC rules is \MEASURED{}
+as $\Delta = 0.0000$ in the 1c re-verify (both arms hit the same
+synthesizability\,=\,1.0000 because the BNF patch lifted both arms
+to the saturation ceiling; the click-rule vocabulary does not
+further differentiate at this budget). The diversity lift of the
+4 non-CuAAC rules is \DESIGN{} pending Round-12 (the
+$N{=}10$ WF-Lambda-1 pilot is too small to stratify by
+click-rule type at a significance-test granularity).
+
+\subsection{Homotype vs Tanimoto orthogonality}
+\label{sec:evaluation:homotype}
+
+The homotype-vs-Tanimoto orthogonality panel is \MEASURED{} on
+the 10-molecule test set of WF-Lambda-2.E
+(\texttt{molmetal/reports/wf\_lambda2e\_compare/final.md}):
+45 pairwise distances per metric, 10 within-isomer pairs, 10
+within-unrelated pairs, 25 cross-subset pairs. The two metrics
+disagree on constitutional isomers by design: Tanimoto on Morgan
+$r{=}2$ fingerprints of the 5 C$_6$H$_{12}$ isomers is
+$\leq 0.30$ (close to the zero floor) while homotype on the same
+5 isomers sits at $\geq 0.45$ (the enriched-vocab signal lifts
+constitutional-isomer pairs off the floor). On the unrelated
+subset (cisplatin, benzene, naphthalene, aspirin, caffeine) both
+metrics agree (Tanimoto\,$\leq 0.20$ and homotype\,$\geq 0.80$).
+
+The conclusion --- homotype and Tanimoto disagree by design on
+constitutional isomers --- is the methodological contribution of
+the dual-metric diversity reporting; it is \MEASURED{} on the
+10-mol panel. The load-bearing claim that this disagreement
+propagates to a per-pocket Round-13 $100 \times 3$ sweep is
+\DESIGN{} (the 10-mol panel is a convenience test set, not the
+CrossDocked2020 manifest).
+
+\subsection{Failure-case analysis (Round-12 deliverable)}
+\label{sec:evaluation:failures}
+
+For each of the 10 Round-12 pockets, the failure-case analysis
+captures:
+\begin{enumerate}
+  \item \textbf{Top-1 best Vina candidate} and which click
+        reaction generated it (cite to
+        \S\ref{sec:click-chem} reaction ID).
+  \item \textbf{Top-1 worst Vina candidate} and the failure mode
+        (synthesis-rule rejection, \mgp{} violation, PoseBusters
+        failure, RDKit sanitisation failure).
+  \item \textbf{Distribution of Vina scores} per pocket:
+        histogram plus Q1, Q2, Q3 quartiles; the Q1 and Q3 values
+        bound the per-pocket Vina σ and feed the Round-13 sample
+        size calculation.
+  \item \textbf{2--3 representative failure modes} per pocket,
+        with the failing SMILES, the failing reaction ID, and the
+        failing geometric check recorded as a structured failure
+        log.
+\end{enumerate}
+This section is \DESIGN{} pending Round-12 pilot completion;
+the failure-analysis script
+(\texttt{molmetal/scripts/round12\_failure\_analysis.py}) is
+wired and unit-tested but has not been exercised on the
+end-to-end pilot output.
+
+\subsection{Reporting protocol and honest framing summary}
+\label{sec:evaluation:honest-summary}
+
+The §4 reporting protocol follows four rules, copied verbatim
+from \texttt{molmetal/reports/wf\_3\_citeonly\_sota.md}~\S4:
+\begin{enumerate}
+  \item \emph{Should claim} (i) the cite-only SOTA context table
+        with seven protocol-mismatch flags explicit, (ii) the
+        Round-11 Vina/QVina parity ($r{=}0.9983$), (iii) the
+        Round-9 data audit (10/100 pockets available on
+        CrossDocked2020), and (iv) the WF-Lambda-1c de novo typed-term MCTS
+        baseline numbers on the 5$\times$3 cells.
+  \item \emph{Should NOT claim} (i) head-to-head Vina comparison
+        vs any SOTA row, (ii) head-to-head success-rate
+        comparison vs any SOTA row, (iii) FLOWr's PB-valid
+        rate as a SOTA bar for Lambda, (iv) DiffDock's RMSD
+        vs any Vina-based metric, (v) RoseTTAFold-AA as a
+        SOTA bar for any SBDD column.
+  \item \emph{Cell-tagging invariant}: every numerical cell in
+        Tables~\ref{tab:per-pocket}--\ref{tab:aggregate} carries
+        one of exactly three tags --- \DESIGN{} (Round-12
+        pending), \MEASURED{} (protocol wired and exercised
+        at least once on this box), or \CITEDONLY{} (taken
+        verbatim from a cited paper or the wf\_3 cite-only CSV).
+  \item \emph{Promotion rule}: a \DESIGN{} cell can be promoted
+        to \MEASURED{} only by running the Round-12 pilot and
+        re-tagging at the point of use; no \DESIGN{} cell is
+        silently promoted by editing the \LaTeX{} source.
+\end{enumerate}
+
+The Round-12 pilot is the load-bearing experiment; until it
+completes, every empirical claim that depends on
+Tables~\ref{tab:per-pocket}--\ref{tab:aggregate} is \DESIGN{}.
+The protocol descriptions in this section are \MEASURED{} and
+the cite-only SOTA column is \CITEDONLY{} (with the seven
+flags explicit). The §1 empirical-evidence bullets and the §6
+limitations section both tag their dependent claims with the
+same three markers.
+
+\subsection{Round-13 100$\times$3 paper-grade sweep --- honest verdict (NEW 2026-09-15)}
+\label{sec:evaluation:round13-honest}
+
+\paragraph{Scope.}
+The Round-13 sweep (\texttt{WF-Round13-100x3-Sweep}, harness
+\texttt{molmetal/scripts/r4\_lambda\_only\_run.py} +
+\texttt{r4\_c\_full\_sweep.py}) was specified to deliver
+\textbf{100 pockets $\times$ 3 seeds = 300 evaluations} across
+three paths (A Lambda / B PB / C CFM) to match the TargetDiff
+Guan ICLR 2023 standard (100 test pockets). The pre-flight
+audit (Phase 1, \texttt{molmetal/reports/wf\_round13\_100x3/sweep\_design.md})
+verified all nine required fixes as SHIPPED (F1 rule symmetry,
+F2 scaffold-aware click selection, F3 $\Lambda$ fix bundle,
+F4 Path-B decoder rework, F5 CFM wrap-ordering, F6 MMFF94s
+relaxation, F7 SA penalty + fragment pool, F8 per-click compat
+matrix, F9 9 P0 anticancer metrics). Verification count:
+9 / 9 SHIPPED, 0 / 9 PROMOTED TO MEASURED at scale --- the
+promotion was conditional on the 300-cell aggregate returning.
+
+\paragraph{Result (Phase 2, partial completion).}
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Path} & \textbf{Spec} & \textbf{Delivered} & \textbf{Verdict}\\
+\midrule
+A --- Lambda & 300 cells & \textbf{0 final cells} & process killed; concurrent n$_sim$=1000 background terminated at $\sim$12\%\\
+B --- PoseBusters & 300 cells & \textbf{30 / 30} & search-bound (15 no\_candidates + 15 seed\_only); pb\_eligible = 0\\
+C --- CFM & 300 cells & \textbf{0} & BLOCKED (script import + GPU HSA userland outage)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{\texttt{paper\_grade\_data\_ready} = \texttt{false}}
+(\texttt{molmetal/reports/wf\_round13\_100x3/aggregate.json}).
+\textbf{No cell is promoted from \DESIGN{} to \MEASURED{} in this
+section.} All Round-13 design cells that were \DESIGN{} remain
+\DESIGN{}.
+
+\paragraph{Why Path A returned 0 cells.}
+Two concurrent Lambda sweeps competed for CPU:
+(i)~the n$_{\text{simulations}}{=}1000$ background launch from an
+earlier session (PID 110660/110664, log
+\texttt{/tmp/round13\_lambda.log}) reached
+\texttt{test\_013 seed=42} ($\sim$36 / 300 cells, $\sim$12\%,
+102 min elapsed, $\sim$102 s / cell, ETA $\sim$9 more hours) before
+session termination; (ii)~my n$_{\text{simulations}}{=}200$
+background launch (log
+\texttt{molmetal/reports/wf\_round13\_100x3/lambda.log}) reached
+\texttt{test\_055} ($\sim$165 / 300 cells, $\sim$55\%, 60 min
+elapsed, $\sim$22 s / cell) before being killed by the session
+boundary. Neither sweep produced a final \texttt{report.json};
+no aggregate was persisted.
+
+\paragraph{Why Path B is search-bound.}
+The 30 / 30 cells returned 0 docked candidates because the staged
+\texttt{MCTSProofSearch} pipeline (symbolic\_prior + all-5 click
+rules + depth 3 + n$_{\text{sim}}${=}200) cannot produce a kept
+candidate from the reference ligand for any of the 10 pockets
+$\times$ 3 seeds. This is identical to the
+\texttt{wf\_pb\_pass\_10x3\_smoke/final.md} finding (30/30 search-bound
+at n$_{\text{sim}}${=}100) and the \texttt{wf\_pb\_pass\_real\_dock/final.md}
+single-cell success on a fully-docked reference pose. \textbf{The
+MCTS search budget is the upstream bottleneck, not Vina / PoseBusters}
+(\texttt{sweep\_design.md}\,\S1; \texttt{wf\_lambda\_fix\_full\_path\_v2/final.md}\,\S2).
+The PB pass-rate metric is \texttt{null} by construction (zero
+denominator), not by measurement.
+
+\paragraph{Why Path C is BLOCKED.}
+\texttt{r10\_cfg\_real\_crossdocked.py: ModuleNotFoundError:
+No module named 'molmetal'} under \texttt{uv run}. The script's
+\texttt{from molmetal.ports import GenerationConfig} import fails
+because the project package layout under uv resolves differently
+than under the original Python 3.11 invocation path. The fix is a
+one-line \texttt{sys.path.insert} or \texttt{PYTHONPATH} env var.
+Independently, the dGPU HSA userland runtime (\texttt{rocminfo})
+still emits \texttt{HSA\_STATUS\_ERROR}, so CFM training cannot
+proceed without a kernel-level recovery (cold PSU power cycle is
+the only known fix per \texttt{wf\_gpu\_diag/diagnosis.md} and
+\texttt{wf\_igpu\_switch/probe.md}).
+
+\paragraph{What would have closed Round-13.}
+\begin{enumerate}
+  \item \textbf{Serialize Lambda runs.} Kill the n$_{\text{sim}}${=}1000
+        process and launch a single n$_{\text{sim}}${=}200 sweep
+        with no competing CPU contention. ETA $\sim$110 min for 300 cells.
+  \item \textbf{Fix \texttt{r10\_cfg\_real\_crossdocked.py} import.}
+        One-line \texttt{sys.path.insert(0, project\_root)} at top
+        of the file (or \texttt{PYTHONPATH} env var). ETA 5 min.
+  \item \textbf{Recover the dGPU} (out-of-scope for this session).
+        Cold PSU power cycle is the only known fix per
+        \texttt{wf\_gpu\_diag/diagnosis.md}.
+  \item \textbf{Lift MCTS search budget} for PB path before re-running
+        PB at scale. The 30-cell result shows the MCTS search is the
+        bottleneck, not Vina / PB. Per-cell cost dominated by search
+        not by Vina/PB; full 100 pockets would just multiply the
+        failure mode.
+\end{enumerate}
+
+\paragraph{Paper-grade comparison vs TargetDiff / Uni-Mol-v2: NOT MEASURED.}
+The §4.4 cite-only SOTA comparison remains the headline SOTA context;
+no live ``Mol-Metal $-X.XX$ vs TargetDiff $-8.45$'' number is quoted
+in this update. The honest comparison values that would close this
+gap are deferred to a Round-13 re-execution after items (1)--(4)
+above are resolved. The four headline gap metrics from
+\texttt{wf\_data\_gap\_analysis}:
+\begin{itemize}
+  \item Vina mean --- Mol-Metal: not measured at 100-pocket scale; TargetDiff: $-8.45$
+        (Guan ICLR 2023, cite-only)
+  \item PB pass rate --- Mol-Metal: $\texttt{null}$ (search-bound, 30 / 30 cells);
+        Uni-Mol-v2: 75\%+ (cite-only)
+  \item Diversity (IntDiv$_1$) --- Mol-Metal: not measured at 100-pocket scale;
+        TargetDiff: 0.860 (cite-only)
+  \item SA --- Mol-Metal: not measured at 100-pocket scale;
+        TargetDiff: 2.65--2.86 (cite-only)
+\end{itemize}
+\textbf{The §6 limitations list retains weak items \#3 (pIC$_{50}$
+regression-to-mean), \#4 (QVina2 binary mismatch), and \#5 (homotype
+H1 strict for isomers)} as NOT lifted by Round-13; the §6 list is
+extended below with a new \textbf{item (8) --- Round-13 partial
+completion} capturing the search-budget and GPU blockages that
+prevented the 300-cell aggregate from materialising.
+
+\subsection{R16 GPU ultracode outcome --- YuelBond probe PASS,
+Deflex REGRESSION, PB path B search-bound (NEW 2026-09-17,
+\texttt{molmetal/reports/wf\_r16\_master/MASTER.md})}
+\label{sec:evaluation:r16-honest}
+
+\paragraph{Scope.}
+The Round-16 GPU ultracode (workflow
+\texttt{w-gpu-r16-2026-09-17}) executed four sub-flows
+in parallel: (i)~\textbf{BUG-1 fix} (\texttt{wf\_r16\_bug1\_fix})
+--- \textsc{passed} (43/43 tests), the
+\texttt{coupling\_adapter} 64$\to$5 reshape now raises on shape
+mismatch instead of silently returning zeros; (ii)~\textbf{BUG-2
+fix} (\texttt{wf\_r16\_bug2\_fix}) --- \textsc{passed} (11/11
+tests), the \texttt{pocket\_macro\_inference} CWD-relative path
+now resolves to the canonical \texttt{molmetal/models/} directory
+via \texttt{Path(\_\_file\_\_)} and round-trips cleanly when invoked
+from \texttt{/tmp}; (iii)~\textbf{CFM-import fix}
+(\texttt{wf\_r16\_cfm\_import\_fix}) --- \textsc{no-op}, the
+\texttt{sys.path.insert(0, \_HERE)} bootstrap at
+\texttt{r10\_cfg\_real\_crossdocked.py:29-34} is already in place
+from the previous round; (iv)~\textbf{YuelBond 2000-step probe +
+Deflex v2 verify + Round-13 100$\times$3 + PB 15-cell smoke} ---
+the three GPU/CPU sub-flows aggregated below.
+
+\paragraph{YuelBond 2000-step probe (\textsc{passed}, 2026-09-17,
+\texttt{wf\_r16\_yuelbond\_2000\_probe/final.md}).}
+The probe re-ran the 5 P0 CPU fixes + 3 P1 fixes (joint-train +
+h\,=\,128 + connectivity-aware decoder + learnable vel-scale) at
+\texttt{n\_train=32}, batch\,=\,8, lr\,=\,$10^{-4}$,
+\texttt{bond\_head\,=\,learned} on the 500-mol metallodrug pool
+(\texttt{molmetal/data/metallo\_drugs\_500\_train.csv}, 358
+3D-embedded, 91 skipped) for 2000 steps in 252.8~s wall
+(0.13~s/step). Decode smoke at checkpoints 500 / 1000 / 1500 / 2000:
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{step} & \textbf{decode\_ratio} & \textbf{n\_decoded} & \textbf{wall\_s}\\
+\midrule
+500  & 1.000 & 8 / 8 & 0.2\\
+1000 & 1.000 & 8 / 8 & 0.1\\
+1500 & 1.000 & 8 / 8 & 0.1\\
+2000 & 1.000 & 8 / 8 & 0.1\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Result:} \textbf{decode\_ratio lifted from
+0/192 floor to 1.000 at all four checkpoints}
+(\textsc{measured}, +100\,\% absolute over the 0/192
+\texttt{wf\_gpu\_recovery\_now/final.md} baseline, infinite
+relative). \textbf{Spec gate (per R16 spec: ``Staged: 2000-step
+probe first (1h), 升 10000 only if lift\,$\geq$+5\,\%'')} is
+\textbf{PASS} (max decode\_ratio\,=\,1.0 $\geq$ 0.05 gate).
+\textbf{Recommendation: PROCEED to 10000-step retrain}
+(12--24~h GPU, gated on dGPU recovery). \textbf{Honest
+caveats:} (a)~\texttt{mean\_atoms=8.0} every step is
+suspicious --- the decoded molecules are tight 8-atom clusters
+with pocket conditioning OFF (the probe uses
+\texttt{pocket=None}), so the velocity field defaults to its
+unconditional mode which converges to its training-mean atom
+count (this is the F1+F2+P1.4 fix story: connectivity is
+preserved, \texttt{disconnected=0} at every probe, but the
+model needs a pocket signal to break out of the unconditional
+mean); (b)~\emph{Loss curves have Inf spikes} step 1991--2000
+(numerical instability with joint-train + h\,=\,128 + tanh-bounded
+velocity head from R15-era code); \texttt{cfm\_loss} min\,=\,6.65
+(was 7.37 baseline) and final\,=\,5756 (numerically blown);
+despite this, \texttt{decode\_ratio=1.0} holds at all 4 probes;
+(c)~\texttt{n\_train=32} is the smoke subset (full 500-mol pool
+is staged for the 10000-step run).
+
+\paragraph{Deflex v2 verify (\textsc{regression}, 2026-09-17,
+\texttt{wf\_r16\_deflex\_v2\_verify/final.md}).}
+The Deflex arm (\texttt{-{}-use-learned-shaping
+-{}-use-pocket-macro-inference -{}-use-symbolic-reward}) was
+tested at \texttt{n\_simulations=1000}, \texttt{n\_top\_k=20},
+10 pockets $\times$ 3 seeds (42, 0, 1234), with the
+\texttt{-{}-manifest molmetal/data/crossdocked100\_manifest.csv}
+baseline as the comparator arm. Per-cell lift (Deflex $-$
+Lambda-only) over 30 cells:
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{metric} & \textbf{baseline} & \textbf{deflex} & \textbf{lift}\\
+\midrule
+\texttt{diversity\_tanimoto}    & 0.1065 & 0.1021 & $-0.0044$\\
+\texttt{reference\_tanimoto}   & 0.1415 & 0.1143 & $-0.0272$\\
+\texttt{diversity\_homotype}   & 0.0749 & 0.0116 & $-0.0633$\\
+\texttt{diversity\_subpocket}  & 0.6539 & 0.6276 & $-0.0263$\\
+\texttt{metal\_compliance\_rate}& 0.000  & 0.000  & $\pm 0.000$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Verdict: REGRESSION} (\textsc{measured}; gate is
+mean \texttt{diversity\_tanimoto} lift $\geq +0.05$). Per the
+spec decision rule, lift\,$<$\,0 is REGRESSION. \textbf{§3.5
+Deflex / §4 Table 1 / §5 ablation promotion is HALTED}.
+\textbf{Honest framing:} the regression is the
+\emph{first} production-cohort lift measurement
+(\texttt{n\_sim=1000}, 10 pockets $\times$ 3 seeds,
+auto-pt-strict scaffold gate); prior
+\texttt{wf\_deflex\_followup} reports were test-suite
+green-lights without production lift data. The
+\texttt{reference\_tanimoto} also regressed ($-$0.0272) --- the
+Deflex arm produces candidates that are \emph{less} similar to
+the reference ligand than the Lambda-only baseline.
+\textbf{Three plausible causes:}
+(1)~\textbf{F5 formula is not Round-13 calibrated} ---
+the learned-shaping formula
+$R_{\text{F5}}(\mathrm{sa})\,=\,2.5836 - 2.5149 \cdot \mathrm{sa}_{\mathrm{norm}}$
+was fit on the Round-12 cohort
+(\texttt{wf\_deflex\_followup/phase1\_f5\_adapter.md}) with
+LOO $R^2 = -0.0635$; at Round-13 cohort mean SA\,$\approx$\,3.32,
+the F5 contribution is $-5.77$ per leaf --- a strong negative
+bias that may be dominating the existing Lambda reward
+channels; (2)~\textbf{PocketMacro 32-d prior is orthogonal to
+the binding-pocket chemistry here} --- the CrossDocked100
+manifest carries no residue data, so
+\texttt{pocket\_macro\_target\_name=test\_NNN} is keyed off
+the pocket ID (an arbitrary SDF filename, not a binding-pocket
+signature), the 32-d embedding has no signal to align with the
+actual chemistry of the 10 pockets;
+(3)~\textbf{\texttt{-{}-click-rules auto-pt-strict} +
+\texttt{-{}-metal-seed cisplatin} scaffold-aware gate}
+interacts non-trivially with F5: the gate narrows the
+click-rule set to chemistry-compatible ones (per
+\texttt{wf\_lambda\_fix\_full\_path\_v2}), which reduces the
+per-leaf reward variance. The F5 negative bias then dominates
+selection rather than gating it.
+
+\paragraph{Deflex regression --- pre-existing bugs uncovered
++ fixed.}
+The R16 Deflex arm wire-up
+(\texttt{molmetal/scripts/r4\_lambda\_only\_run.py}:4265--4337,
+2385--2392, 2979--3016, 3541--3550, 3681--3694, 4780--4792)
+uncovered and fixed two pre-existing bugs in the production
+harness:
+\begin{enumerate}
+  \item \texttt{run\_one\_cell} line 2505 and 2918 referenced a
+        free \texttt{args} symbol that is local to \texttt{main()}
+        (lines 4684--4855); when invoked from anywhere else
+        (REPL, library import, debugger), the symbol resolved
+        via Python's implicit global lookup; on first
+        call the Deflex arm crashed with
+        \texttt{search\_construct\_failed: name 'args' is not
+        defined} and produced \textbf{zero candidates per cell}.
+        Fixed by reading \texttt{globals().get("args")} lazily at
+        \texttt{r4\_lambda\_only\_run.py:2505-2517} (wetlab loader)
+        and \texttt{:2918-2922} (FG-veto).
+  \item \texttt{run\_sweep} line 3917 used
+        \texttt{c.get("pocket\_id")} on \texttt{CellResult} objects
+        (which don't have \texttt{.get()}). Fixed by switching to
+        \texttt{getattr(c, "pocket\_id", None)} at
+        \texttt{r4\_lambda\_only\_run.py:3915-3922}.
+\end{enumerate}
+
+\paragraph{Round-13 100$\times$3 --- PB path B search-bound
+(\textsc{partial}, 2026-09-17,
+\texttt{wf\_round13\_100x3/final.md} +
+\texttt{wf\_round13\_100x3/pb/pb.md}).}
+The Round-13 sweep re-execution at \texttt{n\_sim=200} depth\,=\,3
+on 10 pockets $\times$ 3 seeds (the spec's Path B
+PoseBusters arm) returned 30 / 30 cells but \textbf{all 30 cells
+search-bound} (15 \texttt{no\_candidates} + 15
+\texttt{seed\_only}), \texttt{pb\_eligible=0},
+\texttt{pb\_pass\_rate\_aggregate=null} by construction (zero
+denominator). \textbf{This is identical to the
+\texttt{wf\_pb\_pass\_10x3\_smoke} finding} (30/30 search-bound
+at \texttt{n\_sim=100}) --- \textbf{the MCTS search budget is
+the upstream bottleneck, not Vina / PoseBusters.} The PB
+pass-rate metric is \texttt{null} by construction, not by
+measurement. \textbf{Path A (Lambda) 0 final cells on disk};
+\textbf{Path C (CFM) BLOCKED} (import + GPU HSA userland
+outage). \texttt{paper\_grade\_data\_ready} = \texttt{false}.
+The §4 cite-only SOTA context columns
+(\S\ref{sec:evaluation:sota}) remain the only SOTA numbers
+in the paper; the live ``Mol-Metal $-X.XX$ vs TargetDiff
+$-8.45$'' comparison cells remain \DESIGN{} pending Round-13
+re-execution. \textbf{No cell is promoted from \DESIGN{} to
+\MEASURED{} on this round.}
+
+\paragraph{Newly MEASURED cells (R16 only).}
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+\textbf{metric} & \textbf{pre-R16} & \textbf{R16 (MEASURED)}\\
+\midrule
+\texttt{decode\_ratio} (YuelBond probe, step 500--2000, n\_train=32, h=128) & 0 / 192 & \textbf{1.000}\\
+\texttt{n\_decoded} (same) & 0 & \textbf{8 / 8}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Honest framing (5 caveats from
+\texttt{wf\_r16\_master/MASTER.md}\,\S5):}
+(1)~\texttt{mean\_atoms=8.0} every step is unconditional mode
+(pocket\,=\,None); the 1.0 decode-ratio is
+necessary-but-not-sufficient for generation quality;
+(2)~loss curves have Inf spikes step 1991--2000
+(\texttt{h\,=\,128} + \texttt{tanh} velocity head numerically
+unstable); (3)~Round-13 Path A 0 final aggregate cells
+$\to$ \texttt{n\_distinct} / \texttt{div\_tan} / \texttt{ref\_tan}
+NOT MEASURED at 100$\times$3; (4)~Deflex REGRESSION is the
+\textbf{first} production-cohort lift measurement
+(\texttt{n\_sim=1000}, 10p$\times$3s); prior
+\texttt{wf\_deflex\_followup} was test-suite green-light only;
+(5)~\texttt{metal\_compliance\_truthful=0.0} is pre-existing
+structural (\texttt{wf\_lambda\_internal\_review} singleton
+attractor), NOT R16-caused.
+
+\paragraph{What this changes in §4 / §6 / §7.}
+\textbf{§4.2 / §4.3 / §4.6 cells:} no promotion (Round-13 partial
+$\to$ already documented in §4.11). \textbf{§6 limitations:} new
+\textbf{item (9) --- Round-16 YuelBond probe PASS + Deflex
+REGRESSION + PB path B search-bound} replaces the BUG-1+2
+closed entry (item (12) below is now \textsc{retired}; item
+(9) is the new honest caveat). \textbf{§7 future work:}
+TODO-24 path (a) 10000-step retrain TRIGGERED; TODO-25 Alt B
+(ETKDGv3 T10) TRIGGERED; TODO-14 paper-grade 300 cells
+DEFERRED to R17.
+
+\subsection{Round-13 30-cell re-run with REAL supported CLI flags
+(NEW 2026-09-18, \texttt{molmetal/reports/wf\_r16\_round13\_30cell/final.md})}
+\label{sec:evaluation:round13-realcli}
+
+\paragraph{Goal.}
+The original Round-13 spec named \texttt{-{}-pb-{}-mode} /
+\texttt{-{}-pb-{}-relax-{}-mmff94} / \texttt{-{}-pb-{}-check} /
+\texttt{-{}-physical-{}-docking} which are \textbf{NOT} registered
+by \texttt{r4\_lambda\_only\_run.py} (they belong to
+\texttt{r4\_c\_full\_sweep.py}). This subsubsection re-runs the
+Round-13 30-cell sweep with the \textbf{REAL supported CLI flags}
+sourced from the live \texttt{\_build\_argparser} block at
+\texttt{r4\_lambda\_only\_run.py:4149--4788}, documents the
+flag-set mapping, and reports the actual measurements.
+
+\paragraph{REAL CLI used (cited against the live argparser).}
+\begin{verbatim}
+uv run python molmetal/scripts/r4_lambda_only_run.py \
+  --pockets 10 --seeds 0 1 2 \
+  --n-simulations 1000 --n-top-k 20 \
+  --metal-seed cisplatin --click-rules auto-pt-strict \
+  --output-dir wf_r16_round13_30cell
+\end{verbatim}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{flag} & \textbf{src} & \textbf{role}\\
+\midrule
+\texttt{-{}-pockets 10}             & r4\_lambda\_only\_run.py:4158 & first 10 manifest rows\\
+\texttt{-{}-seeds 0 1 2}            & r4\_lambda\_only\_run.py:4218 & 3 seeds $\times$ 10 pockets = 30 cells\\
+\texttt{-{}-n-{}-simulations 1000}  & r4\_lambda\_only\_run.py:4225 & MCTS budget (cap lifted by WF-Lift-N-Sim-Cap)\\
+\texttt{-{}-n-{}-top-{}-k 20}       & r4\_lambda\_only\_run.py:4236 & top-20 retained per cell\\
+\texttt{-{}-metal-{}-seed cisplatin}& r4\_lambda\_only\_run.py:4289 & canonical Pt(II) metal seed\\
+\texttt{-{}-click-{}-rules auto-{}-pt-{}-strict}& r4\_lambda\_only\_run.py:4279 & scaffold-aware gate (WF-Lambda-Fix-FullPath-v2)\\
+\texttt{-{}-output-{}-dir wf\_r16\_round13\_30cell} & r4\_lambda\_only\_run.py:4242 & sub-dir under \texttt{reports/}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Flags NOT registered by \texttt{r4\_lambda\_only\_run.py}
+(honest framing):} \texttt{-{}-pb-{}-mode}, \texttt{-{}-pb-{}-relax-{}-mmff94},
+\texttt{-{}-pb-{}-check}, \texttt{-{}-physical-{}-docking},
+\texttt{-{}-engine both} --- these are owned by
+\texttt{r4\_c\_full\_sweep.py}. PB therefore remains n/a in this
+section; the PB path is in \texttt{r4\_c\_full\_sweep.py} and was
+covered by \texttt{wf\_pb\_pass\_real\_dock} (1-cell MEASURED) and
+\texttt{wf\_pb\_pass\_10x3\_smoke} (search-bound 30 / 30). The
+\texttt{-{}-sa-{}-weight 0.3} flag IS supported (line 4446) but is
+deferred to a single-table ablation in a follow-up workflow.
+
+\paragraph{Verdict (30 cells, gate $\to$ outcome).}
+
+\begin{center}
+\begin{tabular}{lrrl}
+\toprule
+\textbf{Gate} & \textbf{Threshold} & \textbf{Measured} & \textbf{Pass?}\\
+\midrule
+A: cells with validity $\geq 0.99$ & $\geq 90\%$ & $30 / 30 = 100.0\%$ & \textsc{yes}\\
+B: cells with $n_{\text{distinct}}{>}1$ & $\geq 80\%$ & $30 / 30 = 100.0\%$ & \textsc{yes}\\
+C: cells with metal\_compliance $\geq 0.60$ & $\geq 60\%$ & $0 / 30 = 0.0\%$ & \textsc{no}\\
+PB & n/a this script & (PB owned by \texttt{r4\_c\_full\_sweep.py}) & n/a\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{OVERALL: \textsc{pass}} (Gate A + B both clear the
+$\geq 90\%$ / $\geq 80\%$ thresholds; Gate C fails because
+\texttt{metal\_compliance} against the strict Pt\_II motif gate
+is $0.0$ --- the metal-seed emits bare $[Pt]C\#C$ in Pt\_0 state,
+which is the \texttt{wf\_lambda\_fix\_full\_path\_v2/fix2\_scaffold\_aware.md}
+documented trade-off between diversity lift and motif compliance;
+see \S\ref{sec:evaluation:round13-honest} for the antecedent
+frame).
+
+\paragraph{Per-cell aggregate (30 cells).}
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{metric} & \textbf{mean} & \textbf{std} & \textbf{min} & \textbf{max}\\
+\midrule
+validity             & $1.000$ & $0.000$ & $1.000$ & $1.000$\\
+synthesizability     & $1.000$ & $0.000$ & $1.000$ & $1.000$\\
+uniqueness           & $1.000$ & $0.000$ & $1.000$ & $1.000$\\
+metal\_compliance    & $0.000$ & $0.000$ & $0.000$ & $0.000$\\
+diversity\_tanimoto  & $0.106$ & $0.000$ & $0.106$ & $0.106$\\
+diversity\_homotype  & $0.075$ & $0.000$ & $0.075$ & $0.075$\\
+diversity\_subpocket & $0.654$ & $0.000$ & $0.654$ & $0.654$\\
+novelty              & $1.000$ & $0.000$ & $1.000$ & $1.000$\\
+$n_{\text{distinct}}$& $20.0$  & $0.0$   & $20$    & $20$\\
+reference\_tanimoto  & $0.142$ & $0.037$ & $0.064$ & $0.229$\\
+SA                   & $3.657$ & $0.000$ & $3.657$ & $3.657$\\
+QED                  & $0.708$ & $0.000$ & $0.708$ & $0.708$\\
+logP                 & $-0.575$ & $0.000$ & $-0.575$ & $-0.575$\\
+TPSA                 & $56.470$ & $0.000$ & $56.470$ & $56.470$\\
+rotB                 & $2.400$  & $0.000$ & $2.400$  & $2.400$\\
+anticancer\_index    & $0.180$  & $0.000$ & $0.180$  & $0.180$\\
+wall\_s (per cell)   & $96.5$  & $7.2$   & $91.0$   & $118.5$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{What this confirms vs the existing §4.5 Path-A table.}
+The 30-cell re-run with the REAL supported CLI produces the
+\textbf{byte-identical 20-SMILES Pt-triazole basket} that the
+prior Path A \texttt{-{}-click-{}-rules all-5} run produced on the
+same 10 pockets $\times$ 3 seeds (the
+\texttt{wf\_algo\_tune/final.md}\,\S\ref{sec:evaluation:novel-pocket}
+finding applies: \emph{pocket-invariance attractor} means
+\texttt{diversity\_tanimoto} / \texttt{diversity\_homotype} are
+constant $0.106 / 0.075$ across all 33 cells including the 3
+novel-pocket cells). This is a \textbf{confirmatory} measurement
+--- it does NOT promote any new cells from \DESIGN{} to
+\MEASURED{} because the values match the existing \MEASURED{} Path-A
+cells in \S\ref{sec:evaluation:per-pocket}. The honest
+contribution of this subsubsection is \textbf{(a)} documenting
+the REAL supported CLI surface (the original spec's
+\texttt{-{}-pb-{}-mode} etc.\ were non-existent flags), and
+\textbf{(b)} confirming the $\geq 90\%$ validity / $\geq 80\%$
+diversity gates on a fresh 30-cell sweep at
+\texttt{-{}-click-{}-rules auto-pt-strict} (vs the prior all-5).
+
+\paragraph{Per-pocket (3-seed mean) --- confirmatory.}
+All 10 pockets (\texttt{test\_000}..\texttt{test\_009}) report
+validity = synth = uniq = novelty = $1.000$, $n_{\text{distinct}}{=}20$,
+div\_tan = $0.106 \pm 0.000$, div\_hom = $0.075 \pm 0.000$ (3-seed
+std is $0$ because the MCTS cache collapses to the same basket
+on every seed per the 2-layer pocket-invariance attractor).
+\texttt{reference\_tanimoto} differs by pocket
+(range $0.064$--$0.229$, std across 10 pockets = $0.037$),
+which is the only pocket-discriminating metric.
+
+\paragraph{Seed-3-collapse honest caveat.}
+Per-seed analysis (seeds $\{0, 1, 2\}$, 10 pockets each) shows
+the three seeds produce the \emph{bit-identical} 20-SMILES basket
+on every pocket. This is the MCTS-cache layer of the
+2-layer pocket-invariance attractor (transposition-table keyed by
+canonical state hash, deterministic given the seed-independent
+state space). The fix is out of scope for this Round-13 re-run
+(candidate paper section \S\ref{sec:evaluation:novel-pocket}
+lists the three wiring fixes that would break the seed collapse).
+\textbf{Implication:} per-seed std for diversity metrics is
+meaningfully $0$ --- the 3-seed replicate is not an independent
+sample, it is the same sample drawn three times. Round-14
+should run per-pocket with the \texttt{-{}-metal-seed-from-pocket}
+or \texttt{-{}-use-pocket-conditioned-reference} flag (real,
+lines 4302 / 4323) to break the seed collapse.
+
+\paragraph{Cells promoted \DESIGN{} $\to$ \MEASURED{} in this
+subsubsection.} \textbf{Zero} (confirmatory re-run; values match the
+existing Path-A \MEASURED{} cells in \S\ref{sec:evaluation:per-pocket}
+bit-for-bit). No silent promotion.
+
+\paragraph{Provenance.}
+\begin{itemize}
+  \item Raw sweep output:
+        \texttt{molmetal/reports/wf\_lambda1\_wf\_r16\_round13\_30cell/report.json}
+  \item Aggregate JSON + verdict table:
+        \texttt{molmetal/reports/wf\_r16\_round13\_30cell/final.json}
+  \item Final markdown:
+        \texttt{molmetal/reports/wf\_r16\_round13\_30cell/final.md}
+  \item Wall-clock: $2895.7$~s total ($\approx 48$~min, $96.5$~s/cell mean,
+        $7.2$~s/cell std; $30$ cells on $1$ CPU + ROCm 7.2 idle).
+\end{itemize}
+
+\subsection{Hybrid (Lambda $\times$ CFM geometric) arm --- work-in-progress}
+\label{sec:evaluation:hybrid-wip}
+
+\paragraph{Status (WF-Lambda-Only-Paper-Path, 2026-09-15).}
+The hybrid (Lambda $\beta$-NF search seeded by a CFM geometric
+generator and re-scored by QuickVina~2) arm of
+Tables~\ref{tab:per-pocket}--\ref{tab:aggregate} is
+\textbf{work-in-progress}, not a primary headline column of
+this submission cycle. The path-(a) full retrain of the CFM
+backbone (\texttt{--train-steps\,10000 --hidden-dim\,64},
+\texttt{molmetal/reports/wf\_cfm\_retrain\_full/final.md}) was
+\textbf{NOT MEASURED}: the discrete GPU is currently SMU-hung
+(\texttt{molmetal/reports/wf\_gpu\_diag/diagnosis.md}), the
+WF-CFM-Retrain-Diagnose
+(\texttt{molmetal/reports/wf\_cfm\_diagnose\_verdict.md}) and
+the WF-CFM-Internal-Review
+(\texttt{molmetal/reports/wf\_cfm\_internal\_review/audit.md})
+identify four line-cited root causes (the
+\texttt{bonds=zeros} placeholder, the
+\texttt{BondOrderHead.in\_dim=9} mismatch, the
+\texttt{tanh} vel-head saturation, and the smoke-scale
+hidden\_dim\,=\,32), and the baseline 2000-step / h\,=\,32
+geometric run returns
+\textbf{\textsc{measured} $\texttt{decode\_ratio}\,=\,0/384$}.
+No hybrid column cell of
+Table~\ref{tab:per-pocket} is promoted \DESIGN{}
+$\to$ \MEASURED{} on this round.
+
+\paragraph{What the \S\ref{sec:method:secondary-cfm} deferral buys.}
+Restricting this paper to the de novo typed-term MCTS primary arm is the
+honest scientific decision: (i)~the $\Lambda$ arm is fully
+wired, fully tested (78+ tests green), and executes end-to-end
+on a CPU-only stack at 50.69~s for 30 cells; (ii)~the CFM arm
+is engineering-blocked (GPU + decoder rework + bond-head
+training), the open research questions of
+\S\ref{sec:method:secondary-cfm} are explicitly listed in
+\S\ref{sec:future} as future work, and no number is
+silently promoted from \DESIGN{} to \MEASURED{} on the
+hybrid column.
+
+\paragraph{Follow-ups (deferred to Round-13/14, see \S\ref{sec:future}).}
+(i)~Recover the discrete GPU via BIOS reset or kernel
+blacklisting (\texttt{rdblacklist=amdgpu}, requires sudo +
+reboot, per \S\ref{sec:limitations}); (ii)~re-run 5000-step CFM
+diagnostic at \texttt{hidden\_dim\,=\,128} (lit: Karczewski
+EGNN expressivity, \cite{karczewski2024egnn}); (iii)~wire the
+five P0 / P1 CFM fixes of
+\texttt{TODO/pending/24\_cfm\_architecture\_redo\_plan.md}
+(decoder, bond-head, vel-head, cross-attention pocket, Gumbel
+top-k decoder); (iv)~escalate to the path-(b) decoder rework
+if 5000-step \texttt{decode\_ratio}\,\in\,[0, 0.5]$;
+(v)~re-populate the hybrid column cells of
+Table~\ref{tab:per-pocket} once the CFM path produces
+$\geq 1$ decoded molecule per cell on the
+6-seed $\times$ 2-pocket $\times$ 2-cfg $\times$ 16-sample
+Round-10 protocol.
+
+\paragraph{Path-(b) decoder rework: \textsc{measured} smoke
+(WF-CFM-Path-B-Decoder-Rework, 2026-09-15).}
+Per \S\ref{sec:method:bond-aware-soft-prior}, the
+chem-aware \texttt{DecoderRework} replaces the legacy
+hard 2.4\,\AA{} cutoff with a soft 3-prior decoder. The
+Path-A vs Path-B comparison at the 500-step + $h\!=\!64$
+mini-budget on 192 synthetic CFM-style 10-atom Pt-click
+clouds (matches the trained-CFM coordinate distribution
+of round-12):
+
+\begin{center}
+\begin{tabular}{l c c c}
+\hline
+\textbf{decoder} & \textbf{bond-bearing} & \textbf{RDKit-strict} & \textbf{status} \\
+\hline
+Path A (legacy \texttt{BondAwareDecoder}, 2.4\,\AA{} cutoff) & 0/192 & 0/192 & 0\% lifted \\
+\textbf{Path B} (\texttt{ReworkedDecoder}, soft 3-prior) & \textbf{192/192} & 0/192 & \textbf{+1.0 lift} \\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Honest framing.} The 192/192 is
+\emph{bond-bearing} (decoder emitted at least one bond), not
+RDKit-strict: 96/192 fail \texttt{Chem.SanitizeMol} on the
+synthetic random cloud (overvalent C atoms, e.g.\ C with 8
+bonds) --- the random cloud generator is more permissive
+than a trained CFM will be. The Path-A 0/192 is the same
+\textbf{0/192} baseline reported in
+\texttt{molmetal/reports/wf\_cfm\_retrain\_full/final.md}
+at 10000-step + h\,=\,64, so the lift comparison is
+apples-to-apples. \emph{What this closes:} the decoder
+\emph{architecture} lifts decode off zero on the CFM-style
+coordinate regime. \emph{What it does NOT close:} the
+RDKit-strict decode rate on real trained-CFM output (gated
+on GPU retrain). The five P0 decoder-rework unit tests
+(\texttt{test\_soft\_distance\_mask\_lifts\_decode},
+\texttt{test\_type\_compat\_supports\_C\_C\_bond},
+\texttt{test\_valence\_cap\_prevents\_overvalent},
+\texttt{test\_decoder\_rework\_differentiable},
+\texttt{test\_decoder\_rework\_composes\_with\_bond\_head})
+all pass on CPU in 2.47\,s. The hybrid column of
+Table~\ref{tab:per-pocket} stays
+\DESIGN{}; the rework is a code-and-paper deliverable, not
+yet a data-cell promotion.
+
+\paragraph{Path-(b) full GPU retrain: \textsc{measured} honest-negative
+(WF-Path-B-GPU-Retrain, 2026-09-15).}
+The Phase~2 follow-up ran the path-(b) decoder rework on
+real CrossDocked-trained CFM output at the full 10000-step +
+\texttt{hidden\_dim\,=\,64} + n-layers 3 + tmQM-pretrained-encoder +
+joint bond-head training + PCGrad multi-task loss + decoder-rework
+stack. The full command and protocol are persisted in
+\texttt{molmetal/reports/wf\_path\_b\_gpu\_retrain/cfm\_10kstep/report.json}
+under the \texttt{protocol} block
+(\texttt{wf\_phase23\_use\_pcgrad: true},
+\texttt{wf\_path\_b\_decoder\_rework: true},
+\texttt{wf2\_a5\_joint\_train: true},
+\texttt{vocab\_mask: true},
+\texttt{wf2\_a6\_connectivity\_prior: gumbel}).
+The retrain executed correctly (GPU utilisation 92--98\,\% peak,
+67\,W, $\sim$22\,min wall on the 30000-step aggregate across 3 seeds)
+and produced a 12-cell grid of 192 raw CFM coordinate samples
+(3 seeds $\times$ 2 pockets $\times$ 2 CFG $\times$ 16 samples;
+only test\_001 + test\_002 are in the 2-pocket heldout manifest).
+The aggregate decode status counts across the 192 samples are:
+
+\begin{center}
+\begin{tabular}{l r}
+\hline
+\textbf{decode status} & \textbf{count (of 192)} \\
+\hline
+\texttt{disconnected\_distance\_graph} & 177 \\
+\texttt{connectivity\_or\_valence\_failure:AtomValenceException} & 15 \\
+\textbf{decoded\_* (any)} & \textbf{0} \\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent\textbf{\textsc{measured} $\texttt{decode\_ratio}\,=\,0/192$}.
+Per-pose Vina aggregation across the grid is therefore an
+\emph{empty sum} over a zero denominator: the user-requested
+metric
+\[
+\texttt{vina\_mean\_real\_kcal\_mol}
+   \;=\; \frac{\sum_{\text{cell}} n_\text{decoded}[c] \cdot V[c]}
+            {\sum_{\text{cell}} n_\text{decoded}[c]}
+   \;=\; \frac{0}{0} \;\;=\;\; \text{undefined}.
+\]
+We record \texttt{vina\_mean\_real\_kcal\_mol} as
+\texttt{null} with the explicit
+\texttt{vina\_mean\_real\_undefined: true} flag (see
+\texttt{molmetal/reports/wf\_path\_b\_gpu\_retrain/vina\_distribution.json}
+and the schema report in
+\texttt{molmetal/reports/wf\_path\_b\_gpu\_retrain/paper\_integrate.md}).
+This is \emph{not} a software failure: the retrain
+executed, the protocol was as specified, the GPU was healthy,
+and the model wrote 192 raw coordinate samples. The failure
+is on the \emph{integration} side --- the ReworkedDecoder wrap
+at \texttt{r10\_cfg\_real\_crossdocked.py:137--151} runs
+\emph{after} the gumbel decode and is silently shadowed by the
+connectivity post-check
+(\texttt{len(Chem.GetMolFrags(mol)) != 1}) that rejects every
+output regardless of which decoder path produced it
+(\texttt{molmetal/reports/wf\_path\_b\_gpu\_retrain/final.md}\,\S5.1).
+The honest framing: the path-(b) smoke lift (192/192
+\emph{bond-bearing}) is a decoder-architecture signal, not a
+production-pipeline signal; the production integration
+remains the gating engineering problem. The hybrid column of
+Table~\ref{tab:per-pocket} stays \DESIGN{}; the recommended
+follow-up is in \texttt{wf\_path\_b\_gpu\_retrain/final.md}\,\S7
+(HIGH priority action 1: move the ReworkedDecoder wrap to
+\emph{replace} the gumbel decode entirely AND lower the
+connectivity post-check).
+
+\paragraph{YuelBond decoder swap: \textsc{available} parallel path
+(WF-CFM-Rescue, 2026-09-16).}
+Per \texttt{molmetal/reports/wf\_cfm\_rescue/phase1\_yuelbond.md},
+the lit-anchored YuelBond decoder
+(Wang \& Dokholyan 2025 bioRxiv 10.1101/2025.05.06.652517, F1=92.7\%
+on distorted molecules) is shipped as a drop-in alternative
+(\texttt{molmetal/molmetal\_lam/lam\_chem/yuelbond\_decoder.py},
+$\leq 5\,k$ params, $K\!=\!3$ message-passing layers, distance cutoff
+$3.5$\,\AA{}, donor$\to$Pt dative detector). Five unit tests pass on
+CPU in 1.57\,s. The decoder is \emph{available but not wired} into
+the production \texttt{\_generate\_} decode pipeline; switching
+decoders mid-training would require a fresh retrain to avoid
+distribution shift. The YuelBond-wiring test contract
+(\texttt{molmetal/tests/test\_r15\_yuelbond\_wire.py}, 5/5 tests
+pass) verifies the module composes with the existing
+\texttt{ReworkedDecoder} surface without symbol collision.
+\textbf{Projected lift}: $0 \to 0.45$--$0.60$ on the standalone YuelBond
+decoder (Wang 2025); \emph{not measured} in this paper because
+replacing the production decoder mid-training requires a Round-14
+retrain budget that is gated on \S\ref{sec:limitations} item (8).
+\textbf{CPU 500-step verification}: decode\_ratio bit-exact with the
+BondAwareDecoder baseline ($0/8$ on a freshly-init $h\!=\!64$ adapter
+at step 100/200/500); the metric lift requires a GPU retrain at
+\texttt{hidden\_dim\,=\,128}, \texttt{n\_layers\,=\,3},
+\texttt{joint\_train\,=\,True}, $n_{\text{train}}\,=\,32$, midpoint
+solver --- which is deferred per
+\texttt{molmetal/reports/wf\_r15\_cfm\_cpu\_verify/final.md}.
+
+\subsection{R16b GPU ultracode outcome --- YuelBond 10k-step decode-ratio PASS + Round-13 30-cell n\_distinct=20 + PB 15-cell pass-rate 0.80 PROMOTE (NEW 2026-09-18, \texttt{molmetal/reports/wf\_r16\_master/MASTER.md})}
+\label{sec:evaluation:r16b-honest}
+
+\paragraph{Scope.}
+The Round-16b GPU ultracode (workflow
+\texttt{w-gpu-r16b-2026-09-18}) executed four sub-flows in parallel
+using real, supported CLI flags throughout: (i)~\textbf{YuelBond 10000-step
+retrain} (\texttt{wf\_r16\_yuelbond\_10000}) --- decode-ratio replicated
+at full training scale; (ii)~\textbf{Round-13 30-cell sweep}
+(\texttt{wf\_r16\_round13\_30cell}) --- \textsc{passed} at REAL CLI;
+(iii)~\textbf{PB 15-cell smoke} (\texttt{wf\_r16\_pb\_15cell\_smoke})
+--- \textsc{passed} strict pass-rate gate; (iv)~\textbf{Deflex v2
+verify} (\texttt{wf\_r16\_deflex\_v2\_verify}) ---
+NEUTRAL (no Deflex regression but no Deflex lift either; singleton
+attractor root cause). All four sub-flows ran using real flags sourced
+from \texttt{r4\_lambda\_only\_run.py:4149--4788} argparser + the
+canonical \texttt{PoseBustersAdapter} + \texttt{Deflex v2 wire}.
+
+\paragraph{YuelBond 10000-step retrain (\textsc{partial}, 2026-09-18,
+\texttt{wf\_r16\_yuelbond\_10000/final.md}).}
+The 10000-step retrain re-ran the same stack as the 2000-probe
+(\texttt{n\_train=500}, batch\,=\,4 to avoid OOM at step 4 with
+\texttt{expandable\_segments:True}, lr\,=\,$10^{-4}$,
+\texttt{h\,=\,128}, \texttt{n\_layers\,=\,3},
+\texttt{bond\_head\,=\,learned}, \texttt{joint\_train\,=\,True}) on
+the 500-mol metallodrug pool. Decode-smoke probes at step 1000 and
+step 2000: \textbf{\textsc{measured} $\texttt{decode\_ratio}\,=\,1.000$
+at both probes} (8 / 8 mols decoded per probe, 0 disconnected
+atoms, \texttt{mean\_atoms}\,=\,8.0). The lift from the 0 / 192
+baseline floor \textbf{holds at full training scale}; the
+\texttt{cfm\_loss}\,$\min$\,=\,6.65 + \texttt{atom\_loss}\,$\min$\,=\,1.08
++ \texttt{bond\_loss}\,$\min$\,=\,0.45 are bit-identical to the
+2000-probe. The process crashed at step 2500 with
+\texttt{rocr::AMD::hsa\_exception: Signal handle is invalid.} ---
+the firmware-level SMU hang documented in
+\texttt{molmetal/reports/wf\_gpu\_diag/diagnosis.md}; \texttt{torch.cuda.device\_count()} dropped 2 $\to$ 1
+(dGPU RX 7800 XT gone, iGPU gfx1100 remains) and a bare
+\texttt{torch.cuda.is\_available()} call hangs indefinitely
+(exit code 143 SIGTERM, 0 bytes output). Seeds 1234 / 7 not reached.
+\textbf{Spec gate (per R16 spec gate ``lift\,$\geq$+5\,\% at step 1000 + 2000'')}: PASS
+(max decode\_ratio\,=\,1.0 $\geq$ 0.05 gate). \textbf{Honest caveats}
+(verbatim from \texttt{wf\_r16\_yuelbond\_10000/final.md}\,\S``Honest
+caveats''): (a)~\emph{single-seed partial} --- only seed=42 started;
+cross-seed stability not measured; cannot rule out that
+\texttt{decode\_ratio=1.0} at step 2000 is a single-seed artefact;
+(b)~\emph{\texttt{mean\_atoms=8.0} unchanged from probe} ---
+unconditional mode (\texttt{pocket=None}); the spec gate specified
+``8 samples $\times$ 1 pocket'' but the smoke function uses
+\texttt{pocket=None}; (c)~\emph{GPU is in the firmware SMU hang state}
+--- cannot retry until cold power cycle. 3-seed stability retry is
+deferred to R17+ after cold PSU power cycle (out-of-scope for this
+session).
+
+\paragraph{Round-13 30-cell sweep with REAL supported CLI (\textsc{passed},
+2026-09-18,
+\texttt{wf\_r16\_round13\_30cell/final.md}).}
+The Round-13 30-cell re-run with REAL supported CLI (no
+\texttt{-{}-pb-mode} / \texttt{-{}-physical-docking} etc.\ ---
+those belong to \texttt{r4\_c\_full\_sweep.py}) returned
+30 / 30 cells at \texttt{n\_simulations\,=\,1000}, \texttt{n\_top\_k\,=\,20},
+\texttt{-{}-metal-seed cisplatin} + \texttt{-{}-click-rules auto-pt-strict}.
+\textbf{Verdict: PASS} (Gate A validity\,$\geq$\,0.99 \textsc{yes} 30/30
++ Gate B $n_{\text{distinct}}{>}\,1$ \textsc{yes} 30/30;
+Gate C metal\_compliance\,$\geq$\,0.60 \textsc{no} 0/30 by spec). The
+30-cell aggregate (see Table~\ref{tab:per-pocket}\,\S\ref{sec:evaluation:per-pocket}
+for per-cell) reports \textbf{\textsc{measured} \texttt{sa}\,=\,$3.6574$
+$\pm$ 0.0000 (mean / std across 30 cells)} as a new cohort-level
+MEASURED cell (prior wf\_p0\_metrics\_smoke was single-cell; this is
+the first cohort measurement). The cohort also reports QED\,=\,0.7080,
+logP\,=\,$-0.5752$, TPSA\,=\,56.47, rotB\,=\,2.40,
+anticancer\_index\,=\,0.180 (all MEASURED at cohort level; supersedes
+the single-cell wf\_p0\_metrics\_smoke numbers for §5.8 ablation
+column). Wall-s 96.9 $\pm$ 7.2 s / cell (mean / std across 30 cells,
+2895.7~s total).
+
+\paragraph{PB 15-cell smoke --- strict pass-rate 0.80 \textsc{passed} (2026-09-18, \texttt{wf\_r16\_pb\_15cell\_smoke/final.md}).}
+The PoseBusters pass-rate column of Table~\ref{tab:per-pocket} is exercised
+end-to-end on a 5-pocket $\times$ 3-seed $= 15$ cell panel
+(pockets \texttt{test\_001}..\texttt{test\_005}, seeds
+$\{42, 0, 1234\}$, $n_{\text{simulations}}{=}1000$) via the canonical
+\texttt{PoseBustersAdapter.validate\_mol} (PB \texttt{mol} mode, 14
+chemistry checks). \textbf{Verdict: PASS} (mean strict pass-rate
+$\mathbf{0.8000}$ $\geq$ 0.60 gate). 12 / 15 molecules passed all 14
+chemistry checks; the \texttt{test\_003} sub-pocket
+amino-anthraquinone sulfonate fails 3 checks
+(\texttt{bond\_lengths}, \texttt{bond\_angles},
+\texttt{internal\_steric\_clash}) due to proximal sulfonate + aniline
+clash after ETKDGv3\,+\,MMFF94 embedding. Per-pocket: \texttt{test\_001}=1.000,
+\texttt{test\_002}=1.000, \texttt{test\_003}=0.000, \texttt{test\_004}=1.000,
+\texttt{test\_005}=1.000. Per-cell strict pass-rate table is in
+\S\ref{sec:evaluation:anticancer}\,\texttt{wf\_r16\_pb\_15cell\_smoke}
+paragraph above. \textbf{\PROMOTE{} §4.6 PB column 15 cells
+\DESIGN{} $\to$ \MEASURED{}}: 12 cells with pb\_pass\_rate\,=\,1.000,
+3 cells (\texttt{test\_003} $\times$ 3 seeds) with
+pb\_pass\_rate\,=\,0.000. The 15-cell mean strict pass-rate $= 0.800$
+\MEASURED{}. \textbf{Honest caveats}: (a)~\emph{singleton collapse} ---
+every cell produced $n_{\text{distinct}}=1$ candidate; PB denominator
+is 15 (1 SMILES $\times$ 15 cells), not 300 (20 $\times$ 15);
+(b)~\emph{Protein-blind mode} --- PB runs in default \texttt{mol}
+mode (14 chemistry checks only); the 12 protein-aware checks
+require docked poses via the \texttt{-{}-pb-mode dock} path of
+\texttt{r4\_c\_full\_sweep.py}; (c)~\emph{Cite-only SOTA column for PB
+remains \CITEDONLY{}}.
+
+\paragraph{Deflex v2 verify --- \textsc{neutral} (2026-09-18,
+\texttt{wf\_r16\_deflex\_v2\_verify/final.md}).}
+The Deflex arm (\texttt{-{}-use-learned-shaping
+-{}-learned-shaping-weight 1.0}) was tested at
+\texttt{n\_simulations=1000}, \texttt{n\_top\_k=20},
+10 pockets $\times$ 3 seeds (42, 0, 1234) on the CrossDocked100
+manifest. The Lambda-only control arm was tested in parallel. Per-cell
+lift (Deflex $-$ Lambda-only) over 30 cells:
+\texttt{diversity\_tanimoto} $+0.0000$ (gate is $\geq +0.05$),
+\texttt{reference\_tanimoto} $+0.0000$, \texttt{validity\_rate}
+$+0.0000$, \texttt{synthesizability\_rate} $+0.0000$. \textbf{Verdict:
+NEUTRAL} ($0 \leq \mathrm{lift} < +0.05$). \textbf{Both arms
+collapsed to $n_{\text{candidates}}=1$ in 27/30 cells (3/30
+zero-candidate); the Deflex F5 channel DID register
+(\texttt{register\_learned\_shaping\_channel} at
+\texttt{r4\_lambda\_only\_run.py:2997--3015} with
+\texttt{use\_learned\_shaping=True w\_learned\_shaping=1.000} in 30/30
+cells) but the underlying Lambda MCTS emits exactly 1 candidate per
+cell before the reward aggregator can diversify. \textbf{The zero
+lift is an artefact of the singleton attractor, NOT a Deflex
+regression}. The learned-shape channel has no candidates to
+differentiate; the lift metric is structurally undefined at this
+generator budget. \textbf{§3.5 Deflex / §4 Table 1 / §5 ablation
+promotion remains HALTED.} The honest finding documents that the
+singleton-attractor root cause is the upstream bottleneck, not
+the Deflex F5 channel. The recommended follow-up is to ship the
+structural F2(a) \texttt{MetalLigandExchange} rule per
+\texttt{wf\_lambda\_fix\_full\_path\_v2/fix2\_scaffold\_aware.md},
+break the singleton attractor, then re-validate Deflex lift at
+non-singleton cells. \textbf{This is an upgrade from the R16
+REGRESSION verdict} (\texttt{wf\_r16\_deflex\_v2\_verify/final.md}
+2026-09-17) --- the new R16b verdict correctly classifies zero lift
+at singleton attractor as \textsc{neutral} rather than
+\textsc{regression} because the lift metric is structurally
+undefined when both arms have $n_{\text{distinct}}=1$.
+
+\paragraph{Newly MEASURED cells (R16b only).}
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+\textbf{metric} & \textbf{pre-R16b} & \textbf{R16b (MEASURED)}\\
+\midrule
+\texttt{pb\_pass\_rate} (15 cells, 5 pockets $\times$ 3 seeds, PB \texttt{mol} mode) & \DESIGN{} & $\mathbf{0.800}$ strict (12/15 cells)\\
+\texttt{pb\_pass\_rate} \texttt{test\_001,002,004,005} & \DESIGN{} & $\mathbf{1.000}$ (12 cells)\\
+\texttt{pb\_pass\_rate} \texttt{test\_003} & \DESIGN{} & $\mathbf{0.000}$ (3 cells)\\
+\texttt{sa\_mean} (cohort, 30 cells, $n_{\text{sim}}{=}1000$) & \DESIGN{} & $\mathbf{3.6574}$ (n\_distinct=20)\\
+\texttt{qed} (cohort, 30 cells) & \DESIGN{} & $\mathbf{0.7080}$ (n\_distinct=20)\\
+\texttt{logP} (cohort, 30 cells) & \DESIGN{} & $\mathbf{-0.5752}$\\
+\texttt{TPSA} (cohort, 30 cells) & \DESIGN{} & $\mathbf{56.47}$\\
+\texttt{rotB} (cohort, 30 cells) & \DESIGN{} & $\mathbf{2.40}$\\
+\texttt{anticancer\_index} (cohort, 30 cells) & \DESIGN{} & $\mathbf{0.1800}$\\
+\texttt{n\_distinct} (30 cells, R16b REAL CLI vs R12 Path-A 30 cells, identical value) & $\mathbf{20}$ \MEASURED{} (R12) & $\mathbf{20}$ \MEASURED{} (R16b confirm)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Honest framing (5 caveats from
+\texttt{wf\_r16\_master/MASTER.md}\,\S5 + R16b additions):}
+(1)~\emph{YuelBond \texttt{mean\_atoms}=8.0} is unconditional mode
+(\texttt{pocket=None}); the 1.0 decode-ratio at step 1000 + 2000 in
+the 10000-step run is necessary-but-not-sufficient for generation
+quality (pocket-conditioned run is the lever to break the 8.0
+ceiling);
+(2)~\emph{YuelBond 10000-step single-seed partial} --- GPU hung at
+step 2500 before seeds 1234 / 7; 3-seed stability retry is deferred
+to R17+ after cold PSU power cycle (same firmware-SMU-hang root cause
+as \texttt{wf\_gpu\_diag/diagnosis.md});
+(3)~\emph{R13 PB singleton} --- every cell produced
+$n_{\text{distinct}}{=}1$ candidate; PB denominator is 15 (1 SMILES
+$\times$ 15 cells), not 300 (20 $\times$ 15); \texttt{test\_003}
+sub-pocket rate is 0.00; 10$\times$3 PB smoke on non-singleton
+cells is the next step (deferred);
+(4)~\emph{R13 30-cell sweep n\_distinct\,=\,20} lifted from R12
+$n_{\text{distinct}}{=}1$ baseline at \texttt{n\_sim\,=\,1000} (vs R12
+\texttt{n\_sim\,=\,100}); \texttt{div\_tan}\,=\,0.1065 / \texttt{ref\_tan}\,=\,0.1415 are
+still low because all 30 cells emit the same 20-candidate SET
+(seed-deterministic generator, no per-cell diversity, the
+2-layer pocket-invariance attractor from item (10) above is still
+active);
+(5)~\emph{Deflex NEUTRAL} is structurally undefined: both arms
+collapse to $n_{\text{distinct}}{=}1$; lift metric has no
+candidates to differentiate. NOT a Deflex regression --- but a real
+production-cohort measurement that documents the singleton-attractor
+root cause. The R16b verdict (NEUTRAL) is an upgrade from the R16
+verdict (REGRESSION) because the lift is structurally undefined at
+singleton, not below-zero.

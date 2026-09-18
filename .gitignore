@@ -1,0 +1,145 @@
+# =============================================================================
+# Mol-Metal .gitignore
+# Targets a PUBLIC release: ~50 MB of source + load-bearing reports + tiny
+# checkpoints. Heavy items below are EXCLUDED — see README §11.6 (datasets)
+# and §11.7 (checkpoints) for re-acquisition instructions.
+# =============================================================================
+
+# --- Python bytecode & venv -------------------------------------------------
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+htmlcov/
+*.egg-info/
+
+# --- LaTeX build artefacts (paper/main.pdf is the only tracked output) ------
+**/*.aux
+**/*.bbl
+**/*.blg
+**/*.log
+**/*.toc
+**/*.fls
+**/*.fdb_latexmk
+**/*.synctex.gz
+**/*.nav
+**/*.out
+**/*.snm
+**/*.vrb
+**/*.dvi
+paper/main.pdf
+
+# --- Heavy cloned SOTA repos (3.57 GB; clone per molmetal/references/README.md)
+molmetal/references/
+!molmetal/references/README.md
+!molmetal/references/clone_all.sh
+
+# --- Top-level transient workflow output -----------------------------------
+# These are working artefacts from past ultracode workflows; not source.
+_a1_sanity.py
+conftest.py
+cutoff_sweep.json
+cutoff_sweep.md
+texput.log
+topo_plot.png
+topo_plot_clean.png
+%{size_download}\n
+wf_lambda_mcts_coords_fix/
+workflow-scripts/
+
+# --- Pre-trained model checkpoints (large; SHIPPED via `git add -f`) --------
+# Default policy: include molmetal/checkpoints/ (canonical, 70 MB)
+# for paper §4 Table 1 reproducibility.
+# Top-level checkpoints/ contains pre-R12 legacy models (model.pt +
+# learned_prior_Pt.*) which are superseded by molmetal/checkpoints/*.pt.
+# fpscores.pkl.gz is regenerable via sascorer.py's pickle download path.
+# To exclude all checkpoints (reduce repo size), uncomment the next 3 lines:
+# molmetal/checkpoints/
+# checkpoints/
+# molmetal/eval/scoring/fpscores.pkl.gz
+# Keep these (canonical pretrained for paper §4 Table 1 reproducibility):
+#   molmetal/checkpoints/fm_pocket.pt  fm_pocket_conditioned.pt  fm_ru_temporal.pt
+#   molmetal/checkpoints/metal_hybrid_v4_{ru_temporal,mb1}_seed{42,133,256}.pt
+#   molmetal/checkpoints/dmpnn_attn_ru_pic50.pt  dmpnn_tmqm_pretrained.pt
+#   molmetal/checkpoints/dmpnn_attn_heLa48h_dark_retrained.pt
+#   molmetal/checkpoints/egnn_tmqm_finetuned_ru.pt
+#   molmetal/checkpoints/metal_hybrid_{Ru,v1,v2,v3}_*.pt
+#   molmetal/checkpoints/metallo_drug_smoke_mol_cache.pt
+checkpoints/
+molmetal/eval/scoring/fpscores.pkl.gz
+
+# --- Heavy data (NOT shipped; download per README §11.6) --------------------
+/mnt/storage/
+data/qm9_raw/
+data/qm9_processed.pt
+data/crossdocked/
+data/tmQM/
+data/platinai/
+data/cytotox/
+data/nci60/
+
+# --- Heavy / transient workflow artefacts in reports/ -----------------------
+# Workflow artefacts tier policy:
+#   TIER A (tracked):  *.md, *.tex, small JSON (final.json, MASTER.json, summary.json)
+#   TIER B (ignored):  PNG plots, raw train logs, large JSON dumps, ckpt.pt,
+#                      docking poses (regenerable), raw CSV probes
+molmetal/reports/**/*.png
+molmetal/reports/**/*.csv
+molmetal/reports/**/*.pt
+molmetal/reports/**/*.pkl
+molmetal/reports/**/*.npy
+molmetal/reports/**/train.log
+molmetal/reports/**/ckpt.pt
+molmetal/reports/**/decode_smoke_*.json
+molmetal/reports/**/*poses*/
+molmetal/reports/**/*_poses/
+molmetal/reports/**/*_docked*/
+molmetal/reports/**/receptor.json
+molmetal/reports/**/receptor.pdbqt
+molmetal/reports/**/*.tar.gz
+molmetal/reports/**/*.zip
+# Large JSON dumps (>500 KB) — raw machine-readable runs; load-bearing small
+# JSONs (final.json, verdict.json, summary.json ≤ 100 KB) ARE tracked.
+molmetal/reports/**/*.json
+!molmetal/reports/**/final.json
+!molmetal/reports/**/final.md
+!molmetal/reports/**/MASTER.md
+!molmetal/reports/**/verdict.md
+!molmetal/reports/**/summary.md
+!molmetal/reports/**/final_small.json
+!molmetal/reports/**/summary_small.json
+
+# --- Joblib caches (rebuilt by build_cache.py) ------------------------------
+molmetal/molmetal_lam/tile_lib/.cache/
+
+# --- Jupyter ---------------------------------------------------------------
+.ipynb_checkpoints/
+*.ipynb
+
+# --- Editor / OS ------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+*~
+
+# --- Local override / runtime files -----------------------------------------
+.env
+.env.local
+*.local
+*.tmp
+*.bak
+core
+core.*
+
+# --- Claude-code / agent meta (LOCAL only, do NOT ship) ---------------------
+.claude/

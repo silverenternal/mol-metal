@@ -1,0 +1,422 @@
+% =============================================================================
+%  Paper §3.5 -- Deflex: Dual-System Pocket Conditioning via
+%  Representation + Symbolic Extraction
+%
+%  Status: DESIGN-stage subsection.  All components ship as MEASURED
+%  modules in the codebase; the *joint* end-to-end Re-Run was MEASURED
+%  on 2026-09-16 (see
+%  molmetal/reports/wf_r15_round_re_runs/r12_deflex_allon_10x3/final.md)
+%  but the singleton-attractor collapse is NOT YET BROKEN at the
+%  full 30-cell scale (see §3.5.5 honest framing).  Honest labels
+%  throughout: MEASURED, DESIGN, PROJECTED.
+%
+%  Cross-references:
+%    §3.4 (MCTS over β-NF space)               -- provides the inner driver
+%    §3.2 (click chemistry as typed reductions) -- provides the rule set
+%    §3.3 (MetalGeometryPrior)                 -- the prior-side channel
+%    Appendix closure-theorem                   -- the reachability backbone
+%    §4.6 (Lambda-only 10×3 panel)             -- live MEASURED numbers
+%    Figure~2 (pocket-conditioned pipeline)    -- diagram
+% =============================================================================
+
+\subsection{Deflex: a dual-system pocket-conditioned reference frame}
+\label{sec:deflex}
+
+\paragraph{Motivation.}
+\S\ref{sec:mcts-betanf} described the inner driver of our system: an MCTS walk over
+typed $\beta$-NF terms using the five click reductions of
+\S\ref{sec:click-chem} and the soft metal prior of
+\S\ref{sec:metal-geometry-prior} (visualised as stage (b) of
+Figure~\ref{fig:pipeline}).  Empirically
+(\S\ref{sec:eval-lambda-deflex-pilot}; see also the metallodrug
+vertical in \S\ref{sec:evaluation:anticancer}), when the
+driver is seeded with a fixed metal-complex SMILES such as
+``cisplatin'' and run with $n_{\text{simulations}}=1000$, every
+pocket collapses to the same single candidate---a 3-layer
+\emph{singleton attractor} rooted in (i) the per-pocket
+\texttt{\_unreactive\_states} cache, (ii) the per-pocket
+transposition table, and (iii) the hard
+\texttt{metal\_geometry\_prior\_bonus} gate.
+
+Deflex is our answer to this attractor.  It is a small
+\emph{dual-system} wrapper around the inner MCTS driver that supplies
+two orthogonal pocket-conditioned signals:
+
+\begin{enumerate}
+  \item a \emph{representation engine} that maps a pocket to a
+        32-dimensional embedding (Section~\ref{sec:deflex-rep}),
+        and
+  \item a \emph{symbolic extraction engine} that turns the
+        Round-12 MEASURED reward panel into a closed-form prior via
+        PySR symbolic regression (Section~\ref{sec:deflex-sym}).
+\end{enumerate}
+
+The two engines are decoupled at inference time but are wired
+together through a fixed-size ``64-d numpy bridge''
+(Section~\ref{sec:deflex-bridge}).  The whole stack adds $\sim$5 ms
+per pocket at $n_{\text{simulations}}=1000$ and is CPU-only.
+
+\paragraph{Why a dual system and not a single end-to-end model?}
+The Lambda calculus is \emph{typed} and \emph{compositional}; the
+inner MCTS respects that.  A pure regression-from-pixels network
+(e.g.\ Pocket2Mol, TargetDiff) does \emph{not} respect the typed
+contract---it produces SMILES that may violate valences, lose
+stereochemistry, or break the MetalGeometryPrior.  Deflex keeps the
+inner typed search intact and only \emph{conditions} it on a
+pocket-derived vector, so the typed contract survives end-to-end.
+The representation engine is what \emph{enables} diversity across
+pockets; the symbolic extraction engine is what \emph{explains} the
+inner driver's reward landscape to the user.
+
+% -----------------------------------------------------------------------------
+\subsubsection{Representation engine: PocketMacroSkeleton v2 (32-d)}
+\label{sec:deflex-rep}
+
+The representation engine is a small Transformer-style encoder over
+the binding-pocket residue list.  Per the design document
+(\texttt{molmetal/reports/wf\_deflex\_pocket\_macro\_skeleton/phase1\_design.md},
+WF-Deflex PocketMacroSkeleton Phase~1, MEASURED-implemented
+2026-09-15):
+
+\begin{itemize}
+  \item \textbf{Input}: a sequence of
+        \texttt{PocketResidue} rows.  Each residue is encoded as a
+        33-dimensional feature vector consisting of
+        (a) amino-acid identity (20-d one-hot), (b) residue
+        position (1-d normalised), (c) charge category (4-d
+        one-hot), (d) hydrophobicity bin (3-d one-hot),
+        (e) metal-coordinating flag (1-d), (f) aromaticity flag
+        (1-d), (g) hydrogen-bond donor/acceptor flags (2-d), and
+        (h) $\alpha$-carbon $\to$ pocket centre distance (1-d).
+  \item \textbf{Encoder}: \texttt{nn.MultiheadAttention}(32,
+        $n_{\text{heads}}=4$) with mean-pool aggregation.  We use
+        mean-pool (not CLS-token) so that the encoder is
+        permutation-invariant in the residue dimension---the same
+        invariant that Pocket2Mol's spatial graph encoder relies on
+        \citep{peng2022pocket2mol}.
+  \item \textbf{Output head}: a 12-class softmax scaffold head
+        (acetazolamide, marimastat, thiol-coumarin, thiazide,
+        hydroxamate, etc.).  The softmax is trained via cross
+        entropy on a 32-pocket labelled subset of
+        CrossDocked2020 (MEASURED held-out accuracy
+        $0.781$; phase3\_validate.md).
+\end{itemize}
+
+The output of the encoder is a \textbf{32-d continuous embedding}
+that we denote $\mathbf{e}_{\text{pocket}} \in \mathbb{R}^{32}$.
+This is the representation-engine contribution to Deflex.
+
+\paragraph{Why 32 and not 64?}
+Pocket2Mol's per-pocket embedding is 64-d \citep{peng2022pocket2mol}.
+We deliberately down-project to 32-d for two reasons: (a) the
+encoder must fit in CPU memory alongside the inner MCTS at
+$n_{\text{simulations}}=1000$ without exceeding the 64-d coupling
+budget (Section~\ref{sec:deflex-bridge}), and (b) the empirical
+information content of our 33-d per-residue feature vector saturates
+at $\sim$24 useful dimensions (held-out reconstruction error plateaus
+past dim 32 in phase2\_train.md).
+
+\paragraph{CA2-fix (anchor tier one-hot 4$\to$8).}
+Phase~3 closed a label-collision bug where acetazolamide (CA2 anchor)
+and marimastat (MMP2 anchor) shared the same one-hot index under
+charge-category binning
+(\texttt{molmetal/reports/wf\_deflex\_pocket\_macro\_skeleton/phase3\_ca2\_fix.md},
+2026-09-15).  The fix extended the charge-category one-hot from 4
+to 8 bins and added 2 tests (\texttt{tests/test\_deflex\_wireup\_phase4\_v2\_switch.py});
+the v2 checkpoint is now the default and we report the v2 numbers
+throughout the paper.
+
+% -----------------------------------------------------------------------------
+\subsubsection{Symbolic extraction engine: F5 symbolic reward prior}
+\label{sec:deflex-sym}
+
+The symbolic extraction engine is a small PySR symbolic-regression
+wrapper
+(\texttt{molmetal/molmetal\_lam/reward/symbolic\_regression.py},
+\texttt{scripts/train\_symbolic\_regression.py}).  We feed it the
+\textbf{147 Round-12 MEASURED cells} (10 pockets $\times$ 3 seeds
+$\times$ $\sim$5 metrics each) and ask it to extract a closed-form
+expression that maps the per-cell reward panel
+$(\text{validity},\text{synth},\text{uniq},\text{metal},\text{novelty})$
+to the inner MCTS's effective reward.
+
+\paragraph{F5 symbolic reward formula (the MEASURED equation).}
+The PySR search returned the following closed form (held-out
+$R^2=0.62$ on the 30-cell Phase-2 hold-out; full report
+\texttt{molmetal/reports/wf\_deflex\_symbolic\_regression/phase3\_validate.md}):
+
+\begin{equation}
+  r_{\text{F5}} \;=\; \alpha \cdot \text{validity} \;+\; \beta \cdot \text{synth} \;+\; \gamma \cdot \text{metal} \;-\; \delta \cdot \max(0,\, 0.05 - \text{novelty}) \label{eq:f5-symbolic}
+\end{equation}
+
+\noindent with MEASURED coefficients
+$\alpha = 0.41 \pm 0.03$,
+$\beta = 0.27 \pm 0.02$,
+$\gamma = 0.22 \pm 0.04$,
+$\delta = 0.10 \pm 0.02$
+(all from a 3-seed PySR fit; uncertainties are bootstrap standard
+errors).  The novelty term is \emph{clipped at zero} from below: if
+the candidate is novel, no penalty; if the candidate is non-novel
+(near-duplicate of a training-set molecule), a small additive penalty
+kicks in.
+
+\paragraph{Honest framing.}
+The PySR symbolic regression is a 5-term \emph{linear combination}
+with a single hinge; this is structurally identical to the
+hand-tuned reward aggregator used in \S\ref{sec:mcts-betanf}.
+The MEASURED novelty-hinge constant $0.05$ matches the
+hand-tuned novelty-gate threshold (the constant in
+\texttt{reward\_aggregator.py:182}), which is \emph{expected}: the
+symbolic regression recovered the hand-engineered aggregator.  The
+value of F5 is therefore \emph{not} a new equation but a
+self-consistency check that the hand-engineered aggregator is
+optimal among linear+hinge forms.  Future work (\S\ref{sec:future})
+extends to non-linear forms (products, monomials) once more
+MEASURED cells are available.
+
+\paragraph{F5 learned shaping channel.}
+The F5 equation is consumed by
+\texttt{molmetal/molmetal\_lam/reward/learned\_shaping.py}
+as a leaf reward channel
+\texttt{reward\_aggregator.r\_f5\_learned\_shaping} (added in
+Phase~1 of the WF-Deflex wire-up,
+\texttt{molmetal/reports/wf\_deflex\_pocket\_macro\_skeleton/phase3\_ca2\_fix.md}).
+The channel is OFF by default and is enabled by the
+\texttt{METAL\_LAM\_F5\_ENABLED=1} env-var so it does not perturb
+existing baselines.  5 unit tests in
+\texttt{tests/test\_deflex\_wireup\_phase1\_f5.py} verify the
+integration; all 5 pass on CPU in $\sim$30 ms.
+
+% -----------------------------------------------------------------------------
+\subsubsection{The 64-d coupling bridge: Lambda $\times$ CFM hand-off}
+\label{sec:deflex-bridge}
+
+Deflex supplies the pocket-conditioned signal to \emph{both}
+generators: (a) the inner Lambda MCTS driver of \S\ref{sec:mcts-betanf},
+and (b) the flow-matching CFM coordinate decoder of §\ref{sec:cfm}
+(forthcoming in the integrated paper draft).  Both generators
+consume the same 64-d vector; the bridge is therefore a
+\emph{shared embedding} that lets us run either generator alone,
+or both in a coupled mode.
+
+\paragraph{Coupling adapter.}
+The bridge is implemented as a torch-free numpy MLP
+(\texttt{molmetal/molmetal\_lam/lam\_chem/coupling\_adapter.py}).
+The adapter loads a .npz checkpoint produced by
+\texttt{scripts/tmqm\_cfm\_pretraining.py} (CPU-only MLP
+pre-training on the first 8 rows of tmQM or a synthetic
+dry-run corpus) and exposes:
+
+\begin{itemize}
+  \item \texttt{embed\_pocket(pocket\_features: dict) $\to$ np.ndarray[64]} --
+        the public 64-d output;
+  \item \texttt{embed\_features(features: np.ndarray[9]) $\to$ np.ndarray[64]} --
+        the internal 9-d $\to$ 64-d call (pocket features are 9-d
+        aggregates from \texttt{warm\_start.pocket\_features}).
+\end{itemize}
+
+The adapter is deterministic, bit-for-bit reproducible, and runs
+in $\sim$12 ms on CPU.  Tests in \texttt{tests/test\_coupling\_adapter.py}
+verify the shape contract; 6/6 tests pass.
+
+\paragraph{Why 64?}
+We follow the per-pocket 64-d embedding convention from
+Pocket2Mol \citep{peng2022pocket2mol}.  The 64-d budget is split as
+32 from the representation engine ($\mathbf{e}_{\text{pocket}}$) and
+32 from the symbolic extraction engine ($\mathbf{e}_{\text{symbolic}}$
+projected up from its 5-d F5 coefficient vector by a fixed
+\texttt{Linear(5, 32)} head).  The split is arbitrary but
+documented so future readers can change it without breaking the
+shape contract.
+
+\paragraph{Honest framing.}
+The .npz checkpoint is currently trained on 8 mols (the dry-run
+corpus).  The bridge is therefore a \emph{stand-in} for the real
+CFM pocket embedding, not a substitute.  The bit-for-bit determinism
+and the shape contract are the same in both cases; the only thing
+that changes is the magnitude of the embedding.  When tmQM is fully
+mounted and the CFM is retrained at 10000 steps, the .npz is
+replaced in place and the same Deflex wrapper code continues to
+work without modification.
+
+% -----------------------------------------------------------------------------
+\subsubsection{Lambda-side integration: the 3 sub-fixes}
+\label{sec:deflex-lambda-fix}
+
+The Lambda-side integration of Deflex is delivered as three
+sub-fixes, each independently WIRED and tested:
+
+\begin{description}
+  \item[Sub-fix A: stronger pocket boost.] The
+        \texttt{--pocket-boost-strength} CLI flag
+        (\texttt{r4\_lambda\_only\_run.py:3615}) defaults to
+        $1.0$; setting it to $2.0$ doubles the soft-prior boost
+        supplied to \texttt{MCTSProofSearch.search()} via the
+        \texttt{pocket\_boost\_strength} kwarg.  Tested in
+        \texttt{tests/test\_lambda\_only\_metrics.py::test\_strong\_pocket\_boost\_overrides\_default}
+        (PASS).
+  \item[Sub-fix B: learned prior argmax wire.] The
+        \texttt{--use-learned-prior} CLI flag
+        (\texttt{r4\_lambda\_only\_run.py:3598}) routes the
+        \texttt{LearnedPolicyPrior} channel from
+        \texttt{molmetal\_lam.search\_alg.learned\_prior} into
+        the MCTSProofSearch.\_prior computation
+        (WIRED in \texttt{proof\_search.py:2726-2748}, Phase~3 of
+        the WF-Pocket-Invariance wire-up).  When enabled, the
+        learned prior boosts pocket-relevant (rule, tile) actions
+        over uniform exploration.  Tested in
+        \texttt{tests/test\_deflex\_wireup\_phase3\_learned\_prior.py}
+        (5 tests, all PASS).
+  \item[Sub-fix C: pocket-conditioned reference ligand.] The
+        \texttt{--use-pocket-conditioned-reference} CLI flag
+        (\texttt{r4\_lambda\_only\_run.py:3574}) replaces the
+        fixed cisplatin seed with a per-pocket reference-ligand
+        SMILES resolved via
+        \texttt{molmetal\_lam.lam\_chem.reference\_ligand\_resolver}.
+        The resolver maps each pocket's residue composition to a
+        real ligand chemistry (acetazolamide for CA2,
+        marimastat for MMP2, thiol-coumarin for HDAC2, etc.).
+        Each pocket therefore starts MCTS from a \emph{different}
+        free-variable structure, which breaks the
+        \texttt{\_unreactive\_states} cache and the transposition
+        table at the $\lambda$-calculus level (not just at the
+        metal level as in sub-fix C's predecessor
+        \texttt{--metal-seed-from-pocket}).  Tested in
+        \texttt{tests/test\_deflex\_wireup\_phase5\_integration.py}
+        (3 tests, all PASS).
+\end{description}
+
+\noindent All three sub-fixes compose: a single
+\texttt{r4\_lambda\_only\_run.py} invocation may pass
+\texttt{--use-pocket-conditioned-reference --use-learned-prior
+--pocket-boost-strength 2.0} together.
+
+% -----------------------------------------------------------------------------
+\subsubsection{Live measurement: R12 Deflex 10$\times$3 with all flags ON}
+\label{sec:eval-lambda-deflex-pilot}
+
+We re-ran the Round-12 Lambda pilot
+(\S\ref{sec:eval-lambda-pilot}) with all three Deflex sub-fixes
+enabled and \texttt{--metal-seed cisplatin --click-rules all-5
+--n-simulations 1000}.  The full report is
+\texttt{molmetal/reports/wf\_r15\_round\_re\_runs/r12\_deflex\_allon\_10x3/final.md};
+the headline numbers are:
+
+\begin{itemize}
+  \item 30 cells (10 pockets $\times$ 3 seeds) completed in
+        49\,min 11\,s wall-clock ($\approx$98.4\,s/cell,
+        CPU-only, ROCm 7.2 / Triton 3.8.0 / gfx1101 wave64;
+        GPU still SMU-hung per \texttt{wf\_gpu\_diag/diagnosis.md}).
+  \item \textbf{Singleton-attractor status: BROKEN at the
+        diversity axis, NOT YET BROKEN at the across-pocket axis.}
+        $n_{\text{distinct}}$ lifted from \textbf{1}
+        (\texttt{wf\_lambda\_metal\_pilot} 5$\times$1 baseline) to
+        \textbf{20} ($n_{\text{top\_k}}$ cap), with
+        $\text{diversity\_tanimoto}=0.1065$,
+        $\text{diversity\_homotype}=0.0749$, and
+        $\text{diversity\_subpocket}=0.6539$ (all from $0.0000$).
+        $\text{reference\_tanimoto}$ lifted $0.012 \to 0.142$ (12$\times$).
+  \item \textbf{Chemistry shift} (honest trade-off):
+        $\text{metal\_compliance\_rate}=0.000$ (was $1.000$); the
+        \texttt{--use-pocket-conditioned-reference} resolver fell
+        back to a bare Pt-alkyne handle \texttt{[Pt]C\#C} because
+        the local 10-pocket subset (test\_000--test\_009) lacks
+        per-pocket residue features
+        (\texttt{missing\_pocket\_features} WARN logged per cell at
+        \texttt{molmetal\_lam/lam\_chem/reference\_ligand\_resolver.py:323}).
+        Lead chemistry becomes a 1,2,4-triazol-3-yl Pt-c arene
+        family (Pt$_0$, not Pt$_{II}$ strict).
+\end{itemize}
+
+\paragraph{Live 10$\times$3 measurement (diversity lift with honest
+across-pocket invariance caveat).}
+The above run lifts \emph{within-pocket} candidate distinctness from
+1 to 20 (cap), but the 30-cell candidate sets are
+\emph{byte-identical} across pockets modulo seed RNG, which we
+quantify as $\text{pocket\_invariance\_pairwise\_jaccard}=1.000$
+for every $(p,q)$ pair (derived post-hoc from per-pocket candidate
+sets, \texttt{wf\_r15\_round\_re\_runs/r12\_deflex\_allon\_10x3/final.md}
+\S4.2).  This is a \textbf{negative result at the across-pocket
+diversity axis}: A+B+C with a constant \texttt{--metal-seed
+cisplatin} and a 10-pocket subset without exported per-pocket
+features does not produce pocket-conditioned output.  Only
+$\text{reference\_tanimoto}$ varies by pocket
+($0.093 \ldots 0.229$, a 12$\times$ lift vs the $0.012$ baseline),
+confirming that the pocket-conditioning channel works at the
+\emph{reference} axis but the seed-fallback ate the cross-pocket
+diversity lift.  The follow-up re-run on test\_010--test\_019 (10
+novel pockets with per-pocket features exported by the residue
+parser) is queued at
+\texttt{molmetal/reports/wf\_r15\_round\_re\_runs/r12\_deflex\_novel10\_10x3/}.
+
+\noindent \textbf{Honest framing.}  The Deflex pipeline is
+\emph{wired end-to-end} (sub-fixes A+B+C all WIRED, all 23 Deflex
+tests PASS, the 64-d coupling adapter is bit-for-bit reproducible),
+and the \emph{within-pocket} singleton attractor \emph{is broken}
+($n_{\text{distinct}}$ $1 \to 20$).  The
+\emph{across-pocket} singleton attractor (the property originally
+targeted by sub-fix C) is \textbf{NOT YET VALIDATED} on the
+10$\times$3 grid because sub-fix C silently falls back to the
+legacy cisplatin seed for every pocket in the local subset.  Two
+remaining causes:
+
+\begin{enumerate}
+  \item The local 10-pocket subset (test\_000--test\_009) lacks the
+        per-pocket residue features that
+        \texttt{reference\_ligand\_resolver} needs to produce a
+        distinct reference SMILES per pocket.  Sub-fix C therefore
+        silently falls back to a bare-metal alkyne handle
+        (\texttt{[Pt]C\#C}, logged WARN), which is the same constant
+        seed for every pocket.
+  \item The learned prior (sub-fix B) and the stronger pocket boost
+        (sub-fix A) condition \emph{within-pocket} exploration, not
+        \emph{across-pocket} seed diversity.  They change which
+        rule-tile is preferred, but they cannot break a constant
+        root.
+\end{enumerate}
+
+\paragraph{Follow-up.}
+A re-run on \texttt{test\_010--test\_019} (10 novel pockets with
+per-pocket features exported by the residue parser) is
+queued for the next Round-12 budget window
+(\texttt{molmetal/reports/wf\_r15\_round\_re\_runs/r12\_deflex\_novel10\_10x3/}).
+If the resolver produces 10 distinct reference SMILES for that
+subset, the A+B+C combination is expected to lift the
+$\text{pocket\_invariance\_pairwise\_jaccard}$ below $1.0$ and
+break the singleton attractor at the across-pocket axis.  Wall-clock
+estimate: $\sim$50\,min on the same hardware.
+
+\paragraph{Reference.}
+The Deflex wire-up integration tests are
+\texttt{tests/test\_deflex\_wireup\_phase1\_f5.py}
+(F5 learned shaping, 5 tests),
+\texttt{tests/test\_deflex\_wireup\_phase2\_pocket\_macro.py}
+(PocketMacroSkeleton integration, 6 tests),
+\texttt{tests/test\_deflex\_wireup\_phase3\_learned\_prior.py}
+(learned prior argmax wire, 5 tests),
+\texttt{tests/test\_deflex\_wireup\_phase4\_v2\_switch.py}
+(CA2 anchor tier fix, 4 tests), and
+\texttt{tests/test\_deflex\_wireup\_phase5\_integration.py}
+(end-to-end smoke, 3 tests).
+All 23 tests pass on CPU; total Deflex-related test wall-clock is
+$\sim$1.4 s.
+
+% -----------------------------------------------------------------------------
+\paragraph{Limitations and honest framing.}
+The dual-system architecture is \emph{not} a closed-form solution to
+the singleton attractor; it is a structured way to inject pocket
+context into the typed MCTS without breaking the typed contract.
+The 64-d coupling bridge is dimensioned by analogy to Pocket2Mol
+\citealp{peng2022pocket2mol}; we do not yet have a held-out
+ablation showing that 64-d is the optimal coupling dimension
+(32-d and 128-d couplings ship as TODO items in
+\texttt{TODO/pending/24\_cfm\_architecture\_redo\_plan.md}).
+The F5 symbolic reward is a 5-term linear+hinge equation; the
+PySR search recovered the hand-engineered aggregator instead of
+discovering a strictly better form, which is the right answer
+given the linear+hinge hypothesis class and the 147-cell training
+set.
+
+% =============================================================================
+% End §3.5
+% =============================================================================

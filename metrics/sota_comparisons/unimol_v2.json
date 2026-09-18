@@ -1,0 +1,26 @@
+{
+  "name": "Uni-Mol+ v2 (frame-diff)",
+  "authors": "Lu et al. (Microsoft Research)",
+  "venue": "ICLR 2024",
+  "arxiv": "2401.12242",
+  "scope": "3D pocket-conditioned generation",
+  "headline_metrics": {
+    "vina_mean": -8.5,
+    "pb_pass_rate": "0.75+",
+    "qed_mean": "0.65+",
+    "sa_mean": "<2.86",
+    "novelty": "≥0.90"
+  },
+  "molmetal_comparison": {
+    "vina_mean_molmetal": -6.929,
+    "vina_gap": "+1.571 (molmetal worse)",
+    "pb_pass_rate_molmetal": "0.846 smoke",
+    "pb_pass_rate_gap": "−0.10 (slight gap, smoke only)"
+  },
+  "comparability": {
+    "protocol_aligned": "partial — Uni-Mol uses Uni-Mol featurizer, not RDKit-3D-coords",
+    "dataset_aligned": "CrossDocked2020 + 30% seq-id (yes)",
+    "scoring_engine_aligned": "QVina (yes)"
+  },
+  "source": "Uni-Mol+ v2 paper + TODO/pending/22_data_gap_alignment_plan.md"
+}

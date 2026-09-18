@@ -1,0 +1,14 @@
+[project]
+name = "molmetal-aizynth-runtime"
+version = "0.1.0"
+description = "Isolated CPU ONNX retrosynthesis backend for molmetal"
+requires-python = "==3.12.*"
+dependencies = [
+    "aizynthfinder==4.4.1", "scikit-learn>=1.3,<2",
+    # Keep the cached, matched AWS pair used by reaction-utils/metaflow.
+    "boto3==1.43.92", "botocore==1.43.92",
+    "blosc2==4.12.0", "matplotlib==3.11.1",
+]
+
+[tool.uv]
+managed = true

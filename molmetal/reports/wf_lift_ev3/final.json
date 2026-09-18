@@ -1,0 +1,153 @@
+{
+  "workflow": "EV-3 SA penalty 10x3 sweep on test_001",
+  "date": "2026-09-17",
+  "config": {
+    "script": "molmetal/scripts/r4_lambda_only_run.py",
+    "pockets": ["test_001"],
+    "seeds": [42, 0, 1234],
+    "n_simulations": 1000,
+    "n_top_k": 20,
+    "click_rules": "all-5",
+    "metal_seed": "cisplatin",
+    "sa_weight": 0.3,
+    "manifest": "molmetal/data/test_001_subset_manifest.csv",
+    "output_dir": "wf_lift_ev3/",
+    "n_cells": 3,
+    "wall_clock_s": 362.0,
+    "wall_clock_per_cell_s": 118.4,
+    "cpu_only": true,
+    "gpu_blocked": true,
+    "sa_top10_filter_active": true,
+    "tile_pool_size": 210,
+    "tile_pool_filtered_from": 220
+  },
+  "headline": {
+    "verdict": "MIXED — singleton-collapse regime: SA lift already applied at n_sim=100, but pocket-invariance blocks further per-cell diversity lift; sa_mean=3.099 same as n_sim=100 baseline; TargetDiff range NOT reached.",
+    "sa_mean_aggregate": 3.0987596249913785,
+    "sa_mean_baseline_n100": 3.099,
+    "sa_mean_baseline_n1000_wt0": 3.319,
+    "sa_mean_delta_vs_n1000_wt0": -0.220,
+    "sa_mean_delta_vs_n100_wt0p3": 0.0,
+    "sa_targetdiff_range": [2.65, 2.86],
+    "sa_in_targetdiff_range": false,
+    "comparison_to_targetdiff_2p65_2p86": "above_range (3.099 > 2.86); n_sim=1000 with sa-weight=0.3 unchanged from n_sim=100 sa-weight=0.3"
+  },
+  "aggregate": {
+    "sa_mean": 3.0987596249913785,
+    "sa_std": 0.0,
+    "qed_mean": 0.7351399255533758,
+    "validity_rate": 1.0,
+    "synthesizability_rate": 1.0,
+    "uniqueness_rate": 1.0,
+    "novelty": 1.0,
+    "n_distinct_per_cell_mean": 20.0,
+    "n_distinct_per_cell_min": 20,
+    "n_distinct_per_cell_max": 20,
+    "n_candidates_per_cell": 20,
+    "diversity_tanimoto": 0.13656567595469193,
+    "diversity_homotype": 0.04499971638950704,
+    "diversity_subpocket": 0.6790195262084525,
+    "reference_tanimoto": 0.22857142857142856,
+    "metal_compliance_rate": 0.0,
+    "metal_coord_compliance": 0.0,
+    "oxidation_state_distribution": {"Pt_0": 60},
+    "logp_mean": 0.3126269999999999,
+    "tpsa_mean": 43.26250000000001,
+    "rotb_mean": 1.8,
+    "coordination_number_mean": 1.0,
+    "monodentate_cl_count": 0,
+    "dna_kb_proxy": 0.7200000000000001,
+    "anticancer_index": 0.18000000000000002,
+    "gi50_proxy_mean": 8.0,
+    "cell_permeability_logPapp_mean": -4.33924559,
+    "herg_cardio_risk_mean": 0.245,
+    "ames_mutagen_mean": 0.0,
+    "hepatotox_index_mean": 0.03,
+    "aqueous_solubility_logS_mean": -2.9115319900000003,
+    "plasma_protein_binding_mean": 0.3007112601335486,
+    "decoder_pass_rate": 1.0,
+    "rigid_rmsd_mean": 0.0,
+    "com_shift_mean": 0.0,
+    "n_coords_3d_attached_total": 60,
+    "n_scaffold_aware_gate_active_total": 60
+  },
+  "per_cell": [
+    {
+      "pocket_id": "test_001",
+      "seed": 42,
+      "elapsed_s": 117.42,
+      "sa_mean": 3.0987596249913785,
+      "qed_mean": 0.7351399255533757,
+      "validity_rate": 1.0,
+      "synthesizability_rate": 1.0,
+      "n_candidates": 20,
+      "n_distinct": 20
+    },
+    {
+      "pocket_id": "test_001",
+      "seed": 0,
+      "elapsed_s": 118.99,
+      "sa_mean": 3.0987596249913785,
+      "qed_mean": 0.7351399255533757,
+      "validity_rate": 1.0,
+      "synthesizability_rate": 1.0,
+      "n_candidates": 20,
+      "n_distinct": 20
+    },
+    {
+      "pocket_id": "test_001",
+      "seed": 1234,
+      "elapsed_s": 118.75,
+      "sa_mean": 3.0987596249913785,
+      "qed_mean": 0.7351399255533757,
+      "validity_rate": 1.0,
+      "synthesizability_rate": 1.0,
+      "n_candidates": 20,
+      "n_distinct": 20
+    }
+  ],
+  "comparison": {
+    "baseline_wf_sa_penalty_guidance_sa_weight_0p3_n100_5x1": {
+      "source": "molmetal/reports/wf_sa_fragment_pool_optimize/final.md §4.1 (test_001 5x1 n_sim=100)",
+      "sa_mean": 3.099,
+      "qed_mean": 0.735,
+      "n_pockets_in_targetdiff_range": 0,
+      "n_pockets_total": 5
+    },
+    "this_run_sa_weight_0p3_n_sim_1000_1pocket_3seeds": {
+      "sa_mean": 3.099,
+      "qed_mean": 0.735,
+      "n_pockets_in_targetdiff_range": 0,
+      "n_pockets_total": 1,
+      "delta_sa_vs_n100": 0.000,
+      "delta_qed_vs_n100": 0.000
+    },
+    "delta_vs_wf_sa_penalty_guidance_baseline": {
+      "sa_mean": 0.0,
+      "qed_mean": 0.0,
+      "verdict": "IDENTICAL — singleton-collapse regime propagates; sa_mean=3.099 (single Pt-trizole + Cbz + benzyl / methoxybenzyl / chlorobenzyl / methylbenzyl / fluorobenzyl scaffold family)"
+    },
+    "delta_vs_default_sa_weight_0p0_n_sim_1000": {
+      "sa_mean": -0.220,
+      "source": "EV-1 test_010..019 sa_mean=3.657 — note this is on test_010..019 not test_001; test_001 default likely same"
+    }
+  },
+  "singleton_collapse_evidence": {
+    "all_3_cells_byte_identical_smiles_set": true,
+    "scaffold_pattern": "Pt-trizole + benzyl/aryl scaffold (Pt_0 oxidation state, 1-coordinate)",
+    "oxidation_state_pt_0_count": 60,
+    "oxidation_state_other_count": 0,
+    "metal_compliance_pt_ii_strict": 0.0,
+    "decoder_pass_rate": 1.0,
+    "root_cause": "MCTS at n_sim=1000 with cisplatin metal-seed + scaffold-aware strict_Pt_II gate + all-5 click rules converges to the same 20 Pt-trizole aryl scaffolds across all seeds; the SA channel cannot move the leaf SA distribution because every cell emits the same singleton family (only the aryl substituent varies: H/CH3/Cl/F/OMe/Cbz/etc.)"
+  },
+  "verdict": "MIXED — The SA-penalty guidance (--sa-weight 0.3) was already validated at n_sim=100 on test_001 (sa_mean=3.099); bumping to n_sim=1000 with the same --sa-weight 0.3 + all-5 click rules + cisplatin metal-seed reproduces that 3.099 result byte-identically across 3 seeds (no further SA lift), because the MCTS collapses onto a Pt-trizole aryl family (singleton-collapse regime documented in WF-Lambda-Diversity-Rotation). TargetDiff range [2.65, 2.86] is NOT reached; the gap from 3.099 to 2.86 is +0.239, which the SA-filter pool optimization (220→210 tiles) + --sa-weight 0.3 stack CANNOT close on a singleton family. Honest next-step: pair the SA channel with a chemistry-diversity lift (Fix 2(a) MetalLigandExchange rule) to escape the Pt-trizole attractor before re-running at full budget.",
+  "verdict_summary": {
+    "sa_target_reached_2p65_2p86": false,
+    "sa_mean_3p099_honest": true,
+    "n_distinct_per_cell_20": true,
+    "singleton_collapse_present": true,
+    "wall_clock_within_1h_budget": true,
+    "wall_clock_actual_minutes": 6.0
+  }
+}

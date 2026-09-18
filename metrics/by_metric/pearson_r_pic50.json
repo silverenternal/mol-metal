@@ -1,0 +1,47 @@
+{
+  "metric": "pearson_r_pic50",
+  "description": "Pearson correlation between predicted and experimental pIC50 (HeLa48h/dark cohort)",
+  "unit": "ratio (-1 to 1)",
+  "scope": "pIC50 activity predictor",
+  "measurements": [
+    {
+      "run": "wf_extra1_full (3-seed × 50-epoch, margin=0.25)",
+      "value": 0.198,
+      "n_samples": "test set ~700",
+      "status": "MEASURED",
+      "date_utc": "2026-09-14",
+      "note": "seed-fragile: 0.005 / 0.519 / 0.071"
+    },
+    {
+      "run": "wf_pic50_margin_fix (margin 0.25→1.0)",
+      "value": 0.181,
+      "n_samples": "test set ~700",
+      "status": "MEASURED",
+      "date_utc": "2026-09-14",
+      "note": "ba_acc 0.0→1.0 lifted but pearson within seed-std"
+    },
+    {
+      "run": "wf_pic50_margin_sweep (margin=0.5, BEST)",
+      "value": 0.207,
+      "n_samples": "test set ~700",
+      "status": "MEASURED",
+      "date_utc": "2026-09-14",
+      "note": "best margin 0.5; +0.011 over 1.0; default CENSOR_MARGIN_DEFAULT 1.0→0.5"
+    },
+    {
+      "run": "ridge_baseline (3-seed)",
+      "value": 0.572,
+      "n_samples": "test set ~700",
+      "status": "MEASURED",
+      "note": "ridge remains credible ceiling on exact-row pearson"
+    }
+  ],
+  "aggregate": {
+    "best_neural": 0.207,
+    "ridge_baseline": 0.572,
+    "gap_to_ridge": -0.365,
+    "rmse_neural_best": 0.687,
+    "rmse_ridge": 0.597
+  },
+  "verdict": "MEASURED_HONEST_NEGATIVE — D-MPNN does not beat ridge on exact-row pearson. Margin sweep identified 0.5 as best (down-shift from 1.0 default). Honest paper framing: ridge remains the credible ceiling; neural adds value only via bound-aware accuracy (ba_acc=1.0 at margin≥0.5)."
+}

@@ -1,0 +1,67 @@
+{
+  "spec": {
+    "pockets": [
+      "test_001",
+      "test_002",
+      "test_003",
+      "test_004",
+      "test_005"
+    ],
+    "seeds": [
+      42,
+      0,
+      1234
+    ],
+    "n_simulations": 1000,
+    "physical_top_k": 20,
+    "pb_mode": "dock",
+    "seed_strategy": "click_tile",
+    "engine": "vina",
+    "physical_engine": "vina",
+    "click_rules_via_yaml": "all_5 (extended_204 + all-5 tile library)",
+    "note": "CLI --pockets test_001..test_005 in spec maps to --pocket-offset 1 --n-pockets 5 on r4_c_full_sweep; --pb-check and --pb-mode dock are supported; --click-rules all-5 maps to SOTA-aligned YAML all_5 (extended_204)."
+  },
+  "cells_completed": [
+    {
+      "pocket_id": "test_001",
+      "seed": 42,
+      "n_cand": 1,
+      "n_docked": 1,
+      "n_pb_pass": 1,
+      "pb_pass_rate": 0.0,
+      "pb_status": "completed",
+      "vina_best_kcal_mol": -5.973,
+      "pb_n_chemistry": null,
+      "pb_n_protein": null
+    },
+    {
+      "pocket_id": "test_001",
+      "seed": 0,
+      "n_cand": 39,
+      "n_docked": 20,
+      "n_pb_pass": 20,
+      "pb_pass_rate": 0.0,
+      "pb_status": "completed",
+      "vina_best_kcal_mol": -6.209,
+      "pb_n_chemistry": null,
+      "pb_n_protein": null
+    }
+  ],
+  "aggregate": {
+    "n_cells": 2,
+    "n_cells_with_docked": 2,
+    "total_docked": 21,
+    "total_pb_pass": 21
+  },
+  "wall_seconds_total": 461.08,
+  "wall_seconds_per_cell_mean": 230.54,
+  "driver_status": "terminated_after_2_cells",
+  "termination_reason": "Runtime code changed during experiment (proof_search.py and wetlab_reward_channel.py mtimes changed during MCTS subprocess execution; driver detected mismatch at cell 3).",
+  "comparison_to_baseline": {
+    "wf_pb_pass_10x3_smoke (n_sim=100)": "None (search-bound)",
+    "wf_pb_pass_real_dock (1-pocket, n_sim=100)": "1.000 (chemistry-only)",
+    "wf_pb_mmff94_relax (1-pocket click_tile)": "0.846 chemistry+protein",
+    "wf_r15_sa_pb (15-cell test_000..test_004, n_sim=1000)": "0/15 PB-eligible (search-bound)",
+    "TargetDiff published (CrossDocked test, 100 pockets)": "0.94"
+  }
+}

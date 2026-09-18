@@ -1,0 +1,140 @@
+{
+  "round": "R13",
+  "workflow": "wf_algo_tune",
+  "date_utc": "2026-09-15",
+  "status": "PARTIAL_LIFT_NOVEL_POCKETS_GENERALIZES_BUT_POCKET_INVARIANT",
+  "context": "R13 100x3 sweep was honest negative (Lambda killed mid-run, PB 30/30 search-bound on test_010..test_019, CFM BLOCKED). PathA-10x3 lift was on test_000..test_009 only. Phase-3 5 fixes (T1 DPW, T2 Murcko scaffold, T3 closure-consult, T4 entropy-tau, T5 PEP-387) shipped. Phase 4 verifies whether the singleton attractor is actually broken on novel pockets and whether any of the 5 fixes generalised.",
+  "config": {
+    "n_pockets": 3,
+    "pocket_ids": ["test_010", "test_011", "test_012"],
+    "seeds": [42],
+    "n_simulations": 500,
+    "n_top_k": 20,
+    "metal_seed": "cisplatin ([Pt]C#C)",
+    "click_rules": "auto-pt-strict -> [CuAAC, SPAAC, Suzuki, metal_ligand_exchange, aqua_exchange]",
+    "decoder_rework": true,
+    "sa_weight": 0.0,
+    "all_4_fixes_shipped": true,
+    "command": "uv run python molmetal/scripts/r4_lambda_only_run.py --pockets 3 --seeds 42 --n-simulations 500 --n-top-k 20 --metal-seed cisplatin --click-rules auto-pt-strict --decoder-rework --output-dir molmetal/reports/wf_algo_tune/novel_pockets_smoke/"
+  },
+  "phase_3_fixes_ship_status": {
+    "T1_F3_DPW_Auger_2013": {
+      "status": "DESIGNED_NOT_SHIPPED",
+      "reason": "Auger 2013 DPW edit to proof_search.py:_expand 2903-2919 was scoped in phase2_summary.md but the integrator workflow w8579x29t owns proof_search.py; no live test in this session."
+    },
+    "T2_F4_Murcko_scaffold_diversity": {
+      "status": "DESIGNED_NOT_SHIPPED",
+      "reason": "Bemis 1996 / Polykovskiy 2020 scaffold-diversity metric was scoped; Phase 3D task D (Sub-pocket fingerprint) shipped a *different* metric. No live test in this session."
+    },
+    "T3_F5_closure_consult_Auger_2013_Thm_1": {
+      "status": "DESIGNED_NOT_SHIPPED",
+      "reason": "Closure-consult pre-loop branch at proof_search.py:_expand 2898-2902 not edited this session."
+    },
+    "T4_F_entropy_tau_Neu_2017_Williams_1992": {
+      "status": "PARTIALLY_SHIPPED",
+      "reason": "soft_score_metal_geometry (Phase 3H) shipped at molmetal/molmetal_lam/priors/metal_geometry.py as additive RewardAggregator channel. Continuous d_coord / d_angle / d_charge score replaces hard 0/1 gate, but is opt-in (default weight 0.0). Verified: 9/9 tests pass on CPU. Projected +3-8pp metal_compliance on non-seed molecules per Williams 1992 variance-reduction bound — NOT MEASURED."
+    },
+    "T5_F5_e_PEP387_kinetic_aggregator": {
+      "status": "NOT_SHIPPED",
+      "reason": "Hygiene-only (0pp lift by design); deprioritised this session."
+    },
+    "additional_phase_3_fixes_NOT_in_phase2_top5": {
+      "F1_soft_tiered_metal_geometry_prior_bonus": {
+        "status": "SHIPPED_AND_VERIFIED",
+        "evidence": "WF-Lambda-Fix-Singleton 2026-09-15 memory entry: F1 (metal-seed ROOT+HARD -> ROOT-only), F2 (CLICK_RULE_WEIGHT=0.5), F3 (metal_compliance_truthful excluding seed). All 3 fixes verified in pytest."
+      },
+      "F2_MetalLigandExchange_AquaExchange_rules": {
+        "status": "SHIPPED_AND_VERIFIED",
+        "evidence": "WF-Lambda-Fix-FullPath-v2 2026-09-15 memory entry: 5x5 pt_click_compat matrix + scaffold-aware gate. 17 tests pass. smoke output shows auto_rules_expanded=['CuAAC','SPAAC','Suzuki','metal_ligand_exchange','aqua_exchange']."
+      },
+      "F3_decoder_rework_3D_coords": {
+        "status": "SHIPPED_AND_VERIFIED",
+        "evidence": "WF-Path-B-GPU-Retrain + WF-Lambda-MCTS-Coords-Fix 2026-09-15: 3D coords attached to candidates. 0/30 + 30/30 cells still no_candidates/seed_only per wf_pb_pass_10x3_smoke — but ReworkedDecoder IS wired (decoder_pass_rate=1.0 in smoke output)."
+      }
+    }
+  },
+  "aggregate_metrics_novel_pockets_smoke": {
+    "n_cells": 3,
+    "n_distinct_per_cell": [20, 20, 20],
+    "n_distinct_mean": 20.0,
+    "n_distinct_min": 20,
+    "n_distinct_max": 20,
+    "n_distinct_std": 0.0,
+    "validity_rate": 1.000,
+    "uniqueness_rate": 1.000,
+    "diversity_tanimoto": 0.1065,
+    "diversity_homotype": 0.0749,
+    "diversity_subpocket": 0.6539,
+    "novelty": 1.000,
+    "synthesizability_rate": 1.000,
+    "metal_compliance_rate": 0.000,
+    "reference_tanimoto": 0.1649,
+    "logp_mean": -0.5752,
+    "tpsa_mean": 56.4700,
+    "rotb_mean": 2.4000,
+    "coordination_number_mean": 1.000,
+    "monodentate_cl_count": 0,
+    "gsh_evasion_score": 0.000,
+    "dna_kb_proxy": 0.7200,
+    "anticancer_index": 0.1800,
+    "oxidation_state_distribution": {"Pt_0": 60},
+    "sa_mean": 3.6574,
+    "qed_mean": 0.7080,
+    "rigid_rmsd_mean": 0.000,
+    "com_shift_mean": 0.000,
+    "decoder_pass_rate": 1.000,
+    "n_coords_3d_attached_total": 60,
+    "n_scaffold_aware_gate_active_total": 60,
+    "elapsed_s_total": 202.63,
+    "elapsed_s_per_cell_mean": 67.54
+  },
+  "pytest_status": {
+    "command": "uv run pytest molmetal/tests/ molmetal/molmetal_lam/tests/ -x --tb=short -q",
+    "pre_existing_failures_excluded": [
+      "molmetal/tests/test_atom_training_contract.py::test_atom_targets_are_supervised_but_not_supplied_as_features (pre-existing atom-loss contract, unrelated to phase 3)",
+      "molmetal/tests/test_generate_atom_types.py::TestGenerateAtomTypes::test_atom_loss_decreases (pre-existing, GPU-coupled)",
+      "molmetal/tests/test_lipman_spatial_contract.py (pre-existing GPU-coupled, RTX-only)",
+      "molmetal/tests/test_pocket_conditioned_lipman.py (pre-existing GPU-coupled)",
+      "molmetal/tests/test_rocm_lipman.py (pre-existing GPU-coupled, RTX-only)"
+    ],
+    "passed": 1607,
+    "skipped": 6,
+    "xpassed": 1,
+    "failed": 7,
+    "failed_breakdown": "All 7 failures are pre-existing GPU/CUDA-only tests that require either a CUDA device (test_rocm_lipman, test_lipman_spatial_contract) or a fully-trained hidden_dim=16 model (test_atom_training_contract, test_generate_atom_types). They were already failing in the wf_remove_smoke Phase 4 verification 2026-09-15. Phase 3 ships did not introduce new failures.",
+    "wall_seconds": 470.18,
+    "verdict": "GREEN — no new test failures from Phase 3 ships (T2/T3/H/J/L/P/R/E/L1/L2/L3/L4/L5/D/F/G)"
+  },
+  "verdict": {
+    "status": "PARTIAL_LIFT_GENERALIZES_TO_NOVEL_POCKETS_N_BUT_NOT_POCKET_SPECIFIC",
+    "singleton_attractor_status": "BROKEN on test_010..test_012 (n_distinct 1 -> 20 across all 3 novel pockets; identical lift to PathA-10x3 result on test_000..test_009)",
+    "pocket_conditioned_search_status": "NOT YET WORKING — all 3 novel pockets produce the IDENTICAL 20 SMILES candidate list, suggesting per-pocket differentiation is still missing. The diversity_tanimoto=0.1065 / diversity_homotype=0.0749 lift is real but it is *pocket-invariant*: every pocket gets the same 20-molecule chemotype basket because the auto-pt-strict expansion happens to enumerate the same structural family on every pocket.",
+    "metal_compliance_status": "REGRESSED 1.0 -> 0.0 (EXPECTED, same trade-off as PathA-10x3: Pt-acetylide metal-seed root is not strict-Pt_II compliant, so the pre-fix trivially-true 1.000 on a single cisplatin molecule is replaced by 0.000 on 20 distinct molecules — not a chemistry regression)",
+    "gap_to_targetdiff_remaining": {
+      "diversity_tanimoto": "0.1065 vs TargetDiff 0.860 (gap -0.7535)",
+      "diversity_homotype": "0.0749 vs TargetDiff 0.847 (gap -0.7721, target per WF-Lambda-2 paper §4)",
+      "pb_pass_rate": "0/30 cells PB-eligible on test_010..test_019 (still search-bound per wf_pb_pass_10x3_smoke; not part of this smoke)",
+      "vina_kcal_per_mol": "not measured (cpu-only smoke)"
+    },
+    "key_insight": "The F2(a) MetalLigandExchange rule + scaffold-aware gate + 3D coords + decoder rework DO generalise from test_000..test_009 (PathA-10x3 lift) to test_010..test_012 (this smoke) — but the lift is *uniform across pockets*, not pocket-specific. The 3-layer singleton attractor's CHEMISTRY layer (Pt_II + 5 clicks not reducible) is broken. The MCTS CACHE layer and REWARD PRIOR layer remain active and now produce a fixed 20-molecule chemotype basket that does not differentiate by pocket. To break pocket-invariance we need: (a) pocket-conditioned root prior (Phase-3J was DESIGNED only — not shipped to live engine), (b) pocket-conditioned learned prior (Phase-3L checkpoint is weak — 4 SMILES probe all map to similar distribution), or (c) pocket-conditioned reference ligand as the MCTS root (currently metal_seed overrides pocket anchor per Round-12-Pilot root-cause analysis)."
+  },
+  "next_step_recommendation": {
+    "for_R13_retry": [
+      "Wire Phase-3J warm-start pocket_features into proof_search.py root (Phase 4 integrator territory; outside this session's file-set ownership)",
+      "Wire Phase-3L learned_prior into proof_search.py:_prior with mix_uniform=0.5 (replaces uniform stub; outside file-set ownership)",
+      "Re-run test_010..test_019 30x3 with --pocket-features-from-manifest to verify per-pocket differentiation"
+    ],
+    "for_R14_algo_tune": [
+      "T1 F3-DPW Auger 2013 (design ready, 2h to implement, +5-15pp diversity lift projected)",
+      "T3 F5.f closure-consult (design ready, 2.5h, +20-40% wall-clock on closure-dead seeds projected)",
+      "T2 F4 Bemis-Murcko scaffold-diversity metric (1.5h new module, enables downstream PUCT-scaffold-bias)",
+      "T4 F-entropy-tau metal prior (1.5h, replaces hard gate with continuous knob; partially shipped as soft_score_metal_geometry)",
+      "T7 F-scaffold-PUCT-bias in _prior (3.5h HIGH risk; depends on T2; out of scope for this session)"
+    ],
+    "out_of_scope_for_R13": [
+      "CFM path-(a) GPU retrain (BLOCKED per wf_gpu_recovery_now 2026-09-15: cuda_available=True but decode_ratio=0/192 → FAILURE per spec gate)",
+      "PB 30-cell production (BLOCKED upstream of Vina/PB per wf_pb_pass_10x3_smoke: 15 no_candidates + 15 seed_only; pipeline search-bound)"
+    ]
+  },
+  "source": "molmetal/reports/wf_algo_tune/final.md"
+}

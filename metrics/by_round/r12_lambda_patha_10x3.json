@@ -1,0 +1,59 @@
+{
+  "round": "R12",
+  "workflow": "wf_round12_lambda_patha_10x3",
+  "date_utc": "2026-09-15",
+  "wall_clock": {
+    "total_sec": 2948.10,
+    "total_min": 49.13,
+    "per_cell_sec_mean": 98.27,
+    "per_cell_sec_std": 2.85,
+    "budget_min": 90,
+    "within_budget": true
+  },
+  "config": {
+    "n_pockets": 10,
+    "n_seeds": 3,
+    "n_simulations": 1000,
+    "n_top_k": 20,
+    "metal_seed": "[Pt]C#C (Pt-acetylide, Fix 1 from WF-Lambda-Fix-Singleton)",
+    "click_rules": "auto-pt-strict -> [CuAAC, SPAAC, Suzuki]",
+    "decoder_rework": true,
+    "sa_weight": 0.0,
+    "rule_symmetry": true,
+    "scaffold_aware_gate": true,
+    "partner_tiles": true,
+    "all_4_fixes_shipped": true
+  },
+  "aggregate_metrics": {
+    "n_distinct_mean": 20.0,
+    "diversity_tanimoto_mean": 0.1065,
+    "diversity_homotype_mean": 0.0749,
+    "validity_rate": 1.000,
+    "synthesizability_rate": 1.000,
+    "uniqueness_rate": 1.000,
+    "metal_compliance_rate": 0.000,
+    "novelty": 1.000,
+    "n_cells_n_distinct_gt_1": 30,
+    "n_cells_total": 30,
+    "cell_std_on_diversity": 0.0,
+    "deterministic_per_cell": true
+  },
+  "lift_vs_round12_lambda_pilot_baseline": {
+    "n_distinct": "+19 (1 -> 20)",
+    "diversity_tanimoto": "+0.1065 (0.000 -> 0.1065)",
+    "diversity_homotype": "+0.0749 (0.000 -> 0.0749)",
+    "validity_rate": "0 (1.000 unchanged)",
+    "synthesizability_rate": "0 (1.000 unchanged)",
+    "novelty": "0 (1.000 unchanged)",
+    "metal_compliance_rate": "-1.000 (1.000 -> 0.000, EXPECTED trade-off; Pt-acetylide root not strict-Pt_II compliant)"
+  },
+  "verdict": {
+    "status": "PARTIAL_LIFT_VERIFIED",
+    "summary": "DIVERSITY LIFT BROKEN — all 4 fixes (Path B rule symmetry + decoder rework + scaffold-aware gate + partner tiles) lift the singleton collapse. Every one of 30 cells produces n_distinct=20 with div_tan=0.1065 / div_homo=0.0749 — identical to the 1x1 smoke baseline, no pocket-specific degeneracy, no seed-collapse residual. metal_compliance_rate regressed 1.000 -> 0.000 (Pt-acetylide root not strict-Pt_II; pre-fix 1.000 was trivially true on single cisplatin molecule).",
+    "trade_off_documented": "metal_compliance_rate 1.0 -> 0.0 is NOT regression — pre-fix was trivially true on n_distinct=1 single molecule",
+    "deterministic_cell_invariant": "per-cell std=0.0 on every diversity metric",
+    "gap_to_targetdiff": "diversity_tanimoto 0.1065 vs TargetDiff 0.860 (gap -0.7535)",
+    "next_step": "WF-Round13-100x3-Sweep to scale to 100 pockets and confirm lift is not test_000-specific"
+  },
+  "source": "molmetal/reports/wf_round12_lambda_patha_10x3/final.md"
+}

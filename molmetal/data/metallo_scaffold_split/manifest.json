@@ -1,0 +1,32 @@
+{
+  "bucket_metal_coverage": {
+    "test": {
+      "OTHER": 45,
+      "Pt": 23
+    },
+    "train": {
+      "OTHER": 209,
+      "Pt": 105
+    },
+    "val": {
+      "OTHER": 50,
+      "Pt": 17
+    }
+  },
+  "bucket_sizes": {
+    "test": 68,
+    "train": 314,
+    "val": 67
+  },
+  "fractions": [
+    0.7,
+    0.15,
+    0.15
+  ],
+  "input": "/home/hugo/codes/try_triton_on_rocm/molmetal/data/metallo_drugs_500_train.csv",
+  "n_clusters": 213,
+  "schema_version": 1,
+  "seed": 42,
+  "tanimoto_threshold": 0.6,
+  "tool": "metallo_pool_scaffold_split.py"
+}

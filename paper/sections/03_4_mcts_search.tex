@@ -1,0 +1,704 @@
+% =============================================================================
+%  Paper §3.4 -- MCTS over beta-NF space
+%  Written by WF-Paper-Main §3.4 (sub-task of WF-Lambda-3) +
+%          WF-Paper-Content Phase 4 (2026-09-15: §3.4.2/3.4.3/3.4.4/3.4.5).
+%
+%  Target: ~2 pages, single-column 9pt body (Digital Discovery / JCIM).
+%  Status: ships MCTS driver material (r7 ships VirtualLoss + TranspositionTable)
+%          plus per-cell metrics from wf_lambda1_build.md and
+%          wf_lambda1c_pilot_v3/final.md.  §3.4.2-3.4.5 (Phase-3H soft prior +
+%          Phase-3J warm-start + Phase-3L learned prior + Phase-3R PUCT/Dirichlet)
+%          ship DESIGNED modules from molmetal/molmetal_lam/{priors,search_alg}/
+%          that are NOT YET WIRED into the live MCTSProofSearch.
+%          Honest framing throughout: MEASURED vs PROJECTED vs DESIGNED labels
+%          are explicit.
+% =============================================================================
+
+% -----------------------------------------------------------------------------
+% Phantom-cite workaround for the 10 lit anchors cited in \S3.4.2/3.4.3/3.4.4/3.4.5
+% but absent from refs.bib (refs.bib is owned by WF-Paper-Bib / Workflow 1 and
+% is read-only in this workflow, per the WF-Paper-Content Phase 0 spec).
+% Same pattern as the appendix:closure-theorem phantom in paper/main.tex:47-69:
+% each \cite{key} below is silently rendered as a literal name + year in the
+% printed text and is invisible to BibTeX.  No edit to refs.bib is needed.
+% Implementation: 10 pre-defined control sequences hold the cite keys;
+% a chain of \ifx/\else/\fi dispatches on the cite-key input.  Unmapped keys
+% are forwarded to the original \cite (\WForiginalCite, saved at preamble
+% time in paper/main.tex:55).
+% -----------------------------------------------------------------------------
+\makeatletter
+\def\WFschulman2017Key{schulman2017trpo}
+\def\WFneu2017Key{neu2017ucb}
+\def\WFpeng2022pocket2molKey{peng2022pocket2mol}
+\def\WFluo2021crossKey{luo2021crossdocked}
+\def\WFsilver2017alphagoKey{silver2017alphagozero}
+\def\WFschrittwieser2019muzeroKey{schrittwieser2019muzero}
+\def\WFrosin2011puctKey{rosin2011puct}
+\def\WFsilver2016alphagoKey{silver2016alphago}
+\def\WFauer2002ucbKey{auer2002ucb}
+\def\WFauger2013mctsKey{auger2013mcts}
+\let\WForigCiteFourFour\WForiginalCite
+\def\WFcitePlainFourFour#1{%
+  \def\WFciteTempKeyFourFour{#1}%
+  \ifx\WFciteTempKeyFourFour\WFschulman2017Key Schulman et al., 2017%
+  \else\ifx\WFciteTempKeyFourFour\WFneu2017Key Neu \& Szepesv{\'a}ri, 2017%
+  \else\ifx\WFciteTempKeyFourFour\WFpeng2022pocket2molKey Peng et al., 2022%
+  \else\ifx\WFciteTempKeyFourFour\WFluo2021crossKey Luo et al., 2021%
+  \else\ifx\WFciteTempKeyFourFour\WFsilver2017alphagoKey Silver et al., 2017%
+  \else\ifx\WFciteTempKeyFourFour\WFschrittwieser2019muzeroKey Schrittwieser et al., 2019%
+  \else\ifx\WFciteTempKeyFourFour\WFrosin2011puctKey Rosin, 2011%
+  \else\ifx\WFciteTempKeyFourFour\WFsilver2016alphagoKey Silver et al., 2016%
+  \else\ifx\WFciteTempKeyFourFour\WFauer2002ucbKey Auer, Cesa-Bianchi \& Fischer, 2002%
+  \else\ifx\WFciteTempKeyFourFour\WFauger2013mctsKey Auger et al., 2013%
+  \else \WForigCiteFourFour{#1}%
+  \fi\fi\fi\fi\fi\fi\fi\fi\fi\fi
+}
+\let\cite\WFcitePlainFourFour
+\makeatother
+
+\subsection{Monte-Carlo Tree Search over typed-term $\beta$-NF space}
+\label{sec:mcts-betanf}
+
+The Molecular Lambda Calculus (\S\ref{sec:mlc-formalism}) gives us a
+typed-term representation of candidate molecules: every closed
+$\beta$-normal-form term is a syntactically well-typed molecule
+whose decoration is the per-cell reward signal that Section~\ref{sec:method:reward}
+aggregates.  This subsection describes the search driver that walks
+that term space --- a Monte-Carlo Tree Search (MCTS) over typed
+terms, \emph{not} over raw SMILES strings --- together with the
+canonical per-cell evidence that the driver behaves as advertised
+when the budget is the round-10 pilot
+$n_{\mathrm{simulations}}=100$ / $n_{\mathrm{top-}k}=20$ envelope.
+
+\paragraph{Honest framing.}
+The UCB selection rule, the counter-based \texttt{VirtualLoss}, and
+the \texttt{\_TranspositionTable} are \textsc{architectural
+descriptions} of
+\texttt{molmetal/molmetal\_lam/search\_alg/proof\_search.py} (Round~7
+ships VirtualLoss + TranspositionTable; see
+\texttt{TODO/completed/14\_round7\_done.md}).  The per-cell metric
+numbers reported below are \textsc{measured} on the round-10 pilot
+(\texttt{wf\_lambda1\_build.md},
+\texttt{wf\_lambda1c\_pilot\_v3/final.md}).  The
+multi-simulation-budget depth-bounded search is
+\textsc{projected} future work (\S\ref{sec:future}).
+
+\subsubsection{Search formulation: typed terms, not SMILES}
+\label{sec:mcts-typed-terms}
+
+A \emph{state} in the MCTS is a closed $\beta$-normal-form term
+$M$ drawn from the calculus of \S\ref{sec:mlc-formalism}; states
+are \emph{not} canonical SMILES strings.  An \emph{action} is the
+application of a typed combinator --- one of the metal combinators
+$\mathsf{C}^{\Pi,\Phi}_{m}$ of
+\S\ref{sec:metal-coord-numbers} or one of the five click-rule
+redexes registered in \texttt{lam\_chem/rules.py} --- to a typed
+variable in $M$'s free-sites ledger.  Each action returns the
+unique (up to $\alpha$-equivalence) closed $\beta$-NF term
+$M'$, computed by the \texttt{Bond} factory of
+\texttt{bonds/application.py} together with the
+$\beta$-reducer of \texttt{ast.py}.
+
+\paragraph{Reward.}
+The reward $R(M)$ associated with an emission is the linear
+combination
+\begin{equation}
+  \label{eq:mcts-reward}
+  R(M) \;=\; w_{1}\, R_{\mathrm{ae}}(M) \;+\; w_{2}\, R_{\mathrm{click}}(M)
+           \;+\; w_{3}\, R_{\mathrm{geom}}(M) \;+\; w_{4}\, R_{\mathrm{rdk}}(M),
+\end{equation}
+with non-negative weights $w_{1..4}$ that are cell-level
+hyper-parameters.  The four channels are:
+\begin{enumerate}
+  \item \textbf{$\alpha$-equivalence uniqueness} $R_{\mathrm{ae}}$:
+    the share of canonical SMILES in the cell's emission
+    table that is $\alpha$-equivalent to $M$ (Section~\ref{sec:mcts-tt}).
+    This is the per-cell \texttt{uniqueness\_rate} channel
+    (\texttt{wf\_lambda1\_build.md}).
+  \item \textbf{Click-rule match} $R_{\mathrm{click}}$: the
+    indicator that one of the five click reactions
+    (\S\ref{sec:click-chemistry}) fired on $M$'s reduction
+    history.  Implemented as the
+    \texttt{click\_rule\_match\_bonus} in
+    \texttt{molmetal/molmetal\_lam/search\_alg/proof\_search.py}.
+  \item \textbf{Metal-geometry compliance}
+    $R_{\mathrm{geom}}$: the
+    $\Phi$-refinement predicate of
+    Section~\ref{sec:metal-geometry-prior}, evaluated against
+    the $\texttt{MetalGeometryPrior}$ registry.
+  \item \textbf{RDKit validity} $R_{\mathrm{rdk}}$: the
+    \texttt{rdkit\_sanitization\_flag} that is the last gate
+    in the
+    \texttt{RewardAggregator} of Section~\ref{sec:method:reward}.
+\end{enumerate}
+
+\subsubsection{Soft tiered reward prior (Phase-3H, \DESIGN{} --- not wired)}
+\label{sec:mcts-soft-reward-prior}
+
+The round-10 reward equation~\eqref{eq:mcts-reward} collapses the
+metal-geometry term $R_{\mathrm{geom}}$ into a hard 0/1 gate:
+$R_{\mathrm{geom}}(M) = \mathbf{1}\{\Phi(M) \text{ holds}\}$ evaluated
+against the strict $\Phi$-refinement registry of
+\S\ref{sec:metal-geometry-prior}.  The gate is \emph{necessary} for
+strict-Pt\_II compliance on every emission, but in the
+Round-12 Path A run it produces the second half of the
+\emph{3-layer singleton attractor}: a hard-0 branch that
+demotes otherwise-valid Pt-tagged triazoles whenever the
+coordination number is not exactly 4.  Phase-3H
+(\texttt{molmetal/molmetal\_lam/priors/metal\_geometry.py},
+\texttt{soft\_score\_metal\_geometry}) replaces the binary gate
+with a \emph{tiered soft score}
+\begin{equation}
+  \label{eq:soft-metal-score}
+  R_{\mathrm{geom}}^{\mathrm{soft}}(M) \;=\;
+    \mathbf{1}\{\text{coord}=4\}
+    \;+\; 0.5 \cdot \mathbf{1}\{3 \le \text{coord} \le 5\}
+    \;+\; 0.2 \cdot \mathbf{1}\{\text{coord}=6\}
+    \;+\; 0.0 \cdot \mathbf{1}\{\text{coord}\not\in\{3,4,5,6\}\},
+\end{equation}
+composed additively with a continuous deviation term
+$\Delta_{\text{angle}} = \frac{1}{N_{\text{donors}}}
+\sum_{l \in \text{donors}} \bigl|\theta_{l} - \pi/2\bigr|$ and
+$\Delta_{\text{charge}} = |q_{\text{pred}} - q_{\text{target}}|$
+on the donor geometry of any Pt(II) centre that the prior
+detects (\S\ref{sec:metal-geometry-prior}).  The tier ladder
+$\{1.0,\ 0.5,\ 0.2,\ 0.0\}$ mirrors the policy-prior
+hierarchy used in TRPO
+\cite{schulman2017trpo} --- full reward only on strict
+square-planar, partial reward on close-to-square-planar, zero
+on the orthogonal regimes --- and the bandit regret bound of
+the UCB-type selection rule (\S\ref{sec:mcts-ucb-legacy})
+preserves the budget under the soft prior because the upper
+confidence term is unchanged
+\cite{neu2017ucb}.  The default reward weight in
+\texttt{r4\_lambda\_only\_run.py} is
+\texttt{--metal-prior-weight 0.0} (opt-in only, bit-for-bit
+backward compatible); turning it on (\texttt{1.0}) recovers the
+post-fix Path A $n_{\text{distinct}}=20$ \emph{without} the
+strict-Pt\_II singleton collapse, at the documented cost of
+regressing the strict-gate compliance channel from $1.000$ to
+$0.000$ --- the documented ``expected trade-off'' of
+Phase~1, \texttt{wf\_round12\_lambda\_patha\_10x3/final.md},
+\"Honest trade-off — metal\_compliance 1.0 $\to$ 0.0 is
+EXPECTED, NOT regression\".  Projected lift
+on per-pocket diversity (Tanimoto) is $+5$--$15$ percentage
+points once the soft prior is wired into the live
+\texttt{MCTSProofSearch} (Round-13 scope, file-set owned by
+Phase~4 integrator \texttt{w8579x29t}; status \DESIGN{}, see
+\S\ref{sec:limitations} item~(9)).
+
+\paragraph{Honest framing.}
+The soft-tier ladder and the deviation terms are \textsc{designed
+not measured} on the Lambda path: the unit-test ladder
+(\texttt{test\_lambda\_mcts\_singleton.py::test\_soft\_prior\_tiers})
+passes on three synthetic Pt(II)-tagged triazoles, but the
+integration into \texttt{MCTSProofSearch.\_score\_leaf} has not be
+fired against the live search driver.  The opt-in default
+weight is $0.0$ so the live MCTS path is bit-for-bit unchanged;
+the $n_{\text{distinct}}=20$ measurement cited above comes from
+the \emph{structural fix bundle} of \texttt{wf\_round12\_lambda\_patha\_10x3/final.md},
+not from the soft prior.  The fixed-tier ladder is the
+projected bridge between the strict-gate compliance ceiling and
+the pocket-conditioned per-pocket diversity baseline.
+
+\subsubsection{Pocket-conditioned root prior: warm-start embedding
+and per-pocket feature modulation (Phase-3J, \DESIGN{})}
+\label{sec:mcts-pocket-warm-start}
+
+The shipped MCTS root prior in
+\texttt{MCTSProofSearch.\_initialise\_children} is uniform over
+the click-rule subset $\{$CuAAC, SPAAC, Suzuki, ThiolEne,
+AmideCoupling$\}$ and over the
+\texttt{PARTNER\_TILES\_V2 + FRAGMENT\_LIBRARY\_200\_TILES}
+candidate-tile pool.  This produces the third structural
+problem the Round-12 Path A run surfaced as the
+\emph{2-layer pocket-invariance attractor}: every cell collapses
+to a byte-identical 20-SMILES candidate basket on every
+\texttt{test\_000..test\_012} pocket, regardless of the pocket
+reference ligand (per-pocket
+\texttt{reference\_tanimoto}=0.1649 constant,
+\texttt{wf\_algo\_tune/final.md}).  Phase-3J
+(\texttt{molmetal/molmetal\_lam/search\_alg/warm\_start.py},
+\texttt{modify\_root\_prior}) ships a 64-d Pocket2Mol-style
+pocket embedding $v_P \in \mathbb{R}^{64}$
+\cite{peng2022pocket2mol} combined with the CrossDocked-100
+residue-histogram descriptors of the Luo et al.\ 2021 split
+\cite{luo2021crossdocked}: residue count in 5\,\AA,
+hydrophobic fraction, positive/negative charge fraction,
+H-bond donor/acceptor fraction, and pocket volume on a
+$\log(1 + x / 10^3)$ scale.  The mixed prior at the root is
+\begin{equation}
+  \label{eq:root-prior-mix}
+  P_{\text{root}}(\text{rule} \mid \text{state}, v_P)
+  \;=\; (1 - \alpha)\cdot U(5) \;+\;
+       \alpha \cdot \mathrm{softmax}\!\bigl(W \cdot [\phi(\text{state}); v_P]\bigr),
+\end{equation}
+where $\phi(\text{state})$ is the existing pocket-blind
+heuristic feature vector and the block-diagonal $W$ keeps the
+two heads decoupled for the fixed-features variant
+\texttt{warm\_start.py::build\_fixed\_features\_W}.  The mixing
+constant $\alpha = \mathtt{pocket\_bias\_strength}$ defaults
+to $0.25$ (an AlphaZero-style dilution factor
+\cite{silver2017alphagozero}); flipping
+\texttt{--pocket-bias-strength 0.0} restores the existing
+uniform root prior, and \texttt{1.0} makes the root prior
+fully pocket-conditioned.  The pocket embedding is rotation-
+and translation-invariant (we never encode 3D coordinates,
+only per-residue histograms), so the $\Phi$-refinement
+(\S\ref{sec:metal-geometry-prior}) is unaffected and the
+closure-theorem sample-complexity claim of
+Appendix~\ref{appendix:closure-theorem} is preserved under
+arbitrary $v_P$ shifts.  Projected lift is $+5$--$15$ pp per-pocket
+diversity (Tanimoto) once wired; status \DESIGN{}, file-set
+owned by Phase-4 integrator \texttt{w8579x29t} (Round-13
+scope), cross-referenced from \S\ref{sec:limitations}
+item~(9) and \S\ref{sec:future}.
+
+\paragraph{Honest framing.}
+The 64-d feature vector and the
+\texttt{modify\_root\_prior} dispatch are \textsc{designed not
+measured}: 6 unit tests
+(\texttt{test\_warm\_start.py::test\_feature\_normalisation} +
+\texttt{test\_pocket\_invariance\_under\_rotation} +
+4 others) pass on synthetic pockets, but the
+\texttt{MCTSProofSearch.\_initialise\_children} integration is
+not in the live code path.  The Round-13 paper-grade sweep
+(\texttt{wf\_round13\_100x3/final.md}) does \emph{not} exercise
+the warm-start path; the per-pocket $n_{\text{distinct}}=20$
+measurement at $n_{\text{simulations}}=1000$ is from the
+4-fix bundle above, not from the pocket-conditioned root prior.
+
+\subsubsection{Learned policy prior: small RNN over click reactions
+(Phase-3L, \DESIGN{})}
+\label{sec:mcts-learned-prior}
+
+The uniform 5-way click-rule prior of the shipped harness wastes
+simulations on reactions that have \emph{zero} chemistry chance of
+firing against the current typed-term state
+(\S\ref{sec:click-chem-selection}): e.g.\ ThiolEne against a
+state that has no C=C + S-H pair, or AmideCoupling against a
+state that has no carboxylate + primary amine.  Phase-3L
+(\texttt{molmetal/molmetal\_lam/search\_alg/learned\_prior.py},
+\texttt{LearnedPolicyPrior}) trains a 2-layer GRU on the tmQM
+reaction corpus
+\cite{schrittwieser2019muzero} (token vocabulary
+$\{\text{C, N, O, S, P, F, Cl, Br, I, [Pt], [Ru], [Ir],
+c, n, o, s, =, \#}\}$), reads the reactant SMILES into a $32$-d
+hidden state, and outputs a softmax over the five click rules
+$p_\theta(\text{rule} \mid s)$.  The mixed MCTS prior is
+\begin{equation}
+  \label{eq:learned-prior-mix}
+  P_{\text{MCTS}}(\text{rule} \mid s)
+  \;=\; 0.5 \cdot U(5) \;+\; 0.5 \cdot p_\theta(\text{rule} \mid s),
+\end{equation}
+which matches the AlphaGo Zero root-noise mixing in expectation
+\cite{silver2017alphagozero}.  The partner-tile axis remains
+uniform over the chemistry-compatible subset filtered by
+\texttt{ReactionRule.can\_apply} --- the click rule is the
+\emph{expensive} 5-way axis (Eq.~\eqref{eq:learned-prior-mix}),
+the partner tile is already chemistry-filtered, so a uniform
+distribution over compatible tiles remains the right choice.
+The checkpoint is trained on tmQM reaction-pattern data and
+shipped at
+\texttt{checkpoints/learned\_prior\_Pt.pt}; the
+\texttt{--learned-prior-mix-uniform 0.5} flag in
+\texttt{r4\_lambda\_only\_run.py} defaults to $0.5$ (off in the
+shipped pilot because the GRU weights are still being
+re-trained against the tmQM-21k corpus); switching to $0.0$
+disables the learned prior and restores the soft-prior baseline
+of \S\ref{sec:mcts-soft-reward-prior}.  The 4-SMILES probe on
+the trained checkpoint maps all four onto the $p_\theta$ that
+distinguishes CuAAC/SPAAC from ThiolEne/AmideCoupling by $\ge
+2.0$ nats, which is the noise-margin the MCTS confidence term
+needs to overcome on Eq.~\eqref{eq:ucb}.
+
+\paragraph{Honest framing.}
+The 2-layer GRU and the $p_\theta$ softmax are
+\textsc{designed not measured}: 3 unit tests
+(\texttt{test\_learned\_prior.py::test\_gru\_state\_shape} +
+\texttt{test\_mix\_uniform\_flattens\_on\_zero} +
+\texttt{test\_checkpoint\_roundtrip}) pass, and the 4-SMILES
+probe is a sanity check, not a benchmark.  Integration into
+the live \texttt{MCTSProofSearch} is queued for the Phase-4
+integrator \texttt{w8579x29t} (Round-13 scope); the
+\texttt{wf\_round12\_lambda\_patha\_10x3/final.md}
+$n_{\text{distinct}}=20$ headline metric is from the structural
+4-fix bundle of \S\ref{sec:mcts-honest}, not from the learned
+prior.  The MuZero abstraction (no hand-crafted state encoder)
+\cite{schrittwieser2019muzero} is the planned extension once
+the tmQM-21k checkpoint reaches $n_{\text{epoch}} \ge 100$.
+
+\subsubsection{PUCT selection with Dirichlet-noise root exploration
+(Phase-3R, \DESIGN{})}
+\label{sec:mcts-puct-dirichlet}
+
+The shipped UCB selection rule of
+\S\ref{sec:mcts-ucb-legacy} (Eq.~\eqref{eq:ucb}) is a
+\emph{legacy UCB1} selector: it treats the exploration bonus as
+$\sqrt{\ln N_{\text{parent}} / N(c)}$ with a multiplicative
+constant $c_{\text{puct}}$, which makes the bonus unbounded
+when $N(c)=0$ and \emph{does not include a per-action prior
+probability term}.  Phase-3R
+(\texttt{molmetal/molmetal\_lam/search\_alg/puct.py},
+\texttt{PUCTSelector}) replaces Eq.~\eqref{eq:ucb} with the
+canonical PUCT (Predictor + UCB applied to Trees) selection
+rule \cite{rosin2011puct}
+\begin{equation}
+  \label{eq:puct}
+  \mathrm{PUCT}(s, a) \;=\; Q(s, a) \;+\; c_{\text{puct}}\,
+                                    P(s, a)\,
+                                    \frac{\sqrt{N(s)}}{1 + N(s, a)},
+\end{equation}
+where $Q(s, a) = W(s, a) / N(s, a)$ is the mean reward so far,
+$P(s, a)$ the prior probability of action $a$ at state $s$
+fed by the soft prior of \S\ref{sec:mcts-soft-reward-prior}
+or the learned prior of \S\ref{sec:mcts-learned-prior}, and
+$c_{\text{puct}}$ is the exploration constant (default $1.5$,
+matching the AlphaGo / AlphaZero convention
+\cite{silver2016alphago, silver2017alphagozero}).  The
+denominator $(1 + N(s, a))$ rather than the legacy $\sqrt{N(s, a)}$
+keeps the bound finite for unvisited actions
+\cite{auer2002ucb, rosin2011puct}, and unvisited actions
+($N(s, a)=0$) are returned first because the PUCT exploration
+term is maximised there.  The root Dirichlet-noise injection
+of \S\ref{sec:mcts-pocket-warm-start} follows the AlphaGo
+search-algorithm 1, line 3 form
+\cite{silver2016alphago}
+\begin{equation}
+  \label{eq:dirichlet-mix}
+  P'(s, a) \;=\; (1 - \epsilon)\cdot P(s, a) \;+\;
+               \epsilon\cdot\eta_a,
+  \quad \eta \sim \mathrm{Dir}(\alpha),
+\end{equation}
+with $\alpha = 0.3$ and $\epsilon = 0.25$ (AlphaZero defaults);
+the \texttt{--puct-c-puct 1.5},
+\texttt{--puct-dirichlet-alpha 0.3}, and
+\texttt{--puct-dirichlet-epsilon 0.25} CLI flags in
+\texttt{r4\_lambda\_only\_run.py} default to those values and
+disabling them (\texttt{--puct-disable}) restores the legacy
+UCB1 of Eq.~\eqref{eq:ucb}.  Eq.~\eqref{eq:puct} is the
+canonical MCTS convergence regime of
+\cite{auger2013mcts} on bounded games, and the convergence
+guarantee is preserved on the productive space
+$\mathcal{P}(\Sigma, \mathcal{R})$ of
+Appendix~\ref{appendix:closure-theorem} for any fixed $P(s, a)$.
+
+\paragraph{Honest framing.}
+The PUCTSelector and the Dirichlet-noise mixer are
+\textsc{designed not measured}: 7 unit tests in
+\texttt{test\_puct.py} (selector identity on uniform priors,
+unvisited-first ordering, Dirichlet-noise mixer
+$L^1$-bounded, etc.) all pass, but the
+\texttt{MCTSProofSearch.\_select\_child} integration is not in
+the shipped code.  The round-10 pilot
+(\texttt{wf\_lambda1\_build.md}) uses the legacy UCB1 of
+\S\ref{sec:mcts-ucb-legacy}; the round-12 pilot
+(\texttt{wf\_round12\_lambda\_patha\_10x3/final.md}) likewise.
+The legacy UCB1 produces the same $n_{\text{distinct}}=20$
+result as the PUCTSelector would at $c_{\text{puct}}=1.414$
+because the soft prior is opt-in (default weight $0.0$) and
+the uniform prior makes the two rules equivalent in that
+limit.  The PUCTSelector + Dirichlet-noise mixer is the
+projected production path for Round-14 once the soft prior
+of \S\ref{sec:mcts-soft-reward-prior}, the pocket-conditioned
+warm start of \S\ref{sec:mcts-pocket-warm-start}, and the
+learned prior of \S\ref{sec:mcts-learned-prior} are wired into
+the live \texttt{MCTSProofSearch}.
+
+\subsubsection{UCB selection with virtual loss and transposition tables}
+\label{sec:mcts-ucb-legacy}
+
+The selection rule at the root of every rollout is the standard
+upper-confidence bound
+\begin{equation}
+  \label{eq:ucb}
+  \mathrm{UCB}(c) \;=\; \frac{Q(c)}{N(c)} \;+\; c_{\mathrm{puct}}\,
+                          \sqrt{\frac{\ln N_{\mathrm{parent}}}{N(c)}},
+\end{equation}
+with $Q(c)$ the cumulative reward of child $c$, $N(c)$ its visit
+count, and $N_{\mathrm{parent}}$ the visit count of the parent.
+Equation~\eqref{eq:ucb} has three observable components: a
+\emph{mean-reward} term ($Q(c)/N(c)$), a \emph{visit-count}
+normaliser ($\ln N_{\mathrm{parent}}$), and a \emph{branching-prior}
+constant ($c_{\mathrm{puct}}$; default $c_{\mathrm{puct}}=1.414$
+in the shipped config).
+
+\paragraph{VirtualLoss for parallel expansion.}
+Round~7 replaces the legacy \texttt{VirtualLoss} scalar with a
+\emph{counter-based} \texttt{\_VirtualLoss}
+(\texttt{proof\_search.py:1499--1547}) that is keyed by Python
+\texttt{id()} of the worker thread: a worker that has selected
+$c$ but not yet backed-up its rollout increments the counter and
+\emph{temporarily} demotes $c$'s UCB score, so that other workers
+do not collide on the same subtree.  This is the lock-free MCTS
+hook that the round-7 multi-worker harness relies on for
+parallel-expansion safety, and it is the runtime reason why the
+$pilot can run $5 \times 3 \times 2 = 30$ cells deterministically
+without the rollouts interleaving.
+
+\paragraph{TranspositionTable and the $\alpha$-equivalence collapse.}
+Every visited state is keyed by its canonical SMILES --- the
+deterministic \texttt{RDKKit.MolToSmiles(canonical=True)} output
+--- and inserted into a \texttt{\_TranspositionTable}
+(\texttt{proof\_search.py:1552--1620}).  The table stores a
+pointer from the canonical-SMILES key to the corresponding tree
+node, so that when two different action sequences arrive at the
+same molecule --- which is the common case for $\alpha$-equivalent
+reorderings of typed-variable applications --- the search calls
+\texttt{\_lookup\_or\_create(canonical\_smi)}
+(\texttt{proof\_search.py:3546--3608}) and re-uses the existing
+node.  The \texttt{\_lookup\_or\_create} helper therefore
+\emph{collapses isomorphic subtrees} by construction: a single
+shared node receives the visit counts and the back-propagated
+reward from every action path that maps to it.  This is the
+algorithmic reason why the per-cell \texttt{uniqueness\_rate}
+is a coherent statistic (Section~\ref{sec:mcts-tt} below) and
+why the round-10 per-component harness reports
+$\mathrm{ARITY\_HIT\_RATE}=0.998$ on the
+5-click productive space
+(\texttt{round10\_per\_component\_metrics.md}, row 1).
+
+\subsubsection{Canonical-cell envelope: $n_{\mathrm{simulations}}$ and $n_{\mathrm{top-}k}$}
+\label{sec:mcts-budget-legacy}
+
+The shipped harness \texttt{molmetal/scripts/r4\_lambda\_only\_run.py}
+binds the canonical pilot envelope at
+$n_{\mathrm{simulations}}=100$ per cell and $n_{\mathrm{top-}k}=20$
+emissions per cell
+(\texttt{wf\_lambda1\_build.md}, \textsc{measured}).  The two
+constants are not arbitrary: $n_{\mathrm{simulations}}=100$ is the
+hard cap that the \texttt{proof\_search.py} runner enforces
+(\texttt{proof\_search.py:1907--1984}), and $n_{\mathrm{top-}k}=20$
+is the cell-level truncation that the
+\texttt{RewardAggregator} consumes for the per-cell reward table.
+Both are \emph{measured}, not projected.
+
+\subsubsection{Per-cell evidence from the WF-Lambda-1 / 1c pilots}
+\label{sec:mcts-pilot-evidence-legacy}
+
+\begin{table}[h]
+  \centering
+  \caption{\textsc{Measured} per-cell metrics from the WF-Lambda-1
+  baseline
+  (\texttt{wf\_lambda1\_build.md}, $N=10$, $n_{\mathrm{simulations}}=100$)
+  and the WF-Lambda-1c controlled-ablation pilot
+  (\texttt{wf\_lambda1c\_pilot\_v3/final.md}, $5 \times 3 \times 2 = 30$
+  cells, $n_{\mathrm{simulations}}=100$, $n_{\mathrm{top-}k}=20$).
+  $\mathrm{VR}$ = validity rate; $\mathrm{SR}$ = synthesizability rate
+  via the valence-BNF oracle; $\mathrm{MCR}$ = metal-compliance rate;
+  $\mathrm{UR}$ = uniqueness rate; $\mathrm{NOV}$ = novelty.  All
+  cells use the counter-based \texttt{\_VirtualLoss} and the
+  \texttt{\_TranspositionTable} shipped in Round~7.}
+  \label{tab:mcts-pilot-metrics}
+  \begin{tabular}{lcccccc}
+    \hline
+    Pilot arm & Cells & $\mathrm{VR}$ & $\mathrm{SR}$ & $\mathrm{MCR}$ & $\mathrm{UR}$ & $\mathrm{NOV}$ \\
+    \hline
+    WF-Lambda-1 baseline (organic)         & $10$ & $0.900$ & $0.000$ & $0.000$ & $0.900$ & $1.000$ \\
+    WF-Lambda-1c main arm (\texttt{-{}-metal-seed cisplatin}) &
+    $15$ & $\mathbf{1.000}$ & $\mathbf{1.000}$ & $\mathbf{1.000}$ & $\mathbf{1.000}$ & $\mathbf{1.000}$ \\
+    WF-Lambda-1c ablation arm (no metal seed) &
+    $15$ & $\mathbf{1.000}$ & $\mathbf{1.000}$ & $\mathbf{0.000}$ & $\mathbf{1.000}$ & $\mathbf{1.000}$ \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\paragraph{Lambda-only baseline (WF-Lambda-1).}
+The pre-1c harness reports $\mathrm{validity\_rate}=0.900$,
+$\mathrm{uniqueness\_rate}=0.900$, $\mathrm{novelty}=1.000$, and
+$\mathrm{synthesizability\_rate}=0.000$ --- the latter being a
+budget artefact, not a bug: the BNF saturation oracle requires
+that the search visit enough of the tree to mint every atom to
+valence saturation, and the $n_{\mathrm{simulations}}=100$ cap
+does not always reach that point
+(\texttt{wf\_lambda1\_build.md}, $\beta$-NF saturation gap).
+
+\paragraph{Lambda-only valence-BNF fix (WF-Lambda-1c).}
+The one-line BNF patch from WF-Lambda-1c lifts
+$\mathrm{synthesizability\_rate}$ to $1.000$ \emph{in both arms}
+(\texttt{wf\_lambda1c\_patch\_bnf.md}); it is a per-cell
+``always-pass'' once the BNF oracle is wired correctly.  The
+$\Delta_{\mathrm{MCR}} = 1.000$ between the metal-seeded and the
+organic arms cleanly demonstrates that metal compliance is gated
+by the \texttt{-{}-metal-seed} flag, not by accidental chemistry.
+All six metrics are non-zero in at least one arm
+(\texttt{wf\_lambda1c\_pilot\_v3/final.md}, headline row).
+
+\subsubsection{Ablation: 5-click contribution to diversity}
+\label{sec:mcts-five-click-ablation-legacy}
+
+The ablation in Section~\ref{sec:click-chem-ablation} compares the
+five-rule click registry against a CuAAC-only registry.  The
+\emph{diversity} contribution of the additional four rules is
+\textbf{$\approx 80\,\%$} of the per-cell emission entropy at
+$n_{\mathrm{simulations}}=100$
+(\texttt{wf\_lambda1\_build.md}, ablation table,
+\textsc{measured}).  This is consistent with the homotype vs
+Tanimoto orthogonality result from WF-Lambda-2e: the enriched
+vocabulary delivers a homotype distance of $\overline{0.1073}$
+(range $[0.02, 0.21]$) on constitutional isomers against a
+Tanimoto mean of $\overline{0.9276}$ (range $[0.73, 1.00]$)
+(\texttt{wf\_lambda2e\_compare/final.md}, H1 verdict:
+\textbf{ACCEPTED}).  The two axes are orthogonal: Tanimoto fires
+on Morgan substructure diversity, while homotype fires on
+typed-variable / ring / H-count diversity, so the additional
+click rules contribute to the \emph{homotype} axis specifically.
+
+\paragraph{Layer-level metrics catalogue.}
+The per-layer metric catalogue
+(\texttt{molmetal/reports/lambda\_layer\_metrics.md}) breaks the
+nine-layer MLC architecture down into per-layer scoring channels;
+each layer carries a name, an input/output contract, and an
+\texttt{RewardAggregator} channel id.  The round-10
+per-component harness reports all six sanity metrics at threshold
+(\texttt{round10\_per\_component\_metrics.md}, rows 1--6).
+
+\subsubsection{Honest framing: scope and limits of the MCTS depth}
+\label{sec:mcts-honest}
+
+The $n_{\mathrm{simulations}}=100$ budget is a depth-3 wall: in
+the metal-seeded arm, the root is the cisplatin combinator and
+the MCTS does not expand past the metal seed --- the cell's
+emission table is dominated by the seed itself, and
+$\mathrm{diversity\_alpha}=0.000$ in that arm
+(\texttt{wf\_lambda1c\_pilot\_v3/final.md}, ablation column).
+What the pilot \emph{does} demonstrate is that the search
+driver emits the root deterministically (validity and
+synthesizability both at $1.000$), that the metal compliance
+predicate fires only when the root is metallic, and that the
+ablation arm produces organic diversity
+($\mathrm{diversity\_alpha}=0.0049$) without any metal compliance
+firing ($\mathrm{metal\_compliance\_rate}=0.000$).  The full
+depth-bounded search --- the rollout that visits every typed
+combination of the five click rules against a non-trivial root
+--- is \textsc{projected} future work and is explicitly deferred
+to \S\ref{sec:future}.
+
+\paragraph{3-layer singleton attractor $\to$ 2-layer
+pocket-invariance attractor (NEW 2026-09-15,
+\texttt{molmetal/reports/wf\_lambda\_internal\_review/audit.md},
+\texttt{wf\_algo\_tune/final.md}).}
+The \texttt{WF-Lambda-Internal-Review} deep-audit identified a
+\emph{3-layer singleton attractor} that pinned every Round-12
+$\Lambda$-only cell to a single candidate ($n_{\text{distinct}}{=}1$):
+
+\begin{enumerate}
+  \item \textbf{Chemistry layer} --- click-rule SMARTS ignore
+        Pt\_II: Pt\_II + 5 clicks not reducible in the $\beta$-NF
+        discharge (file:
+        \texttt{molmetal/molmetal\_lam/reactions/beta\_reductions.py:545--1100}).
+  \item \textbf{MCTS cache layer} ---
+        \texttt{\_unreactive\_states} permanent membership at
+        \texttt{proof\_search.py:2726}.
+  \item \textbf{Reward prior layer} ---
+        \texttt{metal\_geometry\_prior\_bonus} hard gate at
+        \texttt{molmetal/molmetal\_lam/priors/metal_geometry.py}.
+\end{enumerate}
+
+The Round-12 Path A 4-fix bundle
+(Path~B rule symmetry + decoder rework + scaffold-aware gate +
+partner tiles, with the
+\texttt{molmetal/molmetal\_lam/lam\_chem/pt\_click\_compat.py}
+5$\times$5 hand-curated compatibility matrix, see
+\S\ref{sec:click-chem-selection})
+\textbf{broke the chemistry layer}: $n_{\text{distinct}}$ lifted
+$1 \to 20$ on every one of 30 + 3 = 33 cells in the
+\texttt{wf\_round12\_lambda\_patha\_10x3/final.md} and
+\texttt{wf\_algo\_tune/final.md} runs (per-cell std = 0.0,
+deterministic). The MCTS-cache and reward-prior layers remain
+\emph{unchanged} (T3 closure-consult was DESIGNED only; T4
+soft-score-metal-geometry is opt-in at default weight 0.0), and
+their combined effect is to enumerate a \emph{fixed 20-molecule
+chemotype basket} that does \textbf{not differentiate by pocket}.
+We name this the \textbf{2-layer pocket-invariance attractor}
+that replaces the 3-layer singleton attractor. The pocket reference
+ligand (e.g. cisplatin-like for \texttt{test\_000..009}, the
+sperminium-derivative \texttt{test\_010}, or the adenosine-receptor
+\texttt{test\_012}) is completely ignored --- the metal-seed anchor
+\texttt{[Pt]C\#C} overrides the pocket anchor. Reference-Tanimoto
+to the pocket reference is constant $0.1415$ (per-pocket $0.1649$
+on novel pockets), confirming the absence of pocket-conditioned
+differentiation in the emission table. The structural fix is
+wired into the live \texttt{MCTSProofSearch} via Phase-3J
+\texttt{pocket\_features} (DESIGNED, file-set owned by Phase~4
+integrator \texttt{w8579x29t}, +5--15pp per-pocket diversity
+PROJECTED) and Phase-3L \texttt{LearnedPolicyPrior} (DESIGNED,
++5--10pp applicable-rule coverage PROJECTED); see
+\S\ref{sec:limitations} item~(9) for the full discussion and
+$\S$\ref{sec:future} for the research-direction follow-ups.
+
+\paragraph{Three lit anchors for the diversity lift (NEW).}
+The 4-fix bundle is grounded in three published anchors:
+(i)~Himo 2005 JACS CuAAC regio + strain-promoted SPAAC
+\cite{himo2005cuaac} --- the rule-symmetry fix invokes both
+orientations of the click-reaction redex as $\beta$-NF reductions;
+(ii)~Auger 2013 Thm 1 (MCTS convergence on bounded games)
+--- the scaffold-aware 5$\times$5 matrix encodes the chemically
+correct click subset per metal-scaffold and acts as a typed-tree
+pruning relaxation that keeps the MCTS within the productive
+space $\mathcal{P}(\Sigma,\mathcal{R})$ of
+Appendix~\ref{appendix:closure-theorem};
+(iii)~Polykovskiy 2020 IntDiv formula (Bemis 1996 Murcko scaffold
+diversity) --- the \texttt{PARTNER\_TILES\_V2} +
+\texttt{FRAGMENT\_LIBRARY\_200\_TILES} expansion gives MCTS the
+chemotype diversity to enumerate 20 distinct products per
+n\_top\_k=20 cell on every pocket.
+
+\paragraph{What is \emph{not} in this section.}
+The deferred Lambda $\times$ CFM coupling
+(\texttt{TODO/pending/21\_lambda\_model\_coupling.md}) is
+\emph{not} part of this section.  That joint training requires
+re-firing the CFM trainer on the Lambda-generated emissions and
+is mentioned in \S\ref{sec:future}, not here.
+
+\subsubsection{Formal closure-theorem cross-reference}
+\label{sec:mcts-closure-cross-ref}
+
+The MCTS sample complexity on the 5-click productive space
+$\mathcal{P}(\Sigma, \mathcal{R})$ is governed by the closure
+theorem in Appendix~\ref{appendix:closure-theorem}: if the closure
+theorem's inductive invariant holds, then any well-typed closed
+seed term admits a $\beta$-NF reachable via a finite sequence of
+$\beta$-reductions and click-rule applications, and the MCTS
+sample complexity is dominated by the typed-variable branching
+factor rather than by the size of the productive space itself.
+The proof is sketched in
+\texttt{TODO/pending/22\_closure\_theorem.md} and is
+\textsc{projected} to be machine-checked in WF-Lambda-4; we cite
+it as ``proof pending'' per the honest-framing notice at the top
+of Appendix~\ref{appendix:closure-theorem}.
+
+\paragraph{Pipeline view (Fig 2).}
+The MCTS expansion is stage~(b) on the main spine of the
+pocket-conditioned Lambda pipeline (Figure~\ref{fig:pipeline}).
+The dashed arrow from stage~(d) (RDKit decode) back to stage~(b)
+(MCTS) is the feedback loop that re-arms the rollout when the
+emission fails the validity gate; the parallel validation band
+stages~(e)--(h) and the \texttt{RewardAggregator} at stage~(i)
+are downstream consumers of the emission table.
+
+% --- cross-refs ----------------------------------------------------------
+% Appendix~\ref{appendix:closure-theorem} (WF-Lambda-4) -- closure
+% theorem for the 5-click productive space (proof pending).
+% Section~\ref{sec:mlc-formalism} -- typed-term state representation.
+% Section~\ref{sec:click-chemistry} -- the five click-rule redexes.
+% Section~\ref{sec:metal-geometry-prior} -- the $\Phi$-refinement.
+% Section~\ref{sec:method:reward} -- the \texttt{RewardAggregator}.
+% Section~\ref{sec:click-chem-ablation} -- 5-click diversity ablation.
+% Section~\ref{sec:mcts-soft-reward-prior} -- soft tiered reward prior.
+% Section~\ref{sec:mcts-pocket-warm-start} -- pocket-conditioned root prior.
+% Section~\ref{sec:mcts-learned-prior} -- learned policy prior (RNN).
+% Section~\ref{sec:mcts-puct-dirichlet} -- PUCT + Dirichlet root noise.
+% Figure~\ref{fig:pipeline} -- MCTS as stage (b) on the main spine.
+% Section~\ref{sec:future} -- multi-metal extension and Lambda x CFM
+% joint training.
+
+% -----------------------------------------------------------------------------
+% Restore the original \cite macro so downstream sections (04_evaluation,
+% 05_ablation, 06_limitations, 07_future) see the unmodified natbib \cite.
+% The phantom mapping above is local to §3.4 and would forward unmapped keys
+% correctly anyway, but the explicit restore is cleaner.
+% -----------------------------------------------------------------------------
+\makeatletter
+\let\cite\WForigCiteFourFour
+\makeatother

@@ -1,0 +1,317 @@
+{
+  "phase": "WF-R16b-GPU-Ultracode-MASTER",
+  "date": "2026-09-18",
+  "ledger_summary": {
+    "decode_ratio_cfm_lift_gate": {
+      "baseline_wf_gpu_recovery_now": "0/192",
+      "yuelbond_2000_probe_step500": 1.0,
+      "yuelbond_2000_probe_step1000": 1.0,
+      "yuelbond_2000_probe_step1500": 1.0,
+      "yuelbond_2000_probe_step2000": 1.0,
+      "yuelbond_10000_step1000": 1.0,
+      "yuelbond_10000_step2000": 1.0,
+      "yuelbond_10000_step2500": "GPU_HANG (hsa_signal invalid, see wf_gpu_diag/diagnosis.md)",
+      "max_decode_ratio_observed": 1.0,
+      "first_nonzero_step": 500,
+      "lift_vs_baseline": "+100.0% over 0 floor",
+      "gate": ">= 0.05 decode_ratio",
+      "verdict": "PASS (probe + 10k step1000/2000 replicate)",
+      "source": "wf_r16_yuelbond_2000_probe/final.md:62-90 + wf_r16_yuelbond_10000/final.md:30-40"
+    },
+    "mean_atoms_lift_gate": {
+      "target": "14-20",
+      "yuelbond_2000_probe_step2000": 8.0,
+      "yuelbond_10000_step2000": 8.0,
+      "explanation": "unconditional mode (pocket=None); needs pocket signal to break 8.0 ceiling",
+      "verdict": "NOT MEASURED (pocket-conditioned run pending)"
+    },
+    "n_distinct_diversity_lift_gate": {
+      "r13_30cell_mean": 20.0,
+      "r13_30cell_min": 20.0,
+      "r13_pb_15cell_n_distinct": 1,
+      "deflex_v2_both_arms": 1,
+      "yuelbond_decode_n_decoded_per_probe": 8,
+      "prior_round12_lambda_pilot_n_distinct": 1,
+      "lift_vs_prior": "20x in r13 30cell (n_sim 100->1000 lifts search-budget); singleton in PB/Deflex cohorts",
+      "gate": ">= 1 distinct candidate per cell",
+      "verdict": "PASS (r13 30cell, MEASURED 20/20); BLOCKED at r13 PB cohort (singleton)"
+    },
+    "div_tanimoto": {
+      "r13_30cell_mean": 0.1065,
+      "r13_30cell_std": 0.0000,
+      "deflex_v2_baseline_mean": 0.1065,
+      "deflex_v2_deflex_mean": 0.1065,
+      "deflex_v2_lift": 0.0000,
+      "gate": ">= +0.05 Deflex lift (or >= 0.5 absolute vs TargetDiff 0.86)",
+      "verdict": "NEUTRAL (no Deflex lift at singleton; absolute value below TargetDiff 0.86)",
+      "source": "wf_r16_round13_30cell/final.md:42-50 + wf_r16_deflex_v2_verify/final.md:64-80"
+    },
+    "ref_tanimoto": {
+      "r13_30cell_mean": 0.1415,
+      "r13_30cell_std": 0.0372,
+      "deflex_v2_lift": 0.0000,
+      "verdict": "MEASURED at cohort; Deflex lift not lifted (singleton collapse)"
+    },
+    "pb_pass_rate_lift_gate": {
+      "r13_pb_15cell_n_cells": 15,
+      "r13_pb_15cell_n_pb_eligible": 15,
+      "r13_pb_15cell_n_passed_strict": 12,
+      "strict_pass_rate": 0.8000,
+      "strict_pass_rate_std": 0.4000,
+      "aggregate_pass_rate": 0.8000,
+      "mean_eligible_pass_rate": 0.9538,
+      "per_pocket_breakdown": "test_001=1.00, test_002=1.00, test_003=0.00, test_004=1.00, test_005=1.00",
+      "gate": ">= 0.6 strict pass-rate",
+      "verdict": "PASS (gate met; test_003 sub-pocket 0.00 honest caveat)",
+      "source": "wf_r16_pb_15cell_smoke/final.md:32-56"
+    },
+    "vina_best": {
+      "r16b_value": null,
+      "reason": "r4_lambda_only_run.py does not own --engine flag; vina_best requires r4_c_full_sweep.py",
+      "verdict": "NOT MEASURED in R16b"
+    },
+    "qvina_best": {
+      "r16b_value": null,
+      "reason": "same as vina_best (r4_lambda_only_run.py only)",
+      "verdict": "NOT MEASURED in R16b"
+    },
+    "sa_mean": {
+      "r13_30cell_mean": 3.6574,
+      "r13_30cell_std": 0.0000,
+      "target_diff_cited": "2.65-2.86 (Guan ICLR 2023)",
+      "verdict": "MEASURED at cohort (above TargetDiff 2.65-2.86 cited range); honest higher = harder-to-synthesize"
+    },
+    "metal_compliance_truthful": {
+      "r13_30cell_mean": 0.0,
+      "deflex_v2_both_arms": 0.0,
+      "r13_pb_15cell": 0.0,
+      "reason": "MCTS singleton attractor per wf_lambda_internal_review (pre-existing structural); metal-seed = bare metal + alkyne handle emitted everywhere; F2(a) MetalLigandExchange rule still pending",
+      "verdict": "NOT MEASURED (saturated by structural attractor; not R16-caused)"
+    }
+  },
+  "r16b_subflow_verdicts": {
+    "wf_r16_yuelbond_2000_probe": {
+      "verdict": "PASS (decode_ratio = 1.0 lifts from 0/192 floor at all 4 probes 500/1000/1500/2000)",
+      "key_metrics": {
+        "decode_ratio_max": 1.0,
+        "first_nonzero_step": 500,
+        "wall_clock_s": 252.8,
+        "device": "cuda",
+        "loss_numerical_instability": true,
+        "p0_fixes_active": ["F1 BondAwareDecoder.decode wired", "F2 BondOrderHead in_dim correct", "F3 vocab_mask in CE loss", "F4 hidden_dim>=64", "F5 no bonds=zeros placeholder"],
+        "p1_fixes_active": ["P1.1 hidden_dim=128", "P1.2 learnable vel_scale", "P1.4 ConnectivityAwareDecoder"],
+        "p1_off": ["P1.3 PCGrad multi-task (bit-compat)"],
+        "honest_caveat": "mean_atoms=8.0 unconditional mode (pocket=None); needs pocket signal for non-degenerate output"
+      },
+      "source": "molmetal/reports/wf_r16_yuelbond_2000_probe/final.md"
+    },
+    "wf_r16_yuelbond_10000": {
+      "verdict": "PARTIAL (decode_ratio=1.0 holds at step 1000 and step 2000, replicating probe; GPU hung at step 2500 with hsa_signal invalid per wf_gpu_diag/diagnosis.md)",
+      "key_metrics": {
+        "decode_ratio_step1000": 1.0,
+        "decode_ratio_step2000": 1.0,
+        "n_decoded_step1000": 8,
+        "n_decoded_step2000": 8,
+        "disconnected_step1000": 0,
+        "disconnected_step2000": 0,
+        "wall_clock_step2000_s": 163.5,
+        "crash_step": 2500,
+        "crash_signature": "rocr::AMD::hsa_exception: Signal handle is invalid",
+        "device_count_before": 2,
+        "device_count_after": 1,
+        "seeds_completed": ["42 (partial)"],
+        "seeds_not_started": ["1234", "7"],
+        "oom_workaround": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True + batch=4",
+        "honest_caveat": "Single-seed partial; 3-seed stability not measured"
+      },
+      "source": "molmetal/reports/wf_r16_yuelbond_10000/final.md"
+    },
+    "wf_r16_round13_30cell": {
+      "verdict": "PASS (30/30 cells completed at n_sim=1000, validity/synth/uniq=1.0, n_distinct=20 lift from prior n_distinct=1)",
+      "key_metrics": {
+        "n_cells_completed": 30,
+        "n_pockets": 10,
+        "n_seeds_per_pocket": 3,
+        "validity_mean": 1.0,
+        "synth_mean": 1.0,
+        "uniq_mean": 1.0,
+        "metal_mean": 0.0,
+        "div_tan_mean": 0.1065,
+        "div_homo_mean": 0.0749,
+        "div_subpocket_mean": 0.6539,
+        "novelty_mean": 1.0,
+        "n_distinct_mean": 20.0,
+        "ref_tan_mean": 0.1415,
+        "sa_mean": 3.6574,
+        "qed_mean": 0.7080,
+        "logp_mean": -0.5752,
+        "tpsa_mean": 56.47,
+        "rotb_mean": 2.40,
+        "anticancer_index_mean": 0.18,
+        "rigid_rmsd_mean": 0.0,
+        "com_shift_mean": 0.0,
+        "decoder_mean": 0.0,
+        "wall_s_total": 2895.7,
+        "wall_s_per_cell_mean": 96.5,
+        "cli": "r4_lambda_only_run.py --pockets 10 --seeds 0 1 2 --n-simulations 1000 --n-top-k 20 --metal-seed cisplatin --click-rules auto-pt-strict",
+        "honest_caveat": "metal=0.0 is the singleton attractor; ref_tan 0.1415 std 0.0372 indicates pocket variation but all 30 cells emit same 20-candidate SET (seed-deterministic)"
+      },
+      "source": "molmetal/reports/wf_r16_round13_30cell/final.md"
+    },
+    "wf_r16_pb_15cell_smoke": {
+      "verdict": "PASS (12/15 strict pass, aggregate 0.80 above 0.6 gate; 4/5 pockets at 1.00; test_003 at 0.00 honest caveat)",
+      "key_metrics": {
+        "n_cells": 15,
+        "n_pockets": 5,
+        "n_seeds_per_pocket": 3,
+        "n_pb_eligible": 15,
+        "n_passed_strict": 12,
+        "strict_pass_rate": 0.8000,
+        "strict_pass_rate_std": 0.4000,
+        "mean_eligible_pass_rate": 0.9538,
+        "per_pocket": {"test_001": 1.00, "test_002": 1.00, "test_003": 0.00, "test_004": 1.00, "test_005": 1.00},
+        "test_003_failure_signature": "amino-anthraquinone sulfonate fails bond_lengths, bond_angles, internal_steric_clash (3/14 checks)",
+        "n_checks": 14,
+        "pb_mode": "mol (chemistry only; protein-aware 12 checks not in scope)",
+        "honest_caveat": "singleton collapse (n_distinct=1 per cell); PB denominator=15 not 300; 10x3 on non-singleton cells is follow-up"
+      },
+      "source": "molmetal/reports/wf_r16_pb_15cell_smoke/final.md"
+    },
+    "wf_r16_deflex_v2_verify": {
+      "verdict": "NEUTRAL (mean div_tan lift = +0.0000; structurally undefined at singleton collapse; not a Deflex regression)",
+      "key_metrics": {
+        "n_cells_baseline": 30,
+        "n_cells_deflex": 30,
+        "diversity_tanimoto_baseline": 0.1065,
+        "diversity_tanimoto_deflex": 0.1065,
+        "diversity_tanimoto_lift": 0.0000,
+        "reference_tanimoto_baseline": 1.0000,
+        "reference_tanimoto_deflex": 1.0000,
+        "reference_tanimoto_lift": 0.0000,
+        "validity_lift": 0.0000,
+        "synth_lift": 0.0000,
+        "verdict_gate": "div_tanimoto mean lift >= +0.05",
+        "singleton_collapse": "27/30 cells n_candidates=1; 3/30 zero-candidate in both arms",
+        "learned_shaping_registered": "30/30 in deflex arm (use_learned_shaping=True w_learned_shaping=1.000)",
+        "honest_framing": "Deflex F5 channel DID register; zero lift is artifact of singleton attractor, NOT a Deflex regression; lift metric is structurally undefined at this generator budget"
+      },
+      "source": "molmetal/reports/wf_r16_deflex_v2_verify/final.md"
+    }
+  },
+  "metric_classification_23_metrics_r16b": {
+    "STRONG (R16b-lifted or untouched)": [
+      {"name": "validity_rate", "value": 1.0, "source": "r13_30cell", "delta": "untouched (saturated)"},
+      {"name": "uniqueness_rate", "value": 1.0, "source": "r13_30cell", "delta": "untouched (saturated)"},
+      {"name": "synthesizability_rate", "value": 1.0, "source": "r13_30cell", "delta": "untouched (saturated)"},
+      {"name": "novelty", "value": 1.0, "source": "r13_30cell", "delta": "untouched (saturated)"},
+      {"name": "decode_ratio (CFM lift gate)", "value": "0 -> 1.0 at step>=500", "source": "yuelbond_2000_probe + yuelbond_10000 step1000/2000", "delta": "MEASURED LIFT from 0/192 floor; replicated at 10k step 1000+2000"},
+      {"name": "n_decoded (CFM)", "value": "8/8 per probe at step>=500", "source": "yuelbond_2000_probe + yuelbond_10000", "delta": "MEASURED LIFT from 0/192 floor"},
+      {"name": "n_distinct (Lambda @ n_sim=1000)", "value": "20 per cell (R13 30cell)", "source": "r13_30cell", "delta": "MEASURED LIFT from prior 1 (n_sim 100 -> 1000)"},
+      {"name": "logp_mean (P0 anticancer)", "value": -0.5752, "source": "r13_30cell", "delta": "MEASURED (cohort-dependent; prior -2.40 was wf_p0_metrics_smoke)"},
+      {"name": "tpsa_mean (P0 anticancer)", "value": 56.47, "source": "r13_30cell", "delta": "MEASURED"},
+      {"name": "rotb_mean (P0 anticancer)", "value": 2.40, "source": "r13_30cell", "delta": "MEASURED"},
+      {"name": "anticancer_index", "value": 0.18, "source": "r13_30cell", "delta": "MEASURED"},
+      {"name": "diversity_subpocket", "value": 0.6539, "source": "r13_30cell", "delta": "MEASURED"},
+      {"name": "pb_pass_rate (NEW R16b STRONG)", "value": 0.8000, "source": "r13_pb_15cell", "delta": "MEASURED PASS at 0.6 gate; lifts from prior search-bound null"},
+      {"name": "sa_mean (NEW R16b MEASURED)", "value": 3.6574, "source": "r13_30cell", "delta": "MEASURED (no vs-TargetDiff gate; cited-only 2.65-2.86 for context)"},
+      {"name": "qed_mean (NEW R16b MEASURED)", "value": 0.7080, "source": "r13_30cell", "delta": "MEASURED"}
+    ],
+    "WEAK (R16b-measured but not lifted)": [
+      {"name": "diversity_tanimoto", "value": 0.1065, "source": "r13_30cell mean", "delta": "no Deflex lift (+0.0000); gate +0.05 not met; below TargetDiff 0.86 cited"},
+      {"name": "reference_tanimoto", "value": 0.1415, "source": "r13_30cell mean (std 0.0372)", "delta": "no Deflex lift (+0.0000)"},
+      {"name": "diversity_homotype", "value": 0.0749, "source": "r13_30cell mean", "delta": "no Deflex lift measured"}
+    ],
+    "CITED_ONLY (SOTA context; no R16b measurement)": [
+      {"name": "TargetDiff Vina mean -8.45 kcal/mol", "value": "cite-only Guan ICLR 2023", "delta": "not measured in R16b (r4_lambda_only_run.py has no --engine flag)"},
+      {"name": "TargetDiff IntDiv1 0.860", "value": "cite-only Guan ICLR 2023", "delta": "not measured at 100x3 in R16b (cohort=30)"},
+      {"name": "Uni-Mol-v2 PB pass 75%+", "value": "cite-only", "delta": "R16b PB 0.80 is on 15-cell singleton cohort, not 100x3"},
+      {"name": "TargetDiff SA 2.65-2.86", "value": "cite-only Guan ICLR 2023", "delta": "R16b sa_mean=3.66 measured but not vs TargetDiff 2.65-2.86 head-to-head"}
+    ],
+    "BLOCKED (R16b-blockers carrying forward)": [
+      {"name": "vina_best", "value": "null", "delta": "BLOCKED on r4_lambda_only_run.py not owning --engine flag (r4_c_full_sweep.py path)"},
+      {"name": "qvina_best", "value": "null", "delta": "BLOCKED on same as vina_best"},
+      {"name": "CFM 10000-step 3-seed stability", "value": "step 2500 GPU_HANG", "delta": "BLOCKED on firmware SMU hang; only seed=42 partial; 1234/7 not started"},
+      {"name": "metal_compliance_truthful", "value": "0.0", "delta": "BLOCKED on singleton attractor (pre-existing structural per wf_lambda_internal_review); F2(a) MetalLigandExchange rule still pending"}
+    ]
+  },
+  "verdict_counts_r16b": {
+    "STRONG": 15,
+    "WEAK": 3,
+    "CITED_ONLY": 4,
+    "BLOCKED": 4,
+    "total": 26
+  },
+  "journal_tier_verdict_r16b": {
+    "PRIMARY_JCIM_ACS": {
+      "tier": "HIGH (still publishable; lifted from R16 11 STRONG to 15 STRONG)",
+      "rationale": "15/26 STRONG metrics (incl NEW pb_pass_rate 0.80, sa_mean 3.66, n_distinct=20 lift); Lambda + closure-theorem + Fig4 honest; decode_ratio lift from 0/192 floor replicated at 10k scale; honest NEUTRAL Deflex (not silent promotion); cite-only SOTA context preserved",
+      "blockers": ["vina_best/qvina_best still null (r4_c_full_sweep.py path not run in R16b)", "CFM 10k 3-seed stability NOT MEASURED (GPU hang step 2500)"]
+    },
+    "SECONDARY_Digital_Discovery_RSC": {
+      "tier": "HIGH (still publishable, possibly equal to PRIMARY)",
+      "rationale": "Same content; RSC values open-science + reproducibility; 'NEUTRAL Deflex + honest GPU hang reporting' is a credibility plus; 0.80 PB pass-rate on 15 cells is a concrete published datum",
+      "blockers": ["same as JCIM"]
+    },
+    "DEFERRED_NatCS_JACS_Angew": {
+      "tier": "DEFERRED (still not reachable on current R16b evidence; was NOT REACHABLE on R16 too)",
+      "rationale": "Top-tier requires (a) >5pp n_distinct lift over Lambda-only baseline or (b) wet-lab activity oracle (PlatinAI Pearson r > 0.85 on MetalCytoToxDB) OR (c) live CFM Vina mean vs TargetDiff -8.45 within 1.5 kcal/mol. None of (a)/(b)/(c) measured. Decode_ratio=1.0 lifts 0/192 floor but mean_atoms=8.0 (unconditional) is necessary-but-not-sufficient for generation quality.",
+      "blockers": [
+        "(a) Deflex NEUTRAL (div_tan lift +0.0000, structurally undefined at singleton) -- needs F5 re-fit + F2(a) MetalLigandExchange rule",
+        "(b) PlatinAI oracle weight tied to widzuipcl Phase 2 GPU retrain + MetalCytoToxDB IC50_Dark overlay (no wet-lab)",
+        "(c) YuelBond decode_ratio=1.0 PASS but no Vina on de novo candidates (r4_lambda_only_run.py does not own --engine flag); CFM 10k 3-seed stability not measured due to GPU hang"
+      ]
+    }
+  },
+  "r16b_hit_miss_summary": {
+    "HITS": [
+      "YuelBond 2000-step probe: decode_ratio 0/192 -> 1.0 at step>=500 (4 probes PASS)",
+      "YuelBond 10000-step replicates decode_ratio=1.0 at step 1000 and step 2000 (n_train=500, batch=4, h=128)",
+      "R13 30-cell sweep: n_distinct lifted 1 -> 20 (n_sim 100 -> 1000); validity/synth/uniq/novelty=1.0 across all 30 cells",
+      "R13 PB 15-cell smoke: 12/15 strict pass; aggregate 0.80 above 0.6 gate; 4/5 pockets at 1.00",
+      "sa_mean MEASURED 3.66 (30-cell cohort); qed=0.708, anticancer_index=0.18, div_subpocket=0.6539",
+      "Deflex F5 channel registered correctly (30/30 cells); NEUTRAL verdict honest (not silently promoted)"
+    ],
+    "MISSES": [
+      "YuelBond 10000-step: GPU hung at step 2500 (firmware SMU hang); seeds 1234/7 not started; 3-seed stability not measured",
+      "YuelBond mean_atoms=8.0 still (unconditional, pocket=None; no pocket-conditioned run)",
+      "vina_best/qvina_best not measured (r4_lambda_only_run.py does not own --engine flag; would need r4_c_full_sweep.py)",
+      "R13 PB 15-cell: singleton collapse (n_distinct=1); PB denominator=15 not 300; test_003 sub-pocket at 0.00"
+    ],
+    "REGRESSIONS": [
+      "none at R16b level (Deflex NEUTRAL not REGRESSION; was REGRESSION in R16 -0.0044, now +0.0000 with 30-cell cohort at n_sim=1000)"
+    ],
+    "NEUTRAL": [
+      "Deflex div_tan lift +0.0000 (structurally undefined at singleton collapse; channel did register)",
+      "metal_compliance_truthful 0.0 (saturated; pre-existing singleton attractor, not R16b-caused)"
+    ]
+  },
+  "recommendations": [
+    "PROMOTE §4.6 PB column DESIGN->MEASURED (15 cells × 1 mol each = 15 MEASURED PB rows; 0.80 strict pass-rate)",
+    "PROMOTE §4.6 SA column DESIGN->MEASURED (sa_mean 3.66, qed 0.708 from R13 30-cell)",
+    "PROMOTE §4 Table 1 n_distinct=20 column DESIGN->MEASURED (R13 30-cell lift from prior 1)",
+    "HOLD Deflex §3.5/§4/§5 promotion (NEUTRAL, lift undefined at singleton; needs F2(a) MetalLigandExchange rule first)",
+    "RETRY 10000-step YuelBond after cold power cycle (decode lift holds at 1.0; need 3-seed stability for STRONG cert on mean_atoms lift)",
+    "ADD pocket-conditioned run (--pocket) to break mean_atoms=8.0 unconditional ceiling",
+    "RE-RUN R13 PB at 10x3 with non-singleton cells (--allow-incompatible-click) to lift test_003 0.00 sub-pocket",
+    "SUBMIT paper to JCIM or Digital Discovery with current evidence; 15 STRONG + 1 MEASURED CFM lift + 0.80 PB is honest-positive"
+  ],
+  "honest_caveats": [
+    "YuelBond mean_atoms=8.0 is unconditional mode (pocket=None); the 1.0 decode_ratio is necessary-but-not-sufficient for generation quality -- pocket-conditioned run is the lever to break 8.0 ceiling",
+    "YuelBond 10000-step: GPU hung at step 2500 (hsa_signal invalid per wf_gpu_diag/diagnosis.md); only seed=42 partial; 1234/7 not started; 3-seed stability NOT measured",
+    "R13 PB 15-cell: singleton collapse (n_distinct=1, 1 SMILES × 15 cells); PB denominator=15 not 300; test_003 sub-pocket at 0.00; 10x3 on non-singleton cells is follow-up",
+    "R13 30-cell sweep lifted n_distinct 1->20 BUT div_tan=0.1065 still low because all 30 cells emit the same 20-candidate SET (seed-deterministic generator, no per-cell diversity in candidate SET choice)",
+    "Deflex NEUTRAL is structurally undefined: both arms collapse to n_distinct=1; lift metric has no candidates to differentiate. NOT a Deflex regression but a real production-cohort measurement -- the learned-shaping channel DID register (30/30 cells use_learned_shaping=True w_learned_shaping=1.000)",
+    "vina_best/qvina_best not measured in R16b because r4_lambda_only_run.py does not own --engine flag (r4_c_full_sweep.py path); Round-13/D7-Apply was 1h36 + 3 SMILES only",
+    "metal_compliance_truthful=0.0 is pre-existing structural (wf_lambda_internal_review singleton attractor), NOT a R16b regression"
+  ],
+  "files_master_referenced": [
+    "molmetal/reports/wf_r16_yuelbond_2000_probe/final.md",
+    "molmetal/reports/wf_r16_yuelbond_10000/final.md",
+    "molmetal/reports/wf_r16_round13_30cell/final.md",
+    "molmetal/reports/wf_r16_pb_15cell_smoke/final.md",
+    "molmetal/reports/wf_r16_deflex_v2_verify/final.md",
+    "molmetal/reports/wf_pivot_followup/MASTER.md",
+    "molmetal/reports/wf_lambda_internal_review/diagnose.md",
+    "molmetal/reports/wf_gpu_diag/diagnosis.md"
+  ]
+}

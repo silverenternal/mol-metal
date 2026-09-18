@@ -1,0 +1,9 @@
+{
+  "binary_path": "/mnt/storage/tools/vina_gpu21_source/Vina-GPU-2.1-180272b8a5265d6ed9664178345933cebe2cd349/QuickVina2-GPU-2.1/QuickVina2-GPU-2-1",
+  "kernel_dir": "/mnt/storage/tools/vina_gpu21_source/Vina-GPU-2.1-180272b8a5265d6ed9664178345933cebe2cd349/QuickVina2-GPU-2.1",
+  "gpu_threads": 1000,
+  "search_depth": 1,
+  "opencl_device": "opencl:0",
+  "expected_device": "gfx1101",
+  "trace_library": "/mnt/storage/tools/vina_gpu21_source/trace_opencl.so"
+}

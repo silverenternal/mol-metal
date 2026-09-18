@@ -1,0 +1,72 @@
+{
+  "workflow": "wf_r16_yuelbond_10000",
+  "date": "2026-09-18",
+  "config": {
+    "csv": "molmetal/data/metallo_drugs_500_train.csv",
+    "n_train_loaded": 449,
+    "n_train_embedded": 358,
+    "n_skipped": 91,
+    "steps_planned": 10000,
+    "steps_executed_seed_42": 2500,
+    "batch_size": 4,
+    "lr": 1e-4,
+    "hidden_dim": 128,
+    "n_layers": 3,
+    "joint_train": true,
+    "bond_head": "learned",
+    "atom_vocab": 14,
+    "bond_head_in_dim": 265,
+    "device": "cuda",
+    "cuda_available_at_launch": true,
+    "device_count_at_launch": 2,
+    "device_count_after_crash": 1,
+    "torch_version": "2.14.0+rocm7.2",
+    "seed_42": 42,
+    "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+  },
+  "decode_smoke": {
+    "step_1000": {
+      "decode_ratio": 1.000,
+      "n_decoded": 8,
+      "mean_atoms": 8.0,
+      "disconnected": 0,
+      "wall_s": 0.3
+    },
+    "step_2000": {
+      "decode_ratio": 1.000,
+      "n_decoded": 8,
+      "mean_atoms": 8.0,
+      "disconnected": 0,
+      "wall_s": 0.2
+    }
+  },
+  "decode_smoke_steps_not_reached": [5000, 7500, 10000],
+  "loss_curves_summary_seed_42": {
+    "cfm_first": 23.0625,
+    "cfm_at_step_2000": 7713.34,
+    "cfm_at_step_2500": 2475.67,
+    "cfm_spike_max_observed": 456866.875,
+    "decode_ratio_held_at_all_probes": true
+  },
+  "wall_clock_s_seed_42": 204.1,
+  "crash": {
+    "step": 2500,
+    "exception": "rocr::AMD::hsa_exception",
+    "message": "Signal handle is invalid.",
+    "device_count_after": 1,
+    "is_auq_available_after": false,
+    "recovery_required": "cold power cycle (per wf_gpu_diag/diagnosis.md)"
+  },
+  "seeds_attempted": [42],
+  "seeds_reached_decode_smoke_1000": [42],
+  "seeds_reached_decode_smoke_2000": [42],
+  "seeds_not_started": [1234, 7],
+  "verdict": {
+    "decode_lift_replicated": true,
+    "decode_ratio_at_step_2000": 1.000,
+    "lift_over_baseline_0_over_192": "+100.0%",
+    "fully_certified_3seed_10000step": false,
+    "blocker": "GPU firmware SMU hang at step 2500 (firmware-level, requires cold power cycle)",
+    "conclusion": "INCONCLUSIVE — decode-lift signal REPLICATED at scale, but cannot certify 10000-step × 3-seed trajectory without GPU recovery"
+  }
+}

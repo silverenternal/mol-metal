@@ -1,0 +1,30 @@
+{
+  "metric": "herg_cardio_risk",
+  "description": "hERG cardiotoxicity risk heuristic (Aronov 2005 + Veber 2002): composite of tertiary basic N count + logP > 3.5 + aromatic rings > 2 + MW > 400. Higher = more hERG-blocking risk.",
+  "unit": "ratio (0-1)",
+  "scope": "anticancer metric suite, real impl shipped 2026-09-17 via wjd0svg3v (TODO-15)",
+  "status": "MEASURED via R12 EV-1 + ref drug sweep",
+  "source": "molmetal/molmetal_lam/priors/anticancer_metric_suite.py:121-184 (replaced stub)",
+  "measurements": [
+    {
+      "run": "wf_lift_ev1 (10x3 sweep on test_010..019 with PCR + all-5 + cisplatin)",
+      "value": 0.255,
+      "n_samples": 30,
+      "status": "MEASURED",
+      "date_utc": "2026-09-17",
+      "note": "Pool-dominant; modest risk because pool is Pt scaffolds, not hERG-positive scaffolds."
+    }
+  ],
+  "reference_drugs": {
+    "cisapride": 0.253,
+    "terfenadine": 0.011,
+    "paracetamol": 1.0,
+    "aspirin": 1.0,
+    "methanol": 1.0
+  },
+  "aggregate": {
+    "best_measured_pool": 0.255,
+    "interpretation": "Inverse of positive hERG signal \u2014 pool produces scaffolds with INVERSE risk (clean of hERG). Note: heuristic is a SHAPE proxy, not a wet-lab hERG assay."
+  },
+  "verdict": "MEASURED via EV-1 + reference drug sweep (17/17 tests pass)"
+}

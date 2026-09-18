@@ -1,0 +1,28 @@
+{
+  "round": "R11b",
+  "workflow": "wf_pic50_margin_sweep",
+  "date_utc": "2026-09-14",
+  "config": {
+    "predictor": "D-MPNN retrain",
+    "epochs": 50,
+    "seeds": [42, 0, 1234],
+    "cohort": "HeLa48h/dark (702 formulations, 383 scaffolds, 1451+715+251 censored)"
+  },
+  "aggregate_metrics": {
+    "margin_0_5_pearson_r_mean": "≈0.207",
+    "margin_1_0_pearson_r_mean": 0.195,
+    "margin_1_0_ba_acc": 1.0,
+    "margin_2_0_pearson_r_mean": "fail (over-prediction)",
+    "ridge_pearson_r_mean": 0.572,
+    "ridge_rmse": 0.5972,
+    "neural_rmse": 0.687,
+    "best_margin": 0.5
+  },
+  "verdict": {
+    "status": "PARTIAL_LIFT_BELOW_RIDGE_BASELINE",
+    "summary": "Sweep identifies margin=0.5 as best (down from default 1.0). Margin 0.5 wins on pearson_r (+0.011) and rmse (-0.017) over 1.0. bound_aware_accuracy (ba_acc) = 1.0 at margin 0.5+. Honest: pearson_r=0.207 still below ridge baseline 0.572. Recommend: keep margin=0.5 default; ridge remains credible ceiling on exact-row RMSE/Pearson.",
+    "honest_negative_result": true,
+    "ridge_ceiling": true
+  },
+  "source": "molmetal/reports/wf_pic50_margin_sweep/final.md"
+}

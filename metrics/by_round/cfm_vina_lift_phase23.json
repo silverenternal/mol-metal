@@ -1,0 +1,37 @@
+{
+  "round": "R13/R14",
+  "workflow": "wf_vina_lift_phase23",
+  "date_utc": "2026-09-15",
+  "config": {
+    "train_steps": 10000,
+    "seeds": [42, 0, 1234],
+    "cfg_scales": [1.0, 2.0],
+    "hidden_dim": 64,
+    "n_layers": 3,
+    "lr": 1e-4,
+    "vocab_mask": true,
+    "joint_train": true,
+    "decoder": "BondOrderHead + BondAwareDecoder",
+    "ablation_control": "same checkpoint + sample seed, only cfg_scale differs"
+  },
+  "aggregate_metrics": {
+    "bond_loss_final_3seed_mean": 1.065,
+    "bond_loss_final_baseline": 0.0,
+    "bond_loss_lift": "+1.065 (joint-train now active)",
+    "atom_loss_final_3seed_mean": 0.738,
+    "atom_loss_lift": "-0.262 (vocab_mask in CE loss)",
+    "cfm_loss_final_3seed_mean": 4.299,
+    "cfm_loss_lift": "-2.910 (h64 + 10k + vel_scale)",
+    "total_loss_initial_3seed_mean": 9.391,
+    "total_loss_final_3seed_mean": 6.101,
+    "total_loss_lift": "-2.108",
+    "loss_curve": "plateau by step ~5000 (slope ≈ -0.00008/step between bins 5000-10000)"
+  },
+  "verdict": {
+    "status": "LOSS_LIFT_NO_VINA_LIFT",
+    "summary": "Phase 2.x + 3.1 lifted bond_loss_final 0→1.065 (joint-train) and reduced cfm_loss_final 7.21→4.30 (h64+10k). BUT: no Vina lift reported in this workflow. Loss plateau at step 5000 suggests compute saturation. Vina lift is gated on path (b) decoder rework.",
+    "vina_lift_measured": false,
+    "vina_lift_projected": "see wf_path_b_gpu_retrain"
+  },
+  "source": "molmetal/reports/wf_vina_lift_phase23/final.md"
+}

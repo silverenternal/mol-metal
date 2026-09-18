@@ -1,0 +1,31 @@
+# MolFlow-Triton default config
+# YAML is loaded by utils.config.load_config()
+
+model:
+  hidden_dim: 128
+  n_layers: 4
+
+flow:
+  n_steps: 100
+  method: rk4
+
+train:
+  batch_size: 32
+  lr: 1.0e-4
+  epochs: 30           # was 100 but 5 epochs already converged
+  warmup_steps: 200
+  grad_clip_norm: 1.0
+  ema_decay: 0.999
+  edge_cutoff: 6.0     # sweep winner from cutoff_sweep.md (was hard-coded 5.0)
+
+data:
+  # 'qm9' (default) trains on real 3D molecules parsed by RDKit.
+  # Set to 'metalcytotox' to fall back to the synthetic QSAR CSV.
+  dataset: qm9
+  # For QM9: which split (train/val/test) and which of the 12 targets
+  # to use as the per-sample label (None = all 12 concatenated).
+  split: train
+  target_index: null
+
+device: cuda
+seed: 42

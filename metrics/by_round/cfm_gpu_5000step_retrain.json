@@ -1,0 +1,34 @@
+{
+  "round": "R13",
+  "workflow": "wf_gpu_recovery_now",
+  "date_utc": "2026-09-15",
+  "config": {
+    "gpu_state": "RECOVERED cuda_available=True device_count=2 (gfx1101 + gfx1100)",
+    "train_steps": 5000,
+    "seeds": [42, 0, 1234],
+    "learning_rate": 1e-4,
+    "hidden_dim": 64,
+    "vocab_mask": true,
+    "joint_train": true
+  },
+  "aggregate_metrics": {
+    "decode_ratio": 0.0,
+    "n_decoded": 0,
+    "n_requested": 192,
+    "decode_status_counts": {
+      "disconnected_distance_graph": 187,
+      "connectivity_or_valence_failure:AtomValenceException": 2,
+      "atom_outside_training_vocabulary": 3
+    },
+    "bond_loss_final_3seed_mean": 5.62,
+    "cfm_loss_final_3seed_mean": 4.299,
+    "atom_loss_final_3seed_mean": 0.738
+  },
+  "verdict": {
+    "status": "FAILURE_PER_SPEC_GATE",
+    "summary": "GPU recovered, 5000-step retrain completed, decode_ratio=0/192 — same failure mode as 2000-step baseline. Spec gate fails (decode > 0.5 required to kick off path (a)). bond_loss plateaued at step ~5000. Stay on path (c) λ-only for Round-12 paper.",
+    "falsified_hypothesis": "if I just train longer, decode will turn on",
+    "path_a_kickoff": "NOT triggered per spec gate"
+  },
+  "source": "molmetal/reports/wf_gpu_recovery_now/final.md"
+}

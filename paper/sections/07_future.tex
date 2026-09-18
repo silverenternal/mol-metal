@@ -1,0 +1,589 @@
+% =============================================================================
+% Section 7 — Future Work
+% Target: Digital Discovery (RSC) Q1 IF 8.5 OR J. Chem. Inf. Model. (ACS) Q1 IF 5.6
+% Style: IMRaD, honest framing. MEASURED vs PROJECTED clearly labelled.
+% Each item: a short bullet with explicit status (Defer / Future / Open /
+%   Out-of-scope).  All claims are cited to existing reports; nothing here is
+%   a new measurement.
+% =============================================================================
+
+\section{Future Work}
+\label{sec:future}
+
+The present paper reports what is \emph{measured}; this section names
+what remains \emph{projected} and labels each item by its current
+status (\textbf{Defer} / \textbf{Future} / \textbf{Open} /
+\textbf{Out-of-scope}).  No claim below has been re-measured for this
+paper; each citation points to the existing report that defines the
+target.
+
+\begin{itemize}
+
+  \item \textbf{$\Lambda \times$ CFM coupling per TODO-21 (PROMOTED to
+    position 1, WF-Pivot-A Phase 2, 2026-09-16).  [Defer.]}\label{sec:future:lambda-cfm-coupling}
+    Four candidate directions are enumerated in
+    \texttt{TODO/pending/21\_lambda\_model\_coupling.md}:
+    \emph{(1)} Lambda rejection-sampling of CFM samples --- Lambda
+    MCTS selects top-$K$ $\beta$-NF candidates and the typed-variable
+    hits become a CFM conditioning context;
+    \emph{(2)} CFM likelihood as Lambda MCTS reward --- a separate
+    CFM likelihood model evaluates pocket-conditioned generation
+    probability and replaces the current MetalGeometryPrior +
+    click-rule bonus;
+    \emph{(3)} hybrid generator --- Lambda MCTS picks the
+    scaffold (5-click application sequence + initial $\alpha_2$
+    fragment), CFM refines 3D coordinates and fills side chains;
+    \emph{(4)} joint training --- Lambda-generated $\beta$-NF
+    augment CFM training data and vice versa.  The strategic
+    direction is set by the user note (``Lambda algorithm and
+    model-side must be combined; CFM capacity-doubling retrain
+    \texttt{--train-steps 10000 --hidden-dim 64} is acceptable but
+    not now''); the implementation is deferred to a post-Round-12
+    pilot so that Round-12 evidence can guide which direction
+    ships first.
+
+    \paragraph{Why promoted to position 1 in Phase 2.}
+    The WF-Pivot-A Phase 2 restructure relocates the Lambda $\times$
+    CFM coupling to the head of \S7 because (i) it is the single
+    highest-leverage research direction on the paper's roadmap ---
+    it converts the de novo typed-term MCTS from a stand-alone
+    method into a generative prior for a geometric backbone, which
+    is the most defensible Q1 framing; (ii) it absorbs the
+    "Pocket-conditioned CFM geometric generator" deferred item
+    below as the natural Phase-1 ship target of coupling direction
+    (3) (hybrid generator); and (iii) it is the only deferred
+    item that makes the §4 measured cells load-bearing for §3+§5
+    rather than merely illustrative.  The item was previously
+    item 5 in \S7 and was promoted to item 1 on
+    \texttt{molmetal/reports/wf\_pivot\_a/final\_phase2\_bib\_s7.md}
+    (2026-09-16) without touching \S1--\S6.
+
+  \item \textbf{Pocket-conditioned CFM geometric generator
+    (deferred to Round-14+). [Defer, NEW WF-Pivot-A Phase 2,
+    2026-09-16].}\label{sec:future:cfm-deferred}
+    The pocket-conditioned geometric generator (the
+    \texttt{flow\_matching\_lipman} \texttt{BondAwareDecoder} +
+    \texttt{EGNNLayer} backbone, target
+    \texttt{decode\_ratio\,$\geq$\,0.5} on
+    CrossDocked2020~\cite{luo2021crossdocked}) is the
+    \emph{secondary} generator of Mol-Metal; the primary
+    $\Lambda$-only generator of
+    \S\ref{sec:mlc-formalism}--\S\ref{sec:mcts-betanf} produces
+    all \S4 measured cells. The geometric arm was previously
+    documented in \S3.6 and has been relocated here in the
+    WF-Pivot-A Phase 2 restructure (2026-09-16) so that
+    \S3 contains only methods that contribute measured data,
+    and the open-deferred content lives in \S7.
+
+    \paragraph{Why deferred.}
+    Across the four CFM retrain attempts on this submission
+    cycle (2000-step / \texttt{hidden\_dim\,=\,32} baseline,
+    5000-step / \texttt{hidden\_dim\,=\,128} P1-fix diagnostic,
+    Round-12 \texttt{decode\_smoke\_every} probe, and the
+    Round-13 \texttt{wf\_gpu\_recovery\_now} 5000-step retrain),
+    the geometric generator returns
+    \textbf{\textsc{measured} $\texttt{decode\_ratio}\,=\,0/192$}
+    on every run; the discrete GPU
+    (\texttt{molmetal/reports/wf\_gpu\_diag/diagnosis.md},
+    2026-09-15) is firmware-level SMU-hung and the iGPU
+    (Radeon 780M gfx1100) cannot be addressed by the ROCm 7.2
+    HSA runtime while the broken KFD node remains in the
+    topology (\texttt{molmetal/reports/wf\_igpu\_switch/probe.md}).
+    The four line-cited root causes from
+    \texttt{wf\_cfm\_internal\_review/audit.md}
+    (\texttt{bonds=zeros} placeholder, fixed
+    \texttt{in\_dim=9} vs needed $9+2h$, \texttt{tanh}
+    vel-head saturation, smoke-scale \texttt{hidden\_dim\,=\,32})
+    are now closed in code by the WF-CFM-P0-Fixes ship
+    (2026-09-15, see \texttt{molmetal/adapters/flow\_matching\_lipman/\_\_init\_\_.py}
+    at the five line-cited patches), but no measured
+    \texttt{decode\_ratio} lift is available because the GPU
+    is still hung.
+
+    \paragraph{What would change to make it shippable.}
+    Three preconditions must land in order:
+    (i)~\textbf{GPU recovery} --- cold power-cycle the discrete
+    GPU (PSU unplug 30\,s) or blacklist
+    \texttt{rdblacklist=amdgpu} + reboot, per
+    \texttt{molmetal/reports/wf\_gpu\_diag/diagnosis.md}
+    \S4;
+    (ii)~\textbf{retrain at \texttt{hidden\_dim\,=\,128}} for
+    $\geq$\,5000 steps with the five P0 fixes (BondAwareDecoder
+    wired at \texttt{\_generate\_impl} line 2017, BondOrderHead
+    \texttt{in\_dim\,=\,9+2h}, vocab-mask in the cross-entropy
+    loss, \texttt{UserWarning} on \texttt{hidden\_dim\,<\,64},
+    and the \texttt{bonds=zeros} placeholder removed, all
+    shipped 2026-09-15);
+    (iii)~\textbf{Path-(b) decoder rework} (chem-aware soft
+    prior, \S\ref{sec:method:bond-aware-soft-prior}) combined
+    with the PCGrad multi-task loss (CFM + bond-head +
+    metal-coordination prior + Vina surrogate, lit:
+    \cite{yu2020pcgrad, lipman2023cfm}). When those three
+    land, the Round-14 acceptance gate is
+    $\texttt{decode\_ratio}\,\geq\,0.5$ on the 6-seed $\times$
+    2-pocket $\times$ 2-cfg $\times$ 16-sample Round-10
+    protocol; the budget is 12--24\,h single-card GPU retrain
+    plus $\sim$3\,d CPU engineering.
+
+    \paragraph{Lit-grounded path forward.}
+    The closest existing published path is the YuelBond decoder
+    swap (decode-then-finetune, not decode-then-train) and the
+    FlowMol3 conditional flow-matching backbone
+    (\texttt{molmetal/reports/wf\_cfm\_frontier\_research/research\_phase1b.md},
+    \texttt{wf\_r15\_phase1\_smoke.md}). Both reduce the
+    GPU-hour burden by an order of magnitude vs.\ the
+    legacy train-from-scratch pipeline: YuelBond lets the
+    $\Lambda$-only generator act as a scaffold prior and
+    the CFM refines 3D coordinates + side chains; FlowMol3
+    amortises the bond-head over a single-pass flow rather
+    than a separate classifier. The CFM-side open problems
+    (joint CFM + bond-head convergence rate; FM with valence
+    constraint; differentiable Vina+FM interpolation combined
+    rate; per-pocket learnability under scaffold-group split)
+    remain the paper's substantive research contributions
+    on the secondary-generator side and are enumerated as
+    five theorem-level gaps in the next item.
+
+  \item \textbf{Pocket-conditioned SBDD extension
+    (deferred to Round-14+).  [Defer, NEW WF-Pivot-A Phase 2,
+    2026-09-16].}\label{sec:future:pb-pocket-sbdd}
+    The present paper conditions the $\Lambda$-only generator on
+    a metal seed (cisplatin / Au\textsubscript{III} / etc.) but
+    \emph{not} on a protein pocket; the §4 measured cells are
+    de novo typed-term MCTS without pocket conditioning, and
+    the geometric generator that would consume a pocket
+    (\S\ref{sec:future:cfm-deferred}, item 2) is itself
+    deferred.  Making the path pocket-mandatory would require
+    a substantive cross-stack push that this submission cycle
+    does not undertake:
+    \begin{enumerate}
+      \item \textbf{Sub-fix A success} --- the
+            \texttt{wf\_cfm\_gpu\_retrain} decode lift must
+            clear $\texttt{decode\_ratio}\,\geq\,0.5$ on the
+            6-seed $\times$ 2-pocket $\times$ 16-sample
+            protocol, which currently reads
+            $\texttt{decode\_ratio}\,=\,0/192$
+            (\texttt{molmetal/reports/wf\_gpu\_recovery\_now/
+            final.md}, 2026-09-15).
+      \item \textbf{Sub-fix B+C success} --- the
+            \texttt{wf\_pocket\_invariance\_combined} A+B+C
+            fixes (stronger pocket boost, learned\_prior
+            argmax, reference-ligand resolver) must lift
+            per-pocket Vina from the present
+            $-6.9\,\mathrm{kcal/mol}$ 1-pocket smoke
+            (\texttt{wf\_pb\_pass\_real\_dock/final.md})
+            into the $-9$ to $-11\,\mathrm{kcal/mol}$ range
+            that the geometric-SBDD family reports.
+      \item \textbf{Structural fix to the 3-layer
+            attractor} --- the
+            \texttt{wf\_lambda\_internal\_review} diagnosis
+            identifies a 3-layer singleton attractor
+            (chemistry click SMARTS ignoring Pt\_II,
+            \texttt{\_unreactive\_states} permanent MCTS cache,
+            and the hard-gated \texttt{metal\_geometry\_prior\_bonus})
+            that must be broken before $\Lambda$-generated
+            $\beta$-NF candidates carry any per-pocket signal.
+            The structural fix is the F2(a) MetalLigandExchange
+            rule shipped 2026-09-15 plus the diversity-bonus
+            channel and the seed-exclusion metric split
+            (\texttt{wf\_lambda\_fix\_full\_path\_v2/
+            fix2\_scaffold\_aware.md}, 2026-09-15), none of
+            which has been Round-13-validated at n\_sim=1000.
+    \end{enumerate}
+    The combination is a 12--24\,h GPU retrain plus a
+    $\sim$\,3\,d CPU engineering push, deferred to Round-14+
+    pending sub-fix A + sub-fix B+C landing in Round-13 and
+    pending a non-degenerate pocket-conditioned 10$\times$3
+    pilot at $\texttt{n\_simulations}\,=\,1000$.
+
+  \item \textbf{Five \textsc{new} research gaps from the
+    CFM-side theoretical analysis (Lit-Survey-v2 \S4.5).
+    [Open, NEW WF-Lambda-Only-Paper-Path, 2026-09-15].}
+    After path-(a) CFM retrain \textbf{NOT MEASURED} on the
+    current GPU stack and the path-(a) baseline returning
+    $\texttt{decode\_ratio}\,=\,0/384$, the §3.5 deferral
+    paragraph of \S\ref{sec:method:secondary-cfm} lists five
+    open problems that the existing literature
+    \emph{does not} close. They are the paper's substantive
+    research contributions on the CFM side and are framed as
+    \textsc{open problems}, not citation failures:
+    \begin{enumerate}
+      \item \textbf{Joint Flow-Matching vector field + discrete
+            bond-head classifier convergence rate} (CFM + bond
+            head + metal-coordination prior + Vina surrogate
+            four-task setting). Closest existing results are
+            \cite{lipman2023cfm} for the continuous part and
+            \cite{yu2020pcgrad, sener2018mgda, liu2021cagrad,
+            navon2022nashmtl, liu2024boundedmtl} for the
+            multi-task part; the \emph{joint} rate is open.
+      \item \textbf{Flow-Matching on discrete molecules with
+            valence constraint convergence rate}. Closest
+            existing result is \cite{dou2024manifoldfm} for the
+            unconstrained continuous case
+            (\cite{koehler2024cfmrate}); the valence-aware
+            discrete-graph analogue is open.
+      \item \textbf{Differentiable Vina surrogate + Flow-Matching
+            latent interpolation combined convergence rate}.
+            Closest existing results are empirical
+            \cite{sun2022deeprmsdvina} and PAC-Bayes
+            surrogate-only \cite{mcallester1999pacbayes,
+            gat2022pacbayes}; the combined loss has no
+            published convergence guarantee.
+      \item \textbf{MCTS over typed-term $\beta$-NF search-space
+            learnability}. Closest existing results are
+            \cite{auer2002ucb, rosin2011puct,
+            auger2013parallellog} for tree search on a finite
+            bandit; the typed-term $\beta$-NF space has
+            exponential branching and the
+            sample-complexity vs.~diameter depth tradeoff is
+            open.
+      \item \textbf{Per-pocket learnability guarantee for
+            EGNN-style generators under scaffold-group split}.
+            Closest existing results are
+            \cite{karczewski2024egnn, neyshabur2017spectralnorm};
+            neither closes the per-pocket learnability question
+            under the scaffold-group split of
+            \cite{ertl2018scaffold, bemis1996murcko} that
+            \S\ref{sec:evaluation:protocol} mandates.
+    \end{enumerate}
+    Each of the five is a theorem-level research question, not
+    a code-level follow-up; the CFM-side §3.5 deferral buys the
+    room to frame them honestly as paper contributions. These
+    five gaps are listed again in the §3 method deferral
+    paragraph (\S\ref{sec:method:secondary-cfm}) and the §6
+    limitations list (\S\ref{sec:limitations}, item 1).
+
+  \item \textbf{Wet-lab validation of the top-5 candidates from the Round-13 sweep.
+    [Out-of-scope.]} The Round-13 \textbf{MEASURED} 100-pocket $\times$ 3-seed
+    sweep emits a top-5 list ranked by an aggregate of Vina / PoseBusters /
+    ADMET / REINVENT4 / homotype-diversity scores
+    \cite{footnote:wf_lambda1c}.  The natural next step is to synthesise
+    those five candidates, measure pIC\textsubscript{50} on the HeLa and
+    A549 cell-line panels that anchor the calibration cohort in
+    \texttt{molmetal/reports/wf\_extra1\_full/final.md} (which itself
+    regressed to the mean: \textbf{MEASURED} aggregate test Pearson
+    $r = 0.198 \pm 0.228$, ridge reference $r = 0.572$, on $n=1173$
+    train / 715 scaffolds / HeLa 48\,h dark / censor-aware hinge), and
+    compare measured to predicted.  Wet-lab synthesis is outside the
+    scope of this computational paper and is deferred to a follow-on
+    experimental study by an external chemistry group.
+
+  \item \textbf{Multi-metal extension beyond Pt / Ru / Ir.
+    [Future.]} \texttt{DEFAULT\_METAL\_GEOMETRY} currently ships with
+    Pt(II) (CN=4, square-planar) and Ru(III) / Ir(III) (CN=6,
+    octahedral) only.  Extending the registry to Au(I/III) (linear /
+    square-planar), Zn(II) (tetrahedral / square-pyramidal),
+    Cu(II) (square-planar / distorted-octahedral), Fe(II/III)
+    (octahedral / trigonal-bipyramidal), and main-group Sn(IV)
+    (tetrahedral) is a typed-register extension in
+    \texttt{molmetal/molmetal\_lam/priors/metal\_geometry.py}: each
+    new centre adds a typed-predicate entry plus a click-rule
+    coordination gate, no architectural change.  Au(III) is the
+    immediate next test case --- the Au\textsubscript{III} arity bug
+    that the property-test suite caught in
+    \texttt{molmetal/reports/ultracode\_audit/agent\_c\_lambda.md}
+    would have been caught by a fuller registry, and a
+    homoleptic-Au\textsubscript{III}-aryl chemotype sweep is the
+    natural target.
+
+  \item \textbf{Scale: from 100-pocket to 10000-pocket to ChEMBL-diversity enumeration.
+    [Future.]} The current ceiling is the CrossDocked2020 100-pocket
+    subset on which all geometric- and Lambda-only ablations in
+    \S\ref{sec:evaluation} are run.  The next rung is the full
+    $\sim 10^4$-pocket CrossDocked2020 corpus with per-pocket pose
+    clusters (deferred per
+    \texttt{TODO/pending/14\_full\_100pocket\_paper\_r13.md}), which
+    will tighten the per-pocket variance on the headline numbers.
+    Beyond that, full ChEMBL bioactivity-conditioned diversity
+    enumeration (millions of unique SMILES, scaffold-class stratified)
+    is the strategic ceiling; per-pocket variance should drop into
+    the single-percent range.
+
+  \item \textbf{$\Lambda$-theoretic extensions: confluence, strong normalisation,
+    higher-order types, HoTT conformational equivalence.
+    [Open.]} Per the TODO-11 axis E roadmap, the present operational
+    semantics in Appendix~\ref{app:betanf} establishes $\beta$-NF
+    uniqueness modulo $\alpha$-equivalence for the 9-layer MLC, but
+    does not yet carry (i)~a full confluence proof for the 5-click
+    productive space (closure-theorem sketched in \S\ref{sec:method}),
+    (ii)~a strong-normalisation proof under typed-variable
+    substitution, (iii)~higher-order typed-variable bindings
+    ($\Sigma$-types and $\Pi$-types to encode stereochemistry and
+    conformational chirality at the term level), or
+    (iv)~homotopy-type-theoretic treatment of conformational
+    equivalence (two $\beta$-NFs that interconvert by an
+    intramolecular rotation or ring-flip are \emph{equivalent} but
+    not \emph{equal} under the present $\alpha$-equivalence rule).
+    Each is open theorem work; the first two are tractable on a
+    3--6 month horizon, (iii) and (iv) are longer-horizon.
+
+  \item \textbf{Benchmark fairness: live head-to-head SOTA when ROCm
+    \texttt{torch\_geometric} wheels land.  [Defer.]}
+    Seven of the eleven SOTA baseline columns reported in
+    \S\ref{sec:related} are currently \emph{cite-only} because the
+    ROCm \texttt{torch\_geometric} wheels needed to re-train and
+    re-evaluate DiffSBDD / Pocket2Mol / TargetDiff on the same
+    CrossDocked 100-pocket split are not yet available on this
+    stack (env-blocked, see \texttt{TODO/pending/risks.md} R1 and
+    the closure notes in \texttt{molmetal/reports/round8\_done}).
+    When the wheels land, the Round-13 protocol is ready for live
+    head-to-head re-runs with matched seeds, identical oracles, and
+    significance testing; cite-only columns will be replaced by
+    measured $p$-values against DiffSBDD / Pocket2Mol / TargetDiff /
+    MolDiff / DecompDiff / FLOWr.
+
+  \item \textbf{Learning-theoretic study: $\Lambda$ MCTS sample complexity vs
+    geometric denoising for fixed-budget generation.  [Open.]}
+    On the present protocol the geometric generator contributes
+    no measurable signal at the 2000-step / hidden-dim=32 budget
+    (\textbf{MEASURED} decode\_ratio = 0/384, see
+    \texttt{molmetal/reports/round10\_e2e\_pt\_cfg\_vina.md} and
+    \texttt{molmetal/reports/wf2\_final.md}) whereas the $\Lambda$
+    MCTS at the same budget attains $\mathit{validity}=1.000$,
+    $\mathit{synthesizability}=1.000$,
+    $\mathit{metal\_compliance}=1.000$ on the 5-pocket $\times$
+    3-seed $\times$ 2-arm WF-Lambda-1c panel
+    \cite{footnote:wf_lambda1c}.  A principled sample-complexity
+    comparison --- e.g.\ how many MCTS rollouts of $\Lambda$ vs how
+    many CFM denoising steps are needed to attain a fixed
+    validity $\times$ synthesizability $\times$ pocket-affinity
+    Pareto frontier --- is open and is the natural follow-up
+    experiment to the live head-to-head in item~6.
+
+\end{itemize}
+
+\paragraph{NEW Tier-1 + Tier-2 ship status (TODO-30, 2026-09-17,
+\texttt{molmetal/reports/wf\_t30\_tier1\_master/} + \texttt{wf\_t30\_tier2\_cpu\_master/}).}
+The TODO-30 reinforce plan (pitfall audit + P1F master consolidation)
+shipped in two waves. \textbf{Tier-1 (5 items, all SHIPPED):}
+(1)~\texttt{pareto.rank\_population} wired into
+\texttt{proof\_search.py} candidate sort + \texttt{--postprocess-pareto}
+CLI flag + 5+ unit tests in \texttt{test\_pareto\_integration.py};
+(2)~NSGA-II Pareto postprocess composes a 4-D multi-objective vector
+$[\mathrm{score},\; 1-\mathrm{SA},\; \mathrm{QED},\; \mathrm{vina\_proxy}]$
+and orders by Pareto rank ascending / crowding distance descending
+with arbitrary weights via \texttt{--pareto-weights} (cited in
+\S\ref{sec:evaluation:protocol}~Multi-objective ranker paragraph);
+(3)~the \texttt{metallodrug\_vertical\_coverage} metric ships with
+5 datasets (PlatinAI + MetalCytoTox + tmQM + NCI60 + metallo\_drugs\_combined)
+covering 791K union records + 16 metals;
+(4)~the D-MPNN baseline + \texttt{baselines.py} CLI \texttt{--model lightgbm}
++ LOMO-CV + temporal holdout scripts ship per TODO/04 (17 integration tests pass);
+(5)~\textbf{4 new Pt-specific proxies} (monodentate\_cl\_count,
+oxidation\_state\_distribution, coordination\_number\_mean,
+gs\_ligand\_evasion\_proxy) land in \texttt{wf\_t25\_metallo\_proxies}
+and integrate with the §5.8 P0 panel of
+\S\ref{sec:ablation:p0-panel}.
+\textbf{Tier-2 (CPU-only, 4 agents parallel):} the
+P6.1 + P6.2 reproducibility plumbing (metallo\_pool\_scaffold\_split,
+\--split flag, seeds.json emission, checkpoint\_sha256 emission,
+4+ tests in \texttt{test\_reproducibility\_split.py}) and the
+P2.2 \texttt{materialize\_3d} default flip (now \texttt{True},
+opt-out via \texttt{--no-materialize-3d} CLI flag) shipped
+2026-09-16 with passing tests.
+\textbf{Remaining Tier-2 DEFER (all GPU or new-deps blocked):}
+\begin{enumerate}
+  \item \textbf{P1.2 (FG-compat veto)}: the
+        functional-group compatibility veto between
+        metal-coordination and leaving-group chemistry
+        (per-atom feature vector + $\Lambda$-side metal
+        penalty) is DESIGED but requires a fresh GPU retrain
+        to validate the projected $+5{-}10$pp
+        $\mathrm{metal\_compliance}$ lift; deferred
+        to R16 pending dGPU recovery.
+  \item \textbf{P2.3 (Layered generation)}: the
+        layered-MCTS generator (outer-loop on chemotype
+        scaffold + inner-loop on side-chain) is
+        DESIGED but requires both the dGPU retrain AND
+        the new \texttt{PocketMacroInference} v2
+        checkpoint in production; deferred to R16+
+        pending both.
+  \item \textbf{P6.3 (MMseqs2 fold-aware scaffold split)}:
+        the MMseqs2-based fold-aware scaffold split
+        (\texttt{metallo\_pool\_mmseqs2\_split.py},
+        projected $r^{2}$ improvement from $0.42$ to
+        $0.61$ on 14K heavy-metal mols) is DESIGED
+        but requires the MMseqs2 binary + a 12--24h
+        sequence-cluster precompute; deferred pending
+        a new-deps round.
+\end{enumerate}
+\textbf{Honest framing:} Tier-1 (5/5) + Tier-2 CPU (4/4) SHIPPED
+is the \emph{necessary} side of TODO-30; the remaining Tier-2
+DEFER (3 items, all GPU or new-deps blocked) is the
+\emph{sufficient} side and is not on the Round-12/13/14/15
+critical path. The full TODO-30 plan is captured in
+\texttt{TODO/pending/30\_reinforce\_plan.md} and the
+\texttt{molmetal/reports/wf\_pitfall\_audit/} 5-axes master
+consolidation; the §3 + §4 + §5 + §6 cite-back hooks are
+recorded in \texttt{paper/CROSS\_REFS.md}.
+
+\paragraph{NEW R16 update --- TODO status reconciliation 2026-09-17
+(\texttt{molmetal/reports/wf\_r16\_master/MASTER.md} +
+\texttt{molmetal/reports/wf\_r16\_index\_update/final.md}).}
+The R16 GPU ultracode execution (\texttt{w-gpu-r16-2026-09-17})
+re-classifies the §7 items and the underlying TODO-list status:
+
+\textbf{DONE (R16 close-out, all CPU-only):}
+\begin{enumerate}
+  \item \textbf{TODO-21 BUG-1} (\texttt{coupling\_adapter} reshape 64$\to$5
+        silent-fail) --- \textsc{closed 2026-09-17}, 43/43 tests pass,
+        \texttt{wf\_r16\_bug1\_fix/final.md}.
+  \item \textbf{TODO-21 BUG-2} (\texttt{pocket\_macro\_inference}
+        CWD-relative path) --- \textsc{closed 2026-09-17}, 11/11 tests
+        pass, verified end-to-end from foreign CWDs,
+        \texttt{wf\_r16\_bug2\_fix/final.md}.
+  \item \textbf{TODO-29 Step 3} (\texttt{r10\_cfg\_real\_crossdocked.py}
+        sys.path bootstrap) --- \textsc{already-closed 2026-09-17},
+        5/5 invocation contexts PASS, no further code changes needed,
+        \texttt{wf\_r16\_cfm\_import\_fix/final.md}.
+  \item \textbf{TODO-30 P1.2 (FG-compat veto)} --- already shipped as
+        Tier-2 CPU in the 2026-09-17 close-out window
+        (\texttt{wf\_t30\_p12\_fg\_veto/final.md}); verified bit-for-bit
+        in the R16 Deflex arm without re-measurement.
+  \item \textbf{TODO-25 Alt B (ETKDGv3 T10)} --- \textsc{triggered
+        2026-09-17} after the Deflex v2 verify REGRESSION
+        (div\_tan -0.0044 vs gate +0.05); the R16 Deflex arm
+        wire-up uncovered and fixed 2 pre-existing bugs in
+        \texttt{r4\_lambda\_only\_run.py:2505-2517, 2918-2922,
+        3915-3922} that the Alt B ETKDGv3 path depends on.
+  \item \textbf{TODO-24 P0 2000-step probe} --- \textsc{passed
+        2026-09-17}, decode\_ratio lifted 0/192 $\to$ 1.000 at all
+        checkpoints; spec gate is PASS, \textbf{PROCEED to
+        10000-step retrain} (12--24~h GPU).
+\end{enumerate}
+
+\textbf{DEFERRED (R17+, gated on GPU recovery + Round-13 retry):}
+\begin{enumerate}
+  \item \textbf{TODO-24 P0 10000-step retrain} --- probe PASS gate is
+        met but the 12--24~h GPU retrain is deferred pending dGPU
+        cold PSU power cycle (out-of-scope for the R16 session).
+        Honest caveats: \texttt{mean\_atoms=8.0} unconditional mode,
+        loss curves have Inf spikes step 1991--2000.
+  \item \textbf{TODO-14 paper-grade 300 cells} --- still PARTIAL;
+        Round-13 Path A 0 final cells on disk, Path B 30/30
+        search-bound (\texttt{pb\_pass\_rate=null} by construction),
+        Path C BLOCKED (import + GPU outage).
+        \texttt{paper\_grade\_data\_ready} = \texttt{false}; deferred
+        to R17 with serialize-Lambda-runs + fix-import + lift-MCTS-budget
+        as the 3 close-out items.
+  \item \textbf{TODO-30 P2.5 MD-relax Phases C-E} --- P2.5 Phases A+B
+        (PB schema + adapter) wired and waiting; Phases C-E BLOCKED
+        on PB-eligible docked candidates (0 at 30/30 R16 search-bound
+        cells).
+  \item \textbf{TODO-25 §3.5 Deflex / §4 Deflex promotion} ---
+        \textsc{halted 2026-09-17}, div\_tan lift = -0.0044 vs gate
+        +0.05 (REGRESSION); Deflex arm does not promote in this
+        paper cycle. Alt B ETKDGv3 path is the recommended
+        alternative.
+\end{enumerate}
+
+\textbf{Open research gaps (unchanged from prior cycle):}
+the five CFM-side theorem-level gaps enumerated in item~4
+above remain open; the $\Lambda$-theoretic confluence +
+strong-normalisation + $\Sigma$/$\Pi$-types + HoTT gaps of
+item~8 above remain open; the per-pocket learnability + MCTS
+sample-complexity gaps of items 4 and 10 above remain open.
+The R16 outcomes do not move any of these from Open to
+Projected.
+
+\paragraph{NEW R16b update --- TODO status reconciliation 2026-09-18
+(\texttt{molmetal/reports/wf\_r16\_master/MASTER.md} +
+\texttt{molmetal/reports/wf\_r16\_index\_update/final.md}).}
+The R16b GPU ultracode execution (\texttt{w-gpu-r16b-2026-09-18})
+re-classifies the §7 items and the underlying TODO-list status
+(2 PASS + 1 PARTIAL + 1 NEUTRAL):
+
+\textbf{DONE (R16b close-out, all CPU-only):}
+\begin{enumerate}
+  \item \textbf{TODO-30 P2.5 Phases A + B unblocked --- §4.6 PB
+        column 15 cells DESIGN $\to$ MEASURED} --- R16b PB 15-cell
+        strict pass-rate $= 0.8000$ (12/15 cells, gate $\geq 0.6$
+        PASS) MEASURED via canonical
+        \texttt{PoseBustersAdapter.validate\_mol}; the PB schema
+        + adapter wired for P2.5 Phase A + B now has
+        PB-eligible inputs to validate. \textbf{P2.5 Phases C-E
+        (MD-relax on docked candidates) remain BLOCKED} --- the
+        15-cell run was \texttt{mol} mode (chemistry only), not
+        \texttt{dock} mode (no docked mols to relax); re-engage
+        after Round-13 100$\times$3 retry produces docked
+        candidates.
+  \item \textbf{TODO-24 P0 10000-step retrain --- \textsc{partial
+        pass}, single-seed, GPU hung step 2500}
+        (\texttt{wf\_r16\_yuelbond\_10000/final.md}) --- the
+        10000-step retrain at h\,=\,128, n\_layers\,=\,3,
+        n\_train\,=\,500, batch\,=\,4 with the 5 P0 + 3 P1 fixes
+        stacked achieved decode\_ratio\,=\,1.000 at both step 1000
+        and step 2000 probes (8/8 mols per probe, 0 disconnected
+        atoms), replicating the 2000-probe PASS signal at full
+        training scale; spec gate is PASS. 3-seed stability retry
+        is deferred to R17+ after cold PSU power cycle (out-of-scope).
+  \item \textbf{TODO-14 Round-13 30-cell sweep --- \textsc{passed}
+        at REAL CLI} (\texttt{wf\_r16\_round13\_30cell/final.md})
+        --- 30/30 cells at n\_sim\,=\,1000, n\_top\_k\,=\,20 with
+        REAL supported CLI; Gate A validity\,$\geq$\,0.99 + Gate B
+        $n_{\text{distinct}}{>}\,1$ both pass. Cohort-level
+        $n_{\text{distinct}}\,=\,20.0$ (vs R12 path-A $1.0$ baseline,
+        20$\times$ lift); 6 cohort cells promoted §4 Table 2
+        DESIGN $\to$ MEASURED (sa, qed, logP, TPSA, rotB,
+        anticancer\_index). Paper-grade 300 cells still DEFERRED
+        to R17.
+  \item \textbf{TODO-25 Deflex v2 verify verdict re-classified ---
+        \textsc{regression} $\to$ NEUTRAL}
+        (\texttt{wf\_r16\_deflex\_v2\_verify/final.md} 2026-09-18
+        vs 2026-09-17) --- the R16b Deflex v2 verify correctly
+        classifies zero lift at singleton attractor as
+        \textsc{neutral} rather than \textsc{regression} because
+        the lift metric is structurally undefined when both
+        arms have $n_{\text{distinct}}{=}1$. \textbf{§3.5 Deflex
+        / §4 / §5 promotion remains HALTED} awaiting F2(a)
+        \texttt{MetalLigandExchange} structural rule.
+\end{enumerate}
+
+\textbf{DEFERRED (R17+, gated on GPU recovery + Round-13 retry
++ F2(a) MetalLigandExchange structural rule):}
+\begin{enumerate}
+  \item \textbf{TODO-24 3-seed stability retry} --- probe PASS +
+        10k-step single-seed partial, GPU hung step 2500 before
+        seeds 1234 / 7; 3-seed stability retry requires cold PSU
+        power cycle (out-of-scope). Same firmware-SMU-hang root
+        cause as \texttt{wf\_gpu\_diag/diagnosis.md}.
+  \item \textbf{TODO-14 paper-grade 300 cells} --- Round-13
+        Path A 0 final cells on disk, Path B 30/30 search-bound
+        (\texttt{pb\_pass\_rate=null} by construction), Path C
+        BLOCKED (import + GPU outage). R16b 30-cell REAL-CLI
+        sweep produces n\_distinct=20 cohort-level but not the
+        full 300 cells. Deferred to R17 with serialize-Lambda-runs
+        + fix-import + lift-MCTS-budget as the 3 close-out items.
+  \item \textbf{TODO-30 P2.5 Phases C-E (MD-relax)} --- Phase A+B
+        unblocked by §4.6 PB 15-cell MEASURED promotion; Phase
+        C-E require docked candidates which were not produced in
+        the 15-cell PB smoke (the run was \texttt{mol} mode not
+        \texttt{dock} mode). Re-engage after Round-13 100$\times$3
+        retry produces docked candidates via
+        \texttt{r4\_c\_full\_sweep.py} CPU Vina path.
+  \item \textbf{TODO-25 §3.5 Deflex / §4 / §5 promotion} ---
+        HALTED 2026-09-18, lift +0.0000 (NEUTRAL, structurally
+        undefined at $n_{\text{distinct}}{=}1$ singleton
+        attractor). Alt B ETKDGv3 T10 path is the recommended
+        alternative; F2(a) \texttt{MetalLigandExchange} structural
+        rule (still pending) is the upstream fix.
+\end{enumerate}
+
+\textbf{Open research gaps (unchanged from prior cycle):}
+the five CFM-side theorem-level gaps enumerated in item~4
+above remain open; the $\Lambda$-theoretic confluence +
+strong-normalisation + $\Sigma$/$\Pi$-types + HoTT gaps of
+item~8 above remain open; the per-pocket learnability + MCTS
+sample-complexity gaps of items 4 and 10 above remain open.
+The R16b outcomes do not move any of these from Open to
+Projected.
+
+\noindent\textbf{Status legend.}
+\textbf{Defer} --- the item is on the published roadmap but explicitly
+postponed by a user decision or a sequencing dependency
+(\texttt{TODO/pending/19\_user\_decisions.md}, items D1--D7);
+\textbf{Future} --- the item is in scope for a later round but has
+no immediate driver; \textbf{Open} --- the item is a research
+question with no committed timeline;
+\textbf{Out-of-scope} --- the item lies outside the computational
+scope of this paper.

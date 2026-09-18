@@ -1,0 +1,50 @@
+{
+  "metric": "n_distinct",
+  "description": "Number of distinct generated molecules per cell (after canonicalization)",
+  "unit": "count",
+  "scope": "Lambda MCTS path",
+  "measurements": [
+    {
+      "run": "wf_lambda_only_mini_pilot (5x1, no metal-seed, n_sim=100)",
+      "value": 1,
+      "n_samples": 5,
+      "status": "MEASURED"
+    },
+    {
+      "run": "wf_round12_lambda_pilot (10x3, n_sim=1000, cisplatin+all-5)",
+      "value": 1,
+      "n_samples": 30,
+      "status": "MEASURED",
+      "date_utc": "2026-09-14",
+      "note": "all 30 cells = single molecule [NH2][Pt]([NH2])([Cl])[Cl]"
+    },
+    {
+      "run": "wf_round12_lambda_pathb (10x3 Path B without all 4 fixes)",
+      "value": 1,
+      "n_samples": 30,
+      "status": "MEASURED",
+      "date_utc": "2026-09-15",
+      "note": "Path B alone did NOT lift"
+    },
+    {
+      "run": "wf_round12_lambda_patha_10x3 (10x3 Path A with ALL 4 FIXES + decoder_rework)",
+      "value": 20,
+      "n_samples": 30,
+      "status": "MEASURED",
+      "date_utc": "2026-09-15",
+      "wall_sec_per_cell": 98.27,
+      "cell_std": 0.0,
+      "n_top_k_cap": 20,
+      "deterministic_per_cell": true,
+      "note": "all 30 cells = n_top_k cap (20 distinct molecules)"
+    }
+  ],
+  "aggregate": {
+    "best_measured_lambda_pilot_pre_fixes": 1,
+    "best_measured_with_all_fixes": 20,
+    "lift_factor": "20x (1 -> 20)",
+    "n_top_k_cap": 20,
+    "interpretation": "MCTS now generates enough distinct candidates to saturate the n_top_k cap on every cell"
+  },
+  "verdict": "ROOT_CAUSE_RESOLVED — 3-layer singleton attractor broken by 4-fix bundle. n_distinct went from 1 (trivially stuck) to 20 (saturated n_top_k cap) on all 30 cells. Wall-clock cost ~98 s/cell (vs 50s pre-fix), within 90-min budget."
+}

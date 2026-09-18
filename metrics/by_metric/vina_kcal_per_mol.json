@@ -1,0 +1,38 @@
+{
+  "metric": "vina_mean",
+  "description": "Mean Vina docking score of top-k generated molecules per pocket (lower = better binding)",
+  "unit": "kcal/mol",
+  "scope": "CFM generate path (true physical docking)",
+  "measurements": [
+    {
+      "run": "wf_pb_pass_real_dock (1-pocket smoke, vina engine)",
+      "value": -6.929,
+      "n_samples": 1,
+      "status": "MEASURED",
+      "date_utc": "2026-09-14",
+      "note": "best of 1 candidate; not statistical sample"
+    },
+    {
+      "run": "wf_vina_lift_phase23 (10k-step + h=64)",
+      "value": null,
+      "n_samples": 0,
+      "status": "UNMEASURED",
+      "note": "this workflow only reports loss curves, not Vina scores. Loss plateau at step ~5000."
+    },
+    {
+      "run": "wf_gpu_recovery_now (5000-step + h=64)",
+      "value": null,
+      "n_samples": 192,
+      "status": "UNMEASURED",
+      "note": "decode_ratio=0 → no molecules to dock"
+    }
+  ],
+  "aggregate": {
+    "best_measured": -6.929,
+    "n_measured": 1,
+    "lit_target_targetdiff": "-8.45 (Guan 2023 ICLR, CrossDocked)",
+    "lit_target_diffdock": "-7.5 to -8.0 (Corso 2024 NeurIPS)",
+    "gap": "−1.5 kcal/mol (best case, single point)"
+  },
+  "verdict": "MEASURED_INSUFFICIENT — only 1 smoke measurement on real Vina. Cannot claim Vina lift at paper scale. Path (b) decoder rework + n_simulations>=1000 needed for paper-grade comparison."
+}

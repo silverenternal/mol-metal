@@ -1,0 +1,25 @@
+{
+  "round": "R11",
+  "workflow": "wf_extra2_batch",
+  "date_utc": "2026-09-14",
+  "config": {
+    "backend": "REINVENT4 subprocess adapter (multiproperty mode)",
+    "config_file": "molmetal/configs/reinvent_multiproperty_amd.json",
+    "n_smiles_batch": 10,
+    "channel": "r_reinvent4 in RewardAggregator"
+  },
+  "aggregate_metrics": {
+    "n_tests_passed": 27,
+    "n_tests_total": 27,
+    "pearson_r_learned_vs_proxy": 0.6763,
+    "n_smiles_evaluated": 10,
+    "cisplatin_score_learned": 0.842,
+    "ethanol_score_learned": 0.5625,
+    "mean_wall_clock_per_smiles_sec": 4.06
+  },
+  "verdict": {
+    "status": "WIRE_COMPLETE_BATCH_VERIFIED",
+    "summary": "REINVENT4 multiproperty bridge ships (r_reinvent4 channel functional). 10-SMILES batch evaluates in 4.06s/SMILES mean. Learned prior correlates with proxy at r=0.6763. Cisplatin (0.842) and ethanol (0.5625) scores reasonable."
+  },
+  "source": "molmetal/reports/wf_extra2_batch/final.md"
+}

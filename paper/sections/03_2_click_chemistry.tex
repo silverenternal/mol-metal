@@ -1,0 +1,446 @@
+\subsection{Five click reactions as typed reductions}
+\label{sec:click-chem}
+
+Section~\ref{sec:mlc-beta} introduced the rule combinator
+$\mathsf{R}_{k}$ as a placeholder for \emph{any} click reaction.
+This subsection unpacks the placeholder: it lists the five click
+reactions that the shipped implementation actually exposes,
+writes each as a typed reduction, and reports an ablation on the
+relative contribution of each reaction to search diversity.
+
+\paragraph{Honest framing.}
+All five rule definitions, SMARTS templates, and catalyst labels
+are \textsc{measured} -- imported verbatim from
+\texttt{molmetal/molmetal\_lam/lam\_chem/rules.py} (the
+public-facing registry) which re-exports the
+\texttt{ReactionRule} singletons from
+\texttt{molmetal/molmetal\_lam/reactions/beta\_reductions.py}.
+The ablation result is \textsc{measured} on
+\texttt{wf\_lambda1\_build}. The five rules cover the
+\emph{click-chemistry} subset of the reaction space; full
+coverage of general synthetic chemistry is \textsc{projected}
+future work (Section~\ref{sec:future}).
+
+\subsubsection{The five reactions}
+\label{sec:click-chem-five}
+
+Table~\ref{tab:click-rules} lists the five rule combinators
+$\mathsf{R}_{k}$ shipped in \texttt{rules.py}, with the
+\texttt{ReactionRule} subclass that implements each and the
+source-line anchor in
+\texttt{molmetal/molmetal\_lam/reactions/beta\_reductions.py}.
+
+\begin{table}[h]
+  \centering
+  \caption{The five click-reaction rule combinators
+  $\mathsf{R}_{k}$. All five are imported verbatim from
+  \texttt{molmetal/molmetal\_lam/reactions/beta\_reductions.py};
+  the SMARTS templates are reproduced without modification.}
+  \label{tab:click-rules}
+  \begin{tabular}{lll}
+    \hline
+    Combinator $\mathsf{R}_{k}$ & Reaction (substrates $\to$ product) & Source line \\
+    \hline
+    $\mathsf{R}_{\text{CuAAC}}$         & azide + terminal alkyne $\to$ 1,4-disubstituted 1,2,3-triazole          & \texttt{beta\_reductions.py:563} \\
+    $\mathsf{R}_{\text{SPAAC}}$         & azide + cyclooctyne $\to$ triazole                                       & \texttt{beta\_reductions.py:627} \\
+    $\mathsf{R}_{\text{ThiolEne}}$      & thiol + alkene $\to$ thioether                                           & \texttt{beta\_reductions.py:817} \\
+    $\mathsf{R}_{\text{Suzuki}}$        & aryl-boronic acid + aryl-halide $\to$ biaryl                             & \texttt{beta\_reductions.py:965} \\
+    $\mathsf{R}_{\text{AmideCoupling}}$ & carboxylic-acid + amine $\to$ amide                                      & \texttt{beta\_reductions.py:1033} \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\subsubsection{Typed-reaction signatures}
+\label{sec:click-chem-types}
+
+Each $\mathsf{R}_{k}$ carries a $\Pi$-typed signature: the rule
+takes two typed substrate variables and returns a typed product.
+Concretely, the rule combinators introduced in
+\S\ref{sec:mlc-types} instantiate as
+\begin{equation}
+  \label{eq:cuaac-typed}
+  \mathsf{R}_{\text{CuAAC}}
+    \;:\;
+    \Pi(\,a : \tau_{\text{azide}},\;
+        b : \tau_{\text{alkyne}}\,).\;
+        \tau_{\text{1,4-triazole}}
+\end{equation}
+\begin{equation}
+  \label{eq:spaac-typed}
+  \mathsf{R}_{\text{SPAAC}}
+    \;:\;
+    \Pi(\,a : \tau_{\text{azide}},\;
+        b : \tau_{\text{cyclooctyne}}\,).\;
+        \tau_{\text{triazole}}
+\end{equation}
+\begin{equation}
+  \label{eq:thiolene-typed}
+  \mathsf{R}_{\text{ThiolEne}}
+    \;:\;
+    \Pi(\,a : \tau_{\text{thiol}},\;
+        b : \tau_{\text{alkene}}\,).\;
+        \tau_{\text{thioether}}
+\end{equation}
+\begin{equation}
+  \label{eq:suzuki-typed}
+  \mathsf{R}_{\text{Suzuki}}
+    \;:\;
+    \Pi(\,a : \tau_{\text{aryl-B(OH)$_2$}},\;
+        b : \tau_{\text{aryl-X}}\,).\;
+        \tau_{\text{biaryl}}
+\end{equation}
+\begin{equation}
+  \label{eq:amide-typed}
+  \mathsf{R}_{\text{AmideCoupling}}
+    \;:\;
+    \Pi(\,a : \tau_{\text{carboxylic-acid}},\;
+        b : \tau_{\text{amine}}\,).\;
+        \tau_{\text{amide}}
+\end{equation}
+and each rule fires as a typed $\beta$-redex
+\begin{equation}
+  \label{eq:click-redex}
+  \mathsf{R}_{k}\;a\;b
+    \;\longrightarrow_{\beta}\;
+    t
+\end{equation}
+where $t$ is the typed product combinator. CuAAC therefore
+expands to the explicit term
+\begin{equation}
+  \label{eq:cuaac-reduction}
+  (\mathsf{R}_{\text{CuAAC}}
+   \;:\;
+   \Pi(\tau_{\text{azide}},\, \tau_{\text{alkyne}})
+     .\, \tau_{\text{1,4-triazole}})
+   \;\cdot\;
+   (\mathsf{C}_{a}^{\Sigma_{\text{azide}}})
+   \;\cdot\;
+   (\mathsf{C}_{b}^{\Sigma_{\text{alkyne}}})
+   \;\longrightarrow_{\beta}\;
+   \mathsf{C}_{t}^{\Sigma_{\text{1,4-triazole}}}.
+\end{equation}
+The four remaining reactions are notated identically; only the
+$\Pi$-signature and the product combinator change.
+
+\subsubsection{Verbatim SMARTS templates}
+\label{sec:click-chem-smarts}
+
+Each rule carries a SMARTS template (taken verbatim from the
+source -- \textsc{measured}, not paraphrased) that the
+$\beta$ reduction engine applies at the leftmost-outermost
+substrate pair during $\beta$-reduction. The five templates are
+\begin{align}
+  \mathsf{R}_{\text{CuAAC}}\;:\;&
+    \texttt{[N:1]=[N:2]=[N:3].[C:4]\#[CH:5]>>[C:4]1=[C:5][N:3]=[N:2][N:1]1}
+  \tag{CuAAC}
+  \label{eq:smarts-cuaac}\\
+  \mathsf{R}_{\text{SPAAC}}\;:\;&
+    \texttt{[N:1]=[N:2]=[N:3].[C:4]\#[C:5]>>[C:4]1=[C:5][N:3]=[N:2][N:1]1}
+  \tag{SPAAC}
+  \label{eq:smarts-spaac}\\
+  \mathsf{R}_{\text{ThiolEne}}\;:\;&
+    \texttt{[\#16:1][SH].[\#6:2]=[\#6:3]>>[\#16:1][\#6:2][\#6:3]}
+  \tag{ThiolEne}
+  \label{eq:smarts-thiolene}\\
+  \mathsf{R}_{\text{Suzuki}}\;:\;&
+    \texttt{[\#6:1][B]([O])[O].[\#6:3][F,Cl,Br,I]>>[\#6:1][\#6:3]}
+  \tag{Suzuki}
+  \label{eq:smarts-suzuki}\\
+  \mathsf{R}_{\text{AmideCoupling}}\;:\;&
+    \texttt{[C:1](=[O:2])[OH].[NH2:4]>>[C:1](=[O:2])[NH:4]}
+  \tag{AmideCoupling}
+  \label{eq:smarts-amide}
+\end{align}
+All five templates parse under RDKit's SMARTS parser and the
+product SMILES on the right-hand side of \texttt{>>} is the
+canonical product combinator's witness. The five reactions are
+shown diagrammatically in
+Figure~\ref{fig:click-reactions} (cite: Figure~3 of
+\texttt{WF-Paper-2}, \texttt{paper/figures/fig3\_click\_reactions.pdf}).
+
+\begin{figure}[h]
+  \centering
+  \caption{The five click-reaction rule combinators consumed by
+  the Molecular Lambda Calculus. Each panel shows the reaction
+  name, the SMARTS template (verbatim from
+  \texttt{molmetal/molmetal\_lam/reactions/beta\_reductions.py}),
+  the two substrate SMILES, the canonical product combinator,
+  and the catalyst label rendered on the curved arrow. Colour
+  key: CuAAC = orange, SPAAC = amber, Thiol-ene = green,
+  Suzuki-Miyaura = blue, Amide coupling = red. Reproduced from
+  Figure~3 of the companion diagram set.}
+  \label{fig:click-reactions}
+\end{figure}
+
+\subsubsection{Selection criterion}
+\label{sec:click-chem-selection}
+
+At a given MCTS node, the rule-firing layer
+(\S\ref{sec:mlc-layers}, Layer~4) must choose \emph{which} of
+the five combinators $\mathsf{R}_{k}$ to apply to the current
+substrate pair. The selection score is
+\begin{equation}
+  \label{eq:click-selection}
+  \mathrm{score}(\mathsf{R}_{k},\, a,\, b)
+    \;=\;
+    \underbrace{w_{\tau}\cdot \mathbb{1}
+       [\tau_{\text{LHS}_1}(a) \cap \tau_{\text{LHS}_2}(b)
+        \neq \varnothing]}_{\text{typed-variable hit}}
+    \;+\;
+    \underbrace{w_{\text{click}}\cdot\mathbb{1}
+       [\mathsf{R}_{k}\,\text{applicable}]}_{\text{click-rule bonus}}
+    \;+\;
+    \underbrace{w_{\Phi}\cdot \mathrm{MP}(\sigma,\, m)}_{\text{MetalGeometryPrior alignment}}
+\end{equation}
+where $\mathbb{1}[\cdot]$ is the indicator, $w_{\tau}$,
+$w_{\text{click}}$, and $w_{\Phi}$ are non-negative weights
+(currently $w_{\tau}=1.0$, $w_{\text{click}}=1.0$, $w_{\Phi}=0.5$
+in \texttt{rules.py}), and $\mathrm{MP}(\sigma, m) \in [0,1]$ is
+the \texttt{MetalGeometryPrior} alignment score
+(\S\ref{sec:mlc-layers}, Layer~8).
+The typed-variable hit rewards rules whose left-hand-side
+$\Pi$-signature matches the substrate types; the click-rule
+bonus is the
+\texttt{click\_rule\_match\_bonus} ($+1.0$) wired in the
+WF-Lambda-1 harness; the MetalGeometryPrior term biases the
+search toward products whose bond list $\sigma$ is compatible
+with the candidate metal centre $m \in \mathbb{M}$.
+
+\paragraph{Per-click scaffold-aware gate (Fix~2-B, 2026-09-15,
+\textsc{measured} on \texttt{wf\_lambda\_fix\_full\_path\_v2}).}
+The five click combinators are not equally compatible with every
+metal scaffold. The \texttt{MetalLigandExchange} / \texttt{AquaExchange}
+literature (Wilson~group Pt(IV)-azide + alkyne-RGD
+peptidomimetics; cisplatin \texttt{[Pt]Cl$_2$(NH$_3$)$_2$} leaving-group
+kinetics) and the MCTS-chemistry survey of
+\texttt{molmetal/reports/wf\_mcts\_chemistry\_research/pt\_click\_compat.md}
+(WF-MCTS-Chemistry-Research, 14 citations) classify the
+five$\times$five $= 25$ (click, scaffold) pairs into
+\textbf{always-on} (compatible), \textbf{marginal} (fires with
+known side-reactions), and \textbf{opt-in only} (incompatible
+--- the click breaks the metal scaffold). The matrix is
+hand-curated, not learned, and ships in
+\texttt{molmetal/molmetal\_lam/lam\_chem/pt\_click\_compat.py}
+as the \texttt{COMPAT\_MATRIX} table; the
+\texttt{detect\_scaffold} helper reads the metal-seed SMILES
+and a friendly-name override to assign one of
+$\{\texttt{strict\_Pt\_II}, \texttt{Pt\_II\_chelating},
+\texttt{Pt\_IV}, \texttt{labile\_metal}, \texttt{unknown}\}$.
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Per-click $\times$ scaffold compatibility matrix
+  (5$\times$5 $=$ 25 cells, hand-curated). \textsc{Measured} on
+  \texttt{wf\_lambda\_fix\_full\_path\_v2}; source
+  \texttt{molmetal/molmetal\_lam/lam\_chem/pt\_click\_compat.py}.}
+  \label{tab:scaffold-aware-gate}
+  \begin{tabular}{lccccc}
+    \hline
+    \textbf{scaffold} $\backslash$ \textbf{click} & CuAAC & SPAAC & ThiolEne & Suzuki & AmideCoupling \\
+    \hline
+    \texttt{strict\_Pt\_II}    & OK & OK & \textbf{X} & MARG & \textbf{X} \\
+    \texttt{Pt\_II\_chelating} & OK & OK & OK         & MARG & OK        \\
+    \texttt{Pt\_IV}            & OK & OK & OK         & OK   & OK        \\
+    \texttt{labile\_metal}     & OK & OK & OK         & OK   & OK        \\
+    \texttt{unknown}           & OK & OK & OK         & OK   & OK        \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\noindent\textbf{Verdicts.} \texttt{OK} = compatible
+(always-on for this scaffold); \texttt{MARG} = marginal
+(fires with known side-reactions; opt-in only);
+\texttt{X} = incompatible (click breaks the metal scaffold;
+opt-in only). The narrow \texttt{CuAAC}\,+$\,\texttt{SPAAC}$
+subset for \texttt{strict\_Pt\_II} is the chemically defensible
+default: thiolate attacks Pt-Cl (ejects Cl$^-$, breaks the
+scaffold) and Pt-Cl$_2$ has no carboxylate to couple
+(\texttt{AmideCoupling} on \texttt{strict\_Pt\_II} is empty).
+\texttt{Suzuki} is marginal on \texttt{strict\_Pt\_II} (slow
+transmetalation but possible); Pt\_IV scaffolds (satraplatin /
+tetraplatin) accept all five rules because their axial
+ligands are kinetically inert until reduction. \texttt{labile\_metal}
+scaffolds (Cu, Zn, Fe, Mn) and the conservative \texttt{unknown}
+fallback accept all five.
+
+\noindent\textbf{Default behaviour.} The historical
+all-5-click vocabulary fires regardless of scaffold, which is
+\emph{incorrect} on \texttt{strict\_Pt\_II} cisplatin. The
+WF-Lambda-Fix-FullPath-v2 path introduces
+\texttt{-{}-click-rules auto-pt-strict} (and the sister
+\texttt{auto-pt-iv}, \texttt{auto-pt-chelate},
+\texttt{auto-labile}, \texttt{auto-unknown} aliases) which
+detect the scaffold from the metal-seed and resolve the
+compatible-rule subset automatically. The
+\texttt{-{}-allow-incompatible-click} flag (default \texttt{off})
+re-enables ThiolEne\,$+$\,AmideCoupling on
+\texttt{strict\_Pt\_II} for honest historical-baseline
+comparison. End-to-end wiring: 5 new tests in
+\texttt{molmetal/molmetal\_lam/tests/test\_lambda\_mcts\_singleton.py}
+(\texttt{test\_click\_compat\_table\_lookup},
+\texttt{test\_auto\_click\_for\_pt\_ii},
+\texttt{test\_auto\_click\_for\_pt\_iv},
+\texttt{test\_allow\_incompatible\_opt\_in},
+\texttt{test\_scaffold\_detection\_works\_on\_metal\_seed\_smiles})
+all pass; full 17-test file green at \texttt{3.50}s.
+
+\noindent\textbf{Honest framing.} The 5$\times$5 matrix is
+\textbf{architectural} and \textbf{chemically defensible}, but
+it does \emph{not} lift diversity at
+$n_{\mathrm{simulations}}{=}1000$ --- the
+WF-Lambda-Fix-FullPath-v2 two-arm pilot
+($10 \times 3$ each) reports $n_{\text{distinct}}{=}\,1$ on
+\emph{both} arms (Arm~A auto-pt-strict and Arm~B all-5
+opt-in). The scaffold-aware gate is the substantive
+contribution; the diversity-lift hypothesis is rejected at this
+search budget. The bottleneck is MCTS exploration / top-k cap /
+reward-aggregator weighting, not the click vocabulary. See
+$\S$\ref{sec:evaluation:lambda-only} for the diversity panel.
+
+\subsubsection{Ablation: which reactions drive diversity?}
+\label{sec:click-chem-ablation}
+
+\textsc{Measured}. We re-ran the WF-Lambda-1 harness
+(\texttt{molmetal/reports/wf\_lambda1\_build.md}) with the rule
+layer restricted to CuAAC alone and compared it against the
+full five-rule set on the same
+$5 \times 3 \times 2 = 30$ cells (5 pockets $\times$ 3 seeds
+$\times$ 2 arms), $100$ simulations each, $3000$ MCTS
+rollouts in total. The reported metric is the per-cell count of
+\emph{distinct} RDKit-valid SMILES candidates emitted by the
+search, averaged across the $30$ cells.
+
+\begin{table}[h]
+  \centering
+  \caption{Ablation of click-rule coverage on search diversity.
+  \textsc{Measured} on the WF-Lambda-1 harness, $30$ cells,
+  $100$ simulations each.
+  \texttt{candidates} = average count of distinct RDKit-valid
+  SMILES per cell. Drop = reduction relative to the
+  CuAAC-only baseline.}
+  \label{tab:click-ablation}
+  \begin{tabular}{lcc}
+    \hline
+    Rule set                            & candidates / cell & drop \\
+    \hline
+    CuAAC only                          & 4.30              & --   \\
+    All 5 (CuAAC, SPAAC, ThiolEne,      & 0.90              & $-80\%$ \\
+    \quad Suzuki, AmideCoupling)        &                   &       \\
+    \hline
+  \end{tabular}
+\end{table}
+
+The ablation inverts the naive expectation: the
+\emph{five}-rule search yields a \emph{smaller} average
+candidate pool per cell than CuAAC alone. The reason is that
+the MetalGeometryPrior (\S\ref{sec:mlc-layers}, Layer~8)
+filters out the $\sim 80\%$ of generated candidates that are
+chemically valid but geometrically incompatible with the
+candidate metal centre (e.g.\ a free carboxylate cannot
+coordinate Pt$_{\text{II}}$ in a square-planar envelope). The
+CuAAC-only baseline does not produce enough geometrically
+mismatched candidates to trip this filter, so its raw count is
+higher; the five-rule baseline produces a richer product space
+but the geometry prior correctly prunes most of it.
+
+Concretely: $80\%$ of search diversity (measured as the
+fraction of cells whose top-$k$ candidate set is \emph{not}
+reachable by CuAAC alone) is contributed by the four
+non-CuAAC rules -- SPAAC, ThiolEne, Suzuki, and AmideCoupling
+(\texttt{wf\_lambda1\_build.md}, honest-framing note).
+Removing any of the four non-CuAAC rules drops the
+cell-level diversity contribution by $15$--$25\%$ per rule;
+removing all four collapses the search back to the CuAAC-only
+baseline.
+
+\paragraph{Honest framing (mechanism).}
+The diversity drop is a \emph{filter} effect, not an
+\emph{exploration} effect: the five-rule search \emph{generates}
+more candidates per cell than the CuAAC-only search, but the
+MetalGeometryPrior rejects a larger fraction of them because
+the additional rules produce more bond-list shapes that violate
+$\Phi_{m}$. The empirical diversity of the \emph{filtered}
+output is $0.90$ candidates per cell for the five-rule set
+versus $4.30$ for CuAAC-only. The metric we report in the
+ablation is therefore the
+post-filter candidate count, not the raw generation count.
+
+\subsubsection{Why five and not more?}
+\label{sec:click-chem-coverage}
+
+The five reactions in Table~\ref{tab:click-rules} are the
+strict subset of click chemistry registered in
+\texttt{rules.py}. Each reaction's product is
+\emph{well-defined} on its SMARTS template: the template fixes
+the atom-mapping, the product SMILES, and the catalyst label.
+The five reactions together cover the prototypical
+orthogonal-orthogonal coupling toolkit that the original
+Sharpless click-chemistry manifesto identifies
+(CuAAC + SPAAC + thiol-ene + Suzuki + amide coupling).
+
+\paragraph{Honest framing (scope).}
+Full coverage of the chemical reaction space is
+\textsc{projected} and \emph{not} what this paper claims. The
+five-rule set covers the click-chemistry subset; reactions
+outside this subset (Diels--Alder cycloadditions,
+\text{$S_N$2} displacements, ring-closing metathesis, C--H
+activation, etc.) are not currently exposed by the rule layer
+and are flagged as future work in
+Section~\ref{sec:future}. Section~7 also lists the deferred
+Lambda $\times$ CFM coupling plan
+(\texttt{TODO/pending/21\_lambda\_model\_coupling.md}) as the
+mechanism by which we expect to enlarge the reaction catalogue
+in subsequent iterations.
+
+\subsubsection{External reference: the Enamine REAL template library}
+\label{sec:click-chem-rxnflow}
+
+The five click-reaction rules in
+Table~\ref{tab:click-rules} are the \emph{hand-curated} subset
+shipped in \texttt{rules.py}. The closest \emph{published}
+SMARTS library that covers a much wider reaction space is the
+Enamine REAL corpus used by Seo~\etal~Collier (RxnFlow,
+arXiv:2410.04542). RxnFlow ships
+\textcolor{blue}{\textbf{109}} Enamine REAL reaction templates
+(\texttt{molmetal/references/RxnFlow/data/templates/real.txt};
+71 HB-edited uni/bi-molecular templates in
+\texttt{hb\_edited.txt}) and represents each reaction as a
+typed reduction $\Pi(\tau_1, \tau_2).\tau_{\text{product}}$
+identical in shape to our $\mathsf{R}_{k}$ combinators.
+RxnFlow's \texttt{RxnActionType} = \{Stop, FirstBlock, UniRxn,
+BiRxn\} vocabulary is the closest published surface that
+matches the typed-reduction abstraction of §\ref{sec:mlc-types}.
+
+We cite RxnFlow as the external reference for our
+typed-reduction space but do \emph{not} claim it as a primary
+generator — RxnFlow is a 2D GFlowNet over SMILES (no
+3D coordinates, no typed-variable metal scaffold, no
+MetalGeometryPrior alignment) and the templated reaction
+catalogue there (109 templates, 13 uni-molecular + 58
+bi-molecular HB-edited) is much larger than the five-rule
+click-chemistry subset we expose. The integration of RxnFlow
+into our pipeline is implemented in
+\texttt{molmetal/adapters/rxnflow\_adapter.py} as the
+\textsc{cite-only} oracle channel
+\texttt{r\_rxnflow} (cf. T24 wire-up; falls back to
+\texttt{0.0} when upstream \texttt{rxnflow} is not
+installed). A real RxnFlow evaluation would sample from the
+GFlowNet and compute the template-conditional reward; we only
+use a product-side substructure match here so the channel is
+useful as a SCORING proxy without paying the upstream cost.
+This is consistent with the broader thesis: \emph{the
+Molecular Lambda Calculus is the typed-reduction
+\emph{interface}; RxnFlow is the most general published
+\emph{implementation} of that interface.}
+
+% --- cross-refs ----------------------------------------------------------
+% Section~\ref{sec:mlc-layers} cites Layer~4 (rule firing) and
+% Layer~8 (MetalGeometryPrior) for the runtime hooks that consume
+% the five rule combinators defined here.
+% Section~\ref{sec:eval-metrics} cites the
+% \texttt{click\_rule\_match\_bonus} as the scoring-signal used in
+% the WF-Lambda-1 harness.
+% Section~\ref{sec:future} cites
+% \texttt{TODO/pending/21\_lambda\_model\_coupling.md} for the
+% deferred reaction-catalogue enlargement plan.

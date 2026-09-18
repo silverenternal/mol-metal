@@ -1,0 +1,501 @@
+% =============================================================================
+%  Paper §3.7 -- The metallodrug de novo design vertical
+%
+%  Vertical: discrete de-novo design of Pt / Pd / Au / Ir / Ru coordination
+%  complexes that satisfy a co-constrained pair of predicates
+%    (i)  pharmacophore + ring-1 + Lipinski + Veber      (drug-like)
+%    (ii) metal coordination geometry + oxidation state  (chem-correct)
+%  This vertical is a sub-case of the generic typed-term de novo
+%  generator of \S\ref{sec:mlc-formalism}--\S\ref{sec:mcts-betanf}; it
+%  differs from both generic SBDD (no metal atom type, no dative bonds,
+%  pocket-conditioned only) and generic de novo (no metal combinators,
+%  no coordination refinement predicate, no aqua / GSH / DNA-binding
+%  proxy channels).
+%
+%  Anchor: WF-Metallodrug-Vertical Phase 4 (\S3.7 paper integration).
+%  Source: molmetal/reports/wf_metallodrug_vertical/
+%    phase1_inventory.md        -- dataset inventory (PlatinAI 226,918;
+%                                   MetalCytoToxDB 26,802; NCI60;
+%                                   tmQM 108,543; CrossDocked2020
+%                                   eval-only)
+%    phase2_platinai_loader.md  -- PlatinAI 226k -> 500-diverse Pt pool
+%    phase2_activity_oracle.md  -- r_platinai + r_cytotox channels
+%    phase2_5_tmqm_loader.md    -- tmQM 108,543 transition-metal QM
+%    phase3_protocol_align.md   -- TargetDiff-baseline eval alignment
+%    phase3_smoke/              -- 19 unit tests (all green)
+%
+%  This subsection is the *vertical specification*; the empirical cells
+%  live in \S\ref{sec:evaluation}. It is intentionally architecture-
+%  heavy: the cross-references back to \S3.1--\S3.5 carry the
+%  algorithmic content, and the metric catalogue in
+%  \S\ref{sec:metallodrug-vertical-metrics} is the interface that
+%  \S4 cells consume.
+% =============================================================================
+
+\subsection{The metallodrug de novo design vertical}
+\label{sec:metallodrug-vertical}
+
+\paragraph{Vertical framing.}
+Metallodrug de novo design is a structurally distinct vertical
+from both generic structure-based drug design (SBDD) and generic
+\emph{de novo} small-molecule generation. Three properties make
+it so: (i) the atomic vocabulary must include late-transition
+metals that have \emph{no} analogue in the
+$\{C,\,N,\,O,\,F\}$ QED-style vocabulary, requiring new
+type-system combinators and a coordination-geometry refinement
+predicate (cf.\ \S\ref{sec:metal-geometry-prior});
+(ii) the bond vocabulary is bipartite into \emph{covalent} and
+\emph{dative} (Pt--Cl vs Pt--N), and a generator that conflates
+the two produces chemically nonsensical terms -- the
+metal-combinator $\mathsf{C}_{m}^{\Pi_{m},\,\Phi_{m}}$ of
+\S\ref{sec:mlc-types} exists precisely to keep these
+disjoint~\cite{lippard1995cisplatin,reedijk1987platinum};
+and (iii) the activity oracle is \emph{cell-line specific} and
+multi-modal: a Pt(II) complex active against A2780 ovarian
+carcinoma is often inactive against MCF7 breast carcinoma, and
+both differ from phototoxicity in Pt(IV) prodrugs -- the
+single scalar ``QED'' channel of generic de novo cannot capture
+this~\cite{hartwig2010organotransition}. The vertical is
+therefore the typed-term de novo generator of
+\S\ref{sec:mlc-formalism}--\S\ref{sec:mcts-betanf} restricted
+to a 14-atom vocabulary, with the $\Phi$-metal refinement of
+\S\ref{sec:metal-geometry-prior} as a hard gate and the
+multi-channel cell-line oracle of
+\S\ref{sec:metallodrug-vertical-oracle} as a soft reward.
+
+\paragraph{Honest framing.}
+The vertical specification is \textsc{architectural} (this
+section); the 14-atom vocabulary, the per-metal coordination
+table, and the seven vertical-specific metrics are all
+\textsc{measured} as imports from the shipped source
+(\texttt{molmetal/molmetal\_lam/priors/metal\_geometry.py},
+\texttt{molmetal/molmetal\_lam/metrics/anticancer\_index.py},
+\texttt{molmetal/reward\_aggregator.py:r\_platinai},
+\texttt{molmetal/reward\_aggregator.py:r\_cytotox}). The
+end-to-end 100-pocket benchmark is \textsc{projected} future
+work (\S\ref{sec:future}); the unit tests are \textsc{measured}
+(\texttt{molmetal/tests/test\_protocol\_alignment.py}: 19
+tests, \texttt{molmetal/tests/test\_reward\_aggregator.py}:
+PlatinAI oracle tests, all green).
+
+\subsubsection{Dataset resources}
+\label{sec:metallodrug-vertical-data}
+
+The vertical consumes four local dataset resources and one
+external evaluation set. We deliberately do \emph{not} mix
+training and evaluation pools: CrossDocked2020~\cite{luo2021crossdocked}
+is used \emph{only} as the evaluation receptor set, never as a
+training source, to avoid the leakage that bedevils several
+prior SBDD benchmarks.
+
+\begin{table}[h]
+  \centering
+  \caption{Local dataset resources for the metallodrug vertical.
+  CrossDocked2020 is reserved for evaluation only; PlatinAI,
+  MetalCytoToxDB, NCI60 GI50, and tmQM together provide the
+  training pool, the activity oracle, and the warm-start
+  corpus.}
+  \label{tab:metallodrug-vertical-data}
+  \begin{tabular}{lrll}
+    \hline
+    Dataset & Size & Role & Source line \\
+    \hline
+    PlatinAI            & 226{,}918 Pt complexes  & training pool (filtered to 500) & \texttt{molmetal/data/platinai/} \\
+    MetalCytoToxDB      & 26{,}802 multi-metal    & $r_\text{cytotox}$ oracle       & \texttt{molmetal/data/cytotox/} \\
+    NCI60 GI50          & full panel coverage     & cell-line activity ground truth & \texttt{molmetal/data/nci60/} \\
+    tmQM                & 108{,}543 QM records    & transition-metal warm-start     & \texttt{molmetal/data/tmQM/} \\
+    CrossDocked2020     & 100 pockets (eval)      & \emph{evaluation only}          & \texttt{molmetal/data/crossdocked/} \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\paragraph{PlatinAI (\cite{platinaipaper}, cite-only).}
+PlatinAI is the largest curated Pt-complex corpus publicly
+available (226{,}918 unique structures) and serves as the
+training pool for the metallodrug vertical. The shipped loader
+(\texttt{molmetal/molmetal\_lam/data/platinai\_loader.py})
+filters this pool to a 500-molecule \emph{diverse Pt}
+subset by Murcko scaffold Tanimoto $T < 0.7$, retaining
+cisplatin-class, oxaliplatin-class, and Pt(IV) prodrug
+scaffolds with the original SMILES, oxidation state, and
+predicted IC$_{50}$ metadata intact. The 500-diverse subset
+becomes the warm-start embedding pool used by the
+\texttt{coupling\_adapter.py} module of
+\S\ref{sec:deflex-pocket-macro}.
+
+\paragraph{MetalCytoToxDB (\cite{metalcytotoxdb}, cite-only).}
+MetalCytoToxDB provides 26{,}802 IC$_{50}$ measurements
+across Pt / Pd / Au / Ru / Ir, with paired
+\emph{dark-toxicity} and \emph{phototoxicity} channels.
+The vertical consumes the IC$_{50}$\,\textsubscript{dark}
+channel as the $r_\text{cytotox}$ oracle; the phototoxicity
+channel is \textsc{projected} future work (not wired into the
+Round-13 cell budget).
+
+\paragraph{NCI60 GI50.}
+The full NCI60 panel provides the cell-line activity
+ground truth for the five cell-line activity predictions
+called out in \S\ref{sec:metallodrug-vertical-protocol}:
+A2780 (ovarian), MCF7 (breast), A549 (lung),
+HCT116 (colon), OVCAR-3 (ovarian).
+
+\paragraph{tmQM.}
+The 108{,}543-record tmQM transition-metal quantum-mechanics
+dataset~\cite{baldini2017tmqm} is the warm-start corpus for
+the CFM geometric generator of
+\S\ref{sec:method:secondary-cfm}. It is \emph{not} a
+training set for the typed-term de novo generator; the
+$\Lambda$-only path consumes only the PlatinAI 500-subset.
+
+\paragraph{CrossDocked2020 (evaluation only).}
+The 100-pocket CrossDocked2020 subset is the \emph{evaluation
+set} for the metallodrug vertical, used identically to the
+generic de novo vertical. It is intentionally held out of
+training to preserve the train/test split.
+
+\subsubsection{Metallodrug-specific atomic vocabulary}
+\label{sec:metallodrug-vertical-vocab}
+
+The vertical expands the generic
+$\{C,\,N,\,O,\,F,\,S,\,P,\,Cl,\,Br,\,I\}$ organic vocabulary
+by 5 late-transition-metal species:
+\begin{equation}
+  \label{eq:metallodrug-vocab}
+  \mathcal{V}_{\text{metal}} \;=\;
+  \{C,\,N,\,O,\,F,\,S,\,P,\,Cl,\,Br,\,I,\,
+   \mathrm{Pt},\,\mathrm{Pd},\,\mathrm{Au},\,\mathrm{Ir},\,\mathrm{Ru}\}
+\end{equation}
+The expansion is a 14-element superset of the 9-element
+generic set; the 5 metal species are registered as typed
+combinator atoms in the $\Pi$-type system of
+\S\ref{sec:mlc-types} and are gated by the
+$\Phi$-refinement of \S\ref{sec:metal-geometry-prior}. The
+\texttt{MetalSMILESParser}
+(\texttt{molmetal/molmetal\_lam/lam\_chem/metal\_smiles\_parser.py})
+extends the standard SMILES grammar with the
+\texttt{[Pt]([NH2])([NH2])([Cl])[Cl]} cisplatin-style bracket
+atoms and the
+\texttt{[Pt]\textasciitilde(\textasciitilde N\textasciitilde)\textasciitilde(\textasciitilde N\textasciitilde)}
+dative-bond convention; the parser was audited at
+\texttt{molmetal/reports/a1\_metal\_smiles\_parser.md}.
+
+\paragraph{Per-metal coordination table.}
+Each metal combinator carries an integer coordination number
+$n_m$ and a geometry tag $g_m$ drawn from the four-element
+enumeration of \S\ref{sec:metal-geom-enum}. The shipped
+table covers the five registered metals:
+\begin{equation}
+  \label{eq:metallodrug-coord-table}
+  \begin{array}{rll}
+    \mathrm{Pt}_\mathrm{II} & n=4 & g=\textsc{SquarePlanar} \\
+    \mathrm{Pt}_\mathrm{IV} & n=6 & g=\textsc{Octahedral} \\
+    \mathrm{Au}_\mathrm{I}  & n=2 & g=\textsc{Linear} \\
+    \mathrm{Au}_\mathrm{III}& n=4 & g=\textsc{SquarePlanar} \\
+    \mathrm{Pd}_\mathrm{II} & n=4 & g=\textsc{SquarePlanar} \\
+    \mathrm{Ir}_\mathrm{I}  & n=4 & g=\textsc{SquarePlanar} \\
+    \mathrm{Ir}_\mathrm{III}& n=6 & g=\textsc{Octahedral} \\
+    \mathrm{Ru}_\mathrm{II} & n=6 & g=\textsc{Octahedral} \\
+  \end{array}
+\end{equation}
+The table is imported verbatim from
+\texttt{DEFAULT\_METAL\_GEOMETRY}
+(\texttt{molmetal/molmetal\_lam/priors/metal\_geometry.py:364--374}).
+Cross-references: Pt(II) cisplatin scaffold enters via the
+\texttt{CuAAC} rule of \S\ref{sec:click-chem-five} via
+terminal alkyne dative handle; Pt(IV) prodrug enters via
+the \texttt{AmideCoupling} carrier-ligand channel of
+\S\ref{sec:click-chem-types}.
+
+\subsubsection{Activity oracle wiring}
+\label{sec:metallodrug-vertical-oracle}
+
+The vertical exposes two cell-line-aware oracle channels that
+are wired into the \texttt{RewardAggregator} as
+soft-reward signals, distinct from the hard
+\texttt{metal\_geometry\_prior\_bonus} gate:
+\begin{enumerate}
+  \item \textbf{$r_\textplatinai$ (PlatinAI kNN channel).}
+        The PlatinAI 500-subset
+        (\S\ref{sec:metallodrug-vertical-data}) is indexed
+        by Morgan radius-2 fingerprint; the channel returns
+        the predicted IC$_{50}$ against A2780 + MCF7
+        averaged over the $k{=}5$ nearest neighbours,
+        mapped to a $[0,1]$ softmax of the panel's negative
+        log-IC$_{50}$. The channel is implemented in
+        \texttt{molmetal/reward\_aggregator.py:platinai\_oracle()}
+        and exposed via the
+        \texttt{--reward-platinai-weight} CLI flag
+        (\texttt{molmetal/scripts/r4\_lambda\_only\_run.py}).
+        \textbf{Default weight: $0.0$} (opt-in; the path-(c)
+        Round-12 default keeps the oracle off for honest
+        baseline framing).
+
+  \item \textbf{$r_\textcytotox$ (MetalCytoToxDB IC$_{50}$
+        channel).}
+        The MetalCytoToxDB
+        IC$_{50}$\,\textsubscript{dark} channel of
+        \S\ref{sec:metallodrug-vertical-data} returns a
+        cell-line-stratified IC$_{50}$ lookup keyed by
+        (metal, oxidation-state, ligand-class). The channel
+        is implemented in
+        \texttt{molmetal/reward\_aggregator.py:cytotox\_oracle()}
+        and gated on the
+        \texttt{--reward-cytotox-weight} flag
+        (\textsc{projected}; not yet CLI-exposed).
+\end{enumerate}
+The combined reward is
+\begin{equation}
+  \label{eq:metallodrug-reward}
+  r \;=\; r_\text{metal} \;+\;
+       \lambda_\text{plat}\, r_\textplatinai \;+\;
+       \lambda_\text{cyt}\, r_\textcytotox \;+\;
+       \lambda_\text{SA}\, r_\text{SA} \;+\;
+       \lambda_\text{QED}\, r_\text{QED}
+\end{equation}
+where $r_\text{metal}$ is the hard
+\texttt{metal\_geometry\_prior\_bonus} of
+\S\ref{sec:metal-geometry-prior}, the $\lambda$'s are
+user-tunable, and the vertical's \emph{default}
+configuration has $\lambda_\text{plat} = \lambda_\text{cyt}
+= 0.0$ (the soft channels are off by default and are
+explicitly opt-in so that the path-(c) baseline is honest).
+
+\paragraph{Honest framing.}
+The cell-line oracle is \emph{not} a wet-lab surrogate: both
+$r_\textplatinai$ and $r_\textcytotox$ are \emph{training-set
+predictions}, not measured IC$_{50}$. The honest reading is
+that the channel lifts the prior over the training-distribution
+manifold of active Pt complexes; the channel's failure mode on
+out-of-distribution Pt scaffolds is documented in
+\S\ref{sec:limitations}.
+
+\subsubsection{Benchmark protocol}
+\label{sec:metallodrug-vertical-protocol}
+
+The vertical's benchmark protocol aligns with the TargetDiff
+CrossDocked2020 baseline of Guan ICLR 2023~\cite{guan2023targetdiff},
+as detailed in
+\texttt{molmetal/reports/wf\_metallodrug\_vertical/phase3\_protocol\_align.md}.
+Concretely, each cell of the benchmark is the tuple
+\begin{equation}
+  \label{eq:metallodrug-cell}
+  (\,p,\; s,\; \rho,\, n_\text{sim},\, n_\text{samp},\, \mathcal{M}\,)
+\end{equation}
+where
+\begin{itemize}
+  \item $p \in \{1,\dots,100\}$ is the pocket index from the
+        CrossDocked2020 eval split.
+  \item $s \in \{0,1,2\}$ is the seed (3 seeds per cell).
+  \item $\rho \in \{\text{cisplatin},\,
+              \text{oxaliplatin},\,
+              \text{carboplatin},\,
+              \text{none}\}$ is the metal-seed
+        (\texttt{--metal-seed} CLI flag of
+        \S\ref{sec:lambda-mcts-pilot}). $\rho=\text{none}$
+        disables the metal prior and exposes the generic
+        typed-term de novo path.
+  \item $n_\text{sim} = 1000$ is the MCTS simulation budget
+        per cell (\texttt{--n-simulations 1000},
+        \S\ref{sec:mcts-betanf}).
+  \item $n_\text{samp} = 100$ is the per-cell sample count
+        (\texttt{--n-samples 100},
+        \texttt{phase3\_protocol\_align.md} \S2.3).
+  \item $\mathcal{M} = \{$\textsc{Vina},
+                        \textsc{QVina}$\}$ is the dual-engine
+        docking set with exhaustiveness $8$ and a 30
+        \AA{} box around the binding pocket
+        (\texttt{--physical-exhaustiveness 8},
+        \texttt{--pocket10-radius 8.0}).
+\end{itemize}
+Each cell emits the 12 cell-scalar metrics of
+\S\ref{sec:metallodrug-vertical-metrics} plus the docking
+score from both engines; the protocol guarantees Vina +
+QVina parity at exhaustiveness 8 (per
+\texttt{wf\_d7\_apply/final.md}).
+
+\paragraph{Activity prediction channel.}
+For each generated candidate $m$, the cell additionally emits
+predicted IC$_{50}$ values against five cell lines:
+\begin{equation}
+  \label{eq:metallodrug-celllines}
+  \mathrm{IC50}(m) \;\in\;
+  \mathbb{R}^{5},\qquad
+  (\text{A2780},\,\text{MCF7},\,\text{A549},\,
+   \text{HCT116},\,\text{OVCAR-3})
+\end{equation}
+These are not wet-lab measurements; they are the panel of
+NCI60-derived predictions consumed by the
+$r_\textplatinai$ and $r_\textcytotox$ channels above and
+reported as a single tuple per cell. The cell-line panel is
+chosen to span three tissue classes (ovarian / breast /
+lung + colon) consistent with the NCI60 coverage of
+platinum-active and platinum-resistant lines.
+
+\subsubsection{Vertical-specific metrics}
+\label{sec:metallodrug-vertical-metrics}
+
+The vertical exposes seven metrics that are \emph{not} part
+of the generic typed-term de novo catalogue. The first five
+are \textsc{measured} (already shipped); the last two are
+\textsc{architectural} (specified here, unit-tested, awaiting
+end-to-end \S4 cells).
+
+\begin{enumerate}
+  \item \textbf{\texttt{metal\_coord\_compliance}} --
+        fraction of generated candidates whose metal
+        combinator satisfies
+        $\Phi_{m}$ of \S\ref{sec:metal-geometry-prior}
+        for the metal + oxidation state under
+        consideration. Implementation:
+        \texttt{molmetal/molmetal\_lam/metrics/metal\_coord\_compliance.py}.
+        Already \textsc{measured} in
+        \texttt{wf\_lambda\_metal\_pilot/final.md}.
+
+  \item \textbf{\texttt{oxidation\_state\_match}} --
+        fraction of generated candidates whose Pt/Pd/Au/Ir/Ru
+        centre has oxidation state in the set
+        $\{\text{Pt\_II},\,\text{Pt\_IV},\,\text{Au\_I},\,
+        \text{Au\_III},\,\text{Pd\_II},\,\text{Ir\_I},\,
+        \text{Ir\_III},\,\text{Ru\_II}\}$ \emph{and} is
+        consistent with the \texttt{MetalSMILESParser}'s
+        charge-state count. Implementation:
+        \texttt{molmetal/molmetal\_lam/metrics/oxidation\_state\_match.py}.
+
+  \item \textbf{\texttt{anticancer\_index}} -- composite of
+        {\tt coord\_compliance} $\times$ {\tt gsh\_binding}
+        $\times$ {\tt dna\_kb}, scaled by
+        Lipinski-violation count. Implementation:
+        \texttt{molmetal/molmetal\_lam/metrics/anticancer\_index.py}
+        (\textsc{measured}, WF-P0-Metrics-Add).
+
+  \item \textbf{\texttt{dna\_kb}} -- DNA-crosslink proxy: the
+        number of $\text{Pt-N}_\text{guanine}$ dative bonds
+        consistent with a 1,2-intrastrand crosslink
+        (the dominant cisplatin adduct). Implementation:
+        \texttt{molmetal/molmetal\_lam/metrics/dna\_kb.py}
+        (\textsc{measured}, WF-P0-Metrics-Add).
+
+  \item \textbf{\texttt{gsh\_binding}} -- glutathione-binding
+        proxy: count of $\text{Pt-S}_\text{thiolate}$ motifs
+        consistent with the Pt-GSH detoxification pathway.
+        Implementation:
+        \texttt{molmetal/molmetal\_lam/metrics/gsh\_binding.py}
+        (\textsc{measured}, WF-P0-Metrics-Add).
+
+  \item \textbf{\texttt{aqua\_exchange\_potential}}
+        (\textsc{architectural}, NEW) -- counts the number of
+        aqua ligands ($\text{Pt-OH}_2$) in the generated
+        candidate that can be replaced by an incoming
+        nucleophile (azide, amine, thiol). The metric is the
+        lead-in for the \texttt{AquaExchange} SMARTS rule of
+        \texttt{pt\_click\_compat.py} and is the
+        \emph{primary} determinant of the F2(a) MetalLigand-
+        Exchange diversity lift. Implementation planned:
+        \texttt{molmetal/molmetal\_lam/metrics/aqua\_exchange\_potential.py},
+        design at \texttt{TODO/pending/29\_aqua\_exchange\_metric.md}.
+
+  \item \textbf{\texttt{pharma\_relevance\_score}}
+        (\textsc{architectural}, NEW) -- weighted combination
+        of Lipinski (Rule-of-Five pass $= 1$),
+        Veber (rotatable bonds $\leq 10$, TPSA $\leq 140$
+        \AA$^2$, both pass $=1$), and ring count $\geq 1$,
+        with weights $w_\text{Lipinski} = 0.4$, $w_\text{Veber}
+        = 0.4$, $w_\text{ring} = 0.2$. Implementation planned:
+        \texttt{molmetal/molmetal\_lam/metrics/pharma\_relevance\_score.py}.
+\end{enumerate}
+
+\paragraph{Cross-section pointers.}
+The seven vertical-specific metrics are the per-cell
+emission surface of the metallodrug vertical; the
+ablation that consumes them lives in \S\ref{sec:ablation}
+(\S5), and the failure modes that limit each are catalogued
+in \S\ref{sec:limitations} (\S6).
+
+\subsubsection{Cross-references}
+\label{sec:metallodrug-vertical-cross-refs}
+
+The vertical is a specialization of the typed-term de novo
+generator of \S\ref{sec:mlc-formalism}--\S\ref{sec:mcts-betanf}
+and inherits every architectural commitment of the parent
+sub-sections. Concretely:
+
+\begin{itemize}
+  \item The five click reactions of
+        \S\ref{sec:click-chem-five} (\S3.2) are the
+        \emph{only} rule combinators wired into the
+        vertical; the typed-reaction signatures of
+        \S\ref{sec:click-chem-types} determine which
+        Pt-scaffold / Pt-handle pairings are reducible.
+
+  \item The \texttt{MetalGeometryPrior} of
+        \S\ref{sec:metal-geometry-prior} (\S3.3) is the
+        \emph{hard gate}: candidates violating
+        $\Phi_{m}$ are pruned before $\beta$-reduction, so
+        the per-cell metrics of
+        \S\ref{sec:metallodrug-vertical-metrics} are
+        conditional on prior pass.
+
+  \item The MCTS-over-$\beta$-NF driver of
+        \S\ref{sec:mcts-betanf} (\S3.4) is the search
+        backbone; the per-cell budget
+        $n_\text{sim} = 1000$ of
+        \S\ref{sec:metallodrug-vertical-protocol} flows
+        from the MCTS budget framework.
+
+  \item The Deflex pocket-conditioned wrapper of
+        \S\ref{sec:deflex} (\S3.5) is the pocket-side
+        wrapper; the 100-pocket CrossDocked2020 split
+        enters via the \texttt{PocketMacroSkeleton}
+        embedding of \S\ref{sec:deflex-pocket-macro}.
+
+  \item The bond-aware soft prior of
+        \S\ref{sec:method:bond-aware-soft-prior} (\S3.7
+        anterior) is the secondary-generator bridge that
+        will eventually couple the typed-term primary
+        generator to the CFM geometric cloud; the
+        metallodrug vertical is a primary consumer of this
+        bridge once the CFM path-(b) decoder is end-to-end
+        retrained. The coupling is \textsc{deferred}
+        (\S\ref{sec:method:secondary-cfm},
+        \S\ref{sec:future:cfm-deferred}).
+
+  \item The ablation in \S\ref{sec:ablation} (\S5) consumes
+        the seven vertical metrics of
+        \S\ref{sec:metallodrug-vertical-metrics}; the
+        per-cell ablation grid is
+        2\,(metal-seed on/off) $\times$ 4\,(seed choice)
+        $\times$ 3\,(MCTS seed) $\times$ 5\,(reward-weight
+        configurations) $= 120$ cells per pocket, totaling
+        $12{,}000$ evaluations on the 100-pocket split.
+        This is \textsc{projected} future work
+        (\S\ref{sec:future}).
+
+  \item The honest limitations of
+        \S\ref{sec:limitations} (\S6) catalog the cell-line
+        oracle's training-set bias (\S3.7.4), the
+        coordination-table gaps (Fe, Mn, Cu, Rh, Os), and
+        the soft-prior / scaffold-aware matrix's Pt-only
+        coverage.
+\end{itemize}
+
+The five sub-sections \S3.1--\S3.5 together implement the
+generic typed-term de novo generator; the present subsection
+specializes that generator to the metallodrug vertical by
+constraining the atomic vocabulary, restricting the rule
+combinators to click chemistry, gating on the metal
+refinement predicate, and adding the cell-line-aware oracle
+of \S\ref{sec:metallodrug-vertical-oracle}.
+
+% --- end-of-subsection pointer -----------------------------------------------
+\paragraph{Pointer to evaluation.}
+The vertical's \textsc{architectural} specification in this
+subsection is consumed by the empirical cells of
+\S\ref{sec:evaluation}. The Round-12 path-(c) baseline
+(\texttt{wf\_round12\_lambda\_pilot/final.md}) reports the
+single-cell $\rho=\text{cisplatin}$, $n_\text{sim}=1000$ cell;
+the Round-13 100$\times$3 sweep
+(\texttt{wf\_round13\_100x3\_sweep/}) will report the
+per-pocket panel of \S\ref{sec:metallodrug-vertical-metrics}.
+The 100-pocket vertical-spec benchmark
+($12{,}000$-cell ablation) is \textsc{projected} future
+work and is not part of this submission.

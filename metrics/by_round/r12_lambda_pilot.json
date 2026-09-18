@@ -1,0 +1,44 @@
+{
+  "round": "R12",
+  "workflow": "wf_round12_lambda_pilot",
+  "date_utc": "2026-09-14",
+  "config": {
+    "n_pockets": 10,
+    "n_seeds": 3,
+    "n_simulations": 1000,
+    "metal_seed": "cisplatin",
+    "click_rules": "all-5",
+    "physical_docking": false,
+    "pb_check": false
+  },
+  "aggregate_metrics": {
+    "n_distinct_mean": 1.0,
+    "n_distinct_std": 0.0,
+    "validity_rate_mean": 1.0,
+    "synthesizability_rate_mean": 1.0,
+    "metal_compliance_rate_mean": 1.0,
+    "diversity_tanimoto_mean": 0.0,
+    "diversity_homotype_mean": 0.0,
+    "novelty_mean": 1.0,
+    "sa_mean": 5.9452,
+    "qed_mean": 0.6709,
+    "logp_mean": 0.1953,
+    "tpsa_mean": 52.04,
+    "rotb_mean": 0.0,
+    "coordination_number_mean": 4.0,
+    "anticancer_index_mean": 0.425,
+    "com_shift_mean": 0.0,
+    "rigid_rmsd_mean": 0.0,
+    "vina_mean": null,
+    "pb_pass_rate": null
+  },
+  "verdict": {
+    "status": "NEGATIVE_RESULT_HONEST",
+    "summary": "All 30 cells collapse to n_distinct=1 (single candidate = cisplatin). Diversity metrics forced to 0.0 by collapse. metal_compliance=1.0 is trivially true. PB and Vina not measured (no --physical-docking, no --pb-check).",
+    "singleton_attractor": true,
+    "naive_lift_claim": "metal_compliance 0.0 → 1.0 (TRIVIAL — every cell = cisplatin)",
+    "real_lift": "0 of 18 metrics lifted"
+  },
+  "honest_framing_required": true,
+  "source": "molmetal/reports/wf_round12_lambda_pilot/final.md"
+}

@@ -1,0 +1,22 @@
+\section{Limitations}
+\label{sec:limitations}
+
+The current study has several practical limits.  The ROCm evaluation uses a
+single visible GPU, so throughput and variance across hardware are not yet
+characterised.  QVina is available through the vendored binary, while
+QuickVina2 parity and an upstream learned REINVENT4 scoring plugin are not
+available in this environment; the reports therefore label proxy and
+fallback measurements explicitly.  RDKit descriptors, conformer generation,
+and docking subprocesses remain CPU-bound.
+
+The CrossDocked staging and dry-run protocol are reproducible, but the full
+multi-seed 100-pocket experiment is still a long-running empirical task.  A
+bounded pilot exceeded the local wall-clock budget before completing its first
+pocket, so no proxy result is presented as a paper-grade measurement.  The
+published baseline numbers used for context are cite-only values and have
+dataset, docking-engine, and protocol differences from this implementation.
+
+Finally, the anticancer metric suite provides chemical proxies.  hERG,
+CYP450, protein binding, DNA binding, reduction potential, and wet-lab
+cytotoxicity are not measured by the present pipeline and require dedicated
+predictors or experiments.

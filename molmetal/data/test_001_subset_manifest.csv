@@ -1,0 +1,2 @@
+pocket_id,receptor_path,ligand_path,ref_path,metal_atoms,n_atoms,n_residues,source
+test_001,/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GLMU_STRPN_2_459_0/4aaw_A_rec_4ac3_r83_lig_tt_min_0_pocket10.pdb,/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GLMU_STRPN_2_459_0/4aaw_A_rec_4ac3_r83_lig_tt_min_0.sdf,,,,,CrossDocked2020_local

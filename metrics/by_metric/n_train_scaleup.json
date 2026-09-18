@@ -1,0 +1,51 @@
+{
+  "metric": "n_train_scaleup",
+  "description": "CFM training-data size (--n-train) scaleup from legacy 32 mols to 500 mols via PlatinAI/MetalCytoToxDB/tmQM combined pool. delta: 15.6x",
+  "unit": "count of training molecules",
+  "scope": "CFM training-data filter (r10_cfg_real_crossdocked.py)",
+  "status": "MEASURED via Phase 1 filter fix",
+  "source": "wf_metallodrug_vertical/phase1_filter_fix.md (2026-09-16)",
+  "source_file": "molmetal/scripts/r10_cfg_real_crossdocked.py line 308 (--n-train CLI default)",
+  "pre_widzuipcl": {
+    "n_train": 32,
+    "n_atoms_default": 19,
+    "data_source": "crossdocked (legacy single-source path)",
+    "description": "CrossDocked2020_pocket10 32-mol sample, fixed 19-atom scaffold"
+  },
+  "post_widzuipcl": {
+    "n_train": 500,
+    "n_atoms_default": 24,
+    "n_atoms_range": [8, 38],
+    "data_source": "metallo_drugs_combined (default) | platinai | crossdocked (legacy preserved)",
+    "data_source_default": "metallo_drugs_combined",
+    "cache_csv": "molmetal/data/metallo_drugs_500_train.csv",
+    "cache_size_bytes": 49439,
+    "diversity_seed": 42,
+    "diversity_method": "greedy MaxMin over Morgan-ECFP4 + Tanimoto distance",
+    "description": "Combined pool = PlatinAI (500 cap) + MetalCytoToxDB (500 cap) + tmQM (500 cap) = 1500 candidates, diversity-sampled to 500"
+  },
+  "delta": {
+    "n_train_ratio": 15.625,
+    "n_train_added": 468,
+    "n_atoms_default_shift": "+5 atoms (19 → 24)",
+    "n_atoms_range_added": "8..38 window replaces fixed 19"
+  },
+  "source_distribution_smoke": {
+    "pool_target": 500,
+    "pool_actual": 449,
+    "parse_dropouts": 51,
+    "by_corpus": {
+      "platinai": 108,
+      "tmqm": 371,
+      "metal_cytotox": 21
+    },
+    "parse_dropout_reason": "RDKit could not parse ~51 mols (multi-component organometallics without proper bracket atoms, malformed stereochemistry); morgan_fps drops these silently"
+  },
+  "test_evidence": {
+    "test_count": 13,
+    "test_file": "molmetal/molmetal_lam/tests/test_data_diversity.py",
+    "test_result": "13 passed, 1 warning in 1.41s"
+  },
+  "verdict": "MEASURED — 32→500 (15.6x) n_train scaleup is shipped and tested. Effective pool is 449 mols after RDKit parse drops (90% retention). Per-corpus distribution is unbalanced (metal_cytotox=21 vs tmqm=371); diversity sampler is Tanimoto-only, not source-weighted.",
+  "honest_framing": "Pool target 500 vs actual 449 is a known honest gap: 51 source mols failed RDKit parsing. The 449-mol cache is the strict-honest training set; a more lenient parser (sanitize=False fallback) could lift to ~85% per phase1_inventory.md §5.1 caveat. CFM retrain with this pool is PENDING_GPU_RETRAIN (per wf_metallodrug_vertical Phase 2 status); n_train scaleup is INFRASTRUCTURE-ONLY until the retrain lands."
+}

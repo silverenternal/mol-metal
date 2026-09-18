@@ -1,0 +1,78 @@
+[project]
+name = "try-triton-on-rocm"
+version = "0.1.0"
+description = "Triton kernels on ROCm (RX 7800 XT, gfx1101) — experiments"
+requires-python = "==3.12.*"
+# torch & triton-rocm: ROCm 7.2.4 wheels from download.pytorch.org/whl/rocm7.2.
+# The ROCm PyTorch build depends on `triton-rocm` (not the PyPI `triton`),
+# per torch-2.14.0+rocm7.2 METADATA: Requires-Dist: triton-rocm~=3.8.0
+# Both torch and triton-rocm are served by the same simple index, so a single
+# custom index routes both packages.
+dependencies = [
+    "torch>=2.14,<2.15",
+    "triton-rocm==3.8.0",
+    "numpy>=1.26,<3",
+    # data layer (MetalCytoToxDB loader, transforms)
+    "pandas>=2.0",
+    # flow-matching optimal-transport solver (scipy is a lazy import, only
+    # needed when --ot-mode hungarian is selected)
+    "scipy>=1.11",
+    # YAML config loader (the mini YAML fallback in utils.config works
+    # without it, but pyyaml is the preferred path)
+    "pyyaml>=6.0",
+    # molmetal/ deps: hex-arch framework for de novo + SBDD
+    "biopython>=1.81",
+    "rdkit>=2024.3",
+    "openpyxl>=3.1",
+    # classical ML baselines (Krasnov 2026 reproduction: Morgan FP + XGBoost / RF)
+    "scikit-learn>=1.3",
+    "xgboost>=2.0",
+    "hypothesis>=6.168.0",
+    "datamol>=0.13.0",
+    "molfeat>=0.11.0",
+    "openbabel-wheel>=3.1.1.23",
+    "meeko>=0.8.0",
+    "torchdiffeq>=0.2.5",
+    "gemmi>=0.7.5",
+    "openmm>=8.6.1",
+    "posebusters>=0.6.5",
+    "prody>=2.6.1",
+    "mdanalysis>=2.10.0",
+    "vina>=1.2.7",
+    "admet-ai>=2.0.1",
+    # admetica removed 2026-09-12: unsatisfiable on torch>=2.14 (pinned torch==2.4.0).
+    # Fallback documented in molmetal/reports/round7_install_report.md.
+    "pot>=0.9.7.post1",
+]
+
+[tool.uv]
+managed = true
+
+[tool.setuptools]
+packages = ["molmetal", "molmetal.molmetal_lam", "molmetal.data", "molmetal.baselines", "molmetal_lam"]
+
+# Keep pytest focused on this repository's maintained tests. Vendored research
+# repositories under ``molmetal/references`` ship their own plugins, options,
+# and optional dependencies; collecting them causes import-time failures.
+[tool.pytest.ini_options]
+testpaths = ["tests", "molmetal"]
+norecursedirs = ["references", ".venv", ".git", "__pycache__"]
+addopts = "--strict-markers"
+markers = [
+    "slow: marks tests as slow (deselect with '-m not slow')",
+    "integration: marks tests requiring optional external services or data",
+    "gpu: marks tests requiring a GPU (QuickVina-GPU, CFM retrain, etc.)",
+    "gpu_blocked: marks tests whose real path is BLOCKED by the GPU outage (RX 7800 XT gfx1101 firmware-level SMU hang per wf_gpu_diag/diagnosis.md)",
+]
+
+# Download PyTorch's ROCm 7.2 build for cp312.  This simple index serves both
+# `torch` (+rocm7.2 wheels) and `triton-rocm` (3.8.0).  Default PyPI is still
+# consulted for everything else (numpy, etc.).
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url  = "https://download.pytorch.org/whl/rocm7.2"
+explicit = true
+
+[tool.uv.sources]
+torch        = [{ index = "pytorch-rocm" }]
+triton-rocm  = [{ index = "pytorch-rocm" }]

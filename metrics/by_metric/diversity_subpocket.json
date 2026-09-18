@@ -1,0 +1,37 @@
+{
+  "metric": "diversity_subpocket",
+  "description": "Per-residue sub-pocket fingerprint diversity (3D-aware local-patch complement to global Tanimoto IntDiv1). Mean pairwise Tanimoto distance on Morgan-ECFP4 fingerprints aggregated over per-residue 8.0 A neighbourhood (Bemis-Murcko 1996 + Peter 2019 SPF).",
+  "unit": "ratio (0-1); higher = more locally diverse",
+  "scope": "Lambda + CFM evaluations (uniform-weight default for Lambda-only path; voxelization.py:208/255 or vina_adapter.py:961 for weighted pocket version)",
+  "lit_anchors": [
+    "Bemis 1996 JMC 39:2887 Murcko scaffold",
+    "Jasial 2021 IntDiv survey (best-practice aggregation)",
+    "Peter 2019 SPF sub-pocket fingerprint",
+    "Rogers 2010 JCIM 50:742 Morgan-ECFP4 Tanimoto",
+    "Polykovskiy 2020 MOSES IntDiv1 formula"
+  ],
+  "math_prior": "div_residue_i = mean_{m in pocket} rigid_rmsd(mol_m, ref_mol) for mol_m within 8.0 A of residue_i C-alpha; aggregate: per_residue_div = mean_i div_residue_i; bounded [0, 1.0] Tanimoto distance; 0.0 on N<=1 or empty pocket (graceful degenerate)",
+  "measurements": [
+    {
+      "run": "wf_phase3b_metrics_v2 unit tests (test_per_residue_diversity.py)",
+      "value": "smoke-only: empty=NaN, N=1=0.0, 2-disjoint>0",
+      "n_samples": "test fixtures",
+      "status": "DESIGN",
+      "date_utc": "2026-09-15"
+    }
+  ],
+  "aggregate": {
+    "all_measured_lambda_diversity_subpocket": "DESIGN only (no full sweep yet)",
+    "lit_target_targetdiff": "TargetDiff does NOT report per-residue; closest analog is per-pocket ligand-COM distance — TargetDiff M2 mismatch flagged in TODO-22"
+  },
+  "verdict": "DESIGN_ONLY — Phase-3D module + Phase-4 dispatch integration shipped; full pilot smoke at Round-12 10x3 not yet executed (per workflow #666). Honest framing: this metric is wired and unit-tested but production 100-pocket Round-13 sweep is BLOCKED pending F2(a) MetalLigandExchange SMARTS rule (TODO-29).",
+  "files": [
+    "molmetal/molmetal_lam/sbdd_env/per_residue_diversity.py (NEW Phase 3D)",
+    "molmetal/tests/test_per_residue_diversity.py (NEW)",
+    "molmetal/scripts/r4_lambda_only_run.py (Phase 4 wire-in: metric_subpocket_diversity_mean)"
+  ],
+  "workflows": [
+    "wf_parallel_tasks/phase3d_subpocket_div.md",
+    "wf_parallel_tasks/phase4_integration.md"
+  ]
+}

@@ -1,0 +1,283 @@
+% =============================================================================
+%  Paper §3 -- Method
+%  Master file: composes 4 sub-sections via \input{}.
+%  Target: Digital Discovery (RSC) Q1 IF 8.5 (primary);
+%          J. Chem. Inf. Model. (ACS) Q1 IF 5.6 (fallback).
+%  Style: IMRaD, single-column 9pt body.
+%
+%  Sub-sections (all SHIPPED):
+%    03_1_mlc_formalism.tex        -- WF-Paper-3.1 (typed-variable syntax,
+%                                     Sigma/Pi/Phi types, alpha-eq, beta-NF,
+%                                     strong normalisation, 9-layer architecture)
+%    03_2_click_chemistry.tex      -- WF-Paper-3.2 (5 click reactions as
+%                                     typed reductions, verbatim SMARTS,
+%                                     selection criterion, 5-vs-CuAAC ablation)
+%    03_3_metal_geometry_prior.tex -- WF-Paper-3.3 (MetalGeometryPrior as
+%                                     first-class constraint; 5 metals
+%                                     registered; dative vs covalent;
+%                                     MCTS scoring integration)
+%    03_4_mcts_search.tex          -- WF-Paper-Main (MCTS over beta-NF space;
+%                                     UCB + VirtualLoss + TranspositionTable;
+%                                     WF-Lambda-1 / 1c pilot evidence)
+%    03_5_deflex.tex               -- WF-Deflex (dual-system pocket
+%                                     conditioning via representation
+%                                     engine + symbolic extraction engine;
+%                                     32-d PocketMacroSkeleton + 64-d
+%                                     numpy bridge + F5 symbolic reward)
+%    §3.6 stub (this file)          -- WF-Pivot-A Phase 2
+%                                     (deferred-secondary-generator stub:
+%                                     label-only preservation, full
+%                                     content moved to §7 future work)
+%    §3.7 bond-aware soft prior     -- WF-CFM-Path-B-Decoder-Rework
+%                                     (chem-aware 3-prior decoder;
+%                                     Path A→Path B lift 0/192→192/192)
+%
+%  Cross-references all point to:
+%    Figure~1 (9-layer MLC architecture, fig1_mlc_arch.pdf)        -- 03.1
+%    Figure~2 (pocket-conditioned Lambda pipeline, fig2_pipeline.pdf) -- 03.3 + 03.4
+%    Figure~3 (5 click reactions, fig3_click_reactions.pdf)         -- 03.2
+%    Appendix closure-theorem (paper/appendices/closure_theorem.tex,
+%                              WF-Lambda-4, proof pending)          -- 03.1 + 03.4
+% =============================================================================
+
+\section{Method}
+\label{sec:method}
+
+\paragraph{Overview.}
+This section presents the algorithmic core of Mol-Metal: the
+Molecular Lambda Calculus (MLC) as a typed generative calculus
+(\S\ref{sec:mlc-formalism}), the five click reactions that
+instantiate its rule combinators
+(\S\ref{sec:click-chem}), the
+\texttt{MetalGeometryPrior} that constrains metal coordination as
+a first-class refinement predicate
+(\S\ref{sec:metal-geometry-prior}), the Monte-Carlo Tree
+Search driver that walks the typed-term
+$\beta$-normal-form space
+(\S\ref{sec:mcts-betanf}), and the \emph{Deflex} dual-system
+wrapper that conditions the inner driver on a pocket-derived
+embedding and a closed-form reward prior
+(\S\ref{sec:deflex}).
+The five sub-sections together implement the 9-layer software
+stack diagrammed in Figure~\ref{fig:mlc-arch}; their per-layer
+metric catalogue is summarised in
+Table~\ref{tab:layer-metrics}.
+
+\paragraph{Honest framing.}
+Every quantitative claim in this section is labelled as one of:
+\textsc{measured} (taken from a real run on the local RX 7800 XT
+testbed, with a citation to a report under
+\texttt{molmetal/reports/}),
+\textsc{projected} (a formal claim that we have not yet exercised
+at production scale, with a citation to a TODO under
+\texttt{TODO/pending/} or to Appendix~\ref{appendix:closure-theorem}),
+or \textsc{architectural} (a description of the shipped source
+code, with a path-and-line citation). The strong-normalisation
+claim in \S\ref{sec:mlc-strong-norm} and the MCTS sample-complexity
+claim in \S\ref{sec:mcts-closure-cross-ref} are \textsc{projected};
+the per-cell pilot metrics in \S\ref{sec:mcts-pilot-evidence} are
+\textsc{measured}; the UCB selection rule and the
+counter-based \texttt{VirtualLoss} in
+\S\ref{sec:mcts-ucb} are \textsc{architectural}.
+
+% --- §3.1 Molecular Lambda Calculus (SHIPPED; WF-Paper-3.1) -------------------
+% FIX (WF-Paper-Repair Phase 2): sub-inputs now relative to paper/ root
+% (NOT to paper/sections/). Build: cd paper && pdflatex main.
+\input{sections/03_1_mlc_formalism}
+
+% --- §3.2 5 click reactions as typed reductions (SHIPPED; WF-Paper-3.2) ------
+\input{sections/03_2_click_chemistry}
+
+% --- §3.3 MetalGeometryPrior: first-class constraint (SHIPPED; WF-Paper-3.3)
+\input{sections/03_3_metal_geometry_prior}
+
+% --- §3.4 MCTS over typed-term beta-NF space (SHIPPED; WF-Paper-Main) -------
+\input{sections/03_4_mcts_search}
+
+\input{sections/03_5_deflex}
+
+% --- §3.6 Secondary generator (CFM geometric) -- deferred stub (WF-Pivot-A Phase 2) -
+\subsection{Secondary generator (CFM geometric): explicit deferral}
+\label{sec:method:secondary-cfm}
+
+\paragraph{Honest framing (path-(a) FAILURE).}
+The pocket-conditioned geometric generator (the
+\texttt{flow\_matching\_lipman} \texttt{BondAwareDecoder} +
+\texttt{EGNNLayer} backbone, target
+\texttt{decode\_ratio\,$\geq$\,0.5} on
+CrossDocked2020~\cite{luo2021crossdocked}) is the
+\emph{secondary} generator of Mol-Metal and is \textsc{deferred}
+for this submission cycle. The path-(a) full retrain
+(\texttt{--train-steps\,10000 --hidden-dim\,64}, per
+\texttt{molmetal/reports/wf\_cfm\_retrain\_full/final.md}) was
+\textbf{NOT MEASURED}: the discrete GPU is currently SMU-hung
+(\texttt{wf\_gpu\_diag/diagnosis.md}), and the baseline
+2000-step / hidden-dim\,=\,32 geometric run returns
+\textbf{\textsc{measured} $\texttt{decode\_ratio}\,=\,0/384$}
+(\texttt{molmetal/reports/wf2\_cfg\_e2e\_a5/report.json},
+see also
+\texttt{molmetal/reports/round10\_e2e\_pt\_cfg\_vina.md} and
+the Round-10 6-seed $\times$ 2-pocket $\times$ 2-cfg $\times$
+16-sample ablation
+\texttt{molmetal/reports/round10\_pt\_prior\_ablation.md}).
+At this compute budget the CFM cloud does not learn
+pocket-conditioned placement, and the A6 connectivity fallback
+cannot recover a graph when the underlying coordinates are
+uninformative; the
+\texttt{wf\_cfm\_internal\_review/audit.md}
+identifies four line-cited root causes
+(\texttt{bonds=zeros} placeholder, fixed \texttt{in\_dim=9}
+vs needed $9+2h$, \texttt{tanh} vel-head saturation,
+smoke-scale hidden\_dim\,=\,32). The CFM
+geometric generator therefore contributes \emph{no} measurable
+signal at the present budget; all \S\ref{sec:evaluation}
+data cells flow from the $\Lambda$-only primary generator of
+\S\ref{sec:mlc-formalism}--\S\ref{sec:mcts-betanf}.
+The five \textsc{new} research gaps and the path-(b)
+decoder-rework follow-up previously listed here are
+relocated to \S\ref{sec:future:cfm-deferred} as future
+work; this stub preserves the
+\texttt{sec:method:secondary-cfm} anchor so that the
+\S4 and \S6 cross-references resolve to a single sentence
+summarising the deferral.
+
+% --- §3.7 Bond-aware soft prior (NEW; WF-CFM-Path-B-Decoder-Rework) ---------
+\subsection{Bond-aware soft prior for the CFM decoder (Path B)}
+\label{sec:method:bond-aware-soft-prior}
+
+The Round-12 audit
+(\texttt{molmetal/reports/wf\_cfm\_internal\_review/audit.md})
+identified that the legacy
+\texttt{BondAwareDecoder}'s hard 2.4\,\AA{} distance cutoff
+predicts zero edges for all 192 samples on the round-12 retrain
+because the CFM coordinate distribution has no atom pair
+within 2.4\,\AA{}. Path (b) replaces the hard cutoff with a
+\emph{chem-aware soft prior} that is differentiable end-to-end
+and can be combined with the PCGrad multi-task loss.
+
+\paragraph{Honest framing.}
+The design is \textsc{architectural}; the unit tests
+(\texttt{test\_soft\_distance\_mask\_lifts\_decode},
+\texttt{test\_type\_compat\_supports\_C\_C\_bond},
+\texttt{test\_valence\_cap\_prevents\_overvalent},
+\texttt{test\_decoder\_rework\_differentiable},
+\texttt{test\_decoder\_rework\_composes\_with\_bond\_head}) are
+\textsc{measured}; the smoke validation on synthetic CFM-style
+clouds is \textsc{measured} (\texttt{wf\_cfm\_path\_b\_decoder\_
+rework/final.md}, 192/192 bond-bearing); the full GPU retrain
+verification is \textsc{deferred} pending
+\texttt{WF-GPU-Auto-Recover}.
+
+\paragraph{Three differentiable priors.}
+
+\begin{enumerate}
+  \item \textbf{Soft distance mask.}
+        $\displaystyle p_{\text{dist}}(d) =
+        \sigma\!\Bigl(\!-\!\frac{d - d_{\text{th}}}{\tau}\Bigr)$,
+        with $d_{\text{th}}=2.4$\,\AA{} (legacy cutoff) and
+        $\tau=0.3$\,\AA{} (soft-band width). A pair at
+        $d\!=\!1.5$\,\AA{} gets $p_{\text{dist}}\!\approx\!0.95$,
+        at $d\!=\!2.4$\,\AA{} gets $p_{\text{dist}}\!=\!0.5$, at
+        $d\!=\!3.5$\,\AA{} gets $p_{\text{dist}}\!\approx\!0.05$.
+        The $\tau\!=\!0.3$\,\AA{} band gives $\sim\!10\times$
+        decay over 1\,\AA{} so the gradient is non-trivial for
+        $d\!\in\![1.5,\,3.5]$\,\AA{}, the typical CFM coordinate
+        spread. Backward-compatible with the legacy
+        \texttt{BondAwareDecoder} as $\tau\!\to\!0$.
+
+  \item \textbf{Type-compatibility prior.}
+        $\displaystyle p_{\text{type}}(Z_i,Z_j) =
+        \text{compat}(Z_i,Z_j)\!\in\![0,1]$ from a 56-entry
+        hand-curated \texttt{ATOM\_TYPE\_COMPAT} table covering
+        C/N/O/P/S/Se/F/Cl/Br/I + Pt/Ru/Zn/Ir/Cu/Au. Lit-grounded
+        by the Himo 2005 JACS CuAAC regioselectivity analysis
+        \cite{himo2005cuaac} (terminal alkyne Csp + azide N3
+        strong dative on Pt scaffolds, \texttt{compat(Csp,N3)}
+        $\!=\!0.95$) and the Lit-Survey-v2
+        5$\times$5 Pt-click compat matrix in
+        \texttt{molmetal/molmetal\_lam/lam\_chem/pt\_click\_compat.py}
+        (\texttt{compat(Pt,Cl)}$\!=\!0.95$ cisplatin-style,
+        \texttt{compat(Pt,N)}$\!=\!0.95$ dative strong,
+        \texttt{compat(Pt,C)}$\!=\!0.30$ organometallic-only,
+        \texttt{compat(Pt,O)}$\!=\!0.90$ dative strong).
+
+  \item \textbf{Valence-aware bond cap.}
+        $\displaystyle \mathcal{L}_{\text{val}} =
+        \sum_a \max\!\bigl(0,\,
+        \text{cap}_a - \!\!\sum_{e\ni a}\!\!o_e + \varepsilon\bigr)^{\!2}$,
+        per-atom cap $\text{cap}_a$ from
+        \texttt{DEFAULT\_VALENCES} (C$=4$, N$=3$, O$=2$, F$=1$,
+        Cl$=1$, Br$=1$, I$=1$; Pt$_II$=4 square planar,
+        Cu$_II$=4, Au$_III$=4, Ru$_II$=6 octahedral,
+        Ir$_III$=6). The squared-hinge form replaces the log
+        barrier originally advertised in the design doc ---
+        log barrier diverges too sharply for an untrained head;
+        the squared hinge trades sharpness for stability
+        (design-deviation documented in
+        \texttt{decoder\_rework.py:419--465}).
+\end{enumerate}
+
+\paragraph{Combined prior and logit emission.}
+$\displaystyle p_{\text{combined}} = p_{\text{dist}} \times p_{\text{type}}$
+is mapped to a logit $\ell = \log(p/(1-p))\!\in\![-20,\,20]$ that
+the inner \texttt{BondAwareDecoder}'s \texttt{BondOrderHead}
+re-scores for the bond \emph{order} (SINGLE/DOUBLE/TRIPLE/AROMATIC).
+The \texttt{ReworkedDecoder} decorator
+(\texttt{molmetal/molmetal\_lam/lam\_chem/decoder\_rework.py:845})
+composes the soft prior with the legacy decoder: the prior
+filters candidate pairs to a "viable" set ($p_{\text{combined}}\!>\!0.5$),
+then the inner decoder assigns bond orders. All three priors
+are differentiable w.r.t.\ \texttt{coords} and the bond
+\emph{logits}, so the joint PCGrad multi-task loss
+\cite{yu2020pcgrad} can back-propagate through them in the
+next retrain cycle.
+
+\paragraph{Smoke validation (measured).}
+On 192 synthetic CFM-style 10-atom clouds with realistic
+1-5\,\AA{} coordinate spread (matches the round-12 trained-CFM
+distribution), the soft prior lifts bond-bearing decode from
+$0/192$ (Path A: legacy \texttt{BondAwareDecoder} with hard
+2.4\,\AA{} cutoff) to $192/192$ (Path B: \texttt{ReworkedDecoder}
+with soft 3-prior) at a 500-step + $h\!=\!64$ mini-budget.
+96/192 of the Path-B mols fail \texttt{Chem.SanitizeMol} due
+to overvalent atoms in the random cloud (e.g. C with 8 bonds)
+--- this is a property of the synthetic coordinate generator,
+not the decoder; the trained CFM will produce saner coords.
+The key contract is that the rework \emph{proposes} bonds where
+the legacy decoder proposes none; sanitization is downstream.
+
+\paragraph{Relationship to Himo 2005 and the Pt-click matrix.}
+The Himo 2005 CuAAC analysis identifies terminal alkyne +
+azide dative bonding as the regioselectivity-determining step
+for Pt-click scaffolds \cite{himo2005cuaac}. The
+\texttt{ATOM\_TYPE\_COMPAT[(6, 7)]}\!=\!0.95 (C-N dative
+strong) and \texttt{ATOM\_TYPE\_COMPAT[(17, 78)]}\!=\!0.95
+(Pt-Cl cisplatin-style strong) cells directly encode these
+two interactions. The Lit-Survey-v2 5$\times$5 Pt-click
+compat matrix extends this to a 2-axis (donor atom-type
+$\times$ Pt oxidation-state) compatibility grid used by the
+scaffold-aware soft prior in
+\texttt{r4\_lambda\_only\_run.py:236--267}.
+
+% --- end-of-section pointer -------------------------------------------------
+\paragraph{Cross-section pointers.}
+Figure~\ref{fig:mlc-arch} (9-layer MLC architecture) is introduced
+in \S\ref{sec:mlc-layers} and re-cited by \S\ref{sec:click-chem}
+and \S\ref{sec:metal-geometry-prior}.
+Figure~\ref{fig:click-reactions} (5 click reaction panels) is
+introduced in \S\ref{sec:click-chem-smarts}.
+Figure~\ref{fig:pipeline} (pocket-conditioned Lambda pipeline) is
+cited by \S\ref{sec:metal-geom-enum} and
+\S\ref{sec:mcts-closure-cross-ref}.
+The closure theorem in Appendix~\ref{appendix:closure-theorem}
+backs the strong-normalisation claim of
+\S\ref{sec:mlc-strong-norm} and the sample-complexity claim of
+\S\ref{sec:mcts-closure-cross-ref}; the proof is
+\textsc{projected} (WF-Lambda-4, status: proof pending, machine
+check deferred to supplementary material).
+The secondary geometric generator (\S\ref{sec:method:secondary-cfm})
+is \textsc{deferred} on this round and contributes no measurable
+data cells; the deferred $\Lambda \times$ CFM coupling plan
+(\texttt{TODO/pending/21\_lambda\_model\_coupling.md}) is
+\emph{not} part of this section; it is mentioned in
+\S\ref{sec:future} as future work.

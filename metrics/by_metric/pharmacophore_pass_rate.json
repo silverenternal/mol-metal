@@ -1,0 +1,27 @@
+{
+  "metric": "pharmacophore_pass_rate",
+  "description": "Fraction of candidate SMILES passing Lipinski Ro5 + Veber + ring-count >= 1 strict gate (lower is harder to pass)",
+  "unit": "ratio (0-1, higher = more drug-like)",
+  "scope": "Lambda MCTS candidate pool (10 hand-picked curated SMILES spanning drug-like, cisplatin, acyclic PAINS, ion pairs)",
+  "measurements": [
+    {
+      "run": "wf_lambda_core_phase3_smoke (10 curated SMILES, strict pass)",
+      "value": 0.7,
+      "n_samples": 10,
+      "n_pass_strict": 7,
+      "n_pass_lenient": 9,
+      "status": "MEASURED",
+      "date_utc": "2026-09-15",
+      "module": "molmetal.molmetal_lam.lam_chem.pharmacophore_filter.compute_pharmacophore_report",
+      "test": "test_pharmacophore_filter.py"
+    }
+  ],
+  "aggregate": {
+    "best_measured": 0.7,
+    "lit_baseline_promiscuous_smiles": "~0.85 (QED-validated organic)",
+    "lit_target_drug_like_pool": ">=0.6 (Lipinski 2001 + Hopkins 2008)",
+    "gap": "within or above target; honest framing: this is 10 hand-picked curated SMILES, not a generated pool"
+  },
+  "pipeline_role": "Pre-docking quality gate (cheap, RDKit-only, ~10 ms for 1000 mol). Drops acyclic PAINS (e.g. n-hexadecane) and ring-free ion pairs (e.g. [OH-].[Cu+2]).",
+  "verdict": "MEASURED — pharmacophore_pass_rate=0.7 on 10 curated SMILES (7 strict pass, 9 lenient pass). The 3 fails are n-hexadecane (acyclic), [OH-].[Cu+2] (no rings + metal-only), and 1 borderline. Honest: this is on the curated smoke set, not a real generated pool, so the rate is biased upward; production measurement pending."
+}

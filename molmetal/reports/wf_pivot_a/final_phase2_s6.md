@@ -1,0 +1,1 @@
+Phase 2 §6 limitations: added pocket-invariant n_distinct=1 attractor limitation (NEW 2026-09-16, WF-Pocket-Invariance-Combined) to paper/sections/06_limitations.tex, ~50 lines covering 3-layer singleton root cause + 3 rounds of fixes + sub-fix A+B+C mitigation + Round-14+ deferred full lift + cross-ref to item (10) diversity column.

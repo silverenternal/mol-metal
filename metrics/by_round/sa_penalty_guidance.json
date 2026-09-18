@@ -1,0 +1,26 @@
+{
+  "round": "R12",
+  "workflow": "wf_sa_penalty_guidance",
+  "date_utc": "2026-09-14",
+  "config": {
+    "cli_flag": "--sa-weight",
+    "default": 0.0,
+    "new_default": 0.3,
+    "rationale": "Ertl 2008 SA score as reward penalty (lit: MOSES baseline)"
+  },
+  "aggregate_metrics": {
+    "sa_mean_no_penalty": "≥5.0",
+    "sa_mean_with_0_3_smoke_5x1": 3.319,
+    "sa_lift_mean_10x3": -0.0085,
+    "sa_lift_6_cells_with_n_ge_5": -0.043,
+    "qed_tradeoff": -0.0008,
+    "n_tests_passed": 34,
+    "n_tests_total": 34,
+    "backward_compat": "bit-for-bit verified"
+  },
+  "verdict": {
+    "status": "SHIPPED_NO_MEASURED_LIFT_AT_MINI_BUDGET",
+    "summary": "sa-weight 0.3 ships. Smoke 5×1 sa_mean=3.319 (no lift vs TargetDiff range 2.65-2.86 at mini-budget). 10×3 lift=-0.0085 (no lift). 6 cells with n≥5: lift=-0.043 (modest). QED tradeoff=-0.0008 (well below 0.05 threshold). Recommend --sa-weight 0.3 stays (no need to drop to 0.2)."
+  },
+  "source": "molmetal/reports/wf_sa_penalty_guidance/final.md"
+}

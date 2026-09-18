@@ -1,0 +1,64 @@
+{
+  "metric": "sa_mean",
+  "description": "Mean Synthetic Accessibility (Ertl 2008) score of generated molecules (lower = easier to synthesize)",
+  "unit": "ratio (1=very easy, 10=very hard)",
+  "scope": "Lambda MCTS path",
+  "measurements": [
+    {
+      "run": "wf_sa_penalty_guidance (no --sa-weight, Lambda-only)",
+      "value": "\u22655.0",
+      "n_samples": null,
+      "status": "MEASURED",
+      "date_utc": "2026-09-14"
+    },
+    {
+      "run": "wf_sa_penalty_guidance (--sa-weight 0.3, 5x1 smoke)",
+      "value": 3.319,
+      "n_samples": 5,
+      "status": "MEASURED",
+      "date_utc": "2026-09-14"
+    },
+    {
+      "run": "wf_sa_fragment_pool_optimize (1x1 smoke with --keep-high-sa-tiles=False)",
+      "value": 3.099,
+      "n_samples": 1,
+      "status": "MEASURED",
+      "date_utc": "2026-09-15",
+      "note": "filtered pool (220\u2192210 tiles); closer to TargetDiff range but still above"
+    },
+    {
+      "run": "wf_round12_lambda_pilot (10x3 cisplatin+all-5, n_sim=1000)",
+      "value": 5.9452,
+      "n_samples": 30,
+      "status": "MEASURED",
+      "date_utc": "2026-09-14",
+      "note": "n_distinct=1 \u2192 sa_mean is single-molecule value (cisplatin = sa 5.95)"
+    },
+    {
+      "run": "wf_round12_lambda_pathb (10x3 Path B)",
+      "value": 6.0081,
+      "n_samples": 30,
+      "status": "MEASURED",
+      "date_utc": "2026-09-15"
+    },
+    {
+      "run": "wf_lift_ev3 (10x3 sweep at --sa-weight 0.3 on test_001, n_sim=1000 + partner tiles + scaffold-aware gate)",
+      "value": 3.0987596249913785,
+      "n_samples": 30,
+      "status": "MEASURED",
+      "date_utc": "2026-09-17",
+      "note": "SA penalty weight 0.3 + 5-click rules + scaffold-aware gate + partner tiles. +0% lift vs 3.099 (1x1 smoke from wf_sa_fragment_pool_optimize), but n=30 vs n=1. Better than wf_round12_lambda_pilot SA=5.945 (cisplatin singleton collapse)."
+    }
+  ],
+  "aggregate": {
+    "best_measured": 3.0987596249913785,
+    "lit_target_targetdiff": "2.65-2.86 (Guan 2023 ICLR)",
+    "gap": "\u22120.24 to \u22120.45 (modest miss)",
+    "best_measured_stdev": 0.0,
+    "n_measurements": 6,
+    "n_at_sa_weight_0_3": 1,
+    "refined_verdict": "PARTIAL_LIFT_v2 \u2014 sa_weight 0.3 holds at 3.099 across 30 cells (10 pockets \u00d7 3 seeds) vs TargetDiff 2.65-2.86. Pool-driven plateau: --sa-weight guides MCTS scoring but the FRAGMENT POOL itself is dominated by Pt-acetylide scaffolds (SA~2-3) + Pt-Cl2 fragments (SA~5-6). To close the -0.24 gap further, fragment-pool optimization (TODO-25 Tier-2 P2.3) is the upstream fix, not channel-weight tuning.",
+    "2026_09_17_EV3_status": "MEASURED at 30 cells, std=0 (deterministic, pool-saturated)."
+  },
+  "verdict": "PARTIAL_LIFT \u2014 SA penalty + filtered pool lift sa_mean from \u22655.0 \u2192 3.099 (closer to TargetDiff range but still 0.24-0.45 above target). Real lift blocked by n_sim=100 budget + rule symmetry. Recommend 3x3 at n_sim=1000."
+}

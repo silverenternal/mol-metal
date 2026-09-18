@@ -1,0 +1,73 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{hyperref}
+\begin{document}
+
+\section{Related Work}
+
+\subsection{Structure-based drug design (SBDD)}
+Structure-based drug design conditions molecular generation on a three-dimensional protein pocket. Pocket2Mol~\cite{peng2022pocket2mol} autoregressively places atoms and bonds with an equivariant pocket encoder (arXiv:2205.07249). TargetDiff~\cite{lu2022targetdiff} uses target-aware diffusion to denoise ligand coordinates and atom types (arXiv:2303.03543). DiffSBDD~\cite{schneuing2023diffsbdd} extends diffusion sampling with explicit protein--ligand geometric features (arXiv:2210.13695). DecompDiff~\cite{guan2023diffcomp} decomposes ligands into chemically meaningful fragments (arXiv:2303.10120). FLOWR~\cite{zhang2025flowr} replaces iterative diffusion with flow matching along a learned continuous path (arXiv:2504.10564).
+
+These methods show that equivariance and pocket context improve pose plausibility, but they usually encode a ligand as an organic graph or unconstrained atoms. Their reported validity, affinity, and synthesis scores are also computed with different filters and docking engines. Consequently, numerical rankings should be interpreted together with the underlying split and scoring protocol. Metal identity, oxidation state, dative coordination, and coordination geometry are therefore implicit. Their benchmarks emphasize population averages over many pockets, while Mol-Metal records a constructive synthesis trace in addition to a pose. We retain SBDD's geometric advantages through an SE(3)-equivariant flow track and expose coordination as a typed state checked before docking.
+
+\subsection{Metal-coordination drug design}
+Recent work addresses metal complexes through activity prediction or specialized generation. PlatinAI~\cite{rusanov2025platinai} combines a graph neural predictor with fragment assembly for platinum complexes and validates a bis-carbene Pt(II) derivative that outperforms cisplatin in resistant cell lines. MetalCytoToxDB~\cite{krasnov2026metalcytotoxdb} curates Ru, Ir, Rh, Re, and Os cytotoxicity measurements; gradient-boosted models reach ROC--AUC 0.81 on Ru and 0.73 on Ir temporal evaluations, while omitting explicit geometry. TransDiffSBDD~\cite{transdiff2025} injects metal-aware conditioning into diffusion and reports a CrossDocked2020 median Vina score of $-9.37$ kcal/mol with an 83.9\% composite success rate. Mol-Metal makes the metal centre a fixed-arity combinator, couples coordination-site typing to click reactions, and retains a proof-producing assembly path.
+
+\subsection{Lambda calculus for chemistry}
+The classical lambda calculus provides syntax, substitution, and beta reduction; Barendregt's treatment~\cite{barendregt1984lambda} and the Church--Rosser theorem establish that confluent reduction has a unique normal form when one exists. In the molecular lambda calculus proposed in project notes, atoms are primitive combinators, bonds are applications, and a molecule is a closed term whose unsaturated sites behave as partial applications. Coordination is curried application: Pt(II) exposes four sites, whereas octahedral Ru(II) exposes six. Chemistry-as-calculus proposals interpret reaction rules as typed rewrites, synthesis as reduction sequences, retrosynthesis as beta expansion, and property constraints as type predicates~\cite{molecularLambdaNotes}. Our restricted calculus adds geometry predicates and explicit click handles. MCTS performs proof search over admissible reductions; each term is an auditable synthesis certificate.
+
+\subsection{Click chemistry in drug design}
+Click chemistry supplies modular transformations suited to typed fragment composition. Sharpless and co-workers established the framework~\cite{sharpless2001click}; CuAAC joins azides and terminal alkynes to triazoles, while SPAAC provides a copper-free strained-alkyne variant~\cite{kolb2001click}. We also encode thiol--ene radical addition, Suzuki aryl--boron coupling, and amide coupling between amines and activated acids. These five rules consume complementary handles, update valence and coordination-site counts, and preserve reagents and order. Every generated complex can therefore be replayed as a finite construction sequence. Handle typing also makes negative results informative: an unreactive pair is rejected before expensive geometric relaxation, and a failed valence check identifies the responsible rule. This design is especially useful for sparse metal-complex data, where exhaustive experimental enumeration is impossible.
+
+\subsection{MCTS in molecule generation}
+Monte Carlo tree search has optimized molecular graphs and reaction policies under delayed rewards. SynFlowNet~\cite{bengio2021flow} learns trajectories toward high-reward molecules, RxnFlow~\cite{tripp2024rxnflow} applies flow ideas to retrosynthetic reaction spaces, and REINVENT4~\cite{bou2024reinvent4} combines recurrent generation with reinforcement learning. Mol-Metal uses MCTS over typed beta reductions: fragment clicks, dative attachments, and admissible rearrangements. Rewards combine binding, activity, synthesizability, and geometry. Virtual loss lets parallel simulations avoid one busy branch, while a transposition table merges derivations reaching the same canonical state and prevents redundant evaluation.
+
+\subsection{Protocol-mismatch flags}
+Published SBDD metrics are sensitive to evaluation design. We report the seven flags below alongside cross-method comparisons.
+
+\begin{longtable}{p{0.06\linewidth}p{0.28\linewidth}p{0.58\linewidth}}
+\toprule
+ID & Flag & Implication for comparison\\
+\midrule
+1 & Test-set size ($n=1$ vs. 100--363) & A single-pocket Lambda value has no population error bar and cannot be compared directly with a multi-pocket mean.\\
+2 & Pocket corpus mismatch & The 1h36 HEM pocket is outside the standard CrossDocked2020 test split; Vina is pocket-dependent.\\
+3 & SA implementation not byte-verified & Lambda uses the Ertl--Schuffenhauer RDKit implementation, but side-by-side recomputation across papers is pending.\\
+4 & Baselines not re-run & Pocket2Mol, TargetDiff, DiffSBDD and other SOTA rows are cited results, not reproduced runs.\\
+5 & FLOWR 94\% is PoseBusters validity & PoseBusters conformer validity is not docking success or high affinity.\\
+6 & NFE accounting differs & Diffusion NFE (samples times steps) is not commensurate with 1000 MCTS simulations.\\
+7 & Docking engines differ & AutoDock Vina, QVina, and QuickVina share lineage but can differ by 0.3--0.6 kcal/mol.\\
+\bottomrule
+\end{longtable}
+
+\subsubsection{Position of Mol-Metal}
+The preceding literature leaves a gap between symbolic synthesis and pocket-conditioned geometry.
+Mol-Metal treats these as coupled but inspectable state spaces.
+A symbolic term records donor identity, site occupancy, and reaction provenance.
+A geometric state records coordinates, distances, and pocket interactions.
+The two states exchange constraints at each search step.
+This interface permits invalid coordination to be rejected before docking.
+It also permits a geometrically strained candidate to be traced to its construction term.
+Such traceability is central when activity labels are sparse and heterogeneous.
+The protocol table makes the remaining empirical comparisons explicit.
+Future evaluations will use matched pockets, engines, and split definitions.
+
+\begin{thebibliography}{99}
+\bibitem{peng2022pocket2mol} Peng et al., ``Pocket2Mol,'' arXiv:2205.07249 (2022).
+\bibitem{lu2022targetdiff} Lu et al., ``TargetDiff,'' arXiv:2303.03543 (2022).
+\bibitem{schneuing2023diffsbdd} Schneuing et al., ``DiffSBDD,'' arXiv:2210.13695 (2023).
+\bibitem{guan2023diffcomp} Guan et al., ``DecompDiff,'' arXiv:2303.10120 (2023).
+\bibitem{zhang2025flowr} Zhang et al., ``FLOWR,'' arXiv:2504.10564 (2025).
+\bibitem{barendregt1984lambda} Barendregt, \emph{The Lambda Calculus}, 1984.
+\bibitem{molecularLambdaNotes} ``Molecular Lambda Calculus,'' project research notes, 2026.
+\bibitem{sharpless2001click} Kolb, Finn, Sharpless, ``Click Chemistry,'' 2001.
+\bibitem{kolb2001click} Kolb et al., ``Click Chemistry,'' Angew. Chem. (2001).
+\bibitem{rusanov2025platinai} Rusanov et al., ``PlatinAI,'' ChemRxiv (2025).
+\bibitem{krasnov2026metalcytotoxdb} Krasnov et al., ``MetalCytoToxDB,'' J. Med. Chem. (2026).
+\bibitem{transdiff2025} Tsinghua--Microsoft Research et al., ``TransDiffSBDD,'' 2025.
+\bibitem{bengio2021flow} Bengio et al., ``Flow Network based Generative Models,'' 2021.
+\bibitem{tripp2024rxnflow} Tripp et al., ``RxnFlow,'' 2024.
+\bibitem{bou2024reinvent4} Bou et al., ``REINVENT4,'' 2024.
+\end{thebibliography}
+\end{document}

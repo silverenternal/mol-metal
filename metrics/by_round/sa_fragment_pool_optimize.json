@@ -1,0 +1,26 @@
+{
+  "round": "R13",
+  "workflow": "wf_sa_fragment_pool_optimize",
+  "date_utc": "2026-09-15",
+  "config": {
+    "n_tiles_filtered": 10,
+    "pool_size_before": 220,
+    "pool_size_after": 210,
+    "sa_filter": "TOP10_HIGHEST_SA blacklist"
+  },
+  "aggregate_metrics": {
+    "sa_top10_range": [3.887, 5.808],
+    "sa_mean_baseline_after_sa_weight_0_3": 3.32,
+    "sa_mean_smoke_1x1_filtered": 3.099,
+    "sa_mean_target": "TargetDiff 2.65-2.86",
+    "n_pockets_with_sa_in_range": 0,
+    "n_cells_with_lift": "5x3 partial (n_sim=100, search-bound)"
+  },
+  "verdict": {
+    "status": "WIRE_COMPLETE_LIFT_BLOCKED_BY_SEARCH",
+    "summary": "sa_filter module ships (TOP10 blacklist + --keep-high-sa-tiles CLI flag). Smoke sa_mean=3.099 vs TargetDiff range 2.65-2.86 — closer than baseline 3.32 but still above. Real lift blocked by n_sim budget (100 not 1000) + rule symmetry issue. 3x3-at-n_sim=1000 follow-up needed.",
+    "lift_partial": true,
+    "target_match": false
+  },
+  "source": "molmetal/reports/wf_sa_fragment_pool_optimize/final.md"
+}

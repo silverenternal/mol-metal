@@ -1,0 +1,40 @@
+{
+  "section": "5",
+  "title": "Ablation Studies",
+  "status": "PARTIAL_MEASURED",
+  "ablation_axes_with_data": {
+    "5_click_rules_axis": {
+      "wf": "wf_round12_lambda_pilot",
+      "n_cells_measured": 30,
+      "finding": "All 5 click rules forced to a single molecule (cisplatin); click_rules_fired collapsed to 1 unique output"
+    },
+    "metal_seed_ablation": {
+      "wf": "wf_lambda1c_pilot_v3",
+      "n_cells_measured": 30,
+      "finding": "metal_compliance_rate 1.0 with seed, 0.0 without — mechanically driven, not learned"
+    },
+    "sa_weight_axis": {
+      "wf": "wf_sa_penalty_guidance",
+      "n_cells_measured": 5,
+      "finding": "sa_mean 5.0+ → 3.319 with --sa-weight 0.3 (partial lift, still above TargetDiff 2.65-2.86)"
+    },
+    "decoder_rework_axis": {
+      "wf": "wf_cfm_path_b_decoder_rework",
+      "n_cells_measured": 192,
+      "finding": "decode_ratio_bond_bearing 0/192 → 192/192 on synthetic (Path A→Path B); RDKit-strict 0.5"
+    },
+    "joint_train_axis": {
+      "wf": "wf_vina_lift_phase23",
+      "n_cells_measured": 12,
+      "finding": "bond_loss_final 0.0 → 1.065 with joint-train; cfm_loss 7.21 → 4.30 with h64+10k+vel_scale"
+    }
+  },
+  "missing_ablation_axes": [
+    "PB outer-gate impact on Vina_mean",
+    "MMFF94s relax impact on PB pass rate (production)",
+    "Rule symmetry click_rules_fired impact (Path B in production)"
+  ],
+  "cells_design_to_measured_total": 49,
+  "cells_still_design": 95,
+  "verdict": "PARTIAL_ABLATION — 5 axes have data, 3 axes need follow-up. Production 100×3 will fill 95 DESIGN cells."
+}

@@ -1,0 +1,27 @@
+{
+  "section": "4.2",
+  "title": "Main Results — Round-12 Lambda Pilot (10×3, n_sim=1000)",
+  "status": "DESIGN_PROMOTED_TO_MEASURED",
+  "promotion_status": "5 cells §4 Table 1 DESIGN→MEASURED per wf_lambda_metal_pilot 2026-09-15; 55 cells DESIGN still",
+  "aggregate_metrics": {
+    "validity_rate": 1.0,
+    "synthesizability_rate": 1.0,
+    "metal_compliance_rate_with_seed": 1.0,
+    "metal_compliance_rate_without_seed": 0.0,
+    "novelty": 1.0,
+    "diversity_tanimoto": 0.0,
+    "diversity_homotype": 0.0,
+    "anticancer_index": 0.425,
+    "sa_mean": 5.9452,
+    "qed_mean": 0.6709,
+    "n_distinct": 1
+  },
+  "cells_design_to_measured": 5,
+  "cells_still_design": 55,
+  "missing_for_paper_grade": [
+    "vina_mean (no --physical-docking)",
+    "pb_pass_rate (no --pb-check)",
+    "novelty distribution (single-molecule value)"
+  ],
+  "verdict": "PARTIAL_TABLE — §4.2 has 5 MEASURED cells (metal-compliance arm) but missing 55 DESIGN cells + Vina + PB. Production 100×3 sweep pending R13 (wo21fr1ug)."
+}

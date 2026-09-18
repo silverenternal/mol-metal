@@ -1,0 +1,193 @@
+% =============================================================================
+%  paper/supplementary_data_table.tex -- S11: Data provenance & metric tables
+%
+%  Supplementary data tables for the metallodrug vertical.
+%  Cross-referenced from main.tex as a new S11 item.
+%  Per RSC Digital Discovery conventions, the SI is hosted on the journal's
+%  SI portal and \input{}-ed from paper/supplementary.tex after S10.
+%
+%  Honest-framing convention: every numeric cell is flagged
+%  \MEASURED{} or \DESIGN{}.  No number is re-derived; tables only
+%  restate the upstream artefact under
+%  molmetal/reports/wf_metallodrug_vertical/phase1_inventory.md and
+%  molmetal/scripts/r4_lambda_only_run.py.
+% =============================================================================
+
+\subsection*{S11. Data provenance and vertical metric definitions}
+\label{supp:s11-data-provenance}
+
+\paragraph{Scope.}
+This section exposes (i) the local dataset provenance for the eleven
+artefacts inventoried by the Phase-1 metallodrug-vertical audit
+(\texttt{molmetal/reports/wf\_metallodrug\_vertical/phase1\_inventory.md},
+2026-09-16, 3\,000-sample random scan per SMILES-bearing dataset), (ii)
+the definition of the nine P0 vertical-specific metrics implemented in
+\texttt{molmetal/scripts/r4\_lambda\_only\_run.py} (lines
+$\approx$1450--1570), and (iii) the cell-line activity-oracle
+calibration matrix for the §4.6.1 PlatinAI column.  All numbers below
+are either verbatim from the inventory or computed once and frozen; no
+value is re-derived at compile time.
+
+% ---------------------------------------------------------------------------
+% Table S11.1 — Local dataset provenance
+% ---------------------------------------------------------------------------
+
+\subsubsection*{Table S11.1 --- Local dataset provenance}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{3.5cm}p{1.7cm}p{1.2cm}p{2.6cm}p{1.5cm}p{2.4cm}p{1.6cm}}
+\hline
+\textbf{Dataset} & \textbf{Format} & \textbf{N} & \textbf{Top-10 cols} & \textbf{Hvy-atom} & \textbf{Metal (Pt/Pd/Au/Ir/Ru)} & \textbf{Use} \\
+\hline
+PlatinAI\_MBFinder            & xlsx       & 226\,918 & smiles                                                    & 5/240/48  & 1867/15/5/5/3      & train \\
+PlatinAI\_predicted\_A2780    & xlsx       & 214\,376 & smiles, pred\_0                                            & 6/246/47  & 1936/17/7/0/0      & train+eval \\
+PlatinAI\_predicted\_MCF7     & xlsx       & 214\,376 & smiles, pred\_0                                            & 4/237/47  & 1995/11/4/1/4      & train+eval \\
+MetalCytoToxDB                & csv (23)   &  26\,801 & SMILES\_Ligands, Counterion, IC50\_Dark, IC50\_Light, Cell\_line, Metal, Oxidation\_state, IC50\_Cisplatin & 6/234/39 & 0/0/0/0/0 (CSV: Ru\,19\,135) & train+eval \\
+NCI60\_GI50                   & csv (14)   & $\sim$200\,K of 6\,M & NSC, AVERAGE, PANEL\_NAME, CELL\_NAME, CONCENTRATION\_UNIT, LOG\_HI\_CONCENTRATION & n/a & n/a (SMILES-less) & reference \\
+tmQM\_parsed                  & csv (18)   & 108\,542 & csd\_code, stoichiometry, metal, charge, spin, coord\_number, metal\_bo\_total, HL\_Gap, HOMO\_Energy & 6/99/32 & 251/306/122/128/263 & train+reference \\
+CrossDocked2020\_pocket10     & pdb+sdf    &   2\,464 & pocket\_id, rec.pdb, lig.sdf                                & n/a       & n/a (no metal)     & eval \\
+crossdocked\_3d\_cache        & pkl        &     856 & per-pocket 3D coords                                       & n/a       & n/a                & eval \\
+aizynthfinder\_public         & onnx+hdf5  &       1 & uspto\_legacy\_weights.npz, uspto\_legacy\_converted.onnx, uspto\_model.hdf5, uspto\_templates.hdf5 & n/a & n/a & reference/eval \\
+REINVENT4\_prior              & .prior     &       1 & reinvent\_v4.4.22.prior (23\,MB TorchScript)               & n/a       & n/a                & train/generate \\
+\hline
+\end{tabular}
+\caption{Local dataset provenance under \texttt{/mnt/storage/data/molmetal/}
++ \texttt{/mnt/storage/models/reinvent4/} (Phase-1 audit, 2026-09-16).
+Heavy-atom column is min/max/median over a 3\,000-sample random scan
+(seed=0); Metal column is RDKit SMARTS hits in that sample for PlatinAI
+and tmQM, and CSV-column counts for MetalCytoToxDB (RDKit miss is a
+known artefact of split Counterion+Ligand columns, see
+\texttt{phase1\_inventory.md} \S2.2).  NCI60 GI50 is SMILES-less and
+joined only on NSC.  Citations: PlatinAI dataset
+\cite{footnote:platinai_dataset} (cite-only); MetalCytoToxDB
+\cite{footnote:metalcytotoxdb} (cite-only); NCI60
+\cite{footnote:nci60}; tmQM \cite{footnote:tmqm}; CrossDocked2020
+\cite{luo2021crossdocked}; AiZynthFinder
+\cite{footnote:aizynthfinder}; REINVENT4 \cite{footnote:reinvent4}.}
+\label{tab:s11-dataset-provenance}
+\end{table}
+
+\paragraph{Honest framing.}
+All eleven rows are \DESIGN{}-with-\texttt{MEASURED}-provenance: the
+counts come from the Phase-1 inventory, not from a Round-12/13 sweep.
+The MetalCytoToxDB metal-coverage column reports \emph{zero} RDKit
+SMARTS hits despite the dataset being multi-metal --- this is a known
+parser limitation (ligand split across columns), not a measurement of
+absence.  The CSV-column counts in parentheses are the ground-truth
+metal breakdown (Ru-dominant photodynamic-therapy complexes).
+PlatinAI canonical rate of $\sim$62--66\% is artificially low due to
+RDKit kekulisation failures on coordination complexes; the underlying
+molecules are not necessarily invalid (see
+\texttt{phase1\_inventory.md} \S5 caveat 1).
+
+% ---------------------------------------------------------------------------
+% Table S11.2 — Vertical metric definitions
+% ---------------------------------------------------------------------------
+
+\subsubsection*{Table S11.2 --- Vertical metric definitions}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{3.5cm}p{5.5cm}p{3.0cm}p{1.6cm}}
+\hline
+\textbf{Metric} & \textbf{Formula / definition} & \textbf{Source module} & \textbf{Default range} \\
+\hline
+logp\_mean                         & RDKit Crippen logP mean over candidates                                                              & r4\_lambda\_only\_run.metric\_logp\_mean              & $[-5,\, 10]$        \\
+tpsa\_mean                         & RDKit CalcTPSA mean over candidates                                                                  & r4\_lambda\_only\_run.metric\_tpsa\_mean              & $[0,\, 300]$ \AA$^2$ \\
+rotb\_mean                         & RDKit NumRotatableBonds mean over candidates                                                         & r4\_lambda\_only\_run.metric\_rotb\_mean              & $[0,\, 20]$         \\
+oxidation\_state\_distribution     & dict $\{\text{symbol: count}\}$ of parsed metal oxidation states (heuristic from SMILES charge+CN)    & r4\_lambda\_only\_run.metric\_oxidation\_state\_distribution & $\{\text{Pt}^{II}{:}\,n_1, \ldots\}$ \\
+coordination\_number\_mean         & mean coordination number over Pt/Ru/Ir/Au/Rh/Os centres (RDKit neighbourhood)                       & r4\_lambda\_only\_run.metric\_coordination\_number\_mean & $[0,\, 12]$         \\
+monodentate\_cl\_count             & count of monodentate \texttt{Cl} leaving groups on Pt/Ru/Ir                                          & r4\_lambda\_only\_run.metric\_monodentate\_cl\_count  & $\mathbb{Z}_{\geq 0}$ \\
+gsh\_evasion\_score                & fraction of candidates that evade glutathione (GSH) by SMARTS probe                                  & r4\_lambda\_only\_run.metric\_gsh\_evasion\_score (AnticancerMetricSuite.gsh\_evasion\_flag) & $[0,\, 1]$ \\
+dna\_kb\_proxy                     & mean DNA cross-link binding proxy in $[0,1]$ (SMARTS + ring count)                                   & r4\_lambda\_only\_run.metric\_dna\_kb\_proxy (AnticancerMetricSuite.dna\_kb\_proxy) & $[0,\, 1]$ \\
+anticancer\_index                  & mean composite anticancer index $\in [0,1]$ (weighted sum of $\text{coord}_{\text{compl}} + \text{dna\_kb} + \text{gsh\_evade}$) & r4\_lambda\_only\_run.metric\_anticancer\_index (AnticancerMetricSuite.composite) & $[0,\, 1]$ \\
+\hline
+\end{tabular}
+\caption{Definition of the nine P0 vertical-specific metrics wired into
+\texttt{r4\_lambda\_only\_run.py} and surfaced in the §5.8 ablation
+panel of the main text.  All nine are pure CPU functions of the
+generated candidate SMILES; no oracle, no docking, no GPU required.
+Range columns are the natural RDKit / heuristic bounds used for
+clipping in the dashboard.}
+\label{tab:s11-vertical-metrics}
+\end{table}
+
+\paragraph{Honest framing.}
+The metric \emph{definitions} are \DESIGN{} (the formulas are
+author-fixed); the \emph{smoke numbers} in §5.8
+($\text{logp}=-2.40$, $\text{tpsa}=233.5$, $\text{rotb}=9.67$,
+$\text{coord}=0$, $\text{cl}=0$, $\text{gsh}=0$, $\text{dna}=0$,
+$\text{anticancer}=0.125$) are \MEASURED{} on a single
+$(pocket, seed, no\,metal\text{-}seed)$ cell per
+\texttt{wf\_p0\_metrics\_smoke} (2026-09-14).  No multi-pocket
+acceptance number is reported.  The platinum-specific prior
+($\text{coord}_{\text{compl}}$ for Pt$^{\text{II}}$ square-planar,
+CN$=4$) is enforced separately by
+\texttt{metal\_coord\_compliance\_rate} (round 14 workstream).
+
+% ---------------------------------------------------------------------------
+% Table S11.3 — Cell-line activity oracle calibration
+% ---------------------------------------------------------------------------
+
+\subsubsection*{Table S11.3 --- Cell-line activity oracle calibration}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{2.0cm}p{2.4cm}p{2.0cm}p{2.0cm}p{2.0cm}p{2.4cm}}
+\hline
+\textbf{Cell line} & \textbf{PlatinAI r vs wet-lab} & \textbf{MAE (pIC50)} & \textbf{RMSE (pIC50)} & \textbf{NCI60 GI50 cov.\ (\%)} & \textbf{MetalCytoToxDB IC50 cov.\ (n)} \\
+\hline
+A2780       & \DESIGN{} (pending MetalCytoToxDB overlay) & \DESIGN{} & \DESIGN{} & 22\,927 / 200\,K = 11.5\% (Ovarian panel) & 1\,282 \\
+MCF7        & \DESIGN{} (pending MetalCytoToxDB overlay) & \DESIGN{} & \DESIGN{} & 14\,068 / 200\,K = 7.0\% (Breast panel)   & 2\,209 \\
+A549        & \DESIGN{} (PlatinAI does not cover)        & \DESIGN{} & \DESIGN{} & 31\,313 / 200\,K = 15.7\% (NSCLC panel)    & 2\,994 \\
+HCT116      & \DESIGN{} (PlatinAI does not cover)        & \DESIGN{} & \DESIGN{} & 25\,691 / 200\,K = 12.8\% (Colon panel)    &   817 \\
+OVCAR-3     & \DESIGN{} (PlatinAI does not cover)        & \DESIGN{} & \DESIGN{} & 22\,927 / 200\,K = 11.5\% (Ovarian panel; no OVCAR-3 row split) & 0 \\
+\hline
+\end{tabular}
+\caption{Cell-line activity-oracle calibration matrix for the §4.6.1
+PlatinAI column.  PlatinAI covers only A2780 and MCF7 (its two
+training cell lines); A549, HCT116, OVCAR-3 are unsupported and
+would require a per-cell-line PlatinAI-family oracle extension
+(round-14+ workstream).  NCI60 GI50 coverage is reported on the
+200\,K-row Phase-1 sample (\texttt{phase1\_inventory.md} \S2.3) as
+panel-level row counts (full population $\sim$6\,M NSC rows).
+MetalCytoToxDB coverage is the per-cell-line row count in the
+26\,801-row dataset.}
+\label{tab:s11-cell-line-calibration}
+\end{table}
+
+\paragraph{Honest framing.}
+\textbf{PlatinAI is ML-generated; NCI60 + MetalCytoToxDB are wet-lab.}
+The PlatinAI oracle returns a probability $\in [0,1]$ trained on
+214\,376 internally-labelled SMILES per cell line; it is not a
+calibrated wet-lab measurement.  The Pearson $r$ / MAE / RMSE columns
+for A2780 and MCF7 are \DESIGN{} pending the MetalCytoToxDB
+IC50\textsubscript{Dark} overlay (which intersects PlatinAI on a
+small sub-population and requires a SMILES-merge step to overcome the
+Counterion+Ligand parser limitation; see
+\texttt{phase1\_inventory.md} \S5 caveat 2).  NCI60 is SMILES-less,
+so its coverage is reported at the panel level only.  OVCAR-3 is not
+a row key in either PlatinAI or MetalCytoToxDB; including it here is
+a \emph{forward-looking placeholder} documenting the desired coverage
+gap.  All five rows are \DESIGN{} until the §4.6.1 calibration overlay
+ships (round-14 workstream; see \texttt{wf\_pivot\_followup/f2\_platinai\_s4.md}
+\S3 + \S7 follow-up 4).
+
+% ---------------------------------------------------------------------------
+% Notes
+% ---------------------------------------------------------------------------
+
+\paragraph{Reproducibility.}
+The dataset-provenance table is regenerated by
+\texttt{molmetal/reports/wf\_metallodrug\_vertical/phase1\_inventory.py}
+from \texttt{/mnt/storage/data/molmetal/} + the
+\texttt{asset\_manifest.json} shipped under the same directory.  The
+metric-definition table is a verbatim transcript of the docstrings in
+\texttt{molmetal/scripts/r4\_lambda\_only\_run.py:metric\_*}.  The
+calibration table is a join of the §2.1 PlatinAI inventory, §2.2
+MetalCytoToxDB inventory, and §2.3 NCI60 inventory; no value in this
+section is re-derived at compile time.

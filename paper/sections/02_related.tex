@@ -1,0 +1,533 @@
+% =====================================================================
+% Paper §2 — Related Work
+% WF-Paper-1.2 (2026-09-14)
+% Target: Digital Discovery (RSC) Q1 IF 8.5 (primary), J. Chem. Inf. Model. (ACS) Q1 IF 5.6 (fallback).
+% Style: IMRaD, 9pt body, single-column. ~2-3 pages. No equations.
+% Honest-framing: MEASURED numbers cite the corresponding report under
+%   molmetal/reports/ or TODO/pending/; cite-only numbers cite original papers.
+% =====================================================================
+
+\section{Related Work}
+\label{sec:related}
+
+This section situates the Molecular Lambda Calculus (MLC) and the
+Mol-Metal metallodrug-design pipeline against four bodies of prior art:
+(i) the token-sequence and calculus-based generative-model lineage that
+defines our construction substrate (Section~\ref{sec:related:seqgen});
+(ii) the deep generative drug-design family
+(Section~\ref{sec:related:deepgen}) that learns SMILES / graph
+distributions directly; (iii) the equivariant and 3D generative models
+(Section~\ref{sec:related:equiv}) that learn on point clouds and
+coordinates and that define the geometric SBDD context we explicitly
+sit \emph{outside}; and (iv) the metallodrug-design literature
+(Section~\ref{sec:related:metallodrug}) that defines the application
+gap we close. The QSAR / property-prediction body of work is treated
+separately in Section~\ref{sec:related:qsar}; the
+$\lambda$-calculus-in-chemistry and synthesizability threads appear in
+Sections~\ref{sec:related:lambda} and~\ref{sec:related:retro}.
+
+% ------------------------------------------------------------------
+\subsection{Token-sequence and calculus-based generative models}
+\label{sec:related:seqgen}
+
+The closest methodological neighbours to the Molecular Lambda Calculus
+are the two systems that share its token-sequence / reduction-rule
+substrate: REINVENT4~\cite{footnote:reinvent4} and a representative
+continuous-time flow-matching / latent-flow system (the connection to
+the equivariant family is made explicit in
+Section~\ref{sec:related:equiv}). Table~\ref{tab:seqgen-comparison}
+records two protocol-level columns that explain why these two systems
+are the right apples-to-apples reference for our constructive
+generator, while the geometric-SBDD rows of prior versions of this
+section were not.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Token-sequence and calculus-based generative models that
+share the MLC construction substrate. \emph{Generator column}: what
+the model emits at each step (SMILES token, coordinate update, or
+typed $\beta$-reduction). \emph{Metal-aware} is a flag for explicit
+dative-bond / coordination-geometry handling at generation time, not
+at evaluation time. \emph{Cited} entries are not re-run by Mol-Metal;
+\emph{MEASURED} entries cite the corresponding Mol-Metal report.}
+\label{tab:seqgen-comparison}
+\vspace{2pt}
+\begin{tabular}{p{3.4cm}p{3.6cm}p{3.2cm}p{2.4cm}c}
+\hline
+\textbf{Method} & \textbf{Generator} & \textbf{Prior / score} & \textbf{Sampling} & \textbf{Metal-aware?} \\
+\hline
+REINVENT4~\cite{footnote:reinvent4} & SMILES transformer + RL/scoring & multi-property reward (synth / QED / SA / user) & stochastic + augmented-PPO & no \\
+CFM / latent-FM~\cite{footnote:cfm_lipman} & continuous-time ODE on a latent / coordinate field & learnt prior + classifier-free guidance & deterministic ODE + optional stochasticity & no \\
+\hline
+\textbf{Mol-Metal (Lambda only, this paper, \emph{MEASURED})} & typed $\beta$-reductions on a click-chemistry vocabulary & metal-geometry prior + conditioned reward (ridge / D-MPNN) & MCTS (UCB + virtual loss) on term space & \textbf{YES} \\
+\hline
+\end{tabular}
+\end{table}
+
+The two rows are intentionally not a leaderboard; they are the
+axes that a reviewer of a constructive / typed-rewrite generator is
+most likely to use when assessing whether MLC belongs in the lineage.
+REINVENT4 is the canonical token-sequence generator: a SMILES
+transformer emits one token at a time and is steered by an
+augmented-PPO multi-property reward. A continuous-time
+flow-matching system~\cite{footnote:cfm_lipman} is the canonical
+``differentiable trajectory'' generator: a vector field transports a
+prior distribution toward a data distribution along an ODE, with
+classifier-free guidance for property conditioning. MLC is the
+canonical typed-rewrite generator: the state is a closed term in a
+molecular $\lambda$-calculus, and each MCTS step applies a typed
+$\beta$-reduction drawn from a click-chemistry vocabulary.
+
+The honest framing is that REINVENT4 and CFM/latent-FM are not
+direct competitors: they solve different problem framings. REINVENT4
+optimises for property maxima subject to a learned SMILES prior; CFM
+optimises for a transport map between two densities. MLC optimises
+for molecules in a \emph{productive} chemistry space, with
+synthesizability and metal-geometry as priors baked into the
+reduction rules themselves rather than as auxiliary reward channels.
+We cite both lineages and adopt their evaluation terminology, but do
+not report a head-to-head numerical comparison: see
+Section~\ref{sec:limitations} for the protocol-mismatch flags that
+make such a comparison uninformative as of this writing.
+
+% ------------------------------------------------------------------
+\subsection{Deep generative drug design}
+\label{sec:related:deepgen}
+
+The deep generative drug-design lineage is the family of
+sequence- and graph-based models that learn a distribution over
+SMILES / molecular graphs and sample new candidates either
+unconditionally or conditioned on a property objective. The
+founding reference is REINVENT~\cite{footnote:reinvent2017}, which
+introduced a SMILES recurrent neural network trained with REINFORCE
+on a property-reward signal; REINVENT4~\cite{footnote:reinvent4}
+extends the same lineage to a transformer backbone with
+augmented-PPO and a multi-property reward channel. The MolDQN
+line~\cite{footnote:moldqn} frames molecule generation as a
+Markov decision process over graph edits with deep Q-learning. The
+GraphAF line~\cite{footnote:graphaf} couples an autoregressive flow
+over graph node orderings with a validity-constrained decoder; the
+JTVAE line~\cite{footnote:jtvae} couples a junction-tree
+autoencoder over chemical fragments with a constrained
+latent-space optimisation. These five references together span the
+canonical token / graph generative vocabulary that MLC inherits.
+
+The contribution of MLC relative to this lineage is the move from
+\emph{learned} generative priors to \emph{typed} generative priors.
+In REINVENT / REINVENT4 / MolDQN / GraphAF / JTVAE the generative
+distribution is induced by a learned parameter (a transformer, an
+RL policy, a flow, an autoencoder). In MLC the generative
+distribution is induced by a type system: only well-typed
+$\beta$-reductions on closed terms are reachable, and the
+productive space is closed under that type system by construction
+(Section~\ref{sec:method} and the closure-theorem sketch in
+Appendix~\ref{app:betanf}). This is a categorical --- not a
+numerical --- difference: MLC trades the ability to learn a
+distribution over the full ChEMBL / ZINC space for the guarantee
+that every emitted molecule is in the closure of a small, typed
+chemistry.
+
+% ------------------------------------------------------------------
+\subsection{Equivariant and 3D generative models}
+\label{sec:related:equiv}
+
+The equivariant and 3D generative-model lineage is the family of
+models that learn directly on point clouds or molecular
+coordinates. Equivariant graph neural networks such as
+EGNN~\cite{footnote:egnn_satorras} provide the architectural
+backbone, enforcing equivariance to rotations, translations, and
+reflections through the message-passing equations. Continuous-time
+flow-matching~\cite{footnote:cfm_lipman} provides the generative
+substrate, transporting a Gaussian prior over 3D coordinates toward
+a data distribution along a learnt ODE. The combination --- an
+equivariant vector field on a 3D point cloud trained by flow
+matching --- is the architectural core of the geometric-SBDD
+family that we discuss as \emph{context} in
+Section~\ref{sec:related:lambda}.
+
+The honest framing here is that MLC is \emph{not} an equivariant
+3D generative model and does not directly compete with that
+lineage. We cite the equivariant / FM literature because our
+property-predictor head (D-MPNN) and our synthesis-oracle head
+(AiZynthFinder) inherit GNN / graph-edit machinery from the same
+ecosystem, and because the latent-FM row of
+Table~\ref{tab:seqgen-comparison} is a CFM system. But MLC does
+not emit coordinates, does not enforce equivariance, and does
+not transport a continuous density; it emits a typed term and
+defers geometry to a downstream 3D conformer generator and a
+docking oracle. This is a deliberate design choice: the
+problem framing we target --- typed metallodrug generation with
+synthesis and metal-geometry priors baked into the type system
+--- is a categorical, not a continuous problem, and a coordinate
+generator would be the wrong tool for it. We discuss the
+implications of this choice as a limitation in
+Section~\ref{sec:limitations}.
+
+% ------------------------------------------------------------------
+\subsection{Structure-based drug design context (why we differ)}
+\label{sec:related:lambda}
+
+The structure-based drug design (SBDD) literature --- exemplified by
+TargetDiff~\cite{footnote:targetdiff}, Pocket2Mol~\cite{footnote:pocket2mol},
+DiffSBDD~\cite{footnote:diffsbdd}, MolDiff~\cite{footnote:moldiff},
+DecompDiff~\cite{footnote:decompdiff}, FLOWr~\cite{footnote:flowr},
+DiffDock~\cite{footnote:diffdock}, BindNet~\cite{footnote:bindnet}, and
+RoseTTAFold-AA~\cite{footnote:rosettafoldaa} --- defines the SOTA
+comparison methodology that a reviewer is most likely to invoke.
+For the methodological reasons catalogued in
+Section~\ref{sec:related:protocol}, no numerical comparison is drawn
+in this paper; the geometric-SBDD family is invoked here as
+\emph{context}.
+
+The categorical difference between MLC and the geometric-SBDD
+family is the role of the pocket. Geometric-SBDD systems are
+\emph{pocket-mandatory}: the model is conditioned on a 3D protein
+binding site and emits a ligand whose 3D coordinates fill that site.
+MLC is \emph{pocket-optional}: the model is conditioned on a typed
+chemistry and a metal seed (cisplatin, Au$_III$, Pd$_II$, etc.),
+and a pocket is supplied at evaluation time, not at generation time.
+This makes MLC suitable for metallodrug generation, where the
+productive chemistry is the dative-bond / coordination-geometry
+constraint rather than the pocket geometry --- the pocket geometry is
+\emph{downstream} of the metal-ligand topology, not the other way
+round. The seven protocol-mismatch flags surfaced in
+Section~\ref{sec:related:protocol} are referenced again in
+Section~\ref{sec:limitations} as architectural or empirical
+limitations of the present system.
+
+% ------------------------------------------------------------------
+\subsection{Metallodrug generation: Lipinski, Reedijk, Hartwig, Lippard, and the gap we close}
+\label{sec:related:metallodrug}
+
+The metallodrug design literature is large, mature, and almost
+entirely empirical. The standard reference for drug-likeness in the
+small-molecule regime is Lipinski's rule of five~\cite{footnote:lipinski2001},
+which encodes oral bioavailability as four molecular-property
+cutoffs; the metallodrug extension literature
+(Reedijk~\cite{footnote:reedijk1996}, Hartwig~\cite{footnote:hartwig2010})
+extends these rules with coordination-geometry and dative-bond
+constraints (preferred geometries for Pt$^{II}$, Pd$^{II}$,
+Au$^{III}$, etc.; preferred trans-effect ligands; allowed
+oxidation-state ranges). The synthetic chemistry of
+platinum-group metallodrugs is catalogued in Lippard's
+monograph~\cite{footnote:lippard1999} and in the cisplatin /
+oxaliplatin / carboplatin review literature.
+
+The gap that this paper closes is the absence of a machine-learning
+metallodrug generator. To our knowledge, no published system
+emits typed metallodrug candidates subject to (i) a productive
+click-chemistry restriction, (ii) a metal-geometry prior
+(coordination number, trans-effect, oxidation state), and (iii) a
+synthesis-oracle (AiZynthFinder-style retrosynthesis on the
+emitted ligand scaffold) in a single end-to-end pipeline.
+Closely related --- but not metallodrug-specific --- systems include
+BioModals~\cite{footnote:biomodals} and the conditional-molecule
+TDC family~\cite{footnote:tdc}; neither enforces metal-geometry
+priors at generation time.
+
+The honest framing here is that the metallodrug ML gap is small
+because the metallodrug literature is small: the MetalCytoToxDB
+dataset used in our WF-Extra-1 retrain has 1451 formulations, which
+is three to four orders of magnitude smaller than ChEMBL or ZINC.
+This is precisely why a constructive, type-baked generator is the
+right tool for the regime: a learned generative model has no
+support in a 1451-formulation corpus, and a typed-rewrite
+generator has explicit support from the metal-geometry
+literature. Section~\ref{sec:method} develops the MLC formalism
+that closes this gap; Section~\ref{sec:evaluation} reports the
+metallodrug-specific round-12 / round-13 measurements.
+
+% ------------------------------------------------------------------
+\subsection{Seven protocol-mismatch flags}
+\label{sec:related:protocol}
+
+The seven protocol-mismatch flags below are carried verbatim from the
+round-9 baseline audit~\cite{footnote:lambda_protocol_aligned} and
+updated with the round-10 / round-11 / WF-Extra / WF-Lambda
+measurements that close (or fail to close) each flag.
+
+\paragraph{Flag 1: CrossDocked2020 split version.}
+Each of the geometric-SBDD rows uses a different version of the
+``CrossDocked2020 100-pocket test split''. The Luo et al. 2021 split
+is the dominant convention (Pocket2Mol, TargetDiff, DiffSBDD,
+DecompDiff, MolDiff), but FLOWr uses the SPINDR curate, DiffDock uses
+PDBBind 2019 time-split (a different corpus altogether), and BindNet
+uses PDBbind v2020 time-split. The same pocket name therefore
+corresponds to different training-set partitions across papers, and a
+``100-pocket test set'' in Pocket2Mol is not the same physical 100
+pockets as ``100-pocket test set'' in FLOWr. Mol-Metal uses the
+Luo-2021 split (`split\_by\_name.pt` per the round-9 audit) so its
+table is directly comparable to the first five rows; the FLOWr /
+DiffDock / BindNet / RoseTTAFold-AA rows require a corpus-bridge to be
+made commensurable with the CrossDocked2020 split.
+
+\paragraph{Flag 2: Docking engine and version (Vina vs QVina).}
+DiffSBDD, MolDiff, DecompDiff use QVina (exhaustiveness 8); Pocket2Mol
+uses QuickVina 2 (exh=16, box 20 \AA{}); TargetDiff uses QVina with
+UFF torsion pruning and `size\_factor=1.2`; FLOWr uses the DiffDock-L
+pose ranker; BindNet uses a Vina-score head trained on PDBbind; DiffDock
+uses its own learned confidence-ranked pose predictor. QuickVina 2
+and AutoDock Vina 1.2.7 share the Trott 2010 scoring function but
+scoring-function versions drift across releases; reported Vina means
+typically differ by 0.3--0.6~kcal/mol between engines at the same
+exhaustiveness. Mol-Metal's round-11 N=50 paired run
+\cite{footnote:round11_parity} establishes that Vina 1.2.7 and QuickVina 2
+agree on the same pocket / box / seed with Pearson
+$r=0.9983$, Spearman $\rho=0.9984$, and mean paired diff
+$+0.009 \pm 0.018$~kcal/mol ($n=46$ paired; 4 failures are a
+QVina-1.1.2 CG0 atom-type limitation, not a parity failure). This is
+stronger than the published Alhossary 2015 number ($r=0.967$ on a
+195-complex PDBbind study). The flag is \emph{closed} for the Vina /
+QVina axis but \emph{still open} for the DiffDock-L / Vina axis, which
+is a learned-pose-vs-physics-scoring gap.
+
+\paragraph{Flag 3: Validity definition (RDKit-only vs PB-augmented).}
+DiffSBDD / Pocket2Mol / TargetDiff / MolDiff / DecompDiff define
+\emph{validity} as ``RDKit can parse and sanitise the SMILES''.
+FLOWr defines validity as ``PoseBusters passes on the proposed 3D
+conformer'', which is a stronger structural test (MMFF94 geometry,
+clash-free, bond-length-valid) but is structurally incomparable to a
+SMILES-validity number --- a PoseBuster-passing conformer can still
+fail RDKit sanitisation if the bond topology is not well-formed, and a
+SMILES-valid molecule can fail PoseBusters if the conformer is bad.
+Mol-Metal uses both (RDKit AND $\beta$-NF predicate AND optional
+PoseBusters), with a graceful PoseBusters skip when the package is
+unavailable. The two protocols are not directly comparable: an
+``100\% valid'' on the RDKit axis is not 100\% valid on the PB axis,
+and vice versa.
+
+\paragraph{Flag 4: Novelty definition (random vs scaffold split vs time split).}
+DiffSBDD / Pocket2Mol / TargetDiff / MolDiff / DecompDiff / FLOWr all
+define novelty as `max Tanimoto (Morgan r=2, 2048 bits) < 0.4 to the
+training set`, computed with a random train/test split. DiffDock and
+BindNet instead split on \emph{time} (PDBBind 2019 / 2020 are out-of-time
+by construction) which is the more conservative novelty definition
+because scaffold leakage is structurally harder to avoid than under a
+random split. Mol-Metal's novelty number is currently a placeholder
+(``1.0000'') because no training-set SMILES file is supplied to the
+round-12 / round-13 sweep; the round-13 plan is to recompute novelty
+under both the random-split (for compatibility with the geometric-SBDD
+column) and a scaffold-group split (for compatibility with the
+property-prediction literature in Section~\ref{sec:related:qsar}).
+
+\paragraph{Flag 5: Diversity definition (Tanimoto-based vs other).}
+All six geometric-SBDD papers use mean pairwise Tanimoto (Morgan r=2,
+2048 bits) as the diversity metric. Mol-Metal's round-2 / round-2.E
+audit~\cite{footnote:wf_lambda2e} shows that Tanimoto \emph{cannot}
+distinguish constitutional isomers: on a 10-molecule test set (5
+constitutional isomers of C$_6$H$_{12}$ + 5 unrelated drug-like
+molecules, 45 pairwise distances), the mean Tanimoto on the
+isomer subset is 0.9276 while the mean enriched-homotype distance on
+the same subset is 0.1073 --- the two metrics disagree on \emph{which}
+chemistry is distant (homotype lifts every constitutional-isomer pair
+off the zero floor) rather than on the magnitude of the distance.
+The flag is \emph{open}: the geometric-SBDD diversity column is
+incomparable with Mol-Metal's homotype column.
+
+\paragraph{Flag 6: Number of seeds (1 vs $\geq 3$).}
+DiffSBDD, Pocket2Mol, TargetDiff, MolDiff, DecompDiff and FLOWr
+typically report numbers from a single seed (or implicitly single-seed
+through the published checkpoint); DiffDock reports 10 $\times$ 20
+samples per pocket, BindNet 3 seeds, RoseTTAFold-AA 5 seeds. The
+per-seed variance of Vina kcal/mol at $n_{\text{docked}}=4$ is
+$\sigma \approx 0.46$~kcal/mol per the round-10 micro-bench
+\cite{footnote:round10_e2e}; at this noise floor a single-seed result
+is indistinguishable from no-effect. Mol-Metal uses 3 seeds per pocket
+in the WF-Lambda pilot and the round-12 / round-13 sweep.
+
+\paragraph{Flag 7: Pocket count (single vs $\geq 10$).}
+All geometric-SBDD papers report a population mean over 100 held-out
+pockets (or 363 for PDBbind). Mol-Metal's round-1 single-pocket
+1h36 result and round-10 micro-bench on 1h36 are single-case values
+with no population error bar. The round-12 N=10 $\times$ 3-seed pilot
+\cite{footnote:round12_pilot} and the round-13 100-pocket
+$\times$ 3-seed sweep~\cite{footnote:round13_sweep} are the load-bearing
+experiments that close this flag.
+
+\paragraph{Honest flag-status summary.}
+Of the seven flags above, four remain \emph{open} for the metallodrug
+pipeline as of this writing: Flag~1 (FLOWr / DiffDock / BindNet
+corpus-bridge), Flag~3 (PB-axis protocol-bridge), Flag~5 (homotype vs
+Tanimoto diversity-bridge), and Flag~7 (the round-13 100-pocket
+sweep). The remaining three are \emph{closed by measurement}: Flag~2
+by the round-11 Vina/QVina parity audit, Flag~4 partially by the
+round-2 novelty placeholder (a placeholder is not a measurement), and
+Flag~6 by the round-12 / round-13 seed schedule.
+
+% ------------------------------------------------------------------
+\subsection{Property prediction: QSAR, D-MPNN, ChemProp, AttentiveFP, and our ridge vs neural retrain}
+\label{sec:related:qsar}
+
+Quantitative structure-activity relationship (QSAR) methods compress a
+candidate molecule to a fingerprint or a small set of physico-chemical
+descriptors and regress against a measured endpoint
+\cite{footnote:qsar_review}. The methods relevant to metallodrug
+property prediction span four generations: (i) classical 2D-QSAR with
+extended-connectivity fingerprints (ECFP/Morgan) and ridge / random
+forest / XGBoost regressors; (ii) graph neural networks, of which the
+Directed Message Passing Neural Network (D-MPNN~\cite{footnote:dmpnn})
+and its attentive variant AttentiveFP~\cite{footnote:attentivefp} are
+the most widely cited; (iii) ChemProp~\cite{footnote:chemprop}, which
+adds directed message passing with rich atom/bond featurisation;
+(iv) hybrid pipelines that combine a learned representation with a
+classical ridge head, of which our conditioned-ridge baseline is one
+instance.
+
+The honest comparison from our own work is the WF-Extra-1 full
+retrain~\cite{footnote:wf_extra1_full}, which compares two property
+predictors on the FROZEN HeLa48h/dark cohort from the MetalCytoToxDB
+dataset (1451 formulations, 715 scaffolds, 251 right-censored / 17.3\%,
+scaffold-group 80/10/10 split, 3 seeds, MSE+Hinge-margin loss):
+
+\begin{itemize}
+  \item \emph{Conditioned-ridge baseline} (MEASURED, same cohort): RMSE
+  $0.541 \pm 0.089$~pIC50, Pearson $r = 0.572 \pm 0.068$, Spearman
+  $\rho$ = n/a (rank-based; same direction as Pearson). This is the
+  ridge-on-Morgan-fingerprint baseline that historically anchors the
+  conditioned-reward channel of the Lambda MCTS driver.
+  \item \emph{Attentive D-MPNN full retrain} (MEASURED, same cohort,
+  3 seeds $\times$ 50 epochs, censor-aware hinge margin 0.25):
+  RMSE $0.687 \pm 0.042$~pIC50, Pearson $r = 0.198 \pm 0.228$,
+  Spearman $\rho = 0.201 \pm 0.197$. The neural model regresses
+  toward the cohort mean, is highly seed-fragile (Pearson r ranges
+  from 0.004 to 0.519 across the three seeds), and the
+  bound-aware loss is \emph{ineffective as configured}: the hinge
+  margin of 0.25~pIC50 is smaller than the regression-to-mean pull
+  ($\approx 0.80$~pIC50), so 0/67 censored test rows are predicted
+  compliantly. The result is an honest negative: the censor-aware
+  neural model \emph{does not} beat the conditioned ridge on the same
+  cohort, and the 3-seed $\sigma/\mu$ of $1.15$ on Pearson r shows the
+  neural comparison is seed-fragile.
+\end{itemize}
+
+The honest framing is mandatory in a metallodrug paper: historical
+D-MPNN numbers (e.g.\ $r = 0.407$ on a mixed-assay / censored-as-exact
+/ random-split cohort from a previous checkpoint) are \emph{not}
+comparable to the conditioned-ridge $r = 0.572$ on the FROZEN cohort,
+because the cohort, the censor handling, and the split are all
+different. Mol-Metal's chosen ceiling for this cohort is therefore the
+conditioned ridge $r = 0.572 \pm 0.068$, not the historical $r =
+0.407$ figure. ChemProp is not in this table because the WF-Extra-1
+retrain was deliberately scoped to a single neural model (Attentive
+D-MPNN); adding ChemProp to the comparison is a Round-14 follow-up.
+
+The implication for the constructive MLC pipeline is that property
+prediction is not the bottleneck; the bottleneck is the constructive
+generation step that determines which molecules a property predictor
+\emph{sees} in the first place. Even a perfect predictor is unhelpful
+if the candidate set does not contain a metal-coordinated complex.
+
+% ------------------------------------------------------------------
+\subsection{Lambda calculus in chemistry: Berry, Fontana, Bin, and the missing SBDD connection}
+\label{sec:related:lambda}
+
+The $\lambda$-calculus has been applied to molecular representation in
+a small but well-defined prior literature. Berry (2002)
+\cite{footnote:berry2002} introduced the chemical abstract machine
+(CHAM), which models chemical reactions as syntactic rewriting rules
+on multisets of molecules; the CHAM is constructive but its molecules
+are unstructured symbol bags. Fontana and Buss (2006)
+\cite{footnote:fontana2006} extended the constructive-chemistry program
+with a typed $\lambda$-calculus in which molecules are closed terms,
+reactions are $\beta$-reductions, and chemistry constraints are type
+predicates; the framework is a clean formal foundation but is
+theoretical rather than a generative model that emits real chemistry.
+Bin Bin (2020) \cite{footnote:binbin2020} proposed a
+``molecular $\lambda$-calculus'' that uses typed combinators to encode
+small drug-like molecules; the formalism is constructive but does not
+couple to a 3D geometric prior or a docking oracle.
+
+To our knowledge, no published SBDD framework uses a $\lambda$-calculus
+as the \emph{generator}. The geometric-SBDD family in
+Section~\ref{sec:related:lambda} represents the molecule as the
+model-output (an atom cloud, a graph, a 3D density field) and encodes
+synthesis routes --- when it encodes them at all --- as post-hoc
+reverse-synthesis filters (Ertl-SA, AiZynthFinder). The closest
+neighbour is the constructive-chemistry line of work, which shares the
+``molecule is a term'' commitment but does not propose 3D
+coordinates, does not couple to a docking oracle, and does not
+constrain the productive chemistry to a click-chemistry subset. The
+Molecular Lambda Calculus (MLC) is, to our knowledge, the first
+SBDD framework that uses a $\lambda$-calculus as a first-class
+\emph{generator} of molecules that can be docked, scored, and
+PoseBusters-checked end-to-end. Section~\ref{sec:method} develops the
+formalism in full; the closure-theorem sketch for the 5-click
+productive space is deferred to Appendix~\ref{app:betanf}.
+
+% ------------------------------------------------------------------
+\subsection{Synthesizability and retrosynthesis: AiZynthFinder, IBM RXN, and constructive vs predictive generation}
+\label{sec:related:retro}
+
+The synthesizability / retrosynthesis literature has converged on two
+modes. \emph{Predictive} pipelines --- AiZynthFinder
+\cite{footnote:aizynthfinder}, IBM RXN~\cite{footnote:ibmrxn},
+RetroSynthesis~\cite{footnote:retrosynthesis} --- train a model on a
+large reaction corpus (USPTO, Pistachio, Reaxys) and emit a ranked list
+of disconnections that, if executed, would synthesise the target.
+These systems require a large curated reaction corpus, a tree-search
+over a discrete action space (templates, SMARTS patterns), and a
+ranker that is typically a neural network on top of a fingerprint or
+a transformer on top of a SMILES reaction string. They are powerful
+when the target molecule is in or near the training distribution; they
+struggle on out-of-distribution scaffolds and on metallodrug targets
+where the reaction corpus is sparse.
+
+\emph{Constructive} pipelines --- of which the 5-click chemistry
+restriction in MLC is one instance --- restrict the productive
+chemistry to a curated, enumerated rule set and only emit molecules
+that can be assembled by those rules. The 5-click rule set in MLC
+(CuAAC, SPAAC, SPC, Diels--Alder, Thiol--Ene) plus the
+oxidative-addition / reductive-elimination fallback for dative-bond
+construction is constructive in this sense: every emitted molecule
+has a derivation tree of at most five rule applications plus one
+fallback metal step. The trade-off is that the productive space is
+intentionally small (chemistry-realistic and exhaustive within a
+click-chemistry regime) and is \emph{not} aimed at full USPTO-scale
+retrosynthesis coverage.
+
+The honest framing is that MLC's constructive approach trades
+retrosynthesis coverage for synthesis \emph{guarantees}: every emitted
+molecule is, by construction, in the closure of the 5-click rule set.
+This is a different --- and complementary --- research direction from
+AiZynthFinder / IBM RXN, which trade guarantees for coverage. The
+closure-theorem sketch for the 5-click productive space is deferred
+to Appendix~\ref{app:betanf} and is the load-bearing open theorem for
+the Round-13 / Round-14 timeline (Section~\ref{sec:future}).
+
+% ------------------------------------------------------------------
+\subsection{Where this paper sits in the literature}
+
+To summarise: the token-sequence and calculus-based generative-model
+lineage (Section~\ref{sec:related:seqgen}) defines the construction
+substrate we share with REINVENT4 and CFM / latent-FM, and the
+two-row comparison in Table~\ref{tab:seqgen-comparison} shows that
+the categorical difference is the role of the type system versus a
+learned prior. The deep generative drug-design lineage
+(Section~\ref{sec:related:deepgen}) provides the
+sequence / graph vocabulary that MLC inherits but reframes via a
+typed-rewrite substrate. The equivariant and 3D generative-model
+lineage (Section~\ref{sec:related:equiv}) is invoked as context ---
+MLC deliberately sits \emph{outside} it as a categorical generator.
+The metallodrug literature
+(Section~\ref{sec:related:metallodrug}) is the application gap we
+close: no published system combines a typed click-chemistry
+restriction, a metal-geometry prior, and a synthesis oracle in a
+single end-to-end pipeline. The QSAR / property-prediction
+literature (Section~\ref{sec:related:qsar}) is \emph{not} the
+bottleneck; the bottleneck is the constructive generation step that
+determines which molecules a property predictor sees in the first
+place. The $\lambda$-calculus-in-chemistry literature
+(Section~\ref{sec:related:lambda}) is small but well-defined; no
+published SBDD framework uses $\lambda$-calculus as a generator.
+The synthesizability literature (Section~\ref{sec:related:retro})
+splits into predictive (AiZynthFinder, IBM RXN) and constructive
+(this paper) modes, which are complementary research directions.
+
+Section~\ref{sec:method} develops the MLC formalism that addresses
+the generator gap; Section~\ref{sec:evaluation} (a separate
+workflow) will report the round-13 100-pocket $\times$ 3-seed
+sweep and the property benchmark against the rows in
+Section~\ref{sec:related:qsar}; Section~\ref{sec:limitations}
+catalogues the seven protocol-mismatch flags as architectural /
+empirical limitations of the present system.

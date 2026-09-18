@@ -1,0 +1,28 @@
+{
+  "round": "R13",
+  "workflow": "wf_pb_pass_real_dock",
+  "date_utc": "2026-09-14",
+  "config": {
+    "n_pockets_smoke": 1,
+    "engine": "vina (CPU)",
+    "pb_mode": "mol (chemistry-only, no protein clash)",
+    "physical_docking": true,
+    "pb_check": true
+  },
+  "aggregate_metrics": {
+    "pb_pass_rate_smoke_1pocket": 1.0,
+    "n_pb_pass_smoke": 1,
+    "n_docked_smoke": 1,
+    "vina_best_smoke": -6.929,
+    "vina_best_unit": "kcal/mol",
+    "n_evaluations": 1
+  },
+  "verdict": {
+    "status": "WIRE_COMPLETE_SMOKE_ONLY",
+    "summary": "PB pass rate 1/1 on 1-pocket smoke, but pb_mode=mol (chemistry-only, no protein clash). 30-cell production sweep blocked by search-bound (n_distinct=1 collapse, 0 PB-eligible candidates). Recommend 10x3 PB smoke before pass-rate claim.",
+    "scale_validation_remaining": true,
+    "production_30x3_pb_eligible": 0,
+    "production_30x3_total_cells": 30
+  },
+  "source": "molmetal/reports/wf_pb_pass_real_dock/final.md"
+}

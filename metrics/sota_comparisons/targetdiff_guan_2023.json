@@ -1,0 +1,38 @@
+{
+  "name": "TargetDiff",
+  "authors": "Guan et al.",
+  "venue": "ICLR 2023",
+  "arxiv": "2303.03543",
+  "scope": "3D molecule generation with binding-aware diffusion",
+  "headline_metrics": {
+    "vina_mean": -8.45,
+    "vina_unit": "kcal/mol",
+    "vina_dataset": "CrossDocked2020 (test pocket set)",
+    "pb_pass_rate": 0.94,
+    "diversity_intdiv1": 0.860,
+    "sa_mean": "2.65-2.86",
+    "qed_mean": "0.60-0.70",
+    "logp_mean": "5-7",
+    "novelty": "≥0.90",
+    "synthesizability_rate": "≥0.95",
+    "validity_rate": "1.00"
+  },
+  "molmetal_comparison": {
+    "vina_mean_molmetal": -6.929,
+    "vina_mean_gap": "+1.521 (molmetal worse)",
+    "pb_pass_rate_molmetal": "0.846 smoke (1pocket)",
+    "pb_pass_rate_gap": "+0.094 (molmetal worse on smoke)",
+    "diversity_tanimoto_molmetal": 0.005,
+    "diversity_gap": "+0.855 (molmetal worse)",
+    "sa_mean_molmetal": 3.099,
+    "sa_mean_gap": "-0.24 to -0.45 (molmetal worse)"
+  },
+  "comparability": {
+    "protocol_aligned": true,
+    "dataset_aligned": "CrossDocked2020 + 30% seq-id split",
+    "split_aligned": "split_by_name.pt",
+    "scoring_engine_aligned": "QVina 2.1 (same as Mol-Metal)",
+    "metrics_aligned": ["Vina mean", "PB 1.0 26-check", "IntDiv_1", "SA (Ertl)", "QED", "LogP", "validity", "novelty"]
+  },
+  "source": "TargetDiff paper inventory + Mol-Metal data_gap_alignment_plan.md"
+}

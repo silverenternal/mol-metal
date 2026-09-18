@@ -1,0 +1,38 @@
+{
+  "metric": "atom_vocab_coverage",
+  "description": "Atom vocabulary coverage of the CFM (Conditional Flow Matching) decoder — set of atomic numbers the bond graph is allowed to emit. Pre-widzuipcl: 4-atom organic donor set. Post-widzuipcl: 14-atom metallodrug-relevant set. delta: +10 atoms; coverage gain: 3.5x",
+  "unit": "count of distinct atomic numbers",
+  "scope": "CFM training-data filter (r10_cfg_real_crossdocked.py)",
+  "status": "MEASURED via Phase 1 filter fix",
+  "source": "wf_metallodrug_vertical/phase1_filter_fix.md (2026-09-16)",
+  "source_file": "molmetal/scripts/r10_cfg_real_crossdocked.py lines 43 + 79",
+  "pre_widzuipcl": {
+    "allowed_atoms": [6, 7, 8, 9],
+    "n_atoms": 4,
+    "atom_set": ["C", "N", "O", "F"],
+    "description": "organic donor / halogen set; legacy CrossDocked-only path"
+  },
+  "post_widzuipcl": {
+    "allowed_atoms": [6, 7, 8, 9, 16, 15, 17, 35, 53, 78, 46, 79, 77, 44],
+    "n_atoms": 14,
+    "atom_set": ["C", "N", "O", "F", "S", "P", "Cl", "Br", "I", "Pt", "Pd", "Au", "Ir", "Ru"],
+    "description": "metallodrug-relevant 14-element set; covers Pt/Pd/Au/Ir/Ru coordination + 5 halogens (F/Cl/Br/I) + S/P soft donors",
+    "n_atoms_default": 24,
+    "n_atoms_range": [8, 38]
+  },
+  "delta": {
+    "atoms_added": 10,
+    "atoms_added_list": ["S", "P", "Cl", "Br", "I", "Pt", "Pd", "Au", "Ir", "Ru"],
+    "coverage_gain_factor": 3.5,
+    "atoms_removed": 0
+  },
+  "rationale": "The legacy 4-atom donor set is insufficient for metallodrug de novo generation: Pt_II (CN=4, square-planar) and Pt_IV (CN=6, octahedral) coordination centers are unreachable without [Pt]; Pd/Au/Ir/Ru (per tmQM coverage 10696/8275/4338/5232 mols respectively) are similarly locked out. Halogen set expanded from F-only to F/Cl/Br/I to enable monodentate/didentate Cl ligands and Cl→OH aquation (cisplatin-like motifs). S/P soft donors unlock thiolate / phosphine coordination chemistry common in MetalCytoToxDB (Ru=19135 organometallics).",
+  "test_evidence": {
+    "test_count": 13,
+    "test_file": "molmetal/molmetal_lam/tests/test_data_diversity.py",
+    "test_result": "13 passed, 1 warning in 1.41s",
+    "smoke": "build_combined_pool n=500 → 449 SMILES in 5.1s; source dist {platinai: 108, tmqm: 371, metal_cytotox: 21}"
+  },
+  "verdict": "MEASURED — atom vocab expansion 4→14 is shipped and tested. 51/500 mols dropped due to RDKit parse failures on multi-component organometallics (acceptable, documented as honest caveat).",
+  "honest_framing": "Atoms count 14 is the SET size; coverage_gain_factor 3.5 = 14/4 is the multiplicative expansion. Per-atom token frequency in the 449-mol cache is NOT uniform — Pt ≈ 24% by source weighting, the remaining 13 atoms share 76% of the cache. Real downstream effect on model capacity (B parameter, vocab_mask gradients) is unmeasured; CPU-only smoke 13/13 tests pass but no GPU retrain has been executed with the new vocab."
+}

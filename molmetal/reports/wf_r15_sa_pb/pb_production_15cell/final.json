@@ -1,0 +1,4419 @@
+{
+  "metadata": {
+    "date": "2026-09-16",
+    "operator": "r4_c_full_sweep.py + r4_lambda_only_run.py",
+    "project_root": "/home/hugo/codes/try_triton_on_rocm",
+    "constraints": [
+      "no_production_file_modified",
+      "no_gpu_required"
+    ],
+    "tasks": [
+      "#911",
+      "#912",
+      "#913"
+    ]
+  },
+  "pb_production_15cell": {
+    "config": {
+      "script": "molmetal/scripts/r4_c_full_sweep.py",
+      "pockets": 5,
+      "seeds": [
+        42,
+        0,
+        1234
+      ],
+      "n_cells": 15,
+      "n_simulations": 1000,
+      "pb_mode": "mol",
+      "engine": "vina",
+      "physical_exhaustiveness": 8,
+      "physical_top_k": 20
+    },
+    "wall_seconds": 175,
+    "per_pocket": [
+      {
+        "pocket_id": "test_000",
+        "status": "no_candidates",
+        "n_candidates": 0,
+        "top1_smiles": "",
+        "top1_sa": null,
+        "top1_qed": null,
+        "top1_lipinski": null,
+        "top1_vina_proxy": null,
+        "mean_sa": null,
+        "mean_qed": null,
+        "lipinski_pass_count": 0,
+        "n_sims": 1000,
+        "wall_seconds": 4.760649324991391,
+        "notes": "reference initialized search; physical measurements recorded separately when enabled",
+        "seed": 42,
+        "receptor_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/BSD_ASPTE_1_130_0/2z3h_A_rec_1wn6_bst_lig_tt_docked_3_pocket10.pdb",
+        "ligand_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/BSD_ASPTE_1_130_0/2z3h_A_rec_1wn6_bst_lig_tt_docked_3.sdf",
+        "search_config": {
+          "n_simulations": 1000,
+          "max_depth": 3,
+          "top_k": 100,
+          "early_stop": true,
+          "patience": 50,
+          "tile_library": "extended_204",
+          "click_rules": "all_5",
+          "rule_names": [
+            "CuAAC",
+            "SPAAC",
+            "ThiolEne",
+            "Suzuki",
+            "AmideCoupling"
+          ],
+          "tile_count": 204,
+          "branching_target": 1020,
+          "branching_attempts": 1020,
+          "use_fragment_pool": false,
+          "seed": 42,
+          "seed_strategy": "reference",
+          "not_applied": [
+            "synthesis_oracle",
+            "symbolic_prior",
+            "symbolic_prior_refit_every"
+          ],
+          "disabled": [],
+          "unsupported_requested": {
+            "symbolic_prior": true,
+            "synthesis_oracle": true,
+            "symbolic_prior_refit_every": 5
+          },
+          "guidance": {
+            "prior": {
+              "requested": true,
+              "backend": "linear_descriptor_prior",
+              "mode": "frozen",
+              "data_split": "test",
+              "applied": false,
+              "status": "awaiting_real_training_observations",
+              "puct_calls": 0,
+              "pysr_symbolic_regression": false,
+              "update_status": "frozen",
+              "fit_performed": false
+            },
+            "synthesis": {
+              "status": "missing_aizynth_config",
+              "backend": "aizynthfinder",
+              "applied": false,
+              "learned": true,
+              "n_checked": 0,
+              "n_passed": 0,
+              "reports": []
+            },
+            "docking_reward": {
+              "requested": false,
+              "status": "disabled",
+              "applied": false
+            }
+          }
+        },
+        "candidates": [],
+        "diagnostics": {
+          "seed_smiles": "CN(CC[C@H](N)CC(=O)N[C@H]1CC[C@H](N2C=C[C@@](N)(O)NC2=O)O[C@@H]1C(=O)O)C(=N)N",
+          "init_strategy": "reference",
+          "canonical_seed": "CN(CC[C@H](N)CC(=O)N[C@H]1CC[C@H](N2C=C[C@@](N)(O)NC2=O)O[C@@H]1C(=O)O)C(=N)N",
+          "chosen_tile": null,
+          "initialization_seconds": 0.08894905100169126,
+          "empty_candidates_reason": "No search candidates passed the configured search/filter path",
+          "search": {
+            "nfe": 51,
+            "nfe_reductions": 2040,
+            "nfe_oracle": 0,
+            "simulations_completed": 51,
+            "early_stopped": true
+          },
+          "error": null,
+          "prior_state": {
+            "schema_version": 1,
+            "backend": "linear_descriptor_prior",
+            "features": [
+              "n_atoms",
+              "n_bonds",
+              "n_free_sites",
+              "n_heavy"
+            ],
+            "experiment_seed": 42,
+            "observations": [],
+            "model": null,
+            "pockets_seen": 0,
+            "fit_count": 0,
+            "last_fit_observations": 0,
+            "source_splits": [],
+            "transductive": false
+          },
+          "prior": {
+            "requested": true,
+            "backend": "linear_descriptor_prior",
+            "mode": "frozen",
+            "data_split": "test",
+            "applied": false,
+            "status": "awaiting_real_training_observations",
+            "puct_calls": 0,
+            "pysr_symbolic_regression": false,
+            "update_status": "frozen",
+            "fit_performed": false
+          },
+          "synthesis": {
+            "status": "missing_aizynth_config",
+            "backend": "aizynthfinder",
+            "applied": false,
+            "learned": true,
+            "n_checked": 0,
+            "n_passed": 0,
+            "reports": []
+          },
+          "docking_reward": {
+            "requested": false,
+            "status": "disabled",
+            "applied": false
+          },
+          "all_candidates": [],
+          "candidate_accounting": {
+            "generated_scope": "all search-returned candidates before synthesis filtering and top-k selection",
+            "candidates_scope": "retained candidates selected for downstream evaluation",
+            "all_candidates_scope": "all search-returned candidates including synthesis rejections",
+            "evaluated_scope": "physical evaluation; not performed by this search runner"
+          },
+          "selection_counts": {
+            "n_pre_synthesis_candidates": 0,
+            "n_retained_candidates": 0,
+            "n_selected_candidates": 0,
+            "n_synthesis_rejected_candidates": 0,
+            "n_generated_retained_candidates": 0,
+            "n_generated_selected_candidates": 0,
+            "n_generated_synthesis_rejected_candidates": 0
+          },
+          "generation": {
+            "reduction_calls": 2040,
+            "reductions_without_products": 2029,
+            "products_returned": 11,
+            "unique_new_products_observed": 11,
+            "unique_new_typed_rejections": 11,
+            "unique_new_binding_rejections": 1,
+            "no_generated_reasons": [
+              "New structures were rejected by existing type predicates",
+              "New structures were rejected by the existing binding gate"
+            ],
+            "scope": "all search calls; rejection sets may overlap; not final-leaf counts"
+          }
+        },
+        "metric_backend": {
+          "sa": "rdkit_contrib_ertl",
+          "qed": "rdkit",
+          "vina": "heuristic_proxy_no_docking"
+        },
+        "n_generated_candidates": 0,
+        "n_seed_candidates": 0,
+        "physical": {
+          "status": "no_generated_candidates",
+          "scope": "generated-product physical evaluation; not a SOTA comparison",
+          "protocol": {
+            "engine": "vina",
+            "device": "cpu",
+            "cpu": 1,
+            "seed": 42,
+            "exhaustiveness": 8,
+            "n_poses": 9,
+            "top_k": 20,
+            "selection": "first retained generated products in search rank order",
+            "coverage_denominator": "all search-returned generated candidates before synthesis filtering and selection",
+            "posebusters_config": "dock",
+            "pose_selection": "lowest finite docking energy",
+            "reference_threshold": "same-engine reference-ligand redocked score; not crystal-pose scoring",
+            "mmff94s_relax": false,
+            "mmff94s_relax_max_iters": null,
+            "dock_pipeline": "dock -> PoseBusters"
+          },
+          "source_sha256": {
+            "receptor": "792b936f7e0c92d8bf790cb117b59b59652d5e3e93a7d929982f4f8212edf18b",
+            "reference_ligand": "563206e15693933e1718a35519bcbcdfe570c53fe65de1bd79519e57ab7efadf"
+          },
+          "candidates": [],
+          "reference": null,
+          "summary": {
+            "n_generated": 0,
+            "n_selected": 0,
+            "n_docked": 0,
+            "n_pb_pass": 0,
+            "pb_pass_rate_all_generated": null,
+            "pb_pass_rate_selected": null,
+            "n_beats_redocked_reference": 0,
+            "n_triple_threshold_redocked_reference": 0,
+            "triple_threshold_rate_all_generated": null,
+            "n_vina_below_minus8": 0,
+            "better_reference_rate_all_generated": null,
+            "vina_mean_docked_kcal_mol": null,
+            "vina_best_kcal_mol": null
+          }
+        },
+        "n_pb_pass": 0,
+        "pb_pass_rate": null,
+        "pb_status": "no_candidates",
+        "pb_check": {
+          "status": "no_candidates",
+          "scope": "PoseBusters chemistry validity on docked candidates",
+          "mode": "PoseBusters_mol_v1",
+          "engine_version": "0.6.5",
+          "per_smiles": {},
+          "n": 0,
+          "n_pb_pass": 0,
+          "pb_pass_rate": null
+        },
+        "diffdock_score_mean": null,
+        "diffdock_score_std": null,
+        "diffdock_status": "disabled",
+        "diffdock_n_invoked": 0,
+        "diffdock_n_scored": 0,
+        "diffdock_per_smiles": {},
+        "flowdock_score_mean": null,
+        "flowdock_score_std": null,
+        "flowdock_status": "disabled",
+        "flowdock_n_invoked": 0,
+        "flowdock_n_scored": 0,
+        "flowdock_per_smiles": {},
+        "biomlm_score_mean": null,
+        "biomlm_score_std": null,
+        "biomlm_status": "disabled",
+        "biomlm_n_invoked": 0,
+        "biomlm_n_scored": 0,
+        "biomlm_encoder": "gatedgcn",
+        "biomlm_model_type": "biolm",
+        "biomlm_per_smiles": {},
+        "aizynth_status": "disabled",
+        "aizynth_mode": "smarts",
+        "aizynth_n_invoked": 0,
+        "aizynth_n_scored": 0,
+        "aizynth_n_synthesis_route": 0,
+        "aizynth_synthesis_success_rate": null,
+        "aizynth_per_smiles": {}
+      },
+      {
+        "pocket_id": "test_000",
+        "status": "no_candidates",
+        "n_candidates": 0,
+        "top1_smiles": "",
+        "top1_sa": null,
+        "top1_qed": null,
+        "top1_lipinski": null,
+        "top1_vina_proxy": null,
+        "mean_sa": null,
+        "mean_qed": null,
+        "lipinski_pass_count": 0,
+        "n_sims": 1000,
+        "wall_seconds": 111.83600078999007,
+        "notes": "reference initialized search; physical measurements recorded separately when enabled",
+        "seed": 0,
+        "receptor_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/BSD_ASPTE_1_130_0/2z3h_A_rec_1wn6_bst_lig_tt_docked_3_pocket10.pdb",
+        "ligand_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/BSD_ASPTE_1_130_0/2z3h_A_rec_1wn6_bst_lig_tt_docked_3.sdf",
+        "search_config": {
+          "n_simulations": 1000,
+          "max_depth": 3,
+          "top_k": 100,
+          "early_stop": true,
+          "patience": 50,
+          "tile_library": "extended_204",
+          "click_rules": "all_5",
+          "rule_names": [
+            "CuAAC",
+            "SPAAC",
+            "ThiolEne",
+            "Suzuki",
+            "AmideCoupling"
+          ],
+          "tile_count": 204,
+          "branching_target": 1020,
+          "branching_attempts": 1020,
+          "use_fragment_pool": false,
+          "seed": 0,
+          "seed_strategy": "reference",
+          "not_applied": [
+            "synthesis_oracle",
+            "symbolic_prior",
+            "symbolic_prior_refit_every"
+          ],
+          "disabled": [],
+          "unsupported_requested": {
+            "symbolic_prior": true,
+            "synthesis_oracle": true,
+            "symbolic_prior_refit_every": 5
+          },
+          "guidance": {
+            "prior": {
+              "requested": true,
+              "backend": "linear_descriptor_prior",
+              "mode": "frozen",
+              "data_split": "test",
+              "applied": false,
+              "status": "awaiting_real_training_observations",
+              "puct_calls": 0,
+              "pysr_symbolic_regression": false,
+              "update_status": "frozen",
+              "fit_performed": false
+            },
+            "synthesis": {
+              "status": "missing_aizynth_config",
+              "backend": "aizynthfinder",
+              "applied": false,
+              "learned": true,
+              "n_checked": 0,
+              "n_passed": 0,
+              "reports": []
+            },
+            "docking_reward": {
+              "requested": false,
+              "status": "disabled",
+              "applied": false
+            }
+          }
+        },
+        "candidates": [],
+        "diagnostics": {
+          "seed_smiles": "CN(CC[C@H](N)CC(=O)N[C@H]1CC[C@H](N2C=C[C@@](N)(O)NC2=O)O[C@@H]1C(=O)O)C(=N)N",
+          "init_strategy": "reference",
+          "canonical_seed": "CN(CC[C@H](N)CC(=O)N[C@H]1CC[C@H](N2C=C[C@@](N)(O)NC2=O)O[C@@H]1C(=O)O)C(=N)N",
+          "chosen_tile": null,
+          "initialization_seconds": 0.0879869240015978,
+          "empty_candidates_reason": "No search candidates passed the configured search/filter path",
+          "search": {
+            "nfe": 122,
+            "nfe_reductions": 84669,
+            "nfe_oracle": 0,
+            "simulations_completed": 122,
+            "early_stopped": true
+          },
+          "error": null,
+          "prior_state": {
+            "schema_version": 1,
+            "backend": "linear_descriptor_prior",
+            "features": [
+              "n_atoms",
+              "n_bonds",
+              "n_free_sites",
+              "n_heavy"
+            ],
+            "experiment_seed": 0,
+            "observations": [],
+            "model": null,
+            "pockets_seen": 0,
+            "fit_count": 0,
+            "last_fit_observations": 0,
+            "source_splits": [],
+            "transductive": false
+          },
+          "prior": {
+            "requested": true,
+            "backend": "linear_descriptor_prior",
+            "mode": "frozen",
+            "data_split": "test",
+            "applied": false,
+            "status": "awaiting_real_training_observations",
+            "puct_calls": 0,
+            "pysr_symbolic_regression": false,
+            "update_status": "frozen",
+            "fit_performed": false
+          },
+          "synthesis": {
+            "status": "missing_aizynth_config",
+            "backend": "aizynthfinder",
+            "applied": false,
+            "learned": true,
+            "n_checked": 0,
+            "n_passed": 0,
+            "reports": []
+          },
+          "docking_reward": {
+            "requested": false,
+            "status": "disabled",
+            "applied": false
+          },
+          "all_candidates": [],
+          "candidate_accounting": {
+            "generated_scope": "all search-returned candidates before synthesis filtering and top-k selection",
+            "candidates_scope": "retained candidates selected for downstream evaluation",
+            "all_candidates_scope": "all search-returned candidates including synthesis rejections",
+            "evaluated_scope": "physical evaluation; not performed by this search runner"
+          },
+          "selection_counts": {
+            "n_pre_synthesis_candidates": 0,
+            "n_retained_candidates": 0,
+            "n_selected_candidates": 0,
+            "n_synthesis_rejected_candidates": 0,
+            "n_generated_retained_candidates": 0,
+            "n_generated_selected_candidates": 0,
+            "n_generated_synthesis_rejected_candidates": 0
+          },
+          "generation": {
+            "reduction_calls": 84669,
+            "reductions_without_products": 83957,
+            "products_returned": 912,
+            "unique_new_products_observed": 700,
+            "unique_new_typed_rejections": 699,
+            "unique_new_binding_rejections": 74,
+            "no_generated_reasons": [
+              "New structures were rejected by existing type predicates",
+              "New structures were rejected by the existing binding gate"
+            ],
+            "scope": "all search calls; rejection sets may overlap; not final-leaf counts"
+          }
+        },
+        "metric_backend": {
+          "sa": "rdkit_contrib_ertl",
+          "qed": "rdkit",
+          "vina": "heuristic_proxy_no_docking"
+        },
+        "n_generated_candidates": 0,
+        "n_seed_candidates": 0,
+        "physical": {
+          "status": "no_generated_candidates",
+          "scope": "generated-product physical evaluation; not a SOTA comparison",
+          "protocol": {
+            "engine": "vina",
+            "device": "cpu",
+            "cpu": 1,
+            "seed": 0,
+            "exhaustiveness": 8,
+            "n_poses": 9,
+            "top_k": 20,
+            "selection": "first retained generated products in search rank order",
+            "coverage_denominator": "all search-returned generated candidates before synthesis filtering and selection",
+            "posebusters_config": "dock",
+            "pose_selection": "lowest finite docking energy",
+            "reference_threshold": "same-engine reference-ligand redocked score; not crystal-pose scoring",
+            "mmff94s_relax": false,
+            "mmff94s_relax_max_iters": null,
+            "dock_pipeline": "dock -> PoseBusters"
+          },
+          "source_sha256": {
+            "receptor": "792b936f7e0c92d8bf790cb117b59b59652d5e3e93a7d929982f4f8212edf18b",
+            "reference_ligand": "563206e15693933e1718a35519bcbcdfe570c53fe65de1bd79519e57ab7efadf"
+          },
+          "candidates": [],
+          "reference": null,
+          "summary": {
+            "n_generated": 0,
+            "n_selected": 0,
+            "n_docked": 0,
+            "n_pb_pass": 0,
+            "pb_pass_rate_all_generated": null,
+            "pb_pass_rate_selected": null,
+            "n_beats_redocked_reference": 0,
+            "n_triple_threshold_redocked_reference": 0,
+            "triple_threshold_rate_all_generated": null,
+            "n_vina_below_minus8": 0,
+            "better_reference_rate_all_generated": null,
+            "vina_mean_docked_kcal_mol": null,
+            "vina_best_kcal_mol": null
+          }
+        },
+        "n_pb_pass": 0,
+        "pb_pass_rate": null,
+        "pb_status": "no_candidates",
+        "pb_check": {
+          "status": "no_candidates",
+          "scope": "PoseBusters chemistry validity on docked candidates",
+          "mode": "PoseBusters_mol_v1",
+          "engine_version": "0.6.5",
+          "per_smiles": {},
+          "n": 0,
+          "n_pb_pass": 0,
+          "pb_pass_rate": null
+        },
+        "diffdock_score_mean": null,
+        "diffdock_score_std": null,
+        "diffdock_status": "disabled",
+        "diffdock_n_invoked": 0,
+        "diffdock_n_scored": 0,
+        "diffdock_per_smiles": {},
+        "flowdock_score_mean": null,
+        "flowdock_score_std": null,
+        "flowdock_status": "disabled",
+        "flowdock_n_invoked": 0,
+        "flowdock_n_scored": 0,
+        "flowdock_per_smiles": {},
+        "biomlm_score_mean": null,
+        "biomlm_score_std": null,
+        "biomlm_status": "disabled",
+        "biomlm_n_invoked": 0,
+        "biomlm_n_scored": 0,
+        "biomlm_encoder": "gatedgcn",
+        "biomlm_model_type": "biolm",
+        "biomlm_per_smiles": {},
+        "aizynth_status": "disabled",
+        "aizynth_mode": "smarts",
+        "aizynth_n_invoked": 0,
+        "aizynth_n_scored": 0,
+        "aizynth_n_synthesis_route": 0,
+        "aizynth_synthesis_success_rate": null,
+        "aizynth_per_smiles": {}
+      },
+      {
+        "pocket_id": "test_000",
+        "status": "no_candidates",
+        "n_candidates": 0,
+        "top1_smiles": "",
+        "top1_sa": null,
+        "top1_qed": null,
+        "top1_lipinski": null,
+        "top1_vina_proxy": null,
+        "mean_sa": null,
+        "mean_qed": null,
+        "lipinski_pass_count": 0,
+        "n_sims": 1000,
+        "wall_seconds": 4.768065108000883,
+        "notes": "reference initialized search; physical measurements recorded separately when enabled",
+        "seed": 1234,
+        "receptor_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/BSD_ASPTE_1_130_0/2z3h_A_rec_1wn6_bst_lig_tt_docked_3_pocket10.pdb",
+        "ligand_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/BSD_ASPTE_1_130_0/2z3h_A_rec_1wn6_bst_lig_tt_docked_3.sdf",
+        "search_config": {
+          "n_simulations": 1000,
+          "max_depth": 3,
+          "top_k": 100,
+          "early_stop": true,
+          "patience": 50,
+          "tile_library": "extended_204",
+          "click_rules": "all_5",
+          "rule_names": [
+            "CuAAC",
+            "SPAAC",
+            "ThiolEne",
+            "Suzuki",
+            "AmideCoupling"
+          ],
+          "tile_count": 204,
+          "branching_target": 1020,
+          "branching_attempts": 1020,
+          "use_fragment_pool": false,
+          "seed": 1234,
+          "seed_strategy": "reference",
+          "not_applied": [
+            "synthesis_oracle",
+            "symbolic_prior",
+            "symbolic_prior_refit_every"
+          ],
+          "disabled": [],
+          "unsupported_requested": {
+            "symbolic_prior": true,
+            "synthesis_oracle": true,
+            "symbolic_prior_refit_every": 5
+          },
+          "guidance": {
+            "prior": {
+              "requested": true,
+              "backend": "linear_descriptor_prior",
+              "mode": "frozen",
+              "data_split": "test",
+              "applied": false,
+              "status": "awaiting_real_training_observations",
+              "puct_calls": 0,
+              "pysr_symbolic_regression": false,
+              "update_status": "frozen",
+              "fit_performed": false
+            },
+            "synthesis": {
+              "status": "missing_aizynth_config",
+              "backend": "aizynthfinder",
+              "applied": false,
+              "learned": true,
+              "n_checked": 0,
+              "n_passed": 0,
+              "reports": []
+            },
+            "docking_reward": {
+              "requested": false,
+              "status": "disabled",
+              "applied": false
+            }
+          }
+        },
+        "candidates": [],
+        "diagnostics": {
+          "seed_smiles": "CN(CC[C@H](N)CC(=O)N[C@H]1CC[C@H](N2C=C[C@@](N)(O)NC2=O)O[C@@H]1C(=O)O)C(=N)N",
+          "init_strategy": "reference",
+          "canonical_seed": "CN(CC[C@H](N)CC(=O)N[C@H]1CC[C@H](N2C=C[C@@](N)(O)NC2=O)O[C@@H]1C(=O)O)C(=N)N",
+          "chosen_tile": null,
+          "initialization_seconds": 0.08875668699329253,
+          "empty_candidates_reason": "No search candidates passed the configured search/filter path",
+          "search": {
+            "nfe": 51,
+            "nfe_reductions": 2040,
+            "nfe_oracle": 0,
+            "simulations_completed": 51,
+            "early_stopped": true
+          },
+          "error": null,
+          "prior_state": {
+            "schema_version": 1,
+            "backend": "linear_descriptor_prior",
+            "features": [
+              "n_atoms",
+              "n_bonds",
+              "n_free_sites",
+              "n_heavy"
+            ],
+            "experiment_seed": 1234,
+            "observations": [],
+            "model": null,
+            "pockets_seen": 0,
+            "fit_count": 0,
+            "last_fit_observations": 0,
+            "source_splits": [],
+            "transductive": false
+          },
+          "prior": {
+            "requested": true,
+            "backend": "linear_descriptor_prior",
+            "mode": "frozen",
+            "data_split": "test",
+            "applied": false,
+            "status": "awaiting_real_training_observations",
+            "puct_calls": 0,
+            "pysr_symbolic_regression": false,
+            "update_status": "frozen",
+            "fit_performed": false
+          },
+          "synthesis": {
+            "status": "missing_aizynth_config",
+            "backend": "aizynthfinder",
+            "applied": false,
+            "learned": true,
+            "n_checked": 0,
+            "n_passed": 0,
+            "reports": []
+          },
+          "docking_reward": {
+            "requested": false,
+            "status": "disabled",
+            "applied": false
+          },
+          "all_candidates": [],
+          "candidate_accounting": {
+            "generated_scope": "all search-returned candidates before synthesis filtering and top-k selection",
+            "candidates_scope": "retained candidates selected for downstream evaluation",
+            "all_candidates_scope": "all search-returned candidates including synthesis rejections",
+            "evaluated_scope": "physical evaluation; not performed by this search runner"
+          },
+          "selection_counts": {
+            "n_pre_synthesis_candidates": 0,
+            "n_retained_candidates": 0,
+            "n_selected_candidates": 0,
+            "n_synthesis_rejected_candidates": 0,
+            "n_generated_retained_candidates": 0,
+            "n_generated_selected_candidates": 0,
+            "n_generated_synthesis_rejected_candidates": 0
+          },
+          "generation": {
+            "reduction_calls": 2040,
+            "reductions_without_products": 2029,
+            "products_returned": 11,
+            "unique_new_products_observed": 11,
+            "unique_new_typed_rejections": 11,
+            "unique_new_binding_rejections": 1,
+            "no_generated_reasons": [
+              "New structures were rejected by existing type predicates",
+              "New structures were rejected by the existing binding gate"
+            ],
+            "scope": "all search calls; rejection sets may overlap; not final-leaf counts"
+          }
+        },
+        "metric_backend": {
+          "sa": "rdkit_contrib_ertl",
+          "qed": "rdkit",
+          "vina": "heuristic_proxy_no_docking"
+        },
+        "n_generated_candidates": 0,
+        "n_seed_candidates": 0,
+        "physical": {
+          "status": "no_generated_candidates",
+          "scope": "generated-product physical evaluation; not a SOTA comparison",
+          "protocol": {
+            "engine": "vina",
+            "device": "cpu",
+            "cpu": 1,
+            "seed": 1234,
+            "exhaustiveness": 8,
+            "n_poses": 9,
+            "top_k": 20,
+            "selection": "first retained generated products in search rank order",
+            "coverage_denominator": "all search-returned generated candidates before synthesis filtering and selection",
+            "posebusters_config": "dock",
+            "pose_selection": "lowest finite docking energy",
+            "reference_threshold": "same-engine reference-ligand redocked score; not crystal-pose scoring",
+            "mmff94s_relax": false,
+            "mmff94s_relax_max_iters": null,
+            "dock_pipeline": "dock -> PoseBusters"
+          },
+          "source_sha256": {
+            "receptor": "792b936f7e0c92d8bf790cb117b59b59652d5e3e93a7d929982f4f8212edf18b",
+            "reference_ligand": "563206e15693933e1718a35519bcbcdfe570c53fe65de1bd79519e57ab7efadf"
+          },
+          "candidates": [],
+          "reference": null,
+          "summary": {
+            "n_generated": 0,
+            "n_selected": 0,
+            "n_docked": 0,
+            "n_pb_pass": 0,
+            "pb_pass_rate_all_generated": null,
+            "pb_pass_rate_selected": null,
+            "n_beats_redocked_reference": 0,
+            "n_triple_threshold_redocked_reference": 0,
+            "triple_threshold_rate_all_generated": null,
+            "n_vina_below_minus8": 0,
+            "better_reference_rate_all_generated": null,
+            "vina_mean_docked_kcal_mol": null,
+            "vina_best_kcal_mol": null
+          }
+        },
+        "n_pb_pass": 0,
+        "pb_pass_rate": null,
+        "pb_status": "no_candidates",
+        "pb_check": {
+          "status": "no_candidates",
+          "scope": "PoseBusters chemistry validity on docked candidates",
+          "mode": "PoseBusters_mol_v1",
+          "engine_version": "0.6.5",
+          "per_smiles": {},
+          "n": 0,
+          "n_pb_pass": 0,
+          "pb_pass_rate": null
+        },
+        "diffdock_score_mean": null,
+        "diffdock_score_std": null,
+        "diffdock_status": "disabled",
+        "diffdock_n_invoked": 0,
+        "diffdock_n_scored": 0,
+        "diffdock_per_smiles": {},
+        "flowdock_score_mean": null,
+        "flowdock_score_std": null,
+        "flowdock_status": "disabled",
+        "flowdock_n_invoked": 0,
+        "flowdock_n_scored": 0,
+        "flowdock_per_smiles": {},
+        "biomlm_score_mean": null,
+        "biomlm_score_std": null,
+        "biomlm_status": "disabled",
+        "biomlm_n_invoked": 0,
+        "biomlm_n_scored": 0,
+        "biomlm_encoder": "gatedgcn",
+        "biomlm_model_type": "biolm",
+        "biomlm_per_smiles": {},
+        "aizynth_status": "disabled",
+        "aizynth_mode": "smarts",
+        "aizynth_n_invoked": 0,
+        "aizynth_n_scored": 0,
+        "aizynth_n_synthesis_route": 0,
+        "aizynth_synthesis_success_rate": null,
+        "aizynth_per_smiles": {}
+      },
+      {
+        "pocket_id": "test_001",
+        "status": "seed_only",
+        "n_candidates": 1,
+        "top1_smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+        "top1_sa": 2.2557265152734853,
+        "top1_qed": 0.645397999927026,
+        "top1_lipinski": true,
+        "top1_vina_proxy": -19.71538000000001,
+        "mean_sa": 2.2557265152734853,
+        "mean_qed": 0.645397999927026,
+        "lipinski_pass_count": 1,
+        "n_sims": 1000,
+        "wall_seconds": 3.7882014629867626,
+        "notes": "reference initialized search; physical measurements recorded separately when enabled",
+        "seed": 42,
+        "receptor_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GLMU_STRPN_2_459_0/4aaw_A_rec_4ac3_r83_lig_tt_min_0_pocket10.pdb",
+        "ligand_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GLMU_STRPN_2_459_0/4aaw_A_rec_4ac3_r83_lig_tt_min_0.sdf",
+        "search_config": {
+          "n_simulations": 1000,
+          "max_depth": 3,
+          "top_k": 100,
+          "early_stop": true,
+          "patience": 50,
+          "tile_library": "extended_204",
+          "click_rules": "all_5",
+          "rule_names": [
+            "CuAAC",
+            "SPAAC",
+            "ThiolEne",
+            "Suzuki",
+            "AmideCoupling"
+          ],
+          "tile_count": 204,
+          "branching_target": 1020,
+          "branching_attempts": 1020,
+          "use_fragment_pool": false,
+          "seed": 42,
+          "seed_strategy": "reference",
+          "not_applied": [
+            "synthesis_oracle",
+            "symbolic_prior",
+            "symbolic_prior_refit_every"
+          ],
+          "disabled": [],
+          "unsupported_requested": {
+            "symbolic_prior": true,
+            "synthesis_oracle": true,
+            "symbolic_prior_refit_every": 5
+          },
+          "guidance": {
+            "prior": {
+              "requested": true,
+              "backend": "linear_descriptor_prior",
+              "mode": "frozen",
+              "data_split": "test",
+              "applied": false,
+              "status": "awaiting_real_training_observations",
+              "puct_calls": 0,
+              "pysr_symbolic_regression": false,
+              "update_status": "frozen",
+              "fit_performed": false
+            },
+            "synthesis": {
+              "status": "missing_aizynth_config",
+              "backend": "aizynthfinder",
+              "applied": false,
+              "learned": true,
+              "n_checked": 0,
+              "n_passed": 0,
+              "reports": []
+            },
+            "docking_reward": {
+              "requested": false,
+              "status": "disabled",
+              "applied": false
+            }
+          }
+        },
+        "candidates": [
+          {
+            "candidate_id": 0,
+            "smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+            "is_seed": true,
+            "is_generated": false,
+            "sa": 2.2557265152734853,
+            "qed": 0.645397999927026,
+            "lipinski": true,
+            "vina_proxy": -19.71538000000001,
+            "synthesis": {
+              "status": "not_applied",
+              "passed": null
+            },
+            "synthesis_passed": null,
+            "retained_after_synthesis": true,
+            "selected_for_evaluation": true,
+            "physical_evaluation_status": "pending_downstream"
+          }
+        ],
+        "diagnostics": {
+          "seed_smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+          "init_strategy": "reference",
+          "canonical_seed": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+          "chosen_tile": null,
+          "initialization_seconds": 0.08908616199914832,
+          "empty_candidates_reason": null,
+          "search": {
+            "nfe": 51,
+            "nfe_reductions": 1020,
+            "nfe_oracle": 1,
+            "simulations_completed": 51,
+            "early_stopped": true
+          },
+          "error": null,
+          "prior_state": {
+            "schema_version": 1,
+            "backend": "linear_descriptor_prior",
+            "features": [
+              "n_atoms",
+              "n_bonds",
+              "n_free_sites",
+              "n_heavy"
+            ],
+            "experiment_seed": 42,
+            "observations": [],
+            "model": null,
+            "pockets_seen": 0,
+            "fit_count": 0,
+            "last_fit_observations": 0,
+            "source_splits": [],
+            "transductive": false
+          },
+          "prior": {
+            "requested": true,
+            "backend": "linear_descriptor_prior",
+            "mode": "frozen",
+            "data_split": "test",
+            "applied": false,
+            "status": "awaiting_real_training_observations",
+            "puct_calls": 0,
+            "pysr_symbolic_regression": false,
+            "update_status": "frozen",
+            "fit_performed": false
+          },
+          "synthesis": {
+            "status": "missing_aizynth_config",
+            "backend": "aizynthfinder",
+            "applied": false,
+            "learned": true,
+            "n_checked": 0,
+            "n_passed": 0,
+            "reports": []
+          },
+          "docking_reward": {
+            "requested": false,
+            "status": "disabled",
+            "applied": false
+          },
+          "all_candidates": [
+            {
+              "candidate_id": 0,
+              "smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+              "is_seed": true,
+              "is_generated": false,
+              "sa": 2.2557265152734853,
+              "qed": 0.645397999927026,
+              "lipinski": true,
+              "vina_proxy": -19.71538000000001,
+              "synthesis": {
+                "status": "not_applied",
+                "passed": null
+              },
+              "synthesis_passed": null,
+              "retained_after_synthesis": true,
+              "selected_for_evaluation": true,
+              "physical_evaluation_status": "pending_downstream"
+            }
+          ],
+          "candidate_accounting": {
+            "generated_scope": "all search-returned candidates before synthesis filtering and top-k selection",
+            "candidates_scope": "retained candidates selected for downstream evaluation",
+            "all_candidates_scope": "all search-returned candidates including synthesis rejections",
+            "evaluated_scope": "physical evaluation; not performed by this search runner"
+          },
+          "selection_counts": {
+            "n_pre_synthesis_candidates": 1,
+            "n_retained_candidates": 1,
+            "n_selected_candidates": 1,
+            "n_synthesis_rejected_candidates": 0,
+            "n_generated_retained_candidates": 0,
+            "n_generated_selected_candidates": 0,
+            "n_generated_synthesis_rejected_candidates": 0
+          },
+          "generation": {
+            "reduction_calls": 1020,
+            "reductions_without_products": 1020,
+            "products_returned": 0,
+            "unique_new_products_observed": 0,
+            "unique_new_typed_rejections": 0,
+            "unique_new_binding_rejections": 0,
+            "no_generated_reasons": [
+              "No products from attempted reductions (non-matching rules or invalid reductions)"
+            ],
+            "scope": "all search calls; rejection sets may overlap; not final-leaf counts"
+          }
+        },
+        "metric_backend": {
+          "sa": "rdkit_contrib_ertl",
+          "qed": "rdkit",
+          "vina": "heuristic_proxy_no_docking"
+        },
+        "n_generated_candidates": 0,
+        "n_seed_candidates": 1,
+        "physical": {
+          "status": "no_generated_candidates",
+          "scope": "generated-product physical evaluation; not a SOTA comparison",
+          "protocol": {
+            "engine": "vina",
+            "device": "cpu",
+            "cpu": 1,
+            "seed": 42,
+            "exhaustiveness": 8,
+            "n_poses": 9,
+            "top_k": 20,
+            "selection": "first retained generated products in search rank order",
+            "coverage_denominator": "all search-returned generated candidates before synthesis filtering and selection",
+            "posebusters_config": "dock",
+            "pose_selection": "lowest finite docking energy",
+            "reference_threshold": "same-engine reference-ligand redocked score; not crystal-pose scoring",
+            "mmff94s_relax": false,
+            "mmff94s_relax_max_iters": null,
+            "dock_pipeline": "dock -> PoseBusters"
+          },
+          "source_sha256": {
+            "receptor": "647edad4f5379023c6394c31436bb984f4459018c8aa74282e6674c6c8e065aa",
+            "reference_ligand": "a04285a2e375f0d7785294bf1eed0ec3ba44e747c72c3011255410f52cfb3262"
+          },
+          "candidates": [],
+          "reference": null,
+          "summary": {
+            "n_generated": 0,
+            "n_selected": 0,
+            "n_docked": 0,
+            "n_pb_pass": 0,
+            "pb_pass_rate_all_generated": null,
+            "pb_pass_rate_selected": null,
+            "n_beats_redocked_reference": 0,
+            "n_triple_threshold_redocked_reference": 0,
+            "triple_threshold_rate_all_generated": null,
+            "n_vina_below_minus8": 0,
+            "better_reference_rate_all_generated": null,
+            "vina_mean_docked_kcal_mol": null,
+            "vina_best_kcal_mol": null
+          }
+        },
+        "n_pb_pass": 0,
+        "pb_pass_rate": null,
+        "pb_status": "no_candidates",
+        "pb_check": {
+          "status": "no_candidates",
+          "scope": "PoseBusters chemistry validity on docked candidates",
+          "mode": "PoseBusters_mol_v1",
+          "engine_version": "0.6.5",
+          "per_smiles": {},
+          "n": 0,
+          "n_pb_pass": 0,
+          "pb_pass_rate": null
+        },
+        "diffdock_score_mean": null,
+        "diffdock_score_std": null,
+        "diffdock_status": "disabled",
+        "diffdock_n_invoked": 0,
+        "diffdock_n_scored": 0,
+        "diffdock_per_smiles": {},
+        "flowdock_score_mean": null,
+        "flowdock_score_std": null,
+        "flowdock_status": "disabled",
+        "flowdock_n_invoked": 0,
+        "flowdock_n_scored": 0,
+        "flowdock_per_smiles": {},
+        "biomlm_score_mean": null,
+        "biomlm_score_std": null,
+        "biomlm_status": "disabled",
+        "biomlm_n_invoked": 0,
+        "biomlm_n_scored": 0,
+        "biomlm_encoder": "gatedgcn",
+        "biomlm_model_type": "biolm",
+        "biomlm_per_smiles": {},
+        "aizynth_status": "disabled",
+        "aizynth_mode": "smarts",
+        "aizynth_n_invoked": 0,
+        "aizynth_n_scored": 0,
+        "aizynth_n_synthesis_route": 0,
+        "aizynth_synthesis_success_rate": null,
+        "aizynth_per_smiles": {}
+      },
+      {
+        "pocket_id": "test_001",
+        "status": "seed_only",
+        "n_candidates": 1,
+        "top1_smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+        "top1_sa": 2.2557265152734853,
+        "top1_qed": 0.645397999927026,
+        "top1_lipinski": true,
+        "top1_vina_proxy": -19.71538000000001,
+        "mean_sa": 2.2557265152734853,
+        "mean_qed": 0.645397999927026,
+        "lipinski_pass_count": 1,
+        "n_sims": 1000,
+        "wall_seconds": 3.759706241005915,
+        "notes": "reference initialized search; physical measurements recorded separately when enabled",
+        "seed": 0,
+        "receptor_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GLMU_STRPN_2_459_0/4aaw_A_rec_4ac3_r83_lig_tt_min_0_pocket10.pdb",
+        "ligand_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GLMU_STRPN_2_459_0/4aaw_A_rec_4ac3_r83_lig_tt_min_0.sdf",
+        "search_config": {
+          "n_simulations": 1000,
+          "max_depth": 3,
+          "top_k": 100,
+          "early_stop": true,
+          "patience": 50,
+          "tile_library": "extended_204",
+          "click_rules": "all_5",
+          "rule_names": [
+            "CuAAC",
+            "SPAAC",
+            "ThiolEne",
+            "Suzuki",
+            "AmideCoupling"
+          ],
+          "tile_count": 204,
+          "branching_target": 1020,
+          "branching_attempts": 1020,
+          "use_fragment_pool": false,
+          "seed": 0,
+          "seed_strategy": "reference",
+          "not_applied": [
+            "synthesis_oracle",
+            "symbolic_prior",
+            "symbolic_prior_refit_every"
+          ],
+          "disabled": [],
+          "unsupported_requested": {
+            "symbolic_prior": true,
+            "synthesis_oracle": true,
+            "symbolic_prior_refit_every": 5
+          },
+          "guidance": {
+            "prior": {
+              "requested": true,
+              "backend": "linear_descriptor_prior",
+              "mode": "frozen",
+              "data_split": "test",
+              "applied": false,
+              "status": "awaiting_real_training_observations",
+              "puct_calls": 0,
+              "pysr_symbolic_regression": false,
+              "update_status": "frozen",
+              "fit_performed": false
+            },
+            "synthesis": {
+              "status": "missing_aizynth_config",
+              "backend": "aizynthfinder",
+              "applied": false,
+              "learned": true,
+              "n_checked": 0,
+              "n_passed": 0,
+              "reports": []
+            },
+            "docking_reward": {
+              "requested": false,
+              "status": "disabled",
+              "applied": false
+            }
+          }
+        },
+        "candidates": [
+          {
+            "candidate_id": 0,
+            "smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+            "is_seed": true,
+            "is_generated": false,
+            "sa": 2.2557265152734853,
+            "qed": 0.645397999927026,
+            "lipinski": true,
+            "vina_proxy": -19.71538000000001,
+            "synthesis": {
+              "status": "not_applied",
+              "passed": null
+            },
+            "synthesis_passed": null,
+            "retained_after_synthesis": true,
+            "selected_for_evaluation": true,
+            "physical_evaluation_status": "pending_downstream"
+          }
+        ],
+        "diagnostics": {
+          "seed_smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+          "init_strategy": "reference",
+          "canonical_seed": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+          "chosen_tile": null,
+          "initialization_seconds": 0.0899952230101917,
+          "empty_candidates_reason": null,
+          "search": {
+            "nfe": 51,
+            "nfe_reductions": 1020,
+            "nfe_oracle": 1,
+            "simulations_completed": 51,
+            "early_stopped": true
+          },
+          "error": null,
+          "prior_state": {
+            "schema_version": 1,
+            "backend": "linear_descriptor_prior",
+            "features": [
+              "n_atoms",
+              "n_bonds",
+              "n_free_sites",
+              "n_heavy"
+            ],
+            "experiment_seed": 0,
+            "observations": [],
+            "model": null,
+            "pockets_seen": 0,
+            "fit_count": 0,
+            "last_fit_observations": 0,
+            "source_splits": [],
+            "transductive": false
+          },
+          "prior": {
+            "requested": true,
+            "backend": "linear_descriptor_prior",
+            "mode": "frozen",
+            "data_split": "test",
+            "applied": false,
+            "status": "awaiting_real_training_observations",
+            "puct_calls": 0,
+            "pysr_symbolic_regression": false,
+            "update_status": "frozen",
+            "fit_performed": false
+          },
+          "synthesis": {
+            "status": "missing_aizynth_config",
+            "backend": "aizynthfinder",
+            "applied": false,
+            "learned": true,
+            "n_checked": 0,
+            "n_passed": 0,
+            "reports": []
+          },
+          "docking_reward": {
+            "requested": false,
+            "status": "disabled",
+            "applied": false
+          },
+          "all_candidates": [
+            {
+              "candidate_id": 0,
+              "smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+              "is_seed": true,
+              "is_generated": false,
+              "sa": 2.2557265152734853,
+              "qed": 0.645397999927026,
+              "lipinski": true,
+              "vina_proxy": -19.71538000000001,
+              "synthesis": {
+                "status": "not_applied",
+                "passed": null
+              },
+              "synthesis_passed": null,
+              "retained_after_synthesis": true,
+              "selected_for_evaluation": true,
+              "physical_evaluation_status": "pending_downstream"
+            }
+          ],
+          "candidate_accounting": {
+            "generated_scope": "all search-returned candidates before synthesis filtering and top-k selection",
+            "candidates_scope": "retained candidates selected for downstream evaluation",
+            "all_candidates_scope": "all search-returned candidates including synthesis rejections",
+            "evaluated_scope": "physical evaluation; not performed by this search runner"
+          },
+          "selection_counts": {
+            "n_pre_synthesis_candidates": 1,
+            "n_retained_candidates": 1,
+            "n_selected_candidates": 1,
+            "n_synthesis_rejected_candidates": 0,
+            "n_generated_retained_candidates": 0,
+            "n_generated_selected_candidates": 0,
+            "n_generated_synthesis_rejected_candidates": 0
+          },
+          "generation": {
+            "reduction_calls": 1020,
+            "reductions_without_products": 1020,
+            "products_returned": 0,
+            "unique_new_products_observed": 0,
+            "unique_new_typed_rejections": 0,
+            "unique_new_binding_rejections": 0,
+            "no_generated_reasons": [
+              "No products from attempted reductions (non-matching rules or invalid reductions)"
+            ],
+            "scope": "all search calls; rejection sets may overlap; not final-leaf counts"
+          }
+        },
+        "metric_backend": {
+          "sa": "rdkit_contrib_ertl",
+          "qed": "rdkit",
+          "vina": "heuristic_proxy_no_docking"
+        },
+        "n_generated_candidates": 0,
+        "n_seed_candidates": 1,
+        "physical": {
+          "status": "no_generated_candidates",
+          "scope": "generated-product physical evaluation; not a SOTA comparison",
+          "protocol": {
+            "engine": "vina",
+            "device": "cpu",
+            "cpu": 1,
+            "seed": 0,
+            "exhaustiveness": 8,
+            "n_poses": 9,
+            "top_k": 20,
+            "selection": "first retained generated products in search rank order",
+            "coverage_denominator": "all search-returned generated candidates before synthesis filtering and selection",
+            "posebusters_config": "dock",
+            "pose_selection": "lowest finite docking energy",
+            "reference_threshold": "same-engine reference-ligand redocked score; not crystal-pose scoring",
+            "mmff94s_relax": false,
+            "mmff94s_relax_max_iters": null,
+            "dock_pipeline": "dock -> PoseBusters"
+          },
+          "source_sha256": {
+            "receptor": "647edad4f5379023c6394c31436bb984f4459018c8aa74282e6674c6c8e065aa",
+            "reference_ligand": "a04285a2e375f0d7785294bf1eed0ec3ba44e747c72c3011255410f52cfb3262"
+          },
+          "candidates": [],
+          "reference": null,
+          "summary": {
+            "n_generated": 0,
+            "n_selected": 0,
+            "n_docked": 0,
+            "n_pb_pass": 0,
+            "pb_pass_rate_all_generated": null,
+            "pb_pass_rate_selected": null,
+            "n_beats_redocked_reference": 0,
+            "n_triple_threshold_redocked_reference": 0,
+            "triple_threshold_rate_all_generated": null,
+            "n_vina_below_minus8": 0,
+            "better_reference_rate_all_generated": null,
+            "vina_mean_docked_kcal_mol": null,
+            "vina_best_kcal_mol": null
+          }
+        },
+        "n_pb_pass": 0,
+        "pb_pass_rate": null,
+        "pb_status": "no_candidates",
+        "pb_check": {
+          "status": "no_candidates",
+          "scope": "PoseBusters chemistry validity on docked candidates",
+          "mode": "PoseBusters_mol_v1",
+          "engine_version": "0.6.5",
+          "per_smiles": {},
+          "n": 0,
+          "n_pb_pass": 0,
+          "pb_pass_rate": null
+        },
+        "diffdock_score_mean": null,
+        "diffdock_score_std": null,
+        "diffdock_status": "disabled",
+        "diffdock_n_invoked": 0,
+        "diffdock_n_scored": 0,
+        "diffdock_per_smiles": {},
+        "flowdock_score_mean": null,
+        "flowdock_score_std": null,
+        "flowdock_status": "disabled",
+        "flowdock_n_invoked": 0,
+        "flowdock_n_scored": 0,
+        "flowdock_per_smiles": {},
+        "biomlm_score_mean": null,
+        "biomlm_score_std": null,
+        "biomlm_status": "disabled",
+        "biomlm_n_invoked": 0,
+        "biomlm_n_scored": 0,
+        "biomlm_encoder": "gatedgcn",
+        "biomlm_model_type": "biolm",
+        "biomlm_per_smiles": {},
+        "aizynth_status": "disabled",
+        "aizynth_mode": "smarts",
+        "aizynth_n_invoked": 0,
+        "aizynth_n_scored": 0,
+        "aizynth_n_synthesis_route": 0,
+        "aizynth_synthesis_success_rate": null,
+        "aizynth_per_smiles": {}
+      },
+      {
+        "pocket_id": "test_001",
+        "status": "seed_only",
+        "n_candidates": 1,
+        "top1_smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+        "top1_sa": 2.2557265152734853,
+        "top1_qed": 0.645397999927026,
+        "top1_lipinski": true,
+        "top1_vina_proxy": -19.71538000000001,
+        "mean_sa": 2.2557265152734853,
+        "mean_qed": 0.645397999927026,
+        "lipinski_pass_count": 1,
+        "n_sims": 1000,
+        "wall_seconds": 3.7294924610032467,
+        "notes": "reference initialized search; physical measurements recorded separately when enabled",
+        "seed": 1234,
+        "receptor_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GLMU_STRPN_2_459_0/4aaw_A_rec_4ac3_r83_lig_tt_min_0_pocket10.pdb",
+        "ligand_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GLMU_STRPN_2_459_0/4aaw_A_rec_4ac3_r83_lig_tt_min_0.sdf",
+        "search_config": {
+          "n_simulations": 1000,
+          "max_depth": 3,
+          "top_k": 100,
+          "early_stop": true,
+          "patience": 50,
+          "tile_library": "extended_204",
+          "click_rules": "all_5",
+          "rule_names": [
+            "CuAAC",
+            "SPAAC",
+            "ThiolEne",
+            "Suzuki",
+            "AmideCoupling"
+          ],
+          "tile_count": 204,
+          "branching_target": 1020,
+          "branching_attempts": 1020,
+          "use_fragment_pool": false,
+          "seed": 1234,
+          "seed_strategy": "reference",
+          "not_applied": [
+            "synthesis_oracle",
+            "symbolic_prior",
+            "symbolic_prior_refit_every"
+          ],
+          "disabled": [],
+          "unsupported_requested": {
+            "symbolic_prior": true,
+            "synthesis_oracle": true,
+            "symbolic_prior_refit_every": 5
+          },
+          "guidance": {
+            "prior": {
+              "requested": true,
+              "backend": "linear_descriptor_prior",
+              "mode": "frozen",
+              "data_split": "test",
+              "applied": false,
+              "status": "awaiting_real_training_observations",
+              "puct_calls": 0,
+              "pysr_symbolic_regression": false,
+              "update_status": "frozen",
+              "fit_performed": false
+            },
+            "synthesis": {
+              "status": "missing_aizynth_config",
+              "backend": "aizynthfinder",
+              "applied": false,
+              "learned": true,
+              "n_checked": 0,
+              "n_passed": 0,
+              "reports": []
+            },
+            "docking_reward": {
+              "requested": false,
+              "status": "disabled",
+              "applied": false
+            }
+          }
+        },
+        "candidates": [
+          {
+            "candidate_id": 0,
+            "smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+            "is_seed": true,
+            "is_generated": false,
+            "sa": 2.2557265152734853,
+            "qed": 0.645397999927026,
+            "lipinski": true,
+            "vina_proxy": -19.71538000000001,
+            "synthesis": {
+              "status": "not_applied",
+              "passed": null
+            },
+            "synthesis_passed": null,
+            "retained_after_synthesis": true,
+            "selected_for_evaluation": true,
+            "physical_evaluation_status": "pending_downstream"
+          }
+        ],
+        "diagnostics": {
+          "seed_smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+          "init_strategy": "reference",
+          "canonical_seed": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+          "chosen_tile": null,
+          "initialization_seconds": 0.08826470900385175,
+          "empty_candidates_reason": null,
+          "search": {
+            "nfe": 51,
+            "nfe_reductions": 1020,
+            "nfe_oracle": 1,
+            "simulations_completed": 51,
+            "early_stopped": true
+          },
+          "error": null,
+          "prior_state": {
+            "schema_version": 1,
+            "backend": "linear_descriptor_prior",
+            "features": [
+              "n_atoms",
+              "n_bonds",
+              "n_free_sites",
+              "n_heavy"
+            ],
+            "experiment_seed": 1234,
+            "observations": [],
+            "model": null,
+            "pockets_seen": 0,
+            "fit_count": 0,
+            "last_fit_observations": 0,
+            "source_splits": [],
+            "transductive": false
+          },
+          "prior": {
+            "requested": true,
+            "backend": "linear_descriptor_prior",
+            "mode": "frozen",
+            "data_split": "test",
+            "applied": false,
+            "status": "awaiting_real_training_observations",
+            "puct_calls": 0,
+            "pysr_symbolic_regression": false,
+            "update_status": "frozen",
+            "fit_performed": false
+          },
+          "synthesis": {
+            "status": "missing_aizynth_config",
+            "backend": "aizynthfinder",
+            "applied": false,
+            "learned": true,
+            "n_checked": 0,
+            "n_passed": 0,
+            "reports": []
+          },
+          "docking_reward": {
+            "requested": false,
+            "status": "disabled",
+            "applied": false
+          },
+          "all_candidates": [
+            {
+              "candidate_id": 0,
+              "smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+              "is_seed": true,
+              "is_generated": false,
+              "sa": 2.2557265152734853,
+              "qed": 0.645397999927026,
+              "lipinski": true,
+              "vina_proxy": -19.71538000000001,
+              "synthesis": {
+                "status": "not_applied",
+                "passed": null
+              },
+              "synthesis_passed": null,
+              "retained_after_synthesis": true,
+              "selected_for_evaluation": true,
+              "physical_evaluation_status": "pending_downstream"
+            }
+          ],
+          "candidate_accounting": {
+            "generated_scope": "all search-returned candidates before synthesis filtering and top-k selection",
+            "candidates_scope": "retained candidates selected for downstream evaluation",
+            "all_candidates_scope": "all search-returned candidates including synthesis rejections",
+            "evaluated_scope": "physical evaluation; not performed by this search runner"
+          },
+          "selection_counts": {
+            "n_pre_synthesis_candidates": 1,
+            "n_retained_candidates": 1,
+            "n_selected_candidates": 1,
+            "n_synthesis_rejected_candidates": 0,
+            "n_generated_retained_candidates": 0,
+            "n_generated_selected_candidates": 0,
+            "n_generated_synthesis_rejected_candidates": 0
+          },
+          "generation": {
+            "reduction_calls": 1020,
+            "reductions_without_products": 1020,
+            "products_returned": 0,
+            "unique_new_products_observed": 0,
+            "unique_new_typed_rejections": 0,
+            "unique_new_binding_rejections": 0,
+            "no_generated_reasons": [
+              "No products from attempted reductions (non-matching rules or invalid reductions)"
+            ],
+            "scope": "all search calls; rejection sets may overlap; not final-leaf counts"
+          }
+        },
+        "metric_backend": {
+          "sa": "rdkit_contrib_ertl",
+          "qed": "rdkit",
+          "vina": "heuristic_proxy_no_docking"
+        },
+        "n_generated_candidates": 0,
+        "n_seed_candidates": 1,
+        "physical": {
+          "status": "no_generated_candidates",
+          "scope": "generated-product physical evaluation; not a SOTA comparison",
+          "protocol": {
+            "engine": "vina",
+            "device": "cpu",
+            "cpu": 1,
+            "seed": 1234,
+            "exhaustiveness": 8,
+            "n_poses": 9,
+            "top_k": 20,
+            "selection": "first retained generated products in search rank order",
+            "coverage_denominator": "all search-returned generated candidates before synthesis filtering and selection",
+            "posebusters_config": "dock",
+            "pose_selection": "lowest finite docking energy",
+            "reference_threshold": "same-engine reference-ligand redocked score; not crystal-pose scoring",
+            "mmff94s_relax": false,
+            "mmff94s_relax_max_iters": null,
+            "dock_pipeline": "dock -> PoseBusters"
+          },
+          "source_sha256": {
+            "receptor": "647edad4f5379023c6394c31436bb984f4459018c8aa74282e6674c6c8e065aa",
+            "reference_ligand": "a04285a2e375f0d7785294bf1eed0ec3ba44e747c72c3011255410f52cfb3262"
+          },
+          "candidates": [],
+          "reference": null,
+          "summary": {
+            "n_generated": 0,
+            "n_selected": 0,
+            "n_docked": 0,
+            "n_pb_pass": 0,
+            "pb_pass_rate_all_generated": null,
+            "pb_pass_rate_selected": null,
+            "n_beats_redocked_reference": 0,
+            "n_triple_threshold_redocked_reference": 0,
+            "triple_threshold_rate_all_generated": null,
+            "n_vina_below_minus8": 0,
+            "better_reference_rate_all_generated": null,
+            "vina_mean_docked_kcal_mol": null,
+            "vina_best_kcal_mol": null
+          }
+        },
+        "n_pb_pass": 0,
+        "pb_pass_rate": null,
+        "pb_status": "no_candidates",
+        "pb_check": {
+          "status": "no_candidates",
+          "scope": "PoseBusters chemistry validity on docked candidates",
+          "mode": "PoseBusters_mol_v1",
+          "engine_version": "0.6.5",
+          "per_smiles": {},
+          "n": 0,
+          "n_pb_pass": 0,
+          "pb_pass_rate": null
+        },
+        "diffdock_score_mean": null,
+        "diffdock_score_std": null,
+        "diffdock_status": "disabled",
+        "diffdock_n_invoked": 0,
+        "diffdock_n_scored": 0,
+        "diffdock_per_smiles": {},
+        "flowdock_score_mean": null,
+        "flowdock_score_std": null,
+        "flowdock_status": "disabled",
+        "flowdock_n_invoked": 0,
+        "flowdock_n_scored": 0,
+        "flowdock_per_smiles": {},
+        "biomlm_score_mean": null,
+        "biomlm_score_std": null,
+        "biomlm_status": "disabled",
+        "biomlm_n_invoked": 0,
+        "biomlm_n_scored": 0,
+        "biomlm_encoder": "gatedgcn",
+        "biomlm_model_type": "biolm",
+        "biomlm_per_smiles": {},
+        "aizynth_status": "disabled",
+        "aizynth_mode": "smarts",
+        "aizynth_n_invoked": 0,
+        "aizynth_n_scored": 0,
+        "aizynth_n_synthesis_route": 0,
+        "aizynth_synthesis_success_rate": null,
+        "aizynth_per_smiles": {}
+      },
+      {
+        "pocket_id": "test_002",
+        "status": "no_candidates",
+        "n_candidates": 0,
+        "top1_smiles": "",
+        "top1_sa": null,
+        "top1_qed": null,
+        "top1_lipinski": null,
+        "top1_vina_proxy": null,
+        "mean_sa": null,
+        "mean_qed": null,
+        "lipinski_pass_count": 0,
+        "n_sims": 1000,
+        "wall_seconds": 3.414192963988171,
+        "notes": "reference initialized search; physical measurements recorded separately when enabled",
+        "seed": 42,
+        "receptor_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GRK4_HUMAN_1_578_0/4yhj_A_rec_4yhj_an2_lig_tt_min_0_pocket10.pdb",
+        "ligand_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GRK4_HUMAN_1_578_0/4yhj_A_rec_4yhj_an2_lig_tt_min_0.sdf",
+        "search_config": {
+          "n_simulations": 1000,
+          "max_depth": 3,
+          "top_k": 100,
+          "early_stop": true,
+          "patience": 50,
+          "tile_library": "extended_204",
+          "click_rules": "all_5",
+          "rule_names": [
+            "CuAAC",
+            "SPAAC",
+            "ThiolEne",
+            "Suzuki",
+            "AmideCoupling"
+          ],
+          "tile_count": 204,
+          "branching_target": 1020,
+          "branching_attempts": 1020,
+          "use_fragment_pool": false,
+          "seed": 42,
+          "seed_strategy": "reference",
+          "not_applied": [
+            "synthesis_oracle",
+            "symbolic_prior",
+            "symbolic_prior_refit_every"
+          ],
+          "disabled": [],
+          "unsupported_requested": {
+            "symbolic_prior": true,
+            "synthesis_oracle": true,
+            "symbolic_prior_refit_every": 5
+          },
+          "guidance": {
+            "prior": {
+              "requested": true,
+              "backend": "linear_descriptor_prior",
+              "mode": "frozen",
+              "data_split": "test",
+              "applied": false,
+              "status": "awaiting_real_training_observations",
+              "puct_calls": 0,
+              "pysr_symbolic_regression": false,
+              "update_status": "frozen",
+              "fit_performed": false
+            },
+            "synthesis": {
+              "status": "missing_aizynth_config",
+              "backend": "aizynthfinder",
+              "applied": false,
+              "learned": true,
+              "n_checked": 0,
+              "n_passed": 0,
+              "reports": []
+            },
+            "docking_reward": {
+              "requested": false,
+              "status": "disabled",
+              "applied": false
+            }
+          }
+        },
+        "candidates": [],
+        "diagnostics": {
+          "seed_smiles": "Nc1ncnc2c1ncn2[C@@H]1O[C@H](CO[P@](=O)(O)O[P@](N)(=O)O)[C@@H](O)[C@H]1O",
+          "init_strategy": "reference",
+          "canonical_seed": "Nc1ncnc2c1ncn2[C@@H]1O[C@H](CO[P@](=O)(O)O[P@](N)(=O)O)[C@@H](O)[C@H]1O",
+          "chosen_tile": null,
+          "initialization_seconds": 0.09084099299798254,
+          "empty_candidates_reason": "No search candidates passed the configured search/filter path",
+          "search": {
+            "nfe": 51,
+            "nfe_reductions": 1020,
+            "nfe_oracle": 0,
+            "simulations_completed": 51,
+            "early_stopped": true
+          },
+          "error": null,
+          "prior_state": {
+            "schema_version": 1,
+            "backend": "linear_descriptor_prior",
+            "features": [
+              "n_atoms",
+              "n_bonds",
+              "n_free_sites",
+              "n_heavy"
+            ],
+            "experiment_seed": 42,
+            "observations": [],
+            "model": null,
+            "pockets_seen": 0,
+            "fit_count": 0,
+            "last_fit_observations": 0,
+            "source_splits": [],
+            "transductive": false
+          },
+          "prior": {
+            "requested": true,
+            "backend": "linear_descriptor_prior",
+            "mode": "frozen",
+            "data_split": "test",
+            "applied": false,
+            "status": "awaiting_real_training_observations",
+            "puct_calls": 0,
+            "pysr_symbolic_regression": false,
+            "update_status": "frozen",
+            "fit_performed": false
+          },
+          "synthesis": {
+            "status": "missing_aizynth_config",
+            "backend": "aizynthfinder",
+            "applied": false,
+            "learned": true,
+            "n_checked": 0,
+            "n_passed": 0,
+            "reports": []
+          },
+          "docking_reward": {
+            "requested": false,
+            "status": "disabled",
+            "applied": false
+          },
+          "all_candidates": [],
+          "candidate_accounting": {
+            "generated_scope": "all search-returned candidates before synthesis filtering and top-k selection",
+            "candidates_scope": "retained candidates selected for downstream evaluation",
+            "all_candidates_scope": "all search-returned candidates including synthesis rejections",
+            "evaluated_scope": "physical evaluation; not performed by this search runner"
+          },
+          "selection_counts": {
+            "n_pre_synthesis_candidates": 0,
+            "n_retained_candidates": 0,
+            "n_selected_candidates": 0,
+            "n_synthesis_rejected_candidates": 0,
+            "n_generated_retained_candidates": 0,
+            "n_generated_selected_candidates": 0,
+            "n_generated_synthesis_rejected_candidates": 0
+          },
+          "generation": {
+            "reduction_calls": 1020,
+            "reductions_without_products": 1020,
+            "products_returned": 0,
+            "unique_new_products_observed": 0,
+            "unique_new_typed_rejections": 0,
+            "unique_new_binding_rejections": 0,
+            "no_generated_reasons": [
+              "No products from attempted reductions (non-matching rules or invalid reductions)"
+            ],
+            "scope": "all search calls; rejection sets may overlap; not final-leaf counts"
+          }
+        },
+        "metric_backend": {
+          "sa": "rdkit_contrib_ertl",
+          "qed": "rdkit",
+          "vina": "heuristic_proxy_no_docking"
+        },
+        "n_generated_candidates": 0,
+        "n_seed_candidates": 0,
+        "physical": {
+          "status": "no_generated_candidates",
+          "scope": "generated-product physical evaluation; not a SOTA comparison",
+          "protocol": {
+            "engine": "vina",
+            "device": "cpu",
+            "cpu": 1,
+            "seed": 42,
+            "exhaustiveness": 8,
+            "n_poses": 9,
+            "top_k": 20,
+            "selection": "first retained generated products in search rank order",
+            "coverage_denominator": "all search-returned generated candidates before synthesis filtering and selection",
+            "posebusters_config": "dock",
+            "pose_selection": "lowest finite docking energy",
+            "reference_threshold": "same-engine reference-ligand redocked score; not crystal-pose scoring",
+            "mmff94s_relax": false,
+            "mmff94s_relax_max_iters": null,
+            "dock_pipeline": "dock -> PoseBusters"
+          },
+          "source_sha256": {
+            "receptor": "4842b562ae860051f463c4a90df8dda3f7c1fe219ded184ea1a5acdb078ae5cf",
+            "reference_ligand": "467006ecceaea3a8b5635f6f2f2babae3f37116742c17ed63afd2aea865ff65d"
+          },
+          "candidates": [],
+          "reference": null,
+          "summary": {
+            "n_generated": 0,
+            "n_selected": 0,
+            "n_docked": 0,
+            "n_pb_pass": 0,
+            "pb_pass_rate_all_generated": null,
+            "pb_pass_rate_selected": null,
+            "n_beats_redocked_reference": 0,
+            "n_triple_threshold_redocked_reference": 0,
+            "triple_threshold_rate_all_generated": null,
+            "n_vina_below_minus8": 0,
+            "better_reference_rate_all_generated": null,
+            "vina_mean_docked_kcal_mol": null,
+            "vina_best_kcal_mol": null
+          }
+        },
+        "n_pb_pass": 0,
+        "pb_pass_rate": null,
+        "pb_status": "no_candidates",
+        "pb_check": {
+          "status": "no_candidates",
+          "scope": "PoseBusters chemistry validity on docked candidates",
+          "mode": "PoseBusters_mol_v1",
+          "engine_version": "0.6.5",
+          "per_smiles": {},
+          "n": 0,
+          "n_pb_pass": 0,
+          "pb_pass_rate": null
+        },
+        "diffdock_score_mean": null,
+        "diffdock_score_std": null,
+        "diffdock_status": "disabled",
+        "diffdock_n_invoked": 0,
+        "diffdock_n_scored": 0,
+        "diffdock_per_smiles": {},
+        "flowdock_score_mean": null,
+        "flowdock_score_std": null,
+        "flowdock_status": "disabled",
+        "flowdock_n_invoked": 0,
+        "flowdock_n_scored": 0,
+        "flowdock_per_smiles": {},
+        "biomlm_score_mean": null,
+        "biomlm_score_std": null,
+        "biomlm_status": "disabled",
+        "biomlm_n_invoked": 0,
+        "biomlm_n_scored": 0,
+        "biomlm_encoder": "gatedgcn",
+        "biomlm_model_type": "biolm",
+        "biomlm_per_smiles": {},
+        "aizynth_status": "disabled",
+        "aizynth_mode": "smarts",
+        "aizynth_n_invoked": 0,
+        "aizynth_n_scored": 0,
+        "aizynth_n_synthesis_route": 0,
+        "aizynth_synthesis_success_rate": null,
+        "aizynth_per_smiles": {}
+      },
+      {
+        "pocket_id": "test_002",
+        "status": "no_candidates",
+        "n_candidates": 0,
+        "top1_smiles": "",
+        "top1_sa": null,
+        "top1_qed": null,
+        "top1_lipinski": null,
+        "top1_vina_proxy": null,
+        "mean_sa": null,
+        "mean_qed": null,
+        "lipinski_pass_count": 0,
+        "n_sims": 1000,
+        "wall_seconds": 3.4161520329944324,
+        "notes": "reference initialized search; physical measurements recorded separately when enabled",
+        "seed": 0,
+        "receptor_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GRK4_HUMAN_1_578_0/4yhj_A_rec_4yhj_an2_lig_tt_min_0_pocket10.pdb",
+        "ligand_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GRK4_HUMAN_1_578_0/4yhj_A_rec_4yhj_an2_lig_tt_min_0.sdf",
+        "search_config": {
+          "n_simulations": 1000,
+          "max_depth": 3,
+          "top_k": 100,
+          "early_stop": true,
+          "patience": 50,
+          "tile_library": "extended_204",
+          "click_rules": "all_5",
+          "rule_names": [
+            "CuAAC",
+            "SPAAC",
+            "ThiolEne",
+            "Suzuki",
+            "AmideCoupling"
+          ],
+          "tile_count": 204,
+          "branching_target": 1020,
+          "branching_attempts": 1020,
+          "use_fragment_pool": false,
+          "seed": 0,
+          "seed_strategy": "reference",
+          "not_applied": [
+            "synthesis_oracle",
+            "symbolic_prior",
+            "symbolic_prior_refit_every"
+          ],
+          "disabled": [],
+          "unsupported_requested": {
+            "symbolic_prior": true,
+            "synthesis_oracle": true,
+            "symbolic_prior_refit_every": 5
+          },
+          "guidance": {
+            "prior": {
+              "requested": true,
+              "backend": "linear_descriptor_prior",
+              "mode": "frozen",
+              "data_split": "test",
+              "applied": false,
+              "status": "awaiting_real_training_observations",
+              "puct_calls": 0,
+              "pysr_symbolic_regression": false,
+              "update_status": "frozen",
+              "fit_performed": false
+            },
+            "synthesis": {
+              "status": "missing_aizynth_config",
+              "backend": "aizynthfinder",
+              "applied": false,
+              "learned": true,
+              "n_checked": 0,
+              "n_passed": 0,
+              "reports": []
+            },
+            "docking_reward": {
+              "requested": false,
+              "status": "disabled",
+              "applied": false
+            }
+          }
+        },
+        "candidates": [],
+        "diagnostics": {
+          "seed_smiles": "Nc1ncnc2c1ncn2[C@@H]1O[C@H](CO[P@](=O)(O)O[P@](N)(=O)O)[C@@H](O)[C@H]1O",
+          "init_strategy": "reference",
+          "canonical_seed": "Nc1ncnc2c1ncn2[C@@H]1O[C@H](CO[P@](=O)(O)O[P@](N)(=O)O)[C@@H](O)[C@H]1O",
+          "chosen_tile": null,
+          "initialization_seconds": 0.08868384100787807,
+          "empty_candidates_reason": "No search candidates passed the configured search/filter path",
+          "search": {
+            "nfe": 51,
+            "nfe_reductions": 1020,
+            "nfe_oracle": 0,
+            "simulations_completed": 51,
+            "early_stopped": true
+          },
+          "error": null,
+          "prior_state": {
+            "schema_version": 1,
+            "backend": "linear_descriptor_prior",
+            "features": [
+              "n_atoms",
+              "n_bonds",
+              "n_free_sites",
+              "n_heavy"
+            ],
+            "experiment_seed": 0,
+            "observations": [],
+            "model": null,
+            "pockets_seen": 0,
+            "fit_count": 0,
+            "last_fit_observations": 0,
+            "source_splits": [],
+            "transductive": false
+          },
+          "prior": {
+            "requested": true,
+            "backend": "linear_descriptor_prior",
+            "mode": "frozen",
+            "data_split": "test",
+            "applied": false,
+            "status": "awaiting_real_training_observations",
+            "puct_calls": 0,
+            "pysr_symbolic_regression": false,
+            "update_status": "frozen",
+            "fit_performed": false
+          },
+          "synthesis": {
+            "status": "missing_aizynth_config",
+            "backend": "aizynthfinder",
+            "applied": false,
+            "learned": true,
+            "n_checked": 0,
+            "n_passed": 0,
+            "reports": []
+          },
+          "docking_reward": {
+            "requested": false,
+            "status": "disabled",
+            "applied": false
+          },
+          "all_candidates": [],
+          "candidate_accounting": {
+            "generated_scope": "all search-returned candidates before synthesis filtering and top-k selection",
+            "candidates_scope": "retained candidates selected for downstream evaluation",
+            "all_candidates_scope": "all search-returned candidates including synthesis rejections",
+            "evaluated_scope": "physical evaluation; not performed by this search runner"
+          },
+          "selection_counts": {
+            "n_pre_synthesis_candidates": 0,
+            "n_retained_candidates": 0,
+            "n_selected_candidates": 0,
+            "n_synthesis_rejected_candidates": 0,
+            "n_generated_retained_candidates": 0,
+            "n_generated_selected_candidates": 0,
+            "n_generated_synthesis_rejected_candidates": 0
+          },
+          "generation": {
+            "reduction_calls": 1020,
+            "reductions_without_products": 1020,
+            "products_returned": 0,
+            "unique_new_products_observed": 0,
+            "unique_new_typed_rejections": 0,
+            "unique_new_binding_rejections": 0,
+            "no_generated_reasons": [
+              "No products from attempted reductions (non-matching rules or invalid reductions)"
+            ],
+            "scope": "all search calls; rejection sets may overlap; not final-leaf counts"
+          }
+        },
+        "metric_backend": {
+          "sa": "rdkit_contrib_ertl",
+          "qed": "rdkit",
+          "vina": "heuristic_proxy_no_docking"
+        },
+        "n_generated_candidates": 0,
+        "n_seed_candidates": 0,
+        "physical": {
+          "status": "no_generated_candidates",
+          "scope": "generated-product physical evaluation; not a SOTA comparison",
+          "protocol": {
+            "engine": "vina",
+            "device": "cpu",
+            "cpu": 1,
+            "seed": 0,
+            "exhaustiveness": 8,
+            "n_poses": 9,
+            "top_k": 20,
+            "selection": "first retained generated products in search rank order",
+            "coverage_denominator": "all search-returned generated candidates before synthesis filtering and selection",
+            "posebusters_config": "dock",
+            "pose_selection": "lowest finite docking energy",
+            "reference_threshold": "same-engine reference-ligand redocked score; not crystal-pose scoring",
+            "mmff94s_relax": false,
+            "mmff94s_relax_max_iters": null,
+            "dock_pipeline": "dock -> PoseBusters"
+          },
+          "source_sha256": {
+            "receptor": "4842b562ae860051f463c4a90df8dda3f7c1fe219ded184ea1a5acdb078ae5cf",
+            "reference_ligand": "467006ecceaea3a8b5635f6f2f2babae3f37116742c17ed63afd2aea865ff65d"
+          },
+          "candidates": [],
+          "reference": null,
+          "summary": {
+            "n_generated": 0,
+            "n_selected": 0,
+            "n_docked": 0,
+            "n_pb_pass": 0,
+            "pb_pass_rate_all_generated": null,
+            "pb_pass_rate_selected": null,
+            "n_beats_redocked_reference": 0,
+            "n_triple_threshold_redocked_reference": 0,
+            "triple_threshold_rate_all_generated": null,
+            "n_vina_below_minus8": 0,
+            "better_reference_rate_all_generated": null,
+            "vina_mean_docked_kcal_mol": null,
+            "vina_best_kcal_mol": null
+          }
+        },
+        "n_pb_pass": 0,
+        "pb_pass_rate": null,
+        "pb_status": "no_candidates",
+        "pb_check": {
+          "status": "no_candidates",
+          "scope": "PoseBusters chemistry validity on docked candidates",
+          "mode": "PoseBusters_mol_v1",
+          "engine_version": "0.6.5",
+          "per_smiles": {},
+          "n": 0,
+          "n_pb_pass": 0,
+          "pb_pass_rate": null
+        },
+        "diffdock_score_mean": null,
+        "diffdock_score_std": null,
+        "diffdock_status": "disabled",
+        "diffdock_n_invoked": 0,
+        "diffdock_n_scored": 0,
+        "diffdock_per_smiles": {},
+        "flowdock_score_mean": null,
+        "flowdock_score_std": null,
+        "flowdock_status": "disabled",
+        "flowdock_n_invoked": 0,
+        "flowdock_n_scored": 0,
+        "flowdock_per_smiles": {},
+        "biomlm_score_mean": null,
+        "biomlm_score_std": null,
+        "biomlm_status": "disabled",
+        "biomlm_n_invoked": 0,
+        "biomlm_n_scored": 0,
+        "biomlm_encoder": "gatedgcn",
+        "biomlm_model_type": "biolm",
+        "biomlm_per_smiles": {},
+        "aizynth_status": "disabled",
+        "aizynth_mode": "smarts",
+        "aizynth_n_invoked": 0,
+        "aizynth_n_scored": 0,
+        "aizynth_n_synthesis_route": 0,
+        "aizynth_synthesis_success_rate": null,
+        "aizynth_per_smiles": {}
+      },
+      {
+        "pocket_id": "test_002",
+        "status": "no_candidates",
+        "n_candidates": 0,
+        "top1_smiles": "",
+        "top1_sa": null,
+        "top1_qed": null,
+        "top1_lipinski": null,
+        "top1_vina_proxy": null,
+        "mean_sa": null,
+        "mean_qed": null,
+        "lipinski_pass_count": 0,
+        "n_sims": 1000,
+        "wall_seconds": 3.39976325398311,
+        "notes": "reference initialized search; physical measurements recorded separately when enabled",
+        "seed": 1234,
+        "receptor_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GRK4_HUMAN_1_578_0/4yhj_A_rec_4yhj_an2_lig_tt_min_0_pocket10.pdb",
+        "ligand_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GRK4_HUMAN_1_578_0/4yhj_A_rec_4yhj_an2_lig_tt_min_0.sdf",
+        "search_config": {
+          "n_simulations": 1000,
+          "max_depth": 3,
+          "top_k": 100,
+          "early_stop": true,
+          "patience": 50,
+          "tile_library": "extended_204",
+          "click_rules": "all_5",
+          "rule_names": [
+            "CuAAC",
+            "SPAAC",
+            "ThiolEne",
+            "Suzuki",
+            "AmideCoupling"
+          ],
+          "tile_count": 204,
+          "branching_target": 1020,
+          "branching_attempts": 1020,
+          "use_fragment_pool": false,
+          "seed": 1234,
+          "seed_strategy": "reference",
+          "not_applied": [
+            "synthesis_oracle",
+            "symbolic_prior",
+            "symbolic_prior_refit_every"
+          ],
+          "disabled": [],
+          "unsupported_requested": {
+            "symbolic_prior": true,
+            "synthesis_oracle": true,
+            "symbolic_prior_refit_every": 5
+          },
+          "guidance": {
+            "prior": {
+              "requested": true,
+              "backend": "linear_descriptor_prior",
+              "mode": "frozen",
+              "data_split": "test",
+              "applied": false,
+              "status": "awaiting_real_training_observations",
+              "puct_calls": 0,
+              "pysr_symbolic_regression": false,
+              "update_status": "frozen",
+              "fit_performed": false
+            },
+            "synthesis": {
+              "status": "missing_aizynth_config",
+              "backend": "aizynthfinder",
+              "applied": false,
+              "learned": true,
+              "n_checked": 0,
+              "n_passed": 0,
+              "reports": []
+            },
+            "docking_reward": {
+              "requested": false,
+              "status": "disabled",
+              "applied": false
+            }
+          }
+        },
+        "candidates": [],
+        "diagnostics": {
+          "seed_smiles": "Nc1ncnc2c1ncn2[C@@H]1O[C@H](CO[P@](=O)(O)O[P@](N)(=O)O)[C@@H](O)[C@H]1O",
+          "init_strategy": "reference",
+          "canonical_seed": "Nc1ncnc2c1ncn2[C@@H]1O[C@H](CO[P@](=O)(O)O[P@](N)(=O)O)[C@@H](O)[C@H]1O",
+          "chosen_tile": null,
+          "initialization_seconds": 0.0913715329952538,
+          "empty_candidates_reason": "No search candidates passed the configured search/filter path",
+          "search": {
+            "nfe": 51,
+            "nfe_reductions": 1020,
+            "nfe_oracle": 0,
+            "simulations_completed": 51,
+            "early_stopped": true
+          },
+          "error": null,
+          "prior_state": {
+            "schema_version": 1,
+            "backend": "linear_descriptor_prior",
+            "features": [
+              "n_atoms",
+              "n_bonds",
+              "n_free_sites",
+              "n_heavy"
+            ],
+            "experiment_seed": 1234,
+            "observations": [],
+            "model": null,
+            "pockets_seen": 0,
+            "fit_count": 0,
+            "last_fit_observations": 0,
+            "source_splits": [],
+            "transductive": false
+          },
+          "prior": {
+            "requested": true,
+            "backend": "linear_descriptor_prior",
+            "mode": "frozen",
+            "data_split": "test",
+            "applied": false,
+            "status": "awaiting_real_training_observations",
+            "puct_calls": 0,
+            "pysr_symbolic_regression": false,
+            "update_status": "frozen",
+            "fit_performed": false
+          },
+          "synthesis": {
+            "status": "missing_aizynth_config",
+            "backend": "aizynthfinder",
+            "applied": false,
+            "learned": true,
+            "n_checked": 0,
+            "n_passed": 0,
+            "reports": []
+          },
+          "docking_reward": {
+            "requested": false,
+            "status": "disabled",
+            "applied": false
+          },
+          "all_candidates": [],
+          "candidate_accounting": {
+            "generated_scope": "all search-returned candidates before synthesis filtering and top-k selection",
+            "candidates_scope": "retained candidates selected for downstream evaluation",
+            "all_candidates_scope": "all search-returned candidates including synthesis rejections",
+            "evaluated_scope": "physical evaluation; not performed by this search runner"
+          },
+          "selection_counts": {
+            "n_pre_synthesis_candidates": 0,
+            "n_retained_candidates": 0,
+            "n_selected_candidates": 0,
+            "n_synthesis_rejected_candidates": 0,
+            "n_generated_retained_candidates": 0,
+            "n_generated_selected_candidates": 0,
+            "n_generated_synthesis_rejected_candidates": 0
+          },
+          "generation": {
+            "reduction_calls": 1020,
+            "reductions_without_products": 1020,
+            "products_returned": 0,
+            "unique_new_products_observed": 0,
+            "unique_new_typed_rejections": 0,
+            "unique_new_binding_rejections": 0,
+            "no_generated_reasons": [
+              "No products from attempted reductions (non-matching rules or invalid reductions)"
+            ],
+            "scope": "all search calls; rejection sets may overlap; not final-leaf counts"
+          }
+        },
+        "metric_backend": {
+          "sa": "rdkit_contrib_ertl",
+          "qed": "rdkit",
+          "vina": "heuristic_proxy_no_docking"
+        },
+        "n_generated_candidates": 0,
+        "n_seed_candidates": 0,
+        "physical": {
+          "status": "no_generated_candidates",
+          "scope": "generated-product physical evaluation; not a SOTA comparison",
+          "protocol": {
+            "engine": "vina",
+            "device": "cpu",
+            "cpu": 1,
+            "seed": 1234,
+            "exhaustiveness": 8,
+            "n_poses": 9,
+            "top_k": 20,
+            "selection": "first retained generated products in search rank order",
+            "coverage_denominator": "all search-returned generated candidates before synthesis filtering and selection",
+            "posebusters_config": "dock",
+            "pose_selection": "lowest finite docking energy",
+            "reference_threshold": "same-engine reference-ligand redocked score; not crystal-pose scoring",
+            "mmff94s_relax": false,
+            "mmff94s_relax_max_iters": null,
+            "dock_pipeline": "dock -> PoseBusters"
+          },
+          "source_sha256": {
+            "receptor": "4842b562ae860051f463c4a90df8dda3f7c1fe219ded184ea1a5acdb078ae5cf",
+            "reference_ligand": "467006ecceaea3a8b5635f6f2f2babae3f37116742c17ed63afd2aea865ff65d"
+          },
+          "candidates": [],
+          "reference": null,
+          "summary": {
+            "n_generated": 0,
+            "n_selected": 0,
+            "n_docked": 0,
+            "n_pb_pass": 0,
+            "pb_pass_rate_all_generated": null,
+            "pb_pass_rate_selected": null,
+            "n_beats_redocked_reference": 0,
+            "n_triple_threshold_redocked_reference": 0,
+            "triple_threshold_rate_all_generated": null,
+            "n_vina_below_minus8": 0,
+            "better_reference_rate_all_generated": null,
+            "vina_mean_docked_kcal_mol": null,
+            "vina_best_kcal_mol": null
+          }
+        },
+        "n_pb_pass": 0,
+        "pb_pass_rate": null,
+        "pb_status": "no_candidates",
+        "pb_check": {
+          "status": "no_candidates",
+          "scope": "PoseBusters chemistry validity on docked candidates",
+          "mode": "PoseBusters_mol_v1",
+          "engine_version": "0.6.5",
+          "per_smiles": {},
+          "n": 0,
+          "n_pb_pass": 0,
+          "pb_pass_rate": null
+        },
+        "diffdock_score_mean": null,
+        "diffdock_score_std": null,
+        "diffdock_status": "disabled",
+        "diffdock_n_invoked": 0,
+        "diffdock_n_scored": 0,
+        "diffdock_per_smiles": {},
+        "flowdock_score_mean": null,
+        "flowdock_score_std": null,
+        "flowdock_status": "disabled",
+        "flowdock_n_invoked": 0,
+        "flowdock_n_scored": 0,
+        "flowdock_per_smiles": {},
+        "biomlm_score_mean": null,
+        "biomlm_score_std": null,
+        "biomlm_status": "disabled",
+        "biomlm_n_invoked": 0,
+        "biomlm_n_scored": 0,
+        "biomlm_encoder": "gatedgcn",
+        "biomlm_model_type": "biolm",
+        "biomlm_per_smiles": {},
+        "aizynth_status": "disabled",
+        "aizynth_mode": "smarts",
+        "aizynth_n_invoked": 0,
+        "aizynth_n_scored": 0,
+        "aizynth_n_synthesis_route": 0,
+        "aizynth_synthesis_success_rate": null,
+        "aizynth_per_smiles": {}
+      },
+      {
+        "pocket_id": "test_003",
+        "status": "seed_only",
+        "n_candidates": 1,
+        "top1_smiles": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+        "top1_sa": 2.617427920420134,
+        "top1_qed": 0.4316851347607166,
+        "top1_lipinski": true,
+        "top1_vina_proxy": -14.533930000000002,
+        "mean_sa": 2.617427920420134,
+        "mean_qed": 0.4316851347607166,
+        "lipinski_pass_count": 1,
+        "n_sims": 1000,
+        "wall_seconds": 3.6740312059991993,
+        "notes": "reference initialized search; physical measurements recorded separately when enabled",
+        "seed": 42,
+        "receptor_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GSTP1_HUMAN_2_210_0/14gs_A_rec_20gs_cbd_lig_tt_min_0_pocket10.pdb",
+        "ligand_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GSTP1_HUMAN_2_210_0/14gs_A_rec_20gs_cbd_lig_tt_min_0.sdf",
+        "search_config": {
+          "n_simulations": 1000,
+          "max_depth": 3,
+          "top_k": 100,
+          "early_stop": true,
+          "patience": 50,
+          "tile_library": "extended_204",
+          "click_rules": "all_5",
+          "rule_names": [
+            "CuAAC",
+            "SPAAC",
+            "ThiolEne",
+            "Suzuki",
+            "AmideCoupling"
+          ],
+          "tile_count": 204,
+          "branching_target": 1020,
+          "branching_attempts": 1020,
+          "use_fragment_pool": false,
+          "seed": 42,
+          "seed_strategy": "reference",
+          "not_applied": [
+            "synthesis_oracle",
+            "symbolic_prior",
+            "symbolic_prior_refit_every"
+          ],
+          "disabled": [],
+          "unsupported_requested": {
+            "symbolic_prior": true,
+            "synthesis_oracle": true,
+            "symbolic_prior_refit_every": 5
+          },
+          "guidance": {
+            "prior": {
+              "requested": true,
+              "backend": "linear_descriptor_prior",
+              "mode": "frozen",
+              "data_split": "test",
+              "applied": false,
+              "status": "awaiting_real_training_observations",
+              "puct_calls": 0,
+              "pysr_symbolic_regression": false,
+              "update_status": "frozen",
+              "fit_performed": false
+            },
+            "synthesis": {
+              "status": "missing_aizynth_config",
+              "backend": "aizynthfinder",
+              "applied": false,
+              "learned": true,
+              "n_checked": 0,
+              "n_passed": 0,
+              "reports": []
+            },
+            "docking_reward": {
+              "requested": false,
+              "status": "disabled",
+              "applied": false
+            }
+          }
+        },
+        "candidates": [
+          {
+            "candidate_id": 0,
+            "smiles": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+            "is_seed": true,
+            "is_generated": false,
+            "sa": 2.617427920420134,
+            "qed": 0.4316851347607166,
+            "lipinski": true,
+            "vina_proxy": -14.533930000000002,
+            "synthesis": {
+              "status": "not_applied",
+              "passed": null
+            },
+            "synthesis_passed": null,
+            "retained_after_synthesis": true,
+            "selected_for_evaluation": true,
+            "physical_evaluation_status": "pending_downstream"
+          }
+        ],
+        "diagnostics": {
+          "seed_smiles": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+          "init_strategy": "reference",
+          "canonical_seed": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+          "chosen_tile": null,
+          "initialization_seconds": 0.08773362699139398,
+          "empty_candidates_reason": null,
+          "search": {
+            "nfe": 51,
+            "nfe_reductions": 1020,
+            "nfe_oracle": 1,
+            "simulations_completed": 51,
+            "early_stopped": true
+          },
+          "error": null,
+          "prior_state": {
+            "schema_version": 1,
+            "backend": "linear_descriptor_prior",
+            "features": [
+              "n_atoms",
+              "n_bonds",
+              "n_free_sites",
+              "n_heavy"
+            ],
+            "experiment_seed": 42,
+            "observations": [],
+            "model": null,
+            "pockets_seen": 0,
+            "fit_count": 0,
+            "last_fit_observations": 0,
+            "source_splits": [],
+            "transductive": false
+          },
+          "prior": {
+            "requested": true,
+            "backend": "linear_descriptor_prior",
+            "mode": "frozen",
+            "data_split": "test",
+            "applied": false,
+            "status": "awaiting_real_training_observations",
+            "puct_calls": 0,
+            "pysr_symbolic_regression": false,
+            "update_status": "frozen",
+            "fit_performed": false
+          },
+          "synthesis": {
+            "status": "missing_aizynth_config",
+            "backend": "aizynthfinder",
+            "applied": false,
+            "learned": true,
+            "n_checked": 0,
+            "n_passed": 0,
+            "reports": []
+          },
+          "docking_reward": {
+            "requested": false,
+            "status": "disabled",
+            "applied": false
+          },
+          "all_candidates": [
+            {
+              "candidate_id": 0,
+              "smiles": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+              "is_seed": true,
+              "is_generated": false,
+              "sa": 2.617427920420134,
+              "qed": 0.4316851347607166,
+              "lipinski": true,
+              "vina_proxy": -14.533930000000002,
+              "synthesis": {
+                "status": "not_applied",
+                "passed": null
+              },
+              "synthesis_passed": null,
+              "retained_after_synthesis": true,
+              "selected_for_evaluation": true,
+              "physical_evaluation_status": "pending_downstream"
+            }
+          ],
+          "candidate_accounting": {
+            "generated_scope": "all search-returned candidates before synthesis filtering and top-k selection",
+            "candidates_scope": "retained candidates selected for downstream evaluation",
+            "all_candidates_scope": "all search-returned candidates including synthesis rejections",
+            "evaluated_scope": "physical evaluation; not performed by this search runner"
+          },
+          "selection_counts": {
+            "n_pre_synthesis_candidates": 1,
+            "n_retained_candidates": 1,
+            "n_selected_candidates": 1,
+            "n_synthesis_rejected_candidates": 0,
+            "n_generated_retained_candidates": 0,
+            "n_generated_selected_candidates": 0,
+            "n_generated_synthesis_rejected_candidates": 0
+          },
+          "generation": {
+            "reduction_calls": 1020,
+            "reductions_without_products": 1020,
+            "products_returned": 0,
+            "unique_new_products_observed": 0,
+            "unique_new_typed_rejections": 0,
+            "unique_new_binding_rejections": 0,
+            "no_generated_reasons": [
+              "No products from attempted reductions (non-matching rules or invalid reductions)"
+            ],
+            "scope": "all search calls; rejection sets may overlap; not final-leaf counts"
+          }
+        },
+        "metric_backend": {
+          "sa": "rdkit_contrib_ertl",
+          "qed": "rdkit",
+          "vina": "heuristic_proxy_no_docking"
+        },
+        "n_generated_candidates": 0,
+        "n_seed_candidates": 1,
+        "physical": {
+          "status": "no_generated_candidates",
+          "scope": "generated-product physical evaluation; not a SOTA comparison",
+          "protocol": {
+            "engine": "vina",
+            "device": "cpu",
+            "cpu": 1,
+            "seed": 42,
+            "exhaustiveness": 8,
+            "n_poses": 9,
+            "top_k": 20,
+            "selection": "first retained generated products in search rank order",
+            "coverage_denominator": "all search-returned generated candidates before synthesis filtering and selection",
+            "posebusters_config": "dock",
+            "pose_selection": "lowest finite docking energy",
+            "reference_threshold": "same-engine reference-ligand redocked score; not crystal-pose scoring",
+            "mmff94s_relax": false,
+            "mmff94s_relax_max_iters": null,
+            "dock_pipeline": "dock -> PoseBusters"
+          },
+          "source_sha256": {
+            "receptor": "9606d66d77139767f3efc2e606164eefa602a2f477982e7d14bb505b77c2e92b",
+            "reference_ligand": "98295e582b9011000dacd0e2c9fae9128fbd6b2b2f66284eb2b032e031a06b48"
+          },
+          "candidates": [],
+          "reference": null,
+          "summary": {
+            "n_generated": 0,
+            "n_selected": 0,
+            "n_docked": 0,
+            "n_pb_pass": 0,
+            "pb_pass_rate_all_generated": null,
+            "pb_pass_rate_selected": null,
+            "n_beats_redocked_reference": 0,
+            "n_triple_threshold_redocked_reference": 0,
+            "triple_threshold_rate_all_generated": null,
+            "n_vina_below_minus8": 0,
+            "better_reference_rate_all_generated": null,
+            "vina_mean_docked_kcal_mol": null,
+            "vina_best_kcal_mol": null
+          }
+        },
+        "n_pb_pass": 0,
+        "pb_pass_rate": null,
+        "pb_status": "no_candidates",
+        "pb_check": {
+          "status": "no_candidates",
+          "scope": "PoseBusters chemistry validity on docked candidates",
+          "mode": "PoseBusters_mol_v1",
+          "engine_version": "0.6.5",
+          "per_smiles": {},
+          "n": 0,
+          "n_pb_pass": 0,
+          "pb_pass_rate": null
+        },
+        "diffdock_score_mean": null,
+        "diffdock_score_std": null,
+        "diffdock_status": "disabled",
+        "diffdock_n_invoked": 0,
+        "diffdock_n_scored": 0,
+        "diffdock_per_smiles": {},
+        "flowdock_score_mean": null,
+        "flowdock_score_std": null,
+        "flowdock_status": "disabled",
+        "flowdock_n_invoked": 0,
+        "flowdock_n_scored": 0,
+        "flowdock_per_smiles": {},
+        "biomlm_score_mean": null,
+        "biomlm_score_std": null,
+        "biomlm_status": "disabled",
+        "biomlm_n_invoked": 0,
+        "biomlm_n_scored": 0,
+        "biomlm_encoder": "gatedgcn",
+        "biomlm_model_type": "biolm",
+        "biomlm_per_smiles": {},
+        "aizynth_status": "disabled",
+        "aizynth_mode": "smarts",
+        "aizynth_n_invoked": 0,
+        "aizynth_n_scored": 0,
+        "aizynth_n_synthesis_route": 0,
+        "aizynth_synthesis_success_rate": null,
+        "aizynth_per_smiles": {}
+      },
+      {
+        "pocket_id": "test_003",
+        "status": "seed_only",
+        "n_candidates": 1,
+        "top1_smiles": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+        "top1_sa": 2.617427920420134,
+        "top1_qed": 0.4316851347607166,
+        "top1_lipinski": true,
+        "top1_vina_proxy": -14.533930000000002,
+        "mean_sa": 2.617427920420134,
+        "mean_qed": 0.4316851347607166,
+        "lipinski_pass_count": 1,
+        "n_sims": 1000,
+        "wall_seconds": 3.7285866189777153,
+        "notes": "reference initialized search; physical measurements recorded separately when enabled",
+        "seed": 0,
+        "receptor_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GSTP1_HUMAN_2_210_0/14gs_A_rec_20gs_cbd_lig_tt_min_0_pocket10.pdb",
+        "ligand_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GSTP1_HUMAN_2_210_0/14gs_A_rec_20gs_cbd_lig_tt_min_0.sdf",
+        "search_config": {
+          "n_simulations": 1000,
+          "max_depth": 3,
+          "top_k": 100,
+          "early_stop": true,
+          "patience": 50,
+          "tile_library": "extended_204",
+          "click_rules": "all_5",
+          "rule_names": [
+            "CuAAC",
+            "SPAAC",
+            "ThiolEne",
+            "Suzuki",
+            "AmideCoupling"
+          ],
+          "tile_count": 204,
+          "branching_target": 1020,
+          "branching_attempts": 1020,
+          "use_fragment_pool": false,
+          "seed": 0,
+          "seed_strategy": "reference",
+          "not_applied": [
+            "synthesis_oracle",
+            "symbolic_prior",
+            "symbolic_prior_refit_every"
+          ],
+          "disabled": [],
+          "unsupported_requested": {
+            "symbolic_prior": true,
+            "synthesis_oracle": true,
+            "symbolic_prior_refit_every": 5
+          },
+          "guidance": {
+            "prior": {
+              "requested": true,
+              "backend": "linear_descriptor_prior",
+              "mode": "frozen",
+              "data_split": "test",
+              "applied": false,
+              "status": "awaiting_real_training_observations",
+              "puct_calls": 0,
+              "pysr_symbolic_regression": false,
+              "update_status": "frozen",
+              "fit_performed": false
+            },
+            "synthesis": {
+              "status": "missing_aizynth_config",
+              "backend": "aizynthfinder",
+              "applied": false,
+              "learned": true,
+              "n_checked": 0,
+              "n_passed": 0,
+              "reports": []
+            },
+            "docking_reward": {
+              "requested": false,
+              "status": "disabled",
+              "applied": false
+            }
+          }
+        },
+        "candidates": [
+          {
+            "candidate_id": 0,
+            "smiles": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+            "is_seed": true,
+            "is_generated": false,
+            "sa": 2.617427920420134,
+            "qed": 0.4316851347607166,
+            "lipinski": true,
+            "vina_proxy": -14.533930000000002,
+            "synthesis": {
+              "status": "not_applied",
+              "passed": null
+            },
+            "synthesis_passed": null,
+            "retained_after_synthesis": true,
+            "selected_for_evaluation": true,
+            "physical_evaluation_status": "pending_downstream"
+          }
+        ],
+        "diagnostics": {
+          "seed_smiles": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+          "init_strategy": "reference",
+          "canonical_seed": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+          "chosen_tile": null,
+          "initialization_seconds": 0.09362762499949895,
+          "empty_candidates_reason": null,
+          "search": {
+            "nfe": 51,
+            "nfe_reductions": 1020,
+            "nfe_oracle": 1,
+            "simulations_completed": 51,
+            "early_stopped": true
+          },
+          "error": null,
+          "prior_state": {
+            "schema_version": 1,
+            "backend": "linear_descriptor_prior",
+            "features": [
+              "n_atoms",
+              "n_bonds",
+              "n_free_sites",
+              "n_heavy"
+            ],
+            "experiment_seed": 0,
+            "observations": [],
+            "model": null,
+            "pockets_seen": 0,
+            "fit_count": 0,
+            "last_fit_observations": 0,
+            "source_splits": [],
+            "transductive": false
+          },
+          "prior": {
+            "requested": true,
+            "backend": "linear_descriptor_prior",
+            "mode": "frozen",
+            "data_split": "test",
+            "applied": false,
+            "status": "awaiting_real_training_observations",
+            "puct_calls": 0,
+            "pysr_symbolic_regression": false,
+            "update_status": "frozen",
+            "fit_performed": false
+          },
+          "synthesis": {
+            "status": "missing_aizynth_config",
+            "backend": "aizynthfinder",
+            "applied": false,
+            "learned": true,
+            "n_checked": 0,
+            "n_passed": 0,
+            "reports": []
+          },
+          "docking_reward": {
+            "requested": false,
+            "status": "disabled",
+            "applied": false
+          },
+          "all_candidates": [
+            {
+              "candidate_id": 0,
+              "smiles": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+              "is_seed": true,
+              "is_generated": false,
+              "sa": 2.617427920420134,
+              "qed": 0.4316851347607166,
+              "lipinski": true,
+              "vina_proxy": -14.533930000000002,
+              "synthesis": {
+                "status": "not_applied",
+                "passed": null
+              },
+              "synthesis_passed": null,
+              "retained_after_synthesis": true,
+              "selected_for_evaluation": true,
+              "physical_evaluation_status": "pending_downstream"
+            }
+          ],
+          "candidate_accounting": {
+            "generated_scope": "all search-returned candidates before synthesis filtering and top-k selection",
+            "candidates_scope": "retained candidates selected for downstream evaluation",
+            "all_candidates_scope": "all search-returned candidates including synthesis rejections",
+            "evaluated_scope": "physical evaluation; not performed by this search runner"
+          },
+          "selection_counts": {
+            "n_pre_synthesis_candidates": 1,
+            "n_retained_candidates": 1,
+            "n_selected_candidates": 1,
+            "n_synthesis_rejected_candidates": 0,
+            "n_generated_retained_candidates": 0,
+            "n_generated_selected_candidates": 0,
+            "n_generated_synthesis_rejected_candidates": 0
+          },
+          "generation": {
+            "reduction_calls": 1020,
+            "reductions_without_products": 1020,
+            "products_returned": 0,
+            "unique_new_products_observed": 0,
+            "unique_new_typed_rejections": 0,
+            "unique_new_binding_rejections": 0,
+            "no_generated_reasons": [
+              "No products from attempted reductions (non-matching rules or invalid reductions)"
+            ],
+            "scope": "all search calls; rejection sets may overlap; not final-leaf counts"
+          }
+        },
+        "metric_backend": {
+          "sa": "rdkit_contrib_ertl",
+          "qed": "rdkit",
+          "vina": "heuristic_proxy_no_docking"
+        },
+        "n_generated_candidates": 0,
+        "n_seed_candidates": 1,
+        "physical": {
+          "status": "no_generated_candidates",
+          "scope": "generated-product physical evaluation; not a SOTA comparison",
+          "protocol": {
+            "engine": "vina",
+            "device": "cpu",
+            "cpu": 1,
+            "seed": 0,
+            "exhaustiveness": 8,
+            "n_poses": 9,
+            "top_k": 20,
+            "selection": "first retained generated products in search rank order",
+            "coverage_denominator": "all search-returned generated candidates before synthesis filtering and selection",
+            "posebusters_config": "dock",
+            "pose_selection": "lowest finite docking energy",
+            "reference_threshold": "same-engine reference-ligand redocked score; not crystal-pose scoring",
+            "mmff94s_relax": false,
+            "mmff94s_relax_max_iters": null,
+            "dock_pipeline": "dock -> PoseBusters"
+          },
+          "source_sha256": {
+            "receptor": "9606d66d77139767f3efc2e606164eefa602a2f477982e7d14bb505b77c2e92b",
+            "reference_ligand": "98295e582b9011000dacd0e2c9fae9128fbd6b2b2f66284eb2b032e031a06b48"
+          },
+          "candidates": [],
+          "reference": null,
+          "summary": {
+            "n_generated": 0,
+            "n_selected": 0,
+            "n_docked": 0,
+            "n_pb_pass": 0,
+            "pb_pass_rate_all_generated": null,
+            "pb_pass_rate_selected": null,
+            "n_beats_redocked_reference": 0,
+            "n_triple_threshold_redocked_reference": 0,
+            "triple_threshold_rate_all_generated": null,
+            "n_vina_below_minus8": 0,
+            "better_reference_rate_all_generated": null,
+            "vina_mean_docked_kcal_mol": null,
+            "vina_best_kcal_mol": null
+          }
+        },
+        "n_pb_pass": 0,
+        "pb_pass_rate": null,
+        "pb_status": "no_candidates",
+        "pb_check": {
+          "status": "no_candidates",
+          "scope": "PoseBusters chemistry validity on docked candidates",
+          "mode": "PoseBusters_mol_v1",
+          "engine_version": "0.6.5",
+          "per_smiles": {},
+          "n": 0,
+          "n_pb_pass": 0,
+          "pb_pass_rate": null
+        },
+        "diffdock_score_mean": null,
+        "diffdock_score_std": null,
+        "diffdock_status": "disabled",
+        "diffdock_n_invoked": 0,
+        "diffdock_n_scored": 0,
+        "diffdock_per_smiles": {},
+        "flowdock_score_mean": null,
+        "flowdock_score_std": null,
+        "flowdock_status": "disabled",
+        "flowdock_n_invoked": 0,
+        "flowdock_n_scored": 0,
+        "flowdock_per_smiles": {},
+        "biomlm_score_mean": null,
+        "biomlm_score_std": null,
+        "biomlm_status": "disabled",
+        "biomlm_n_invoked": 0,
+        "biomlm_n_scored": 0,
+        "biomlm_encoder": "gatedgcn",
+        "biomlm_model_type": "biolm",
+        "biomlm_per_smiles": {},
+        "aizynth_status": "disabled",
+        "aizynth_mode": "smarts",
+        "aizynth_n_invoked": 0,
+        "aizynth_n_scored": 0,
+        "aizynth_n_synthesis_route": 0,
+        "aizynth_synthesis_success_rate": null,
+        "aizynth_per_smiles": {}
+      },
+      {
+        "pocket_id": "test_003",
+        "status": "seed_only",
+        "n_candidates": 1,
+        "top1_smiles": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+        "top1_sa": 2.617427920420134,
+        "top1_qed": 0.4316851347607166,
+        "top1_lipinski": true,
+        "top1_vina_proxy": -14.533930000000002,
+        "mean_sa": 2.617427920420134,
+        "mean_qed": 0.4316851347607166,
+        "lipinski_pass_count": 1,
+        "n_sims": 1000,
+        "wall_seconds": 3.7185859860037453,
+        "notes": "reference initialized search; physical measurements recorded separately when enabled",
+        "seed": 1234,
+        "receptor_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GSTP1_HUMAN_2_210_0/14gs_A_rec_20gs_cbd_lig_tt_min_0_pocket10.pdb",
+        "ligand_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GSTP1_HUMAN_2_210_0/14gs_A_rec_20gs_cbd_lig_tt_min_0.sdf",
+        "search_config": {
+          "n_simulations": 1000,
+          "max_depth": 3,
+          "top_k": 100,
+          "early_stop": true,
+          "patience": 50,
+          "tile_library": "extended_204",
+          "click_rules": "all_5",
+          "rule_names": [
+            "CuAAC",
+            "SPAAC",
+            "ThiolEne",
+            "Suzuki",
+            "AmideCoupling"
+          ],
+          "tile_count": 204,
+          "branching_target": 1020,
+          "branching_attempts": 1020,
+          "use_fragment_pool": false,
+          "seed": 1234,
+          "seed_strategy": "reference",
+          "not_applied": [
+            "synthesis_oracle",
+            "symbolic_prior",
+            "symbolic_prior_refit_every"
+          ],
+          "disabled": [],
+          "unsupported_requested": {
+            "symbolic_prior": true,
+            "synthesis_oracle": true,
+            "symbolic_prior_refit_every": 5
+          },
+          "guidance": {
+            "prior": {
+              "requested": true,
+              "backend": "linear_descriptor_prior",
+              "mode": "frozen",
+              "data_split": "test",
+              "applied": false,
+              "status": "awaiting_real_training_observations",
+              "puct_calls": 0,
+              "pysr_symbolic_regression": false,
+              "update_status": "frozen",
+              "fit_performed": false
+            },
+            "synthesis": {
+              "status": "missing_aizynth_config",
+              "backend": "aizynthfinder",
+              "applied": false,
+              "learned": true,
+              "n_checked": 0,
+              "n_passed": 0,
+              "reports": []
+            },
+            "docking_reward": {
+              "requested": false,
+              "status": "disabled",
+              "applied": false
+            }
+          }
+        },
+        "candidates": [
+          {
+            "candidate_id": 0,
+            "smiles": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+            "is_seed": true,
+            "is_generated": false,
+            "sa": 2.617427920420134,
+            "qed": 0.4316851347607166,
+            "lipinski": true,
+            "vina_proxy": -14.533930000000002,
+            "synthesis": {
+              "status": "not_applied",
+              "passed": null
+            },
+            "synthesis_passed": null,
+            "retained_after_synthesis": true,
+            "selected_for_evaluation": true,
+            "physical_evaluation_status": "pending_downstream"
+          }
+        ],
+        "diagnostics": {
+          "seed_smiles": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+          "init_strategy": "reference",
+          "canonical_seed": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+          "chosen_tile": null,
+          "initialization_seconds": 0.08986902299511712,
+          "empty_candidates_reason": null,
+          "search": {
+            "nfe": 51,
+            "nfe_reductions": 1020,
+            "nfe_oracle": 1,
+            "simulations_completed": 51,
+            "early_stopped": true
+          },
+          "error": null,
+          "prior_state": {
+            "schema_version": 1,
+            "backend": "linear_descriptor_prior",
+            "features": [
+              "n_atoms",
+              "n_bonds",
+              "n_free_sites",
+              "n_heavy"
+            ],
+            "experiment_seed": 1234,
+            "observations": [],
+            "model": null,
+            "pockets_seen": 0,
+            "fit_count": 0,
+            "last_fit_observations": 0,
+            "source_splits": [],
+            "transductive": false
+          },
+          "prior": {
+            "requested": true,
+            "backend": "linear_descriptor_prior",
+            "mode": "frozen",
+            "data_split": "test",
+            "applied": false,
+            "status": "awaiting_real_training_observations",
+            "puct_calls": 0,
+            "pysr_symbolic_regression": false,
+            "update_status": "frozen",
+            "fit_performed": false
+          },
+          "synthesis": {
+            "status": "missing_aizynth_config",
+            "backend": "aizynthfinder",
+            "applied": false,
+            "learned": true,
+            "n_checked": 0,
+            "n_passed": 0,
+            "reports": []
+          },
+          "docking_reward": {
+            "requested": false,
+            "status": "disabled",
+            "applied": false
+          },
+          "all_candidates": [
+            {
+              "candidate_id": 0,
+              "smiles": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+              "is_seed": true,
+              "is_generated": false,
+              "sa": 2.617427920420134,
+              "qed": 0.4316851347607166,
+              "lipinski": true,
+              "vina_proxy": -14.533930000000002,
+              "synthesis": {
+                "status": "not_applied",
+                "passed": null
+              },
+              "synthesis_passed": null,
+              "retained_after_synthesis": true,
+              "selected_for_evaluation": true,
+              "physical_evaluation_status": "pending_downstream"
+            }
+          ],
+          "candidate_accounting": {
+            "generated_scope": "all search-returned candidates before synthesis filtering and top-k selection",
+            "candidates_scope": "retained candidates selected for downstream evaluation",
+            "all_candidates_scope": "all search-returned candidates including synthesis rejections",
+            "evaluated_scope": "physical evaluation; not performed by this search runner"
+          },
+          "selection_counts": {
+            "n_pre_synthesis_candidates": 1,
+            "n_retained_candidates": 1,
+            "n_selected_candidates": 1,
+            "n_synthesis_rejected_candidates": 0,
+            "n_generated_retained_candidates": 0,
+            "n_generated_selected_candidates": 0,
+            "n_generated_synthesis_rejected_candidates": 0
+          },
+          "generation": {
+            "reduction_calls": 1020,
+            "reductions_without_products": 1020,
+            "products_returned": 0,
+            "unique_new_products_observed": 0,
+            "unique_new_typed_rejections": 0,
+            "unique_new_binding_rejections": 0,
+            "no_generated_reasons": [
+              "No products from attempted reductions (non-matching rules or invalid reductions)"
+            ],
+            "scope": "all search calls; rejection sets may overlap; not final-leaf counts"
+          }
+        },
+        "metric_backend": {
+          "sa": "rdkit_contrib_ertl",
+          "qed": "rdkit",
+          "vina": "heuristic_proxy_no_docking"
+        },
+        "n_generated_candidates": 0,
+        "n_seed_candidates": 1,
+        "physical": {
+          "status": "no_generated_candidates",
+          "scope": "generated-product physical evaluation; not a SOTA comparison",
+          "protocol": {
+            "engine": "vina",
+            "device": "cpu",
+            "cpu": 1,
+            "seed": 1234,
+            "exhaustiveness": 8,
+            "n_poses": 9,
+            "top_k": 20,
+            "selection": "first retained generated products in search rank order",
+            "coverage_denominator": "all search-returned generated candidates before synthesis filtering and selection",
+            "posebusters_config": "dock",
+            "pose_selection": "lowest finite docking energy",
+            "reference_threshold": "same-engine reference-ligand redocked score; not crystal-pose scoring",
+            "mmff94s_relax": false,
+            "mmff94s_relax_max_iters": null,
+            "dock_pipeline": "dock -> PoseBusters"
+          },
+          "source_sha256": {
+            "receptor": "9606d66d77139767f3efc2e606164eefa602a2f477982e7d14bb505b77c2e92b",
+            "reference_ligand": "98295e582b9011000dacd0e2c9fae9128fbd6b2b2f66284eb2b032e031a06b48"
+          },
+          "candidates": [],
+          "reference": null,
+          "summary": {
+            "n_generated": 0,
+            "n_selected": 0,
+            "n_docked": 0,
+            "n_pb_pass": 0,
+            "pb_pass_rate_all_generated": null,
+            "pb_pass_rate_selected": null,
+            "n_beats_redocked_reference": 0,
+            "n_triple_threshold_redocked_reference": 0,
+            "triple_threshold_rate_all_generated": null,
+            "n_vina_below_minus8": 0,
+            "better_reference_rate_all_generated": null,
+            "vina_mean_docked_kcal_mol": null,
+            "vina_best_kcal_mol": null
+          }
+        },
+        "n_pb_pass": 0,
+        "pb_pass_rate": null,
+        "pb_status": "no_candidates",
+        "pb_check": {
+          "status": "no_candidates",
+          "scope": "PoseBusters chemistry validity on docked candidates",
+          "mode": "PoseBusters_mol_v1",
+          "engine_version": "0.6.5",
+          "per_smiles": {},
+          "n": 0,
+          "n_pb_pass": 0,
+          "pb_pass_rate": null
+        },
+        "diffdock_score_mean": null,
+        "diffdock_score_std": null,
+        "diffdock_status": "disabled",
+        "diffdock_n_invoked": 0,
+        "diffdock_n_scored": 0,
+        "diffdock_per_smiles": {},
+        "flowdock_score_mean": null,
+        "flowdock_score_std": null,
+        "flowdock_status": "disabled",
+        "flowdock_n_invoked": 0,
+        "flowdock_n_scored": 0,
+        "flowdock_per_smiles": {},
+        "biomlm_score_mean": null,
+        "biomlm_score_std": null,
+        "biomlm_status": "disabled",
+        "biomlm_n_invoked": 0,
+        "biomlm_n_scored": 0,
+        "biomlm_encoder": "gatedgcn",
+        "biomlm_model_type": "biolm",
+        "biomlm_per_smiles": {},
+        "aizynth_status": "disabled",
+        "aizynth_mode": "smarts",
+        "aizynth_n_invoked": 0,
+        "aizynth_n_scored": 0,
+        "aizynth_n_synthesis_route": 0,
+        "aizynth_synthesis_success_rate": null,
+        "aizynth_per_smiles": {}
+      },
+      {
+        "pocket_id": "test_004",
+        "status": "seed_only",
+        "n_candidates": 1,
+        "top1_smiles": "CC(C)NC[C@H](O)COc1cccc2ccccc12",
+        "top1_sa": 2.2996622708541317,
+        "top1_qed": 0.8375057924076362,
+        "top1_lipinski": true,
+        "top1_vina_proxy": -11.631710000000002,
+        "mean_sa": 2.2996622708541317,
+        "mean_qed": 0.8375057924076362,
+        "lipinski_pass_count": 1,
+        "n_sims": 1000,
+        "wall_seconds": 3.6184157819952816,
+        "notes": "reference initialized search; physical measurements recorded separately when enabled",
+        "seed": 42,
+        "receptor_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GUX1_HYPJE_18_451_0/2v3r_A_rec_1dy4_snp_lig_tt_docked_1_pocket10.pdb",
+        "ligand_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GUX1_HYPJE_18_451_0/2v3r_A_rec_1dy4_snp_lig_tt_docked_1.sdf",
+        "search_config": {
+          "n_simulations": 1000,
+          "max_depth": 3,
+          "top_k": 100,
+          "early_stop": true,
+          "patience": 50,
+          "tile_library": "extended_204",
+          "click_rules": "all_5",
+          "rule_names": [
+            "CuAAC",
+            "SPAAC",
+            "ThiolEne",
+            "Suzuki",
+            "AmideCoupling"
+          ],
+          "tile_count": 204,
+          "branching_target": 1020,
+          "branching_attempts": 1020,
+          "use_fragment_pool": false,
+          "seed": 42,
+          "seed_strategy": "reference",
+          "not_applied": [
+            "synthesis_oracle",
+            "symbolic_prior",
+            "symbolic_prior_refit_every"
+          ],
+          "disabled": [],
+          "unsupported_requested": {
+            "symbolic_prior": true,
+            "synthesis_oracle": true,
+            "symbolic_prior_refit_every": 5
+          },
+          "guidance": {
+            "prior": {
+              "requested": true,
+              "backend": "linear_descriptor_prior",
+              "mode": "frozen",
+              "data_split": "test",
+              "applied": false,
+              "status": "awaiting_real_training_observations",
+              "puct_calls": 0,
+              "pysr_symbolic_regression": false,
+              "update_status": "frozen",
+              "fit_performed": false
+            },
+            "synthesis": {
+              "status": "missing_aizynth_config",
+              "backend": "aizynthfinder",
+              "applied": false,
+              "learned": true,
+              "n_checked": 0,
+              "n_passed": 0,
+              "reports": []
+            },
+            "docking_reward": {
+              "requested": false,
+              "status": "disabled",
+              "applied": false
+            }
+          }
+        },
+        "candidates": [
+          {
+            "candidate_id": 0,
+            "smiles": "CC(C)NC[C@H](O)COc1cccc2ccccc12",
+            "is_seed": true,
+            "is_generated": false,
+            "sa": 2.2996622708541317,
+            "qed": 0.8375057924076362,
+            "lipinski": true,
+            "vina_proxy": -11.631710000000002,
+            "synthesis": {
+              "status": "not_applied",
+              "passed": null
+            },
+            "synthesis_passed": null,
+            "retained_after_synthesis": true,
+            "selected_for_evaluation": true,
+            "physical_evaluation_status": "pending_downstream"
+          }
+        ],
+        "diagnostics": {
+          "seed_smiles": "CC(C)NC[C@H](O)COc1cccc2ccccc12",
+          "init_strategy": "reference",
+          "canonical_seed": "CC(C)NC[C@H](O)COc1cccc2ccccc12",
+          "chosen_tile": null,
+          "initialization_seconds": 0.09596593100286555,
+          "empty_candidates_reason": null,
+          "search": {
+            "nfe": 51,
+            "nfe_reductions": 1020,
+            "nfe_oracle": 1,
+            "simulations_completed": 51,
+            "early_stopped": true
+          },
+          "error": null,
+          "prior_state": {
+            "schema_version": 1,
+            "backend": "linear_descriptor_prior",
+            "features": [
+              "n_atoms",
+              "n_bonds",
+              "n_free_sites",
+              "n_heavy"
+            ],
+            "experiment_seed": 42,
+            "observations": [],
+            "model": null,
+            "pockets_seen": 0,
+            "fit_count": 0,
+            "last_fit_observations": 0,
+            "source_splits": [],
+            "transductive": false
+          },
+          "prior": {
+            "requested": true,
+            "backend": "linear_descriptor_prior",
+            "mode": "frozen",
+            "data_split": "test",
+            "applied": false,
+            "status": "awaiting_real_training_observations",
+            "puct_calls": 0,
+            "pysr_symbolic_regression": false,
+            "update_status": "frozen",
+            "fit_performed": false
+          },
+          "synthesis": {
+            "status": "missing_aizynth_config",
+            "backend": "aizynthfinder",
+            "applied": false,
+            "learned": true,
+            "n_checked": 0,
+            "n_passed": 0,
+            "reports": []
+          },
+          "docking_reward": {
+            "requested": false,
+            "status": "disabled",
+            "applied": false
+          },
+          "all_candidates": [
+            {
+              "candidate_id": 0,
+              "smiles": "CC(C)NC[C@H](O)COc1cccc2ccccc12",
+              "is_seed": true,
+              "is_generated": false,
+              "sa": 2.2996622708541317,
+              "qed": 0.8375057924076362,
+              "lipinski": true,
+              "vina_proxy": -11.631710000000002,
+              "synthesis": {
+                "status": "not_applied",
+                "passed": null
+              },
+              "synthesis_passed": null,
+              "retained_after_synthesis": true,
+              "selected_for_evaluation": true,
+              "physical_evaluation_status": "pending_downstream"
+            }
+          ],
+          "candidate_accounting": {
+            "generated_scope": "all search-returned candidates before synthesis filtering and top-k selection",
+            "candidates_scope": "retained candidates selected for downstream evaluation",
+            "all_candidates_scope": "all search-returned candidates including synthesis rejections",
+            "evaluated_scope": "physical evaluation; not performed by this search runner"
+          },
+          "selection_counts": {
+            "n_pre_synthesis_candidates": 1,
+            "n_retained_candidates": 1,
+            "n_selected_candidates": 1,
+            "n_synthesis_rejected_candidates": 0,
+            "n_generated_retained_candidates": 0,
+            "n_generated_selected_candidates": 0,
+            "n_generated_synthesis_rejected_candidates": 0
+          },
+          "generation": {
+            "reduction_calls": 1020,
+            "reductions_without_products": 1020,
+            "products_returned": 0,
+            "unique_new_products_observed": 0,
+            "unique_new_typed_rejections": 0,
+            "unique_new_binding_rejections": 0,
+            "no_generated_reasons": [
+              "No products from attempted reductions (non-matching rules or invalid reductions)"
+            ],
+            "scope": "all search calls; rejection sets may overlap; not final-leaf counts"
+          }
+        },
+        "metric_backend": {
+          "sa": "rdkit_contrib_ertl",
+          "qed": "rdkit",
+          "vina": "heuristic_proxy_no_docking"
+        },
+        "n_generated_candidates": 0,
+        "n_seed_candidates": 1,
+        "physical": {
+          "status": "no_generated_candidates",
+          "scope": "generated-product physical evaluation; not a SOTA comparison",
+          "protocol": {
+            "engine": "vina",
+            "device": "cpu",
+            "cpu": 1,
+            "seed": 42,
+            "exhaustiveness": 8,
+            "n_poses": 9,
+            "top_k": 20,
+            "selection": "first retained generated products in search rank order",
+            "coverage_denominator": "all search-returned generated candidates before synthesis filtering and selection",
+            "posebusters_config": "dock",
+            "pose_selection": "lowest finite docking energy",
+            "reference_threshold": "same-engine reference-ligand redocked score; not crystal-pose scoring",
+            "mmff94s_relax": false,
+            "mmff94s_relax_max_iters": null,
+            "dock_pipeline": "dock -> PoseBusters"
+          },
+          "source_sha256": {
+            "receptor": "2b4341747f359cbf12ba61b5365bc8d8af45732497d4a1f50332d3f57a3f3e2b",
+            "reference_ligand": "9bd81adecb49667541c8f01a093c71e2a24f69d9e587bbc93f095240f2bcc8e2"
+          },
+          "candidates": [],
+          "reference": null,
+          "summary": {
+            "n_generated": 0,
+            "n_selected": 0,
+            "n_docked": 0,
+            "n_pb_pass": 0,
+            "pb_pass_rate_all_generated": null,
+            "pb_pass_rate_selected": null,
+            "n_beats_redocked_reference": 0,
+            "n_triple_threshold_redocked_reference": 0,
+            "triple_threshold_rate_all_generated": null,
+            "n_vina_below_minus8": 0,
+            "better_reference_rate_all_generated": null,
+            "vina_mean_docked_kcal_mol": null,
+            "vina_best_kcal_mol": null
+          }
+        },
+        "n_pb_pass": 0,
+        "pb_pass_rate": null,
+        "pb_status": "no_candidates",
+        "pb_check": {
+          "status": "no_candidates",
+          "scope": "PoseBusters chemistry validity on docked candidates",
+          "mode": "PoseBusters_mol_v1",
+          "engine_version": "0.6.5",
+          "per_smiles": {},
+          "n": 0,
+          "n_pb_pass": 0,
+          "pb_pass_rate": null
+        },
+        "diffdock_score_mean": null,
+        "diffdock_score_std": null,
+        "diffdock_status": "disabled",
+        "diffdock_n_invoked": 0,
+        "diffdock_n_scored": 0,
+        "diffdock_per_smiles": {},
+        "flowdock_score_mean": null,
+        "flowdock_score_std": null,
+        "flowdock_status": "disabled",
+        "flowdock_n_invoked": 0,
+        "flowdock_n_scored": 0,
+        "flowdock_per_smiles": {},
+        "biomlm_score_mean": null,
+        "biomlm_score_std": null,
+        "biomlm_status": "disabled",
+        "biomlm_n_invoked": 0,
+        "biomlm_n_scored": 0,
+        "biomlm_encoder": "gatedgcn",
+        "biomlm_model_type": "biolm",
+        "biomlm_per_smiles": {},
+        "aizynth_status": "disabled",
+        "aizynth_mode": "smarts",
+        "aizynth_n_invoked": 0,
+        "aizynth_n_scored": 0,
+        "aizynth_n_synthesis_route": 0,
+        "aizynth_synthesis_success_rate": null,
+        "aizynth_per_smiles": {}
+      },
+      {
+        "pocket_id": "test_004",
+        "status": "seed_only",
+        "n_candidates": 1,
+        "top1_smiles": "CC(C)NC[C@H](O)COc1cccc2ccccc12",
+        "top1_sa": 2.2996622708541317,
+        "top1_qed": 0.8375057924076362,
+        "top1_lipinski": true,
+        "top1_vina_proxy": -11.631710000000002,
+        "mean_sa": 2.2996622708541317,
+        "mean_qed": 0.8375057924076362,
+        "lipinski_pass_count": 1,
+        "n_sims": 1000,
+        "wall_seconds": 3.609899103990756,
+        "notes": "reference initialized search; physical measurements recorded separately when enabled",
+        "seed": 0,
+        "receptor_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GUX1_HYPJE_18_451_0/2v3r_A_rec_1dy4_snp_lig_tt_docked_1_pocket10.pdb",
+        "ligand_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GUX1_HYPJE_18_451_0/2v3r_A_rec_1dy4_snp_lig_tt_docked_1.sdf",
+        "search_config": {
+          "n_simulations": 1000,
+          "max_depth": 3,
+          "top_k": 100,
+          "early_stop": true,
+          "patience": 50,
+          "tile_library": "extended_204",
+          "click_rules": "all_5",
+          "rule_names": [
+            "CuAAC",
+            "SPAAC",
+            "ThiolEne",
+            "Suzuki",
+            "AmideCoupling"
+          ],
+          "tile_count": 204,
+          "branching_target": 1020,
+          "branching_attempts": 1020,
+          "use_fragment_pool": false,
+          "seed": 0,
+          "seed_strategy": "reference",
+          "not_applied": [
+            "synthesis_oracle",
+            "symbolic_prior",
+            "symbolic_prior_refit_every"
+          ],
+          "disabled": [],
+          "unsupported_requested": {
+            "symbolic_prior": true,
+            "synthesis_oracle": true,
+            "symbolic_prior_refit_every": 5
+          },
+          "guidance": {
+            "prior": {
+              "requested": true,
+              "backend": "linear_descriptor_prior",
+              "mode": "frozen",
+              "data_split": "test",
+              "applied": false,
+              "status": "awaiting_real_training_observations",
+              "puct_calls": 0,
+              "pysr_symbolic_regression": false,
+              "update_status": "frozen",
+              "fit_performed": false
+            },
+            "synthesis": {
+              "status": "missing_aizynth_config",
+              "backend": "aizynthfinder",
+              "applied": false,
+              "learned": true,
+              "n_checked": 0,
+              "n_passed": 0,
+              "reports": []
+            },
+            "docking_reward": {
+              "requested": false,
+              "status": "disabled",
+              "applied": false
+            }
+          }
+        },
+        "candidates": [
+          {
+            "candidate_id": 0,
+            "smiles": "CC(C)NC[C@H](O)COc1cccc2ccccc12",
+            "is_seed": true,
+            "is_generated": false,
+            "sa": 2.2996622708541317,
+            "qed": 0.8375057924076362,
+            "lipinski": true,
+            "vina_proxy": -11.631710000000002,
+            "synthesis": {
+              "status": "not_applied",
+              "passed": null
+            },
+            "synthesis_passed": null,
+            "retained_after_synthesis": true,
+            "selected_for_evaluation": true,
+            "physical_evaluation_status": "pending_downstream"
+          }
+        ],
+        "diagnostics": {
+          "seed_smiles": "CC(C)NC[C@H](O)COc1cccc2ccccc12",
+          "init_strategy": "reference",
+          "canonical_seed": "CC(C)NC[C@H](O)COc1cccc2ccccc12",
+          "chosen_tile": null,
+          "initialization_seconds": 0.0886962929944275,
+          "empty_candidates_reason": null,
+          "search": {
+            "nfe": 51,
+            "nfe_reductions": 1020,
+            "nfe_oracle": 1,
+            "simulations_completed": 51,
+            "early_stopped": true
+          },
+          "error": null,
+          "prior_state": {
+            "schema_version": 1,
+            "backend": "linear_descriptor_prior",
+            "features": [
+              "n_atoms",
+              "n_bonds",
+              "n_free_sites",
+              "n_heavy"
+            ],
+            "experiment_seed": 0,
+            "observations": [],
+            "model": null,
+            "pockets_seen": 0,
+            "fit_count": 0,
+            "last_fit_observations": 0,
+            "source_splits": [],
+            "transductive": false
+          },
+          "prior": {
+            "requested": true,
+            "backend": "linear_descriptor_prior",
+            "mode": "frozen",
+            "data_split": "test",
+            "applied": false,
+            "status": "awaiting_real_training_observations",
+            "puct_calls": 0,
+            "pysr_symbolic_regression": false,
+            "update_status": "frozen",
+            "fit_performed": false
+          },
+          "synthesis": {
+            "status": "missing_aizynth_config",
+            "backend": "aizynthfinder",
+            "applied": false,
+            "learned": true,
+            "n_checked": 0,
+            "n_passed": 0,
+            "reports": []
+          },
+          "docking_reward": {
+            "requested": false,
+            "status": "disabled",
+            "applied": false
+          },
+          "all_candidates": [
+            {
+              "candidate_id": 0,
+              "smiles": "CC(C)NC[C@H](O)COc1cccc2ccccc12",
+              "is_seed": true,
+              "is_generated": false,
+              "sa": 2.2996622708541317,
+              "qed": 0.8375057924076362,
+              "lipinski": true,
+              "vina_proxy": -11.631710000000002,
+              "synthesis": {
+                "status": "not_applied",
+                "passed": null
+              },
+              "synthesis_passed": null,
+              "retained_after_synthesis": true,
+              "selected_for_evaluation": true,
+              "physical_evaluation_status": "pending_downstream"
+            }
+          ],
+          "candidate_accounting": {
+            "generated_scope": "all search-returned candidates before synthesis filtering and top-k selection",
+            "candidates_scope": "retained candidates selected for downstream evaluation",
+            "all_candidates_scope": "all search-returned candidates including synthesis rejections",
+            "evaluated_scope": "physical evaluation; not performed by this search runner"
+          },
+          "selection_counts": {
+            "n_pre_synthesis_candidates": 1,
+            "n_retained_candidates": 1,
+            "n_selected_candidates": 1,
+            "n_synthesis_rejected_candidates": 0,
+            "n_generated_retained_candidates": 0,
+            "n_generated_selected_candidates": 0,
+            "n_generated_synthesis_rejected_candidates": 0
+          },
+          "generation": {
+            "reduction_calls": 1020,
+            "reductions_without_products": 1020,
+            "products_returned": 0,
+            "unique_new_products_observed": 0,
+            "unique_new_typed_rejections": 0,
+            "unique_new_binding_rejections": 0,
+            "no_generated_reasons": [
+              "No products from attempted reductions (non-matching rules or invalid reductions)"
+            ],
+            "scope": "all search calls; rejection sets may overlap; not final-leaf counts"
+          }
+        },
+        "metric_backend": {
+          "sa": "rdkit_contrib_ertl",
+          "qed": "rdkit",
+          "vina": "heuristic_proxy_no_docking"
+        },
+        "n_generated_candidates": 0,
+        "n_seed_candidates": 1,
+        "physical": {
+          "status": "no_generated_candidates",
+          "scope": "generated-product physical evaluation; not a SOTA comparison",
+          "protocol": {
+            "engine": "vina",
+            "device": "cpu",
+            "cpu": 1,
+            "seed": 0,
+            "exhaustiveness": 8,
+            "n_poses": 9,
+            "top_k": 20,
+            "selection": "first retained generated products in search rank order",
+            "coverage_denominator": "all search-returned generated candidates before synthesis filtering and selection",
+            "posebusters_config": "dock",
+            "pose_selection": "lowest finite docking energy",
+            "reference_threshold": "same-engine reference-ligand redocked score; not crystal-pose scoring",
+            "mmff94s_relax": false,
+            "mmff94s_relax_max_iters": null,
+            "dock_pipeline": "dock -> PoseBusters"
+          },
+          "source_sha256": {
+            "receptor": "2b4341747f359cbf12ba61b5365bc8d8af45732497d4a1f50332d3f57a3f3e2b",
+            "reference_ligand": "9bd81adecb49667541c8f01a093c71e2a24f69d9e587bbc93f095240f2bcc8e2"
+          },
+          "candidates": [],
+          "reference": null,
+          "summary": {
+            "n_generated": 0,
+            "n_selected": 0,
+            "n_docked": 0,
+            "n_pb_pass": 0,
+            "pb_pass_rate_all_generated": null,
+            "pb_pass_rate_selected": null,
+            "n_beats_redocked_reference": 0,
+            "n_triple_threshold_redocked_reference": 0,
+            "triple_threshold_rate_all_generated": null,
+            "n_vina_below_minus8": 0,
+            "better_reference_rate_all_generated": null,
+            "vina_mean_docked_kcal_mol": null,
+            "vina_best_kcal_mol": null
+          }
+        },
+        "n_pb_pass": 0,
+        "pb_pass_rate": null,
+        "pb_status": "no_candidates",
+        "pb_check": {
+          "status": "no_candidates",
+          "scope": "PoseBusters chemistry validity on docked candidates",
+          "mode": "PoseBusters_mol_v1",
+          "engine_version": "0.6.5",
+          "per_smiles": {},
+          "n": 0,
+          "n_pb_pass": 0,
+          "pb_pass_rate": null
+        },
+        "diffdock_score_mean": null,
+        "diffdock_score_std": null,
+        "diffdock_status": "disabled",
+        "diffdock_n_invoked": 0,
+        "diffdock_n_scored": 0,
+        "diffdock_per_smiles": {},
+        "flowdock_score_mean": null,
+        "flowdock_score_std": null,
+        "flowdock_status": "disabled",
+        "flowdock_n_invoked": 0,
+        "flowdock_n_scored": 0,
+        "flowdock_per_smiles": {},
+        "biomlm_score_mean": null,
+        "biomlm_score_std": null,
+        "biomlm_status": "disabled",
+        "biomlm_n_invoked": 0,
+        "biomlm_n_scored": 0,
+        "biomlm_encoder": "gatedgcn",
+        "biomlm_model_type": "biolm",
+        "biomlm_per_smiles": {},
+        "aizynth_status": "disabled",
+        "aizynth_mode": "smarts",
+        "aizynth_n_invoked": 0,
+        "aizynth_n_scored": 0,
+        "aizynth_n_synthesis_route": 0,
+        "aizynth_synthesis_success_rate": null,
+        "aizynth_per_smiles": {}
+      },
+      {
+        "pocket_id": "test_004",
+        "status": "seed_only",
+        "n_candidates": 1,
+        "top1_smiles": "CC(C)NC[C@H](O)COc1cccc2ccccc12",
+        "top1_sa": 2.2996622708541317,
+        "top1_qed": 0.8375057924076362,
+        "top1_lipinski": true,
+        "top1_vina_proxy": -11.631710000000002,
+        "mean_sa": 2.2996622708541317,
+        "mean_qed": 0.8375057924076362,
+        "lipinski_pass_count": 1,
+        "n_sims": 1000,
+        "wall_seconds": 3.632123555013095,
+        "notes": "reference initialized search; physical measurements recorded separately when enabled",
+        "seed": 1234,
+        "receptor_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GUX1_HYPJE_18_451_0/2v3r_A_rec_1dy4_snp_lig_tt_docked_1_pocket10.pdb",
+        "ligand_path": "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10/GUX1_HYPJE_18_451_0/2v3r_A_rec_1dy4_snp_lig_tt_docked_1.sdf",
+        "search_config": {
+          "n_simulations": 1000,
+          "max_depth": 3,
+          "top_k": 100,
+          "early_stop": true,
+          "patience": 50,
+          "tile_library": "extended_204",
+          "click_rules": "all_5",
+          "rule_names": [
+            "CuAAC",
+            "SPAAC",
+            "ThiolEne",
+            "Suzuki",
+            "AmideCoupling"
+          ],
+          "tile_count": 204,
+          "branching_target": 1020,
+          "branching_attempts": 1020,
+          "use_fragment_pool": false,
+          "seed": 1234,
+          "seed_strategy": "reference",
+          "not_applied": [
+            "synthesis_oracle",
+            "symbolic_prior",
+            "symbolic_prior_refit_every"
+          ],
+          "disabled": [],
+          "unsupported_requested": {
+            "symbolic_prior": true,
+            "synthesis_oracle": true,
+            "symbolic_prior_refit_every": 5
+          },
+          "guidance": {
+            "prior": {
+              "requested": true,
+              "backend": "linear_descriptor_prior",
+              "mode": "frozen",
+              "data_split": "test",
+              "applied": false,
+              "status": "awaiting_real_training_observations",
+              "puct_calls": 0,
+              "pysr_symbolic_regression": false,
+              "update_status": "frozen",
+              "fit_performed": false
+            },
+            "synthesis": {
+              "status": "missing_aizynth_config",
+              "backend": "aizynthfinder",
+              "applied": false,
+              "learned": true,
+              "n_checked": 0,
+              "n_passed": 0,
+              "reports": []
+            },
+            "docking_reward": {
+              "requested": false,
+              "status": "disabled",
+              "applied": false
+            }
+          }
+        },
+        "candidates": [
+          {
+            "candidate_id": 0,
+            "smiles": "CC(C)NC[C@H](O)COc1cccc2ccccc12",
+            "is_seed": true,
+            "is_generated": false,
+            "sa": 2.2996622708541317,
+            "qed": 0.8375057924076362,
+            "lipinski": true,
+            "vina_proxy": -11.631710000000002,
+            "synthesis": {
+              "status": "not_applied",
+              "passed": null
+            },
+            "synthesis_passed": null,
+            "retained_after_synthesis": true,
+            "selected_for_evaluation": true,
+            "physical_evaluation_status": "pending_downstream"
+          }
+        ],
+        "diagnostics": {
+          "seed_smiles": "CC(C)NC[C@H](O)COc1cccc2ccccc12",
+          "init_strategy": "reference",
+          "canonical_seed": "CC(C)NC[C@H](O)COc1cccc2ccccc12",
+          "chosen_tile": null,
+          "initialization_seconds": 0.08983825900941156,
+          "empty_candidates_reason": null,
+          "search": {
+            "nfe": 51,
+            "nfe_reductions": 1020,
+            "nfe_oracle": 1,
+            "simulations_completed": 51,
+            "early_stopped": true
+          },
+          "error": null,
+          "prior_state": {
+            "schema_version": 1,
+            "backend": "linear_descriptor_prior",
+            "features": [
+              "n_atoms",
+              "n_bonds",
+              "n_free_sites",
+              "n_heavy"
+            ],
+            "experiment_seed": 1234,
+            "observations": [],
+            "model": null,
+            "pockets_seen": 0,
+            "fit_count": 0,
+            "last_fit_observations": 0,
+            "source_splits": [],
+            "transductive": false
+          },
+          "prior": {
+            "requested": true,
+            "backend": "linear_descriptor_prior",
+            "mode": "frozen",
+            "data_split": "test",
+            "applied": false,
+            "status": "awaiting_real_training_observations",
+            "puct_calls": 0,
+            "pysr_symbolic_regression": false,
+            "update_status": "frozen",
+            "fit_performed": false
+          },
+          "synthesis": {
+            "status": "missing_aizynth_config",
+            "backend": "aizynthfinder",
+            "applied": false,
+            "learned": true,
+            "n_checked": 0,
+            "n_passed": 0,
+            "reports": []
+          },
+          "docking_reward": {
+            "requested": false,
+            "status": "disabled",
+            "applied": false
+          },
+          "all_candidates": [
+            {
+              "candidate_id": 0,
+              "smiles": "CC(C)NC[C@H](O)COc1cccc2ccccc12",
+              "is_seed": true,
+              "is_generated": false,
+              "sa": 2.2996622708541317,
+              "qed": 0.8375057924076362,
+              "lipinski": true,
+              "vina_proxy": -11.631710000000002,
+              "synthesis": {
+                "status": "not_applied",
+                "passed": null
+              },
+              "synthesis_passed": null,
+              "retained_after_synthesis": true,
+              "selected_for_evaluation": true,
+              "physical_evaluation_status": "pending_downstream"
+            }
+          ],
+          "candidate_accounting": {
+            "generated_scope": "all search-returned candidates before synthesis filtering and top-k selection",
+            "candidates_scope": "retained candidates selected for downstream evaluation",
+            "all_candidates_scope": "all search-returned candidates including synthesis rejections",
+            "evaluated_scope": "physical evaluation; not performed by this search runner"
+          },
+          "selection_counts": {
+            "n_pre_synthesis_candidates": 1,
+            "n_retained_candidates": 1,
+            "n_selected_candidates": 1,
+            "n_synthesis_rejected_candidates": 0,
+            "n_generated_retained_candidates": 0,
+            "n_generated_selected_candidates": 0,
+            "n_generated_synthesis_rejected_candidates": 0
+          },
+          "generation": {
+            "reduction_calls": 1020,
+            "reductions_without_products": 1020,
+            "products_returned": 0,
+            "unique_new_products_observed": 0,
+            "unique_new_typed_rejections": 0,
+            "unique_new_binding_rejections": 0,
+            "no_generated_reasons": [
+              "No products from attempted reductions (non-matching rules or invalid reductions)"
+            ],
+            "scope": "all search calls; rejection sets may overlap; not final-leaf counts"
+          }
+        },
+        "metric_backend": {
+          "sa": "rdkit_contrib_ertl",
+          "qed": "rdkit",
+          "vina": "heuristic_proxy_no_docking"
+        },
+        "n_generated_candidates": 0,
+        "n_seed_candidates": 1,
+        "physical": {
+          "status": "no_generated_candidates",
+          "scope": "generated-product physical evaluation; not a SOTA comparison",
+          "protocol": {
+            "engine": "vina",
+            "device": "cpu",
+            "cpu": 1,
+            "seed": 1234,
+            "exhaustiveness": 8,
+            "n_poses": 9,
+            "top_k": 20,
+            "selection": "first retained generated products in search rank order",
+            "coverage_denominator": "all search-returned generated candidates before synthesis filtering and selection",
+            "posebusters_config": "dock",
+            "pose_selection": "lowest finite docking energy",
+            "reference_threshold": "same-engine reference-ligand redocked score; not crystal-pose scoring",
+            "mmff94s_relax": false,
+            "mmff94s_relax_max_iters": null,
+            "dock_pipeline": "dock -> PoseBusters"
+          },
+          "source_sha256": {
+            "receptor": "2b4341747f359cbf12ba61b5365bc8d8af45732497d4a1f50332d3f57a3f3e2b",
+            "reference_ligand": "9bd81adecb49667541c8f01a093c71e2a24f69d9e587bbc93f095240f2bcc8e2"
+          },
+          "candidates": [],
+          "reference": null,
+          "summary": {
+            "n_generated": 0,
+            "n_selected": 0,
+            "n_docked": 0,
+            "n_pb_pass": 0,
+            "pb_pass_rate_all_generated": null,
+            "pb_pass_rate_selected": null,
+            "n_beats_redocked_reference": 0,
+            "n_triple_threshold_redocked_reference": 0,
+            "triple_threshold_rate_all_generated": null,
+            "n_vina_below_minus8": 0,
+            "better_reference_rate_all_generated": null,
+            "vina_mean_docked_kcal_mol": null,
+            "vina_best_kcal_mol": null
+          }
+        },
+        "n_pb_pass": 0,
+        "pb_pass_rate": null,
+        "pb_status": "no_candidates",
+        "pb_check": {
+          "status": "no_candidates",
+          "scope": "PoseBusters chemistry validity on docked candidates",
+          "mode": "PoseBusters_mol_v1",
+          "engine_version": "0.6.5",
+          "per_smiles": {},
+          "n": 0,
+          "n_pb_pass": 0,
+          "pb_pass_rate": null
+        },
+        "diffdock_score_mean": null,
+        "diffdock_score_std": null,
+        "diffdock_status": "disabled",
+        "diffdock_n_invoked": 0,
+        "diffdock_n_scored": 0,
+        "diffdock_per_smiles": {},
+        "flowdock_score_mean": null,
+        "flowdock_score_std": null,
+        "flowdock_status": "disabled",
+        "flowdock_n_invoked": 0,
+        "flowdock_n_scored": 0,
+        "flowdock_per_smiles": {},
+        "biomlm_score_mean": null,
+        "biomlm_score_std": null,
+        "biomlm_status": "disabled",
+        "biomlm_n_invoked": 0,
+        "biomlm_n_scored": 0,
+        "biomlm_encoder": "gatedgcn",
+        "biomlm_model_type": "biolm",
+        "biomlm_per_smiles": {},
+        "aizynth_status": "disabled",
+        "aizynth_mode": "smarts",
+        "aizynth_n_invoked": 0,
+        "aizynth_n_scored": 0,
+        "aizynth_n_synthesis_route": 0,
+        "aizynth_synthesis_success_rate": null,
+        "aizynth_per_smiles": {}
+      }
+    ],
+    "summary": {
+      "n_jobs_total": 15,
+      "n_unique_pockets": 5,
+      "n_generated_candidates": 0,
+      "n_seed_candidates": 9,
+      "n_pockets_total": 15,
+      "n_pockets_ok": 0,
+      "n_pockets_fail": 15,
+      "n_candidates_total": 0,
+      "mean_candidates_per_pocket": 0,
+      "lipinski_pass_count": 0,
+      "lipinski_pass_rate": null,
+      "sa_mean": null,
+      "qed_mean": null,
+      "vina_proxy_top1_mean": null,
+      "vina_proxy_top1_min": null,
+      "vina_proxy_top1_max": null,
+      "wall_seconds_mean_per_pocket": 10.990257726061584,
+      "physical_jobs_completed": 0,
+      "physical_n_docked": 0,
+      "physical_n_pb_pass": 0,
+      "n_pb_pass": 0,
+      "pb_pass_rate": null,
+      "pb_n_jobs_with_check": 15,
+      "diffdock_score_mean": null,
+      "diffdock_score_std": null,
+      "diffdock_n_pockets_scored": 0,
+      "diffdock_n_invoked_total": 0,
+      "diffdock_n_scored_total": 0,
+      "diffdock_status_counts": {
+        "disabled": 15
+      },
+      "flowdock_score_mean": null,
+      "flowdock_score_std": null,
+      "flowdock_n_pockets_scored": 0,
+      "flowdock_n_invoked_total": 0,
+      "flowdock_n_scored_total": 0,
+      "flowdock_status_counts": {
+        "disabled": 15
+      },
+      "biomlm_score_mean": null,
+      "biomlm_score_std": null,
+      "biomlm_n_pockets_scored": 0,
+      "biomlm_n_invoked_total": 0,
+      "biomlm_n_scored_total": 0,
+      "biomlm_status_counts": {
+        "disabled": 15
+      },
+      "aizynth_n_invoked_total": 0,
+      "aizynth_n_scored_total": 0,
+      "aizynth_n_synthesis_route_total": 0,
+      "aizynth_synthesis_success_rate_mean": null,
+      "aizynth_status_counts": {
+        "disabled": 15
+      },
+      "aizynth_mode_counts": {
+        "smarts": 15,
+        "aizynthfinder": 0,
+        "aizynthfinder_isolated": 0
+      },
+      "aizynth_n_pockets_scored": 0
+    },
+    "verdict": {
+      "pb_pass_rate": null,
+      "pb_chemistry_pass_rate": null,
+      "pb_protein_pass_rate": null,
+      "vina_best": null,
+      "reason": "search_bound_0_generated_candidates",
+      "known_issue": "WF-Lambda-MCTS-Coords-Fix 2026-09-15 NOT ported to r4_c_full_sweep.py driver"
+    }
+  },
+  "sa_penalty_verify": {
+    "config": {
+      "script": "molmetal/scripts/r4_lambda_only_run.py",
+      "pockets": 5,
+      "seeds": [
+        42
+      ],
+      "n_cells": 5,
+      "n_simulations": 1000,
+      "metal_seed": "cisplatin"
+    },
+    "wall_seconds_per_arm": 540,
+    "arm_sa00": {
+      "sa_weight": 0.0,
+      "n_cells": null,
+      "aggregate": {
+        "ames_mutagen_mean": 0.0,
+        "anticancer_index": 0.18000000000000002,
+        "aqueous_solubility_logS_mean": -2.24902162,
+        "cell_permeability_logPapp_mean": -4.6239392,
+        "com_shift_mean": 0.0,
+        "coordination_number_mean": 1.0,
+        "decoder_pass_rate": 1.0,
+        "diversity_homotype": 0.07487274223734545,
+        "diversity_subpocket": 0.6538729654113289,
+        "diversity_tanimoto": 0.10647652788883324,
+        "dna_kb_proxy": 0.7200000000000001,
+        "gi50_proxy_mean": 8.0,
+        "gsh_evasion_score": 0.0,
+        "hepatotox_index_mean": 0.06,
+        "herg_cardio_risk_mean": 0.255,
+        "logp7_4_mean": -0.62024,
+        "logp_mean": -0.57524,
+        "metal_compliance_rate": 0.0,
+        "metal_coord_compliance": 0.0,
+        "monodentate_cl_count": 0,
+        "n_coords_3d_attached_total": 100,
+        "n_scaffold_aware_gate_active_total": 100,
+        "novelty": 1.0,
+        "plasma_protein_binding_mean": 0.17625721438425354,
+        "qed_mean": 0.7079960932825043,
+        "reference_tanimoto": 0.15984110149260192,
+        "rigid_rmsd_mean": 0.0,
+        "rotb_mean": 2.4,
+        "sa_mean": 3.6574107114252863,
+        "sa_weight": 0.0,
+        "synthesizability_rate": 1.0,
+        "tpsa_mean": 56.470000000000006,
+        "uniqueness_rate": 1.0,
+        "validity_rate": 1.0
+      }
+    },
+    "arm_sa03": {
+      "sa_weight": 0.3,
+      "n_cells": null,
+      "aggregate": {
+        "ames_mutagen_mean": 0.0,
+        "anticancer_index": 0.18000000000000002,
+        "aqueous_solubility_logS_mean": -2.9115319900000003,
+        "cell_permeability_logPapp_mean": -4.33924559,
+        "com_shift_mean": 0.0,
+        "coordination_number_mean": 1.0,
+        "decoder_pass_rate": 1.0,
+        "diversity_homotype": 0.04499971638950705,
+        "diversity_subpocket": 0.6790195262084525,
+        "diversity_tanimoto": 0.13656567595469193,
+        "dna_kb_proxy": 0.7200000000000001,
+        "gi50_proxy_mean": 8.0,
+        "gsh_evasion_score": 0.0,
+        "hepatotox_index_mean": 0.03,
+        "herg_cardio_risk_mean": 0.24500000000000002,
+        "logp7_4_mean": 0.2526269999999998,
+        "logp_mean": 0.3126269999999999,
+        "metal_compliance_rate": 0.0,
+        "metal_coord_compliance": 0.0,
+        "monodentate_cl_count": 0,
+        "n_coords_3d_attached_total": 100,
+        "n_scaffold_aware_gate_active_total": 100,
+        "novelty": 1.0,
+        "plasma_protein_binding_mean": 0.3007112601335486,
+        "qed_mean": 0.7351399255533757,
+        "reference_tanimoto": 0.1603490840760562,
+        "rigid_rmsd_mean": 0.0,
+        "rotb_mean": 1.8,
+        "sa_mean": 3.0987596249913785,
+        "sa_weight": 0.3,
+        "synthesizability_rate": 1.0,
+        "tpsa_mean": 43.2625,
+        "uniqueness_rate": 1.0,
+        "validity_rate": 1.0
+      }
+    },
+    "delta": {
+      "sa_mean": -0.5586510864339078,
+      "qed_mean": 0.02714383227087136,
+      "verdict": "PASS \u2014 sa_mean -0.5586 (lower=better), QED +0.0271 (within 0.05 threshold)"
+    }
+  }
+}

@@ -1,0 +1,257 @@
+\section{Introduction}
+\label{sec:intro}
+
+\paragraph{Motivation: precious-metal drugs are not small molecules.}
+Cisplatin and its successors---carboplatin, oxaliplatin, nedaplatin---remain
+the standard of care for testicular, bladder, colorectal, and several head-and-neck
+cancers forty-eight years after the 1978 FDA approval of the parent compound
+\cite{footnote:cisp_history}.
+The wider family of metallodrugs---Pt(II/IV), Ru(II/III), Ir(III), Os, Rh---now
+spans more than thirty clinical or late-preclinical candidates
+\cite{footnote:metallodrug_review}.
+These chemotypes are {\em not} organic small molecules in disguise.
+A chemistry-aware generative model for this space must respect at
+least four axes that a generic string- or graph-sequence generator
+ignores by default:
+(i) the metal-ligand bond is a {\em dative} bond with a defined coordination
+geometry (square-planar for Pt(II), octahedral for Ru/Ir(III)), which is not
+captured by a standard covalent-bond topology;
+(ii) the metal centre is {\em redox-active}, so generation-time oxidation-state
+and spin-state bookkeeping matter;
+(iii) ligand-exchange kinetics in physiological conditions (Cl$^-$
+aquation, GSH adduction, trans-effect labilisation) mean that the {\em
+thermodynamic product} and the {\em kinetic product} of a candidate
+molecule can be very different molecules;
+(iv) most candidate ligands are bidentate or tridentate, so the
+combinatorial product space explodes with the number of donor-atom
+sub-positions.
+Re-purposing a token-sequence generative model by appending a
+post-hoc metal-coordination filter can easily
+emit chemically valid but kinetically inaccessible complexes.
+A complete metallodrug generative model must encode chemistry as a
+first-class citizen, not a downstream filter.
+
+\paragraph{Existing approaches and their limits.}
+Three generations of computational methods have been brought to bear on
+this problem, none of them fully satisfactory.
+\emph{Quantitative structure-activity relationships} (2D/3D QSAR) compress
+each candidate to a fingerprint or a small set of physico-chemical
+descriptors and regress against a measured endpoint
+\cite{footnote:qsar_review}.
+These methods are cheap and interpretable but do not propose {\em
+synthesisable} molecules; they require a fixed candidate set up front.
+\emph{Physics-based free-energy methods} (FEP, TI, absolute-binding
+FEP) give the most defensible binding-affinity estimates and have
+been applied to metallodrugs in single-pocket case studies
+\cite{footnote:fep_metallo}.
+They are compute-bound (tens to hundreds of nanoseconds per
+candidate) and do not address the {\em construction} problem at all.
+\emph{Traditional fragment-based design} assembles a lead by linking or
+merging docked fragments under a medicinal-chemistry rules-of-thumb
+filter; performance is dominated by the quality of the docking
+function and the size of the fragment library.
+\emph{Deep generative ligand design} in the last decade has produced
+an impressive family of token-sequence and graph-sequence
+models---REINVENT \cite{footnote:reinvent4}, GraphAF
+\cite{footnote:graphaf}, latent flow-matching
+\cite{footnote:latent_fm}, Junction-Tree VAEs \cite{footnote:jtvae}, and
+MolDQN \cite{footnote:moldqn}---together with their
+geometry-conditioned extensions (TargetDiff
+\cite{footnote:targetdiff}, DiffSBDD \cite{footnote:diffsbdd},
+Pocket2Mol \cite{footnote:pocket2mol}, MolDiff \cite{footnote:moldiff},
+DecompDiff \cite{footnote:decompdiff}, FLOWr
+\cite{footnote:flowr}) that learn to generate atoms in 3D
+coordinates when a binding pocket is supplied.
+Their evaluation suites, when a pocket is given, are now almost
+entirely geometric: coordinate RMSD, Vina docking score, clash rate.
+None of these models is formal about {\em what a molecule
+is}.
+They represent the molecule as the model-output (a token string, a
+latent vector, an atom cloud, a graph) rather than as the object of
+a calculus, and they encode synthesis routes (when they do at all)
+as post-hoc reverse-synthesis filters such as Ertl-SA or
+AiZynthFinder.
+The combinatorial explosion of reaction space (tens of thousands of
+named reactions, of which any candidate ``synthesisable molecule''
+touches only a handful) plus the need for chemistry-aware
+construction-time constraints therefore motivates a {\em different}
+representation.
+
+\paragraph{The gap: no framework treats molecular construction as a typed-calculus problem.}
+To our knowledge, no published framework treats the generation of a
+molecule as a {\em typed-calculus} problem in which the molecule is a
+term in a typed $\lambda$-calculus, reaction operators are reductions,
+and chemistry constraints are type predicates.
+This representation gives four properties that token-sequence
+generative models do not give:
+(i) {\em scope} and {\em $\alpha$-equivalence} provide a
+principled definition of ``the same molecule under different
+variable names'' that subsumes canonical SMILES while preserving
+substructural identity;
+(ii) {\em $\beta$-normal form} ($\beta$-NF) gives a unique, confluent
+evaluation target for ``the molecule that this construction sequence
+reduces to'';
+(iii) {\em typed variables} carry chemistry-aware type predicates
+(aromaticity, hybridisation, ring-membership, donor-atom class) at
+generation time, so synthesis-aware pruning is a typing judgement,
+not a post-hoc filter;
+(iv) {\em capture-avoiding substitution} guarantees that no rewrite
+rule can accidentally bind a free variable of an outer context, which
+is the formal analogue of ``do not break an outer ring when you
+close a click reaction''.
+A generation process that operates directly on terms-in-$\beta$-NF
+also exposes the underlying combinatorics to a Monte-Carlo tree
+search (MCTS) without requiring a differentiable surrogate.
+
+\paragraph{Our contribution.}
+We present a generator that we call the \textbf{Molecular Lambda
+Calculus (MLC)}, together with a complete metallodrug-design
+pipeline that uses MLC as a first-class generator.
+Concretely, MLC is a \textbf{de novo typed-term MCTS, pocket-optional}
+generator: the typed term is the primary object of construction and
+Monte-Carlo tree search operates over $\beta$-NF terms directly;
+binding-pocket conditioning enters as one of several optional oracle
+channels (Vina, QuickVina, REINVENT4, PoseBusters, ADMET) rather than
+as the input that defines the molecule.
+\begin{itemize}
+  \item \textbf{MLC as a typed calculus.} Atoms are primitive
+  combinators; bonds are $\beta$-reductions; molecules are closed
+  $\lambda$-terms in $\beta$-normal form. We instantiate a 9-layer
+  formalism (atoms, bonds, scopes, reactions, $\alpha$-equivalence,
+  $\beta$-NF, type predicates, geometry priors, oracle channels) with
+  a full operational semantics (Appendix~\ref{app:betanf}). Typed
+  variables carry chemistry predicates; capture-avoiding substitution
+  preserves outer scopes; $\beta$-NF is unique modulo
+  $\alpha$-equivalence.
+  \item \textbf{Productive chemistry as a 5-click rule set.}
+  The product of MLC is restricted to a curated 5-rule click-chemistry
+  set (CuAAC, SPAAC, SPC, Diels--Alder, Thiol--Ene) plus a
+  fallback oxidative-addition / reductive-elimination route for
+  dative-bond construction. This keeps the productive space
+  chemistry-realistic while remaining small enough to enumerate,
+  and admits a closure theorem (Appendix~\ref{app:closure_theorem})
+  that bounds reachable $\beta$-NF terms.
+  \item \textbf{MetalGeometryPrior as a first-class constraint.}
+  Pt(II) square-planar (coordination number 4) and Ru/Ir(III)
+  octahedral (coordination number 6) coordination geometries are
+  enforced as typed-predicates over the geometric term, not as
+  post-hoc geometry checks.
+  \item \textbf{MCTS over $\beta$-NF space.} A PUCT-guided Monte-Carlo
+  tree search with virtual loss and a transposition table operates
+  directly over $\beta$-NF terms, using typed-variable hits and
+  click-rule applications as scoring signals.
+\end{itemize}
+
+\paragraph{Empirical evidence we report in this paper.}
+All numerical claims in this paragraph are \emph{measured} in the
+Mol-Metal development history; each citation points to the existing
+report from which the number is taken.
+\begin{itemize}
+  \item \emph{Pure-Lambda validity and synthesizability on real
+  pockets.} Across 5 pockets $\times$ 3 seeds $\times$ 2 arms (with
+  and without a metal seed), a pure-Lambda baseline (no docking,
+  no ADMET, no PoseBusters) attains
+  $\mathit{validity}=1.000$, $\mathit{synthesizability}=1.000$, and
+  $\mathit{metal\_compliance}=1.000$ on the metal-seed arm
+  (15/15 cells) and $\mathit{validity}=1.000$,
+  $\mathit{synthesizability}=1.000$, $\mathit{metal\_compliance}=0.000$
+  on the organic arm (15/15 cells) \cite{footnote:wf_lambda1c}.
+  \item \emph{The 5-click rule set carries search diversity.}
+  An ablation that restricts the MCTS to a single click rule (CuAAC)
+  produces 20\% of the search-space diversity of the full 5-rule
+  set; the remaining 80\% of reachable $\beta$-NF terms require
+  at least one of SPAAC, SPC, Diels--Alder, or Thiol--Ene
+  \cite{footnote:wf_lambda1}.
+  \item \emph{Homotype diversity is orthogonal to Tanimoto.}
+  On a 10-molecule test set (5 constitutional isomers of C$_6$H$_{12}$
+  + 5 unrelated drug-like molecules), the enriched homotype-distance
+  metric has mean $0.1073$ on the constitutional-isomer subset
+  whereas Tanimoto (Morgan r=2, 2048 bits) has mean $0.9276$; on the
+  disjoint-symbol unrelated subset (cisplatin vs.\ benzene /
+  naphthalene / aspirin / caffeine) the homotype distance recovers
+  the disjoint-alphabet signal (cisplatin-vs-benzene homotype
+  $0.5000$)
+  ---so the two metrics disagree on {\em which} chemistry is
+  distant rather than on the magnitude of the distance
+  \cite{footnote:wf_lambda2e}.
+  \item \emph{Vina vs QuickVina parity on real pockets.}
+  On the 1h36 pocket, N=50 paired (same box, same exhaustiveness,
+  same seed), AutoDock Vina 1.2.7 and QuickVina 2 (binary-identity
+  verified upstream) agree with Pearson $r=0.9983$, Spearman
+  $\rho=0.9984$, mean paired difference $+0.009\pm0.018$~kcal/mol
+  ($n=46$ paired, 4 failures both attributable to a 2011-QVina
+  CG0-atom-type limitation)
+  \cite{footnote:round11_parity}.
+  \item \emph{REINVENT4 multiproperty scoring is functional on
+  gfx1101.} A real subprocess invocation of the REINVENT4 learned
+  scoring CLI inside our reward aggregator returns a $[0,1]$ score
+  per SMILES with mean absolute delta $0.07$ against the RDKit proxy
+  on a 10-SMILES drug-like batch \cite{footnote:wf_extra2}.
+  \item \emph{Pt(II) prior end-to-end pipeline is wired but not
+  validated at scientific-budget.} The Round-10 micro-bench on 1h36
+  confirms the harness is runnable (42.60~s full sweep, both
+  prior-OFF and prior-ON settings complete, gate tests 12/12 green);
+  the measured prior-effect on Vina is $\Delta = +0.000$~kcal/mol at
+  $n_{\text{docked}}=4$---a statistically-inconclusive null result
+  that we report honestly rather than over-projecting
+  \cite{footnote:round10_e2e}.
+\end{itemize}
+
+\paragraph{Paper structure.}
+The remainder of the paper is organised in seven sections.
+\textbf{Section~\ref{sec:related}} surveys related work, including
+de novo metallodrug design, calculus-based molecule representations,
+and the geometric SBDD lineage that MLC does \emph{not} belong to,
+and surfaces seven protocol-mismatch flags where the SOTA comparison
+methodology is incompatible with metallodrug evaluation.
+\textbf{Section~\ref{sec:method}} (a separate workflow) develops the
+MLC formalism, the 9-layer architecture, the click-rule registry,
+the MetalGeometryPrior, the MCTS-over-$\beta$-NF driver, and the
+reward aggregator channels (Vina / QuickVina / ADMET / REINVENT4 /
+PoseBusters).
+\textbf{Section~\ref{sec:evaluation}} (a separate workflow) reports
+the 100-pocket $\times$ 3-seed Round-13 scientific-budget run on
+CrossDocked2020 (used as the cross-dock \emph{evaluation} set for
+SA / QED / Novelty columns on 5 pockets, not as a training set), the
+homotype-vs-Tanimoto diversity panel, the Vina
+vs QuickVina parity audit, the Pt(II) prior end-to-end re-run on a
+real Pt pocket, and the anticancer metric suite (TODO-15).
+\textbf{Section~\ref{sec:ablation}} (a separate workflow) ablates
+the 9-layer formalism, the click-rule set, the MetalGeometryPrior
+weights, the MCTS virtual-loss / transposition-table components, and
+the GPU kernel substitution.
+\textbf{Section~\ref{sec:limitations}} (this workflow) catalogues
+the architectural and empirical limits of the present system in a
+checklist of seven protocol-mismatch items, six open
+user-gated decisions, and the explicitly-named empirical
+non-claims (Pt prior $\Delta = 0$ at this $n$; CFG decoder $0/96$ at
+the unconstrained architecture; the $n_{\text{distinct}}{=}1$
+singleton-attractor collapse observed when the metal seed
+over-constrains the 5-click productive space; full 100-pocket
+sweep not yet executed).
+\textbf{Section~\ref{sec:future}} (this workflow) outlines the
+Lambda $\times$ model-side coupling (deferred per
+\cite{footnote:lambda_coupling}), the closure-theorem proof for the
+5-click productive space, the Round-12 / Round-13 / Round-14
+timeline revisions, and the open engineering questions about
+fused-silu-MLP on gfx1101 wave64.
+The appendix contains the full $\beta$-NF operational semantics,
+the click-rule registry table, the per-pocket protocol sheets, and
+the SHA-256-pinned input/output artefacts for every measured
+number in the body.
+
+\paragraph{Style and reproducibility notes.}
+The paper follows an IMRaD structure with a strong introduction,
+honest limitations, and an explicit future-work section.
+Where a numerical claim is \emph{measured} in Mol-Metal's history,
+we cite the corresponding internal report at the foot of the page
+(per Digital Discovery's supplementary-URL convention); where a
+claim is \emph{projected} but not yet measured, we label it
+projected.
+The paper, its code, and the per-cell inputs and outputs are
+SHA-256-pinned; the supplementary archive is sufficient to
+reproduce any individual cell without re-running the full sweep.
+All round-9, round-10, round-11, and round-12 artefacts referenced
+in this section are archived at
+\texttt{molmetal/reports/}; the per-cell protocol sheets are at
+\texttt{molmetal/reports/ultracode\_audit/}.

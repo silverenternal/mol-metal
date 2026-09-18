@@ -1,0 +1,47 @@
+{
+  "target": "MMP2",
+  "uniprot_id": "P08253",
+  "full_name": "Matrix metalloproteinase-2 (Gelatinase A, 72 kDa type-IV collagenase)",
+  "split": "train",
+  "n_entries": 0,
+  "pdb_ids_queried": [
+    "1HOV",
+    "1QIB",
+    "2AYU",
+    "3AYU",
+    "4WKI",
+    "4JIJ"
+  ],
+  "missing_pdbs": [
+    "1HOV",
+    "1QIB",
+    "2AYU",
+    "3AYU",
+    "4JIJ",
+    "4WKI"
+  ],
+  "stats": {
+    "total_pairs": 100000,
+    "matching_pairs": 0,
+    "unique_receptor_pdbs": [],
+    "requested_pdbs": [
+      "1HOV",
+      "1QIB",
+      "2AYU",
+      "3AYU",
+      "4JIJ",
+      "4WKI"
+    ],
+    "missing_pdbs": [
+      "1HOV",
+      "1QIB",
+      "2AYU",
+      "3AYU",
+      "4JIJ",
+      "4WKI"
+    ],
+    "mean_ligand_atoms": 0.0,
+    "mean_pocket_atoms": 0.0
+  },
+  "entries": []
+}

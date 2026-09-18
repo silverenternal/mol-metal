@@ -1,0 +1,18 @@
+# Five hand-checked reference metal drugs for the TODO-15 anticancer
+# metric suite demo.  Format: one SMILES per line, optional "# name".
+# Coordinates: connected forms so RDKit parses the metal-donor bonds.
+
+# cisplatin (cis-diamminedichloroplatinum(II))
+[Pt](N)(N)(Cl)Cl  # cisplatin
+
+# carboplatin (cis-diammine(cyclobutane-1,1-dicarboxylato)platinum(II))
+[Pt](N)(N)(O1)C(=O)C2(CCC2)C1=O  # carboplatin
+
+# oxaliplatin ((1R,2R)-diaminocyclohexane oxalatoplatinum(II))
+[Pt]1(N[C@@H]2CCCC[C@H]2N1)(O1)C(=O)C1=O  # oxaliplatin
+
+# auranofin (Au(I) thiolate phosphine drug)
+[Au+]S(CC)SCC  # auranofin (Au(I) core)
+
+# ruthenium-arene (RM175-class half-sandwich Ru(II)-arene complex)
+[Ru](c1ccccc1)(N)(N)(Cl)Cl  # ruthenium-arene

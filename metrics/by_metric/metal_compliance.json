@@ -1,0 +1,61 @@
+{
+  "metric": "metal_compliance_rate",
+  "description": "Fraction of generated molecules containing the requested metal center (Pt/Ru/Ir) with correct oxidation state",
+  "unit": "ratio (0-1)",
+  "scope": "Lambda MCTS path",
+  "measurements": [
+    {
+      "run": "wf_lambda_only_mini_pilot (5x1, no metal-seed)",
+      "value": 0.0,
+      "n_samples": 5,
+      "status": "MEASURED",
+      "date_utc": "2026-09-14"
+    },
+    {
+      "run": "wf_lambda1c_pilot_v3 (5x3 cisplatin seed)",
+      "value": 1.0,
+      "n_samples": 15,
+      "status": "MEASURED",
+      "note": "1.0 mechanically — seed forces Pt in root, MCTS retains it"
+    },
+    {
+      "run": "wf_lambda1c_pilot_v3 (5x3 no seed, organic-only)",
+      "value": 0.0,
+      "n_samples": 15,
+      "status": "MEASURED",
+      "note": "ablation control: 0.0 mechanically without seed"
+    },
+    {
+      "run": "wf_round12_lambda_pilot (10x3 cisplatin+all-5)",
+      "value": 1.0,
+      "n_samples": 30,
+      "status": "MEASURED",
+      "note": "trivially true (every cell = cisplatin, n_distinct=1)"
+    },
+    {
+      "run": "wf_round12_lambda_pathb (10x3 Path B without all 4 fixes)",
+      "value": 0.0,
+      "n_samples": 30,
+      "status": "MEASURED",
+      "date_utc": "2026-09-15",
+      "note": "regressed 1.0 -> 0.0 — but this is HONEST metric design (seed excluded, n_distinct=1 collapse still)"
+    },
+    {
+      "run": "wf_round12_lambda_patha_10x3 (10x3 Path A with ALL 4 FIXES + decoder_rework)",
+      "value": 0.0,
+      "n_samples": 30,
+      "status": "MEASURED",
+      "date_utc": "2026-09-15",
+      "n_distinct_mean": 20,
+      "note": "Pt-acetylide [Pt]C#C root not strict-Pt_II compliant — EXPECTED trade-off for diversity lift; pre-fix 1.0 was trivially true on n_distinct=1 single molecule"
+    }
+  ],
+  "aggregate": {
+    "best_measured_with_seed_n_distinct_1": 1.0,
+    "best_measured_with_seed_n_distinct_20": 0.0,
+    "interpretation": "metal_compliance is mechanically driven by seed selection AND molecule count. Pre-fix: trivially 1.0 (single cisplatin). Post-fix with diversity: 0.0 (Pt-acetylide ≠ cisplatin geometry).",
+    "open_question": "Can we recover compliance WITH diversity? Need a Pt_II-strict click-compatible Pt root — open question for F2(a) MetalLigandExchange SMARTS rule (TODO-21 deferred)"
+  },
+  "verdict": "EXPECTED_TRADE_OFF — metal_compliance 1.0 -> 0.0 is the cost of lifting diversity. Not a regression; reflects honest metric design. Open: can we have BOTH diversity AND compliance? (Requires F2(a) MetalLigandExchange SMARTS rule — structural fix needed)"
+}
+

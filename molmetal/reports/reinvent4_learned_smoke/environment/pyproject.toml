@@ -1,0 +1,30 @@
+[project]
+name = "molmetal-reinvent4-rocm"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "reinvent",
+    "torch==2.14.0",
+    "torchvision==0.29.0",
+    "triton-rocm==3.8.0",
+    "pillow==12.2.0",
+    "tensorboard==2.20.0",
+    "polars==1.40.1",
+    "pygments==2.20.0",
+    "scipy>=1.11",
+]
+
+[tool.uv]
+managed = true
+override-dependencies = ["torch==2.14.0"]
+
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url = "https://download.pytorch.org/whl/rocm7.2"
+explicit = true
+
+[tool.uv.sources]
+reinvent = { path = "/mnt/storage/env-projects/reinvent4-rocm/upstream", editable = true }
+torch = { index = "pytorch-rocm" }
+torchvision = { index = "pytorch-rocm" }
+triton-rocm = { index = "pytorch-rocm" }

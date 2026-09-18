@@ -1,0 +1,11 @@
+expansion:
+  uspto_legacy_v3:
+  - /mnt/storage/data/molmetal/aizynth_public/legacy_v3/uspto_legacy_converted.onnx
+  - /mnt/storage/data/molmetal/aizynth_public/legacy_v3/uspto_templates.hdf5
+stock:
+  zinc_2020: /mnt/storage/data/molmetal/aizynth_public/zinc_stock.hdf5
+search:
+  iteration_limit: 20
+  time_limit: 10
+  return_first: true
+  exclude_target_from_stock: true

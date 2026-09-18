@@ -1,0 +1,32 @@
+{
+  "metric": "platinai_a2780_pred",
+  "description": "PlatinAI predicted probability of activity against A2780 ovarian cancer cell line, averaged over Round-12 de novo typed-term MCTS candidates that survive the MetalGeometryPrior gate",
+  "unit": "ratio (P_A2780 ∈ [0, 1]; higher = more likely active)",
+  "scope": "metallodrug vertical (paper §4.6.1)",
+  "source_dataset": "PlatinAI_predicted_A2780 (xlsx, 214376 records, 3000-sample scan, canonical_rate=0.6453, pred_0 = P(active vs A2780))",
+  "data_origin": "/mnt/storage/data/molmetal/PlatinAI_predicted_A2780_dataset.xlsx",
+  "measurements": [
+    {
+      "run": "wf_pivot_followup F2 placeholder (§4.6.1 subsubsection)",
+      "value": null,
+      "n_samples": null,
+      "status": "DESIGN",
+      "date_utc": "2026-09-16",
+      "note": "placeholder shipped; 0/10 pocket-cells populated; per-pocket test_000..009 × seeds {42,0,1234,7,99} panel all labelled \\DESIGN{}"
+    }
+  ],
+  "aggregate": {
+    "best_measured": null,
+    "n_cells_design": 10,
+    "n_cells_measured": 0,
+    "lit_target": "wet-lab A2780 GI50 (PlatinAI is ML proxy, not wet-lab)",
+    "status": "PENDING_GPU_RETRAIN"
+  },
+  "honest_framing": "PlatinAI P_A2780 is an ML-predicted activity score from the PlatinAI corpus (214K records), NOT a wet-lab IC50. The §4.6.1 metallodrug vertical subsubsection is a placeholder (WF-pivot-followup F2, 2026-09-16) with 0 cells promoted DESIGN→MEASURED. Per F2 verdict the GPU retrain required to wire r_platinai channel into RewardAggregator was NOT executed; no PlatinAI smoke results exist (molmetal/reports/wf_metallodrug_vertical/phase3_smoke/final.md MISSING). Calibration against MetalCytoToxDB IC50_Dark also pending (TODO-22 gap).",
+  "verdict": "PENDING_GPU_RETRAIN — widzuipcl Phase 2+ not started; placeholder subsubsection honest about zero measurements",
+  "files_referenced": [
+    "molmetal/reports/wf_pivot_followup/f2_platinai_s4.md",
+    "molmetal/reports/wf_metallodrug_vertical/phase1_inventory.md",
+    "paper/sections/04_evaluation.tex (§4.6.1 lines 1773-1937)"
+  ]
+}

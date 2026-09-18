@@ -1,0 +1,24 @@
+{
+  "name": "DiffSBDD + Pocket2Mol",
+  "authors": "Schneuing et al. (DiffSBDD) + Peng et al. (Pocket2Mol)",
+  "venues": "DiffSBDD: ICML 2023; Pocket2Mol: ICML 2022",
+  "scope": "3D pocket-conditioned diffusion",
+  "headline_metrics": {
+    "diffsbdd_vina_mean": "-7.5 to -8.0",
+    "diffsbdd_pb_pass_rate": 0.88,
+    "pocket2mol_vina_mean": "-6.5 to -7.0",
+    "pocket2mol_pb_pass_rate": 0.78
+  },
+  "molmetal_comparison": {
+    "vina_mean_molmetal": -6.929,
+    "vina_gap_to_diffsbdd": "+0.5 to +1.0 (molmetal worse)",
+    "vina_gap_to_pocket2mol": "comparable (within 0.5)",
+    "pb_pass_rate_molmetal": "0.846 smoke",
+    "pb_pass_rate_gap_to_diffsbdd": "+0.034 (molmetal slightly better on smoke)"
+  },
+  "comparability": {
+    "protocol_aligned": "yes — CrossDocked2020 + QVina + PB 1.0",
+    "dataset_aligned": "yes — split_by_name"
+  },
+  "source": "Schneuing 2023 + Peng 2022 + molmetal/reports/wf_3_citeonly_sota/final.md"
+}

@@ -1,0 +1,47 @@
+{
+  "target": "MMP9",
+  "uniprot_id": "P14780",
+  "full_name": "Matrix metalloproteinase-9 (Gelatinase B, 92 kDa type-IV collagenase)",
+  "split": "train",
+  "n_entries": 0,
+  "pdb_ids_queried": [
+    "1GKC",
+    "1L6J",
+    "2OVZ",
+    "4W0V",
+    "4XCT",
+    "5I3L"
+  ],
+  "missing_pdbs": [
+    "1GKC",
+    "1L6J",
+    "2OVZ",
+    "4W0V",
+    "4XCT",
+    "5I3L"
+  ],
+  "stats": {
+    "total_pairs": 100000,
+    "matching_pairs": 0,
+    "unique_receptor_pdbs": [],
+    "requested_pdbs": [
+      "1GKC",
+      "1L6J",
+      "2OVZ",
+      "4W0V",
+      "4XCT",
+      "5I3L"
+    ],
+    "missing_pdbs": [
+      "1GKC",
+      "1L6J",
+      "2OVZ",
+      "4W0V",
+      "4XCT",
+      "5I3L"
+    ],
+    "mean_ligand_atoms": 0.0,
+    "mean_pocket_atoms": 0.0
+  },
+  "entries": []
+}

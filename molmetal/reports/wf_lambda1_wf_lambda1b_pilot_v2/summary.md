@@ -1,0 +1,57 @@
+# WF-Lambda-1 — Pure Lambda-Only Baseline
+
+> Honest-framing: this is a MEASURED run. PROJECTED numbers
+> from the spec are not invoked here — the spec is in
+> `molmetal/reports/ultracode_audit/wf_lambda1_spec.md`.
+
+## Configuration
+
+- n_pockets : `5`
+- seeds     : `[42, 0, 1234]`
+- n_simulations per cell : `100`
+- n_top_k    : `20`
+- prior_enabled : `True`
+- metal_seed    : `cisplatin`
+
+## Aggregate metrics (mean across cells)
+
+| metric | value |
+|---|---|
+| validity_rate | 1.0000 |
+| uniqueness_rate | 1.0000 |
+| diversity_alpha | 0.0000 |
+| novelty | 1.0000 |
+| synthesizability_rate | 0.0000 |
+| metal_compliance_rate | 1.0000 |
+| reference_tanimoto | 0.0120 |
+
+## Per-cell results
+
+| pocket | seed | n_cand | n_distinct | valid | uniq | div | novel | syn | metal | ref_tan | warnings |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| test_000 | 42 | 1 | 1 | 1.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1.000 | 0.014 | 1 |
+| test_000 | 0 | 1 | 1 | 1.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1.000 | 0.014 | 1 |
+| test_000 | 1234 | 1 | 1 | 1.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1.000 | 0.014 | 1 |
+| test_001 | 42 | 1 | 1 | 1.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1 |
+| test_001 | 0 | 1 | 1 | 1.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1 |
+| test_001 | 1234 | 1 | 1 | 1.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1 |
+| test_002 | 42 | 1 | 1 | 1.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1.000 | 0.018 | 1 |
+| test_002 | 0 | 1 | 1 | 1.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1.000 | 0.018 | 1 |
+| test_002 | 1234 | 1 | 1 | 1.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1.000 | 0.018 | 1 |
+| test_003 | 42 | 1 | 1 | 1.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1.000 | 0.029 | 1 |
+| test_003 | 0 | 1 | 1 | 1.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1.000 | 0.029 | 1 |
+| test_003 | 1234 | 1 | 1 | 1.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1.000 | 0.029 | 1 |
+| test_004 | 42 | 1 | 1 | 1.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1 |
+| test_004 | 0 | 1 | 1 | 1.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1 |
+| test_004 | 1234 | 1 | 1 | 1.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1.000 | 0.000 | 1 |
+
+Total elapsed: `11.15 s`
+
+## Scorer (Lambda-only, NO docking / AdmetAI / PB)
+
+- `alpha_equivalence_uniqueness_score` — distinct beta-NF count.
+- `click_rule_match_bonus` — +1.0 if any of 5 click rules fires.
+- `metal_geometry_prior_bonus` — +1.0 if Pt=4 / Ru=Ir=6 coord.
+- `rdkit_validity_score` — 1.0 if RDKit can sanitize.
+- `synthesizability_via_lambda_paths` — 1.0 if beta-NF + RDKit.
+

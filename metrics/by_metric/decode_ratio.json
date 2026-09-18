@@ -1,0 +1,83 @@
+{
+  "metric": "decode_ratio",
+  "description": "Fraction of generated samples successfully decoded into valid SMILES (RDKit-strict)",
+  "unit": "ratio (0-1)",
+  "scope": "CFM (Conditional Flow Matching) generate path",
+  "measurements": [
+    {
+      "run": "wf2_cfg_e2e_a5 (2000-step baseline)",
+      "value": 0.0,
+      "n_samples": 384,
+      "status": "MEASURED",
+      "date_utc": "2026-09-13"
+    },
+    {
+      "run": "wf_gpu_recovery_now (5000-step)",
+      "value": 0.0,
+      "n_samples": 192,
+      "status": "MEASURED",
+      "date_utc": "2026-09-15"
+    },
+    {
+      "run": "wf_cfm_path_b_decoder_rework (Path A, 500-step + h=64)",
+      "value": 0.0,
+      "n_samples": 192,
+      "status": "MEASURED",
+      "date_utc": "2026-09-15",
+      "input": "synthetic CFM-style 10-atom Pt-click clouds"
+    },
+    {
+      "run": "wf_cfm_path_b_decoder_rework (Path B, decode_ratio_bond_bearing)",
+      "value": 1.0,
+      "n_samples": 192,
+      "status": "MEASURED",
+      "date_utc": "2026-09-15",
+      "input": "synthetic CFM-style 10-atom Pt-click clouds",
+      "note": "bond-bearing pre-RDKit-strict; RDKit-strict = 0.5 due to overvalent atoms in synthetic clouds"
+    },
+    {
+      "run": "wf_cfm_path_b_decoder_rework (Path B, decode_ratio_rdkit_strict)",
+      "value": 0.5,
+      "n_samples": 192,
+      "status": "MEASURED",
+      "date_utc": "2026-09-15"
+    },
+    {
+      "run": "wf_cfm_rescue (200-step 8-sample smoke, all 4 fixes stacked)",
+      "value": 0.0,
+      "n_samples": 8,
+      "status": "MEASURED",
+      "date_utc": "2026-09-16",
+      "input": "freshly-init h=64 adapter; midpoint solver; joint_train=True; n_train=32 default",
+      "note": "decode_ratio still 0/8; metric lift requires GPU retrain with all 4 fixes (TODO-24 §5 user-decision point)"
+    },
+    {
+      "run": "wf_r15_cfm_cpu_verify (500-step 8-sample CPU smoke, all 4 fixes stacked)",
+      "value": 0.0,
+      "n_samples": 8,
+      "status": "MEASURED",
+      "date_utc": "2026-09-16",
+      "input": "freshly-init h=64 adapter; midpoint solver; joint_train=True; n_train=32 default",
+      "checkpoints": {"step_100": "0/8", "step_200": "0/8", "step_500": "0/8"},
+      "note": "CPU 500-step extension of wf_cfm_rescue/phase5_200step_smoke.json; result bit-exact with baseline at all 3 checkpoints. YuelBond decoder swap is AVAILABLE as parallel path but not wired (use_yuelbond flag deferred to follow-up retrain per wf_cfm_rescue/phase1_yuelbond.md)."
+    },
+    {
+      "run": "wf_r15_cfm_cpu_verify (500-step 8-sample GPU smoke, all 4 fixes stacked)",
+      "value": 0.0,
+      "n_samples": 8,
+      "status": "MEASURED",
+      "date_utc": "2026-09-16",
+      "device": "cuda (AMD Radeon 780M + RX 7800 XT)",
+      "input": "GPU was unavailable on 2026-09-15; recovered on 2026-09-16 (cuda_available=True device_count=2)",
+      "checkpoints": {"step_100": "0/8", "step_200": "0/8", "step_500": "0/8"},
+      "note": "GPU 500-step smoke result is bit-exact with CPU smoke (decode_ratio = 0/8) — the EGNN velocity field bottleneck is architecture, not device."
+    }
+  ],
+  "aggregate": {
+    "all_measured_cfm_decode_ratio": 0.0,
+    "best_measured": 0.5,
+    "lit_target_targetdiff": "≥0.5 (Guan 2023 ICLR)",
+    "gap": "−1.0 to −0.5"
+  },
+  "verdict": "MEASURED_NEGATIVE_RESULT — CFM as currently architected does not lift decode_ratio above 0 on synthetic or trained-CFM coordinates. Path B lifts bond-bearing off zero on synthetic, but real Vina lift unmeasured."
+}

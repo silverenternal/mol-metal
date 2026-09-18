@@ -1,0 +1,3 @@
+# 非冻结诊断运行（不用于修复前后比较）
+
+27case运行完成，但summary.json明确记录runtime_unchanged_during_run=false：不同case subprocess启动之间，ThiolEne规则追加了无S/无C=C输入的兼容前置检查。单一worker使用其已导入的Python模块，不能声称同一worker热混入源码。所有case和运行起点源副本保留；最终冻结结果另存repaired_v2目录。

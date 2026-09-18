@@ -1,0 +1,47 @@
+{
+  "metric": "metal_coord_compliance",
+  "description": "Fraction of generated molecules whose metal centre matches the expected d-block coordination geometry (Pt_II square-planar, Pt_IV octahedral, Ir_0/Ir_I/Ir_III). Per Lnnard-Berg 1995 + Reedijk 1987 + Miessler 2014 d-block geometry tables.",
+  "unit": "ratio (0-1); higher = better d-block geometry compliance",
+  "scope": "Lambda + CFM evaluations (metal-seeded runs); 0.0 on no-metal seeds or no Pt/Ir present",
+  "lit_anchors": [
+    "Lippard & Berg 1995 Principles of Bioinorganic Chemistry",
+    "Reedijk 1987 Inorg Chem 26:392 (Pt(II) square-planar)",
+    "Miessler 2014 Inorganic Chemistry (d-block geometry tables)",
+    "Housecroft 2018 Inorganic Chemistry (Ir(I)/Ir(III) coordination)",
+    "Hartwig 2010 Organotransition Metal Chemistry Ch.5"
+  ],
+  "math_prior": "compliance_rate(smis) = (#smis where coord_geometry(M(metal)) matches expected_table[M]) / (#smis with metal present); 0.0 fallback if no metal; expected geometries: Pt_II=square_planar (4 ligands, 90 deg), Pt_IV=octahedral (6 ligands), Ir_0=linear (2), Ir_I=square_planar (4), Ir_III=octahedral (6)",
+  "measurements": [
+    {
+      "run": "wf_lambda_metal_pilot (5x1 cisplatin + all-5)",
+      "value": 1.0,
+      "n_samples": 5,
+      "status": "MEASURED",
+      "date_utc": "2026-09-14",
+      "caveat": "single Pt_II scaffold + single metal seed; singleton collapse to cisplatin itself; no diversity test"
+    },
+    {
+      "run": "wf_phase3g_metal_coord_probe (unit tests)",
+      "value": "smoke-only: Pt_II square-planar detection + scaffold auto-detection",
+      "n_samples": "test fixtures",
+      "status": "DESIGN",
+      "date_utc": "2026-09-15"
+    }
+  ],
+  "aggregate": {
+    "single_pilot_measured_compliance": 1.0,
+    "n_measured": 5,
+    "lit_target_targetdiff": "TargetDiff does NOT have metal prior; closest analog = scaffold validity rate; gap = positive (we add d-block check SOTA lacks)"
+  },
+  "verdict": "DESIGN+1-PILOT — Phase-3G metal_coord_probe module + Phase-4 dispatch integration shipped; single 5x1 cisplatin+all-5 pilot lifts 0.0->1.0 but is a singleton collapse (n_distinct=1), NOT a true positive result. Honest framing: measurement = 1.0 but with n_distinct=1 the metric trivially passes on the seed itself. Full 10x3 rotation (3 metal seeds x 10 pockets x 3 random seeds) blocked by GPU outage (per wf_gpu_diag_fix) and by F2(a) MetalLigandExchange SMARTS rule TODO-29.",
+  "files": [
+    "molmetal/molmetal_lam/sbdd_env/metal_coord_probe.py (NEW Phase 3G)",
+    "molmetal/tests/test_metal_coord_probe.py (NEW)",
+    "molmetal/scripts/r4_lambda_only_run.py (Phase 4 wire-in: metric_metal_coord_compliance_mean)"
+  ],
+  "workflows": [
+    "wf_parallel_tasks/phase3g_metal_coord.md",
+    "wf_parallel_tasks/phase4_integration.md"
+  ],
+  "singleton_collapse_warning": "Round-12 10x3 results: all 30 cells collapse to single candidate [NH2][Pt]([NH2])([Cl])[Cl] (n_distinct=1) when --metal-seed cisplatin + --click-rules all-5; the metal_compliance=1.0 measurement is HONEST but TRIVIAL — passes because the seed itself is Pt_II square-planar. Real non-degenerate compliance verification requires F2(a) + n_simulations>=1000 + multiple metal seeds."
+}

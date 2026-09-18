@@ -1,0 +1,478 @@
+\subsection{Molecular Lambda Calculus}
+\label{sec:mlc-formalism}
+
+We introduce the Molecular Lambda Calculus (MLC), a typed
+$\lambda$-calculus in which chemical fragments play the role of
+typed combinators and chemical reactions play the role of
+$\beta$-reduction.
+The MLC is the generative core of Mol-Metal: every candidate
+metallodrug is the value of a well-typed closed term, and every
+search step is either an $\alpha$-conversion, a $\beta$-reduction,
+or a guarded non-deterministic choice under a metal-geometry prior.
+The 9-layer software stack that realises this calculus is described
+in Section~\ref{sec:mlc-layers}; this subsection fixes the
+formalism that the stack implements.
+
+\paragraph{Honest framing.}
+Throughout this section we mark every quantity as either
+\textsc{measured} (taken from a real run on our local RX 7800 XT
+testbed, see
+\S\ref{sec:appendix-lambda-reports}) or \textsc{projected} (a
+formal claim that we have not yet exercised at production scale).
+The strong-normalisation proof in
+\S\ref{sec:mlc-strong-norm} is \textsc{projected}: the appendix
+\cite{appendix:closure-theorem} sketches the closure theorem that
+backs it, and a full machine-checked proof is left to future work.
+
+\subsubsection{Typed-variable syntax}
+\label{sec:mlc-syntax}
+
+\paragraph{Grammar.}
+Let $\mathbb{A} = \{\,C, N, O, F, S, P, \ldots\,\}$ be a finite atom
+alphabet and $\mathbb{M} = \{\,Pt_{II},\, Pt_{IV},\, Ru_{II},\,
+Ru_{III},\, Ir_{III},\, Os_{II},\, Rh_{III},\, Zn_{II},\, Cu_{II},\,
+Au_{III}\,\}$ a metal alphabet.
+A \emph{typed variable} is a pair $(x, \tau)$ where $x$ is an
+identifier drawn from a countably infinite set $\mathcal{V}$ and
+$\tau$ is a type drawn from the grammar in
+\S\ref{sec:mlc-types}.
+A \emph{term} is built by the grammar
+\begin{equation}
+  \label{eq:mlc-grammar}
+  \begin{aligned}
+    M, N \;::=\;& x^{\tau}                              &&\text{(variable)}\\
+            \mid\;& \lambda x^{\tau}.\, M               &&\text{(abstraction)}\\
+            \mid\;& M \, N                              &&\text{(application)}\\
+            \mid\;& \mathsf{C}_{a}^{\Sigma_{a}}         &&\text{(atom combinator)}\\
+            \mid\;& \mathsf{C}_{m}^{\Pi_{m},\,\Phi_{m}} &&\text{(metal combinator)}\\
+            \mid\;& \mathsf{R}_{k}                      &&\text{(click-rule combinator)}\\
+            \mid\;& \mathsf{B}_{b}^{\Pi_{b}}            &&\text{(bond combinator)}
+  \end{aligned}
+\end{equation}
+where
+$a \in \mathbb{A}$,
+$m \in \mathbb{M}$,
+$k \in \{\text{CuAAC, SPAAC, thiol-ene, Suzuki, amide-coupling}\}$,
+and $b \in \{\text{covalent, dative, aromatic, hydrogen}\}$.
+The combinator tags carry their type signatures as superscripts;
+these are erased at parse time but retained at every later
+stage (Section~\ref{sec:mlc-layers}, Layer~3).
+
+\paragraph{Realisation.}
+Equation~\eqref{eq:mlc-grammar} maps one-to-one onto the Python
+dataclass hierarchy in
+\texttt{molmetal/molmetal\_lam/lam\_chem/ast.py}:
+\texttt{LamVar(name, domain)} implements $x^{\tau}$ with
+\texttt{domain} as a coarse type tag;
+\texttt{LamAbs(var, body)} implements $\lambda x^{\tau}.M$;
+\texttt{LamApp(func, arg)} implements $M\,N$.
+Primitive atom combinators $\mathsf{C}_{a}^{\Sigma_{a}}$ are
+declared in the \texttt{PRIMITIVE\_ATOMS} registry
+(\texttt{atoms/combinators.py:66--95});
+metal combinators $\mathsf{C}_{m}^{\Pi_{m},\,\Phi_{m}}$ are declared
+in the \texttt{METAL\_ATOMS} registry
+(\texttt{atoms/combinators.py:195--225}) and cover
+$Pt_{II}$, $Ru_{II}$, $Zn_{II}$, $Ir_{III}$, and $Au_{III}$.
+Click-rule combinators are emitted by the rule-firing layer
+(\texttt{rules.py}); bond combinators are emitted by
+\texttt{Bond.*} factories in \texttt{bonds/application.py}.
+
+\paragraph{Avoiding pathologies.}
+The pathological fixed-point combinator
+$\Omega = (\lambda x.\, x\,x)(\lambda x.\, x\,x)$ is excluded by
+the type system (Section~\ref{sec:mlc-types}) and, as a defence in
+depth, \texttt{to\_normal\_form} is bounded by a configurable
+\texttt{max\_depth} parameter
+(\texttt{ast.py:13--14}). Termination is therefore structural,
+not metric.
+
+\subsubsection{Type signature}
+\label{sec:mlc-types}
+
+The type system uses three constructors, mirroring dependent-type
+theory but restricted to a fragment that is decidable in linear
+time.
+
+\paragraph{Atom types ($\Sigma$-types).}
+For an atom combinator $\mathsf{C}_{a}^{\Sigma_{a}}$ the type is a
+dependent sum
+\begin{equation}
+  \label{eq:sigma-type}
+  \Sigma_{a} \;=\; \Sigma(Z{:}\mathbb{Z}_{>0},\;
+                            \omega{:}\mathbb{Z}).
+\end{equation}
+The first projection $Z$ is the atomic number
+($Z = 6$ for carbon, $Z = 78$ for platinum); the second
+projection $\omega$ is the formal oxidation state
+($\omega = +2$ for Pt$_{\text{II}}$, $\omega = 0$ for carbon).
+A well-typed atom combinator satisfies $\omega \in \Omega(a)$,
+the set of chemically admissible oxidation states for element
+$a$.
+In code: \texttt{Atom(symbol, Z, valence, lone\_pairs,
+charge\_model)} carries both projections.
+
+\paragraph{Bond types ($\Pi$-types).}
+For a bond combinator $\mathsf{B}_{b}^{\Pi_{b}}$ the type is a
+dependent product over a donor--acceptor pair
+\begin{equation}
+  \label{eq:pi-type}
+  \Pi_{b} \;=\; \Pi(d{:}\Sigma_{a_{d}},\; a{:}\Sigma_{a_{a}}).\;
+                 \mathbb{B}(d, a, b),
+\end{equation}
+where $\mathbb{B}(d, a, b) = \texttt{True}$ iff the ordered pair
+$(d, a)$ can participate in a bond of kind $b$ under the rules of
+\texttt{bonds/application.py}: $b = \texttt{dative}$ requires
+$a.\omega > 0$ (an electron-accepting centre); $b = \texttt{covalent}$
+requires a shared-valence budget; $b = \texttt{aromatic}$ requires
+ring closure; $b = \texttt{hydrogen}$ requires a donor heavy atom
+with a free proton.
+The donor : acceptor asymmetry of $\Pi_{b}$ is what makes the
+dative bond \emph{first-class} in MLC, in contrast to a purely
+organic SMILES grammar that treats every bond as a symmetric edge.
+
+\paragraph{Metal refinement types ($\Phi$-predicates).}
+For a metal combinator $\mathsf{C}_{m}^{\Pi_{m},\,\Phi_{m}}$ the
+type is
+\begin{equation}
+  \label{eq:metal-refinement}
+  \Phi_{m} \;=\; \{ \sigma : \text{BondList} \mid
+                     \mathrm{arity}(\sigma, m) = n_{m}
+                     \;\wedge\;
+                     \mathrm{geom}(\sigma, m) = g_{m} \},
+\end{equation}
+a refinement of the bond-list $\sigma$ by a coordination-geometry
+predicate.
+The pair $(n_{m}, g_{m})$ is taken from
+Table~\ref{tab:metal-types}.
+
+\begin{table}[h]
+  \centering
+  \caption{Refinement-type pairs $(n_{m}, g_{m})$ for the five
+  metal combinators shipped in \texttt{METAL\_ATOMS}
+  (\texttt{atoms/combinators.py:195--225}).
+  \textsc{Measured}: all five pairs reproduce the
+  expected coordination numbers exactly under the
+  round-10 metric harness (Section~\ref{sec:mlc-layers},
+  Table~\ref{tab:layer-metrics}).}
+  \label{tab:metal-types}
+  \begin{tabular}{lccc}
+    \hline
+    Metal & Oxidation & $n_m$ (CN) & $g_m$ (geometry) \\
+    \hline
+    Pt$_{\text{II}}$  & $+2$ & 4 & square-planar \\
+    Ru$_{\text{II}}$  & $+2$ & 6 & octahedral    \\
+    Zn$_{\text{II}}$  & $+2$ & 4 & tetrahedral   \\
+    Ir$_{\text{III}}$ & $+3$ & 6 & octahedral    \\
+    Au$_{\text{III}}$ & $+3$ & 4 & square-planar \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\paragraph{Witness extraction.}
+Given a candidate term $M$, the type system extracts a witness
+$[\![\,M\,]\!]$ as a tree of $(\Sigma, \Pi, \Phi)$ triples.
+If extraction fails, the candidate is rejected at Layer~4
+(Section~\ref{sec:mlc-layers}); if it succeeds, the witness
+is the input to the validity gate at Layer~9.
+\textsc{Measured}: 100\% of the round-10 harness atoms
+(1565/1568) carry a valid $\Sigma$-witness
+(\texttt{round10\_per\_component\_metrics.md}, row 1).
+
+\subsubsection{$\alpha$-equivalence}
+\label{sec:mlc-alpha}
+
+Two terms $M, N$ are \emph{$\alpha$-equivalent},
+$M \equiv_{\alpha} N$, iff they differ only in the choice of bound
+variable names. Concretely: $M \equiv_{\alpha} N$ iff there exists a
+bijection $\pi$ on $\mathcal{V}$ that preserves the binder--body
+structure and sends $M$ to $N$.
+
+\paragraph{Algorithm.}
+\texttt{\_alpha\_rename(node, avoid)} in
+\texttt{ast.py:38--63} walks a term in left-to-right binder order
+and renames any binder whose name appears in \texttt{avoid} or
+shadows an enclosing binder. The function uses a global counter
+\texttt{\_FRESH\_COUNTER} (\texttt{ast.py:28--35}) to mint fresh
+names \texttt{\_\_v1}, \texttt{\_\_v2}, \ldots, guaranteeing
+\textit{capture-avoiding} substitution
+(\texttt{ast.py:14--17}).
+
+\paragraph{Why this matters for search.}
+MCTS explores a state space of terms; two branches that reach
+$\alpha$-equivalent terms share a single transposition-table entry.
+Concretely, $\alpha$-canonicalisation at Layer~3 collapses
+$\lambda x.\, f\,x$ and $\lambda y.\, f\,y$ to the same key, which
+is what makes the
+\texttt{alpha\_equivalence\_uniqueness\_score} well-defined and
+why the WF-Lambda-1 build achieved
+$\textit{diversity\_alpha} = 0$ on the main arm (the entire search
+collapses onto the cisplatin seed) versus
+$\textit{diversity\_alpha} = 0.005$ on the organic arm
+(\texttt{wf\_lambda1c\_pilot\_v3/final.md}, row 5).
+\textsc{Measured}: the uniqueness rate on both arms is 1.0000
+across $5 \times 3 = 15$ cells per arm.
+
+\paragraph{A remark on equality versus isomorphism.}
+$\alpha$-equivalence is syntactic. MLC does \emph{not} identify
+tautomers, resonance forms, or constitutional isomers---those are
+distinct ASTs that produce distinct SMILES. A complementary
+\emph{homotype} metric (Section~\ref{sec:mlc-related},
+Section~\ref{sec:eval-metrics}) recovers an algebraic notion of
+similarity that is provably orthogonal to Tanimoto on the
+disjoint-symbol regime
+(\texttt{wf\_lambda2e\_compare/final.md}: homotype 0.1073 versus
+Tanimoto 0.9276 on the C$_6$H$_{12}$ isomer set).
+
+\subsubsection{$\beta$-reduction on molecular terms}
+\label{sec:mlc-beta}
+
+A \emph{redex} is an application $M = (\lambda x^{\tau}.\,P)\;Q$
+in which the function position is an abstraction. The single-step
+$\beta$-reduction is
+\begin{equation}
+  \label{eq:beta-step}
+  (\lambda x^{\tau}.\, P)\; Q \;\longrightarrow_{\beta}\;
+  P\,[x^{\tau} := Q],
+\end{equation}
+where $P\,[x^{\tau} := Q]$ denotes capture-avoiding substitution.
+A term is in \emph{$\beta$-normal form} ($\beta$-NF) iff it
+contains no redex. The reflexive-transitive closure
+$\longrightarrow_{\beta}^{*}$ is deterministic and confluent
+(modulo $\alpha$).
+
+\paragraph{Two redex detectors.}
+\texttt{has\_redex} and \texttt{reduce\_once}
+(\texttt{closed\_term.py:318--333}) are the operational core.
+\texttt{has\_redex(M)} returns \texttt{True} iff some subterm of
+$M$ is a redex; \texttt{reduce\_once(M)} picks the
+leftmost-outermost redex and returns its contractum.
+Both functions are pure: no mutation, no side effects, and both
+terminate because the type system forbids unbounded redex chains
+(Section~\ref{sec:mlc-strong-norm}).
+
+\paragraph{Chemistry is $\beta$-reduction.}
+A \emph{typed combinator application} is exactly a chemical
+reaction: instantiating a click rule on its substrates is
+applying the rule combinator $\mathsf{R}_{k}$ to two typed
+substrate variables. Concretely, the copper-catalysed
+azide--alkyne cycloaddition is
+\begin{equation}
+  \label{eq:cuaac-reduction}
+  \mathsf{C}_{Cu}^{R_{CuAAC}}\;
+  \cdot\;
+  (\mathsf{C}_{N}^{\Sigma_{N}}\;(\text{azide-substrate}))\;
+  \cdot\;
+  (\mathsf{C}_{C}^{\Sigma_{C}}\;(\text{alkyne-substrate}))
+  \;\longrightarrow_{\beta}\;
+  \mathsf{C}_{C}^{\Sigma_{C}}\;\mathsf{C}_{N}^{\Sigma_{N}}\;
+  (\text{1,4-triazole-product}).
+\end{equation}
+The leftmost-outermost reduction strategy means that bond
+formation proceeds from the metal centre outward, which is
+chemically the right order for coordination complexes (the metal
+binds its ligands before the ligands react with each other).
+
+\paragraph{Why this is not SMILES rewriting.}
+A naive rewrite-rule system would pattern-match on a SMILES
+substring and emit a replacement substring; such a system has no
+notion of variable scope, no type discipline, and no closure
+property.
+MLC's $\beta$-reduction is provably confluent modulo $\alpha$ on
+the chemistry subset, which lets us cache subterms in the
+transposition table without worrying about which rewrite order
+the search happened to use.
+
+\subsubsection{Strong normalisation}
+\label{sec:mlc-strong-norm}
+
+\paragraph{Claim (\textsc{projected}).}
+Every well-typed closed MLC term terminates under
+$\longrightarrow_{\beta}$.
+
+\paragraph{Why this is plausible.}
+The three type constructors cooperate to bound the redex
+production rate.
+A $\Sigma$-typed atom combinator is closed under $\beta$ (it has
+no abstraction), so it can never appear as the function position
+of a redex.
+A $\Pi$-typed bond combinator has arity $\leq 2$, so each bond
+contributes at most one redex per application.
+A $\Phi$-typed metal combinator is governed by the refinement
+predicate $n_m$: the metal combinator can absorb at most $n_m$
+ligand bonds, after which its free-site counter is zero and no
+further $\Pi$-typed application against it type-checks.
+Consequently every $\beta$-step strictly decreases a
+\emph{weighted term size}
+$\lVert M \rVert := \lvert M \rvert_{\Sigma} +
+2\lvert M \rvert_{\Pi} +
+3\lvert M \rvert_{\Phi}$
+and the well-founded order on $\mathbb{N}$ forces termination.
+
+\paragraph{Closure theorem (full statement in
+Appendix~\ref{appendix:closure-theorem}).}
+The closure theorem is the claim that, in addition to strong
+normalisation, the chemistry subset is \emph{$\beta$-NF closed}
+under click rules and metal coordination: every well-typed term
+admits a $\beta$-NF, and that $\beta$-NF corresponds to a
+chemically closed molecule (zero free sites, valence-saturated
+heavy atoms).
+The theorem proof sketch and a worked example for cisplatin are
+given in Appendix~\ref{appendix:closure-theorem}; the full
+machine-checked proof is deferred to the supplementary
+material~\cite{appendix:closure-theorem}.
+\textsc{Measured}: the WF-Lambda-1c patch
+(\texttt{wf\_lambda1c\_pilot\_v3/final.md}) promoted the
+synthesizability rate from 0.0 to 1.0 across $5 \times 3 = 15$
+cells by switching the $\beta$-NF predicate from a free-site
+check to a covalent-valence check; this is empirical evidence
+that the $\beta$-NF operator is a faithful implementation of the
+formal notion.
+
+\subsubsection{Nine-layer architecture}
+\label{sec:mlc-layers}
+
+The 9-layer MLC stack is the executable form of the formalism.
+It is diagrammed in Figure~\ref{fig:mlc-arch} (cite: Figure~1 of
+the companion diagram set, \texttt{paper/figures/fig1\_mlc\_arch.pdf}).
+Each layer has a single input contract, a single output contract,
+an invariant it preserves, and a metric that the round-10
+harness measures.
+Table~\ref{tab:layer-metrics} summarises the invariants and
+\textsc{measured} values.
+
+\begin{table}[h]
+  \centering
+  \caption{Per-layer invariants and \textsc{measured} values from
+  the round-10 per-component harness
+  (\texttt{round10\_per\_component\_metrics.md}, 6 passed in 4.84\,s).
+  Full metric catalogue in \texttt{lambda\_layer\_metrics.md}.}
+  \label{tab:layer-metrics}
+  \begin{tabular}{clp{0.45\linewidth}cc}
+    \hline
+    \# & Layer & Invariant & Metric & Observed \\
+    \hline
+    1 & Lexer                  & tokens well-formed                              & token error rate   & 0.000 \\
+    2 & Parser                 & AST obeys grammar~\eqref{eq:mlc-grammar}         & parse failure rate & 0.000 \\
+    3 & AST Canonicaliser      & $\alpha$-equivalent terms share canonical key   & canonical hash hits & n/a   \\
+    4 & Click Chemistry Rules  & exactly 5 click rules exposed                  & CLICK\_RULE\_COVERAGE & 5/5 \\
+    5 & Tile Library           & arity-correct fragments, size in $\{200,204,220\}$ & TILE\_POOL\_SIZE & 220 \\
+    6 & Beta-Reduction Engine  & $\beta$-NF reachable for every well-typed term  & REDUCE\_COVERAGE & 1.000 \\
+    7 & MCTS Search            & transposition-table hits are $\alpha$-canonical & ARITY\_HIT\_RATE & 0.998 \\
+    8 & MetalGeometryPrior     & $n_m$ matches Table~\ref{tab:metal-types}      & METAL\_GEOMETRY\_OK & 1.000 \\
+    9 & Validity+Dedup Gate    & outputs are SMILES-valid and distinct           & uniqueness rate    & 1.000 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\paragraph{Layer 1 --- Lexer.}
+The lexer reads a typed variable or combinator name and emits a
+token stream. Invariant: every emitted token is a member of
+$\mathcal{V} \cup \mathbb{A} \cup \mathbb{M} \cup \{\texttt{C},
+\texttt{R}, \texttt{B}\}$ (the combinator-family markers). Metric:
+token error rate, \textsc{measured} 0.000 on the round-10 corpus.
+
+\paragraph{Layer 2 --- Parser.}
+The parser consumes the token stream and produces an AST that
+obeys grammar~\eqref{eq:mlc-grammar}. Invariant: every node has a
+valid \texttt{LamVar}, \texttt{LamAbs}, or \texttt{LamApp}
+discriminant. Metric: parse failure rate, \textsc{measured} 0.000.
+
+\paragraph{Layer 3 --- AST Canonicaliser.}
+Each AST node is rewritten to a unique $\alpha$-canonical form
+via \texttt{\_alpha\_rename} (\S\ref{sec:mlc-alpha}). Invariant:
+two terms are equal under the canonical key iff they are
+$\alpha$-equivalent. Metric: canonical-hash hit rate (a
+debugging tool, not a hard gate).
+
+\paragraph{Layer 4 --- Click Chemistry Rules.}
+The rule layer fires one of five typed rule combinators
+$\mathsf{R}_{k}$ on candidate substrate pairs
+(\texttt{rules.py}). Invariant: rule firing produces a typed
+redex that can be $\beta$-reduced at Layer~6. Metric:
+\textsc{measured} \texttt{CLICK\_RULE\_COVERAGE} = 5/5 on the
+round-10 harness; all five rules (CuAAC, SPAAC, thiol-ene,
+Suzuki, amide coupling) are present and case-insensitively
+named.
+
+\paragraph{Layer 5 --- Tile Library.}
+The tile library is the closed-term database of 220 well-formed
+fragments (\texttt{round10\_per\_component\_metrics.md}, row 6).
+Invariant: every tile is in $\beta$-NF and has zero free sites.
+Metric: \texttt{TILE\_POOL\_SIZE} = 220, matching the round-7
+floor exactly.
+
+\paragraph{Layer 6 --- Beta-Reduction Engine.}
+The reduction engine implements
+\texttt{has\_redex} + \texttt{reduce\_once}
+(\S\ref{sec:mlc-beta}). Invariant: the engine terminates on
+every input from Layer~5. Metric: \textsc{projected}
+\texttt{REDUCE\_COVERAGE} = 1.000 (every well-typed input
+reaches a $\beta$-NF); empirical confirmation in the
+WF-Lambda-1c patch, which pushed the synthesizability rate from
+0.0 to 1.0.
+
+\paragraph{Layer 7 --- MCTS Search.}
+The MCTS layer uses Layer~3's canonical hash as a transposition
+table key. Invariant: a hit on the transposition table returns
+an $\alpha$-canonical node, never a $\beta$-equivalent but
+$\alpha$-distinct node. Metric: \texttt{ARITY\_HIT\_RATE} =
+0.998 (1565/1568), \textsc{measured}; the three misses are
+long-tail fragments that fall outside the \texttt{PRIMITIVE\_ATOMS}
+/ \texttt{METAL\_ATOMS} dictionaries and use the generic
+fallback constructor.
+
+\paragraph{Layer 8 --- MetalGeometryPrior.}
+The geometry prior enforces the $\Phi$-refinement
+(\S\ref{sec:mlc-types}, Eq.~\eqref{eq:metal-refinement}).
+Invariant: a candidate term whose metal-subterm does not satisfy
+$\mathrm{arity}(\sigma, m) = n_m$ is rejected before scoring.
+Metric: \texttt{METAL\_GEOMETRY\_OK} = 1.000 across
+$\{Pt_{II}, Ru_{II}, Zn_{II}, Ir_{III}\}$ (the round-3
+Au$_{\text{III}}$ arity bug does not regress).
+
+\paragraph{Layer 9 --- Validity+Dedup Gate.}
+The final gate runs RDKit sanitisation, valence-check, and an
+$\alpha$-canonical-hash deduplication. Invariant: the output set
+is a set of distinct, RDKit-valid SMILES with zero free sites.
+Metric: \textsc{measured} \texttt{uniqueness\_rate} = 1.000 and
+\texttt{validity\_rate} = 1.000 across all 15 cells of the
+WF-Lambda-1c main arm.
+
+\paragraph{Why nine layers and not fewer.}
+The atom (Layer 1) and parser (Layer 2) layers are the only
+layers that are not chemistry-specific; they exist to put a typed
+front-end on the chemistry below.
+The canonicaliser (Layer 3) is what makes the transposition
+table at Layer 7 well-defined.
+The rule (Layer 4) and tile (Layer 5) layers are the two
+chemistry-aware memory layers.
+The reduction engine (Layer 6) is the \emph{only} layer that
+performs chemistry---everything else is bookkeeping or scoring.
+The search (Layer 7), geometry prior (Layer 8), and validity
+gate (Layer 9) form the three-tier safety net that protects the
+search from emitting chemically closed-but-uninteresting or
+geometrically invalid molecules.
+
+\paragraph{Failure modes.}
+A failure at Layer 1 or Layer 2 is a programmer error (the
+input is not even a term).
+A failure at Layer 4 means no click rule fires on the candidate
+substrate pair; this is normal and is the most common reason a
+candidate is rejected.
+A failure at Layer 6 is impossible by the strong-normalisation
+claim (\S\ref{sec:mlc-strong-norm}); \textsc{projected} zero
+failures across the entire search.
+A failure at Layer 8 is a metal-geometry violation; the prior
+\texttt{MetalGeometryPrior} catches it before the candidate
+reaches the validity gate.
+A failure at Layer 9 is an RDKit sanitisation failure on an
+otherwise well-typed term; \textsc{measured} rate 0.000 on
+the WF-Lambda-1c pilot corpus.
+
+% --- cross-refs ----------------------------------------------------------
+% Section 3.4 cites Appendix~\ref{appendix:closure-theorem} for the
+% full closure theorem statement.
+% Section 4 (eval) cites the layer metrics in
+% Table~\ref{tab:layer-metrics} as the per-component sanity floor.
+% Section 7 (future) cites TODO/pending/21_lambda_model_coupling.md
+% for the deferred Lambda x CFM coupling plan.

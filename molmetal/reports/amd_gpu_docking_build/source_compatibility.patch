@@ -1,0 +1,22 @@
+--- a/main/main.cpp
++++ b/main/main.cpp
+@@ -28,7 +28,7 @@
+ #include <boost/program_options.hpp>
+ #include <boost/filesystem/fstream.hpp>
+ #include <boost/filesystem/exception.hpp>
+-#include <boost/filesystem/convenience.hpp> // filesystem::basename
++#include <boost/filesystem.hpp> // filesystem::basename
+ #include <boost/thread/thread.hpp> // hardware_concurrency // FIXME rm ?
+ #include "parse_pdbqt.h"
+ #include "parallel_mc.h"
+--- a/OpenCL/src/wrapcl.cpp
++++ b/OpenCL/src/wrapcl.cpp
+@@ -117,7 +117,7 @@
+         str[size] = '\0';
+         *program_file = str;
+         //delete[] str;
+-        *program_size = size+1;
++        *program_size = size; // Exclude the C terminator from concatenated OpenCL source lengths.
+         return;
+     }
+    printf("Error: failed to open file\n: %s", file_path.data());

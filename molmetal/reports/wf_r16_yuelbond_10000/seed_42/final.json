@@ -1,0 +1,93 @@
+{
+  "config": {
+    "csv": "molmetal/data/metallo_drugs_500_train.csv",
+    "n_train_loaded": 449,
+    "n_train_embedded": 358,
+    "n_skipped": 91,
+    "steps_planned": 10000,
+    "steps_executed": 3,
+    "batch_size": 8,
+    "lr": 0.0001,
+    "hidden_dim": 128,
+    "n_layers": 3,
+    "joint_train": true,
+    "bond_head": "learned",
+    "vocab_size": 12,
+    "bond_head_in_dim": 265,
+    "device": "cuda",
+    "cuda_available": true,
+    "torch_version": "2.14.0+rocm7.2",
+    "seed": 42
+  },
+  "wall_clock_s": 2.3115036487579346,
+  "loss_curves_summary": {
+    "cfm": {
+      "n": 3,
+      "first": 21.093339920043945,
+      "last": 20.955961227416992,
+      "min": 20.955961227416992,
+      "max": 25.122577667236328,
+      "delta_first_to_last": -0.13737869262695312
+    },
+    "atom": {
+      "n": 3,
+      "first": Infinity,
+      "last": Infinity,
+      "min": Infinity,
+      "max": Infinity,
+      "delta_first_to_last": NaN
+    },
+    "bond": {
+      "n": 3,
+      "first": Infinity,
+      "last": Infinity,
+      "min": Infinity,
+      "max": Infinity,
+      "delta_first_to_last": NaN
+    },
+    "total": {
+      "n": 3,
+      "first": Infinity,
+      "last": Infinity,
+      "min": Infinity,
+      "max": Infinity,
+      "delta_first_to_last": NaN
+    }
+  },
+  "decode_summary": {
+    "decode_ratio_at_200": null,
+    "decode_ratio_at_500": null,
+    "decode_ratio_at_1000": null,
+    "max_decode_ratio": 0.0,
+    "first_decode_ratio_nonzero_step": null,
+    "all_probes": []
+  },
+  "p0_fixes_active": {
+    "F1_bond_aware_decoder_wired": true,
+    "F2_bond_head_in_dim_correct": true,
+    "F3_vocab_mask_in_loss": true,
+    "F4_hidden_dim_64_plus": true,
+    "F5_no_bonds_zeros_placeholder": true
+  },
+  "p1_fixes_active": {
+    "P1_1_hidden_dim_128": true,
+    "P1_2_learnable_vel_scale": true,
+    "P1_3_pcgrad_multi_task": false,
+    "P1_4_connectivity_aware_decoder": true
+  },
+  "raw_log_tail": [
+    {
+      "step": 1,
+      "loss": Infinity
+    },
+    {
+      "step": 2,
+      "loss": Infinity
+    },
+    {
+      "step": 3,
+      "loss": Infinity
+    }
+  ],
+  "checkpoint_path": "molmetal/reports/wf_r16_yuelbond_10000/seed_42/ckpt.pt"
+}

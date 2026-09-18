@@ -1,0 +1,12 @@
+{
+  "mode": "multiproperty",
+  "worker_python": "/mnt/storage/env-projects/reinvent4-rocm/.venv/bin/python",
+  "worker_script": "molmetal/molmetal_lam/sbdd_env/reinvent4_multiproperty_jsonl_worker.py",
+  "device": "cuda:0",
+  "timeout": 60.0,
+  "components": {
+    "logp": 0.4,
+    "ring_count": 0.2,
+    "qed": 0.4
+  }
+}

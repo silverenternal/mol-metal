@@ -1,0 +1,28 @@
+{
+  "section": "4.6",
+  "title": "PoseBusters + SA + Diversity Panel",
+  "status": "DESIGN_PROMOTED_TO_MEASURED",
+  "promotion_status": "§4.6 metal column 6 cells DESIGN→MEASURED per wf_lambda_metal_pilot 2026-09-15; SA column has 30 MEASURED cells; PB column = 1 smoke + 0 production (search-bound)",
+  "aggregate_metrics": {
+    "metal_compliance_with_seed": 1.0,
+    "metal_compliance_without_seed": 0.0,
+    "sa_mean_smoke": 3.099,
+    "sa_mean_production": 5.9452,
+    "pb_pass_rate_smoke_1pocket": 0.846,
+    "pb_pass_rate_production_10x3": null,
+    "diversity_tanimoto": 0.0,
+    "diversity_homotype": 0.0
+  },
+  "cells_design_to_measured": {
+    "metal_column": 6,
+    "sa_column": 30,
+    "pb_column_smoke_only": 1,
+    "pb_column_production": 0
+  },
+  "missing_for_paper_grade": [
+    "PB production 30-cell aggregate (BLOCKED by n_distinct=1)",
+    "Diversity 30-cell aggregate (forced to 0 by collapse)",
+    "PB protein-aware clash (4/26 fail on click_tile)"
+  ],
+  "verdict": "PARTIAL_PANEL — SA + metal columns have data; PB + diversity columns blocked by search-bound. Path B + n_simulations>=1000 needed."
+}

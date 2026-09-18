@@ -1,0 +1,1 @@
+5 metrics JSON ship: platinai_a2780_pred (PENDING_GPU_RETRAIN) + platinai_mcf7_pred (PENDING_GPU_RETRAIN) + metallodrug_vertical_coverage (MEASURED via Phase 1 inventory) + atom_vocab_coverage (4→14, 3.5x) + n_train_scaleup (32→500, 15.6x); all honest-framed per phase3_smoke/final.md MISSING status.

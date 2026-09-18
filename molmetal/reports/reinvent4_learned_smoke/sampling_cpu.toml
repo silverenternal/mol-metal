@@ -1,0 +1,9 @@
+run_type = "sampling"
+device = "cpu"
+json_out_config = "/home/hugo/codes/try_triton_on_rocm/molmetal/reports/reinvent4_learned_smoke/sampling_cpu.json"
+[parameters]
+model_file = "/mnt/storage/models/reinvent4/reinvent_v4.4.22.prior"
+output_file = "/home/hugo/codes/try_triton_on_rocm/molmetal/reports/reinvent4_learned_smoke/samples_cpu.csv"
+num_smiles = 5
+unique_molecules = false
+randomize_smiles = true

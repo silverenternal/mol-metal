@@ -1,0 +1,348 @@
+{
+  "workflow": "EV-1 across-pocket diversity on test_010..019",
+  "date": "2026-09-17",
+  "config": {
+    "script": "molmetal/scripts/r4_lambda_only_run.py",
+    "pockets": [
+      "test_010",
+      "test_011",
+      "test_012",
+      "test_013",
+      "test_014",
+      "test_015",
+      "test_016",
+      "test_017",
+      "test_018",
+      "test_019"
+    ],
+    "seeds": [
+      42,
+      0,
+      1234
+    ],
+    "n_simulations": 1000,
+    "n_top_k": 20,
+    "click_rules": "all-5",
+    "metal_seed": "cisplatin",
+    "use_pocket_conditioned_reference": true,
+    "use_learned_prior": true,
+    "pocket_boost_strength": 2.0,
+    "sa_weight": 0.0,
+    "manifest": "molmetal/data/test_010_019_subset_manifest.csv",
+    "output_dir": "wf_lift_ev1/",
+    "n_cells": 30,
+    "wall_clock_s": 5185.5,
+    "wall_clock_per_cell_s": 172.8,
+    "cpu_only": true,
+    "gpu_blocked": true
+  },
+  "headline": {
+    "verdict": "NEGATIVE-result reproduction",
+    "pocket_invariance_pairwise_jaccard_mean": 1.0,
+    "pocket_invariance_pairwise_jaccard_std": 0.0,
+    "pocket_invariance_pairwise_jaccard_all_one": true,
+    "baseline_test_000_009_jaccard": 1.0,
+    "delta_vs_baseline": 0.0,
+    "n_pairs": 45,
+    "expected_lift": "0.5-0.8 (per EV-1 spec); NOT demonstrated"
+  },
+  "aggregate": {
+    "ames_mutagen_mean": 0.0,
+    "anticancer_index": 0.18000000000000002,
+    "aqueous_solubility_logS_mean": -2.24902162,
+    "cell_permeability_logPapp_mean": -4.6239392,
+    "com_shift_mean": 0.0,
+    "coordination_number_mean": 1.0,
+    "decoder_pass_rate": 1.0,
+    "diversity_homotype": 0.07487274223734545,
+    "diversity_subpocket": 0.6538729654113289,
+    "diversity_tanimoto": 0.10647652788883324,
+    "dna_kb_proxy": 0.7200000000000001,
+    "gi50_proxy_mean": 8.0,
+    "gsh_evasion_score": 0.0,
+    "hepatotox_index_mean": 0.05999999999999999,
+    "herg_cardio_risk_mean": 0.255,
+    "logp7_4_mean": -0.62024,
+    "logp_mean": -0.5752399999999999,
+    "metal_compliance_rate": 0.0,
+    "metal_coord_compliance": 0.0,
+    "monodentate_cl_count": 0,
+    "n_coords_3d_attached_total": 600,
+    "n_scaffold_aware_gate_active_total": 600,
+    "novelty": 1.0,
+    "plasma_protein_binding_mean": 0.17625721438425354,
+    "qed_mean": 0.7079960932825043,
+    "reference_tanimoto": 0.15107899024641797,
+    "rigid_rmsd_mean": 0.0,
+    "rotb_mean": 2.4,
+    "sa_mean": 3.6574107114252863,
+    "sa_weight": 0.0,
+    "synthesizability_rate": 1.0,
+    "tpsa_mean": 56.470000000000006,
+    "uniqueness_rate": 1.0,
+    "validity_rate": 1.0
+  },
+  "per_cell_pair_jaccard": [
+    {
+      "p": "test_010",
+      "q": "test_011",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_010",
+      "q": "test_012",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_010",
+      "q": "test_013",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_010",
+      "q": "test_014",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_010",
+      "q": "test_015",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_010",
+      "q": "test_016",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_010",
+      "q": "test_017",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_010",
+      "q": "test_018",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_010",
+      "q": "test_019",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_011",
+      "q": "test_012",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_011",
+      "q": "test_013",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_011",
+      "q": "test_014",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_011",
+      "q": "test_015",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_011",
+      "q": "test_016",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_011",
+      "q": "test_017",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_011",
+      "q": "test_018",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_011",
+      "q": "test_019",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_012",
+      "q": "test_013",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_012",
+      "q": "test_014",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_012",
+      "q": "test_015",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_012",
+      "q": "test_016",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_012",
+      "q": "test_017",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_012",
+      "q": "test_018",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_012",
+      "q": "test_019",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_013",
+      "q": "test_014",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_013",
+      "q": "test_015",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_013",
+      "q": "test_016",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_013",
+      "q": "test_017",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_013",
+      "q": "test_018",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_013",
+      "q": "test_019",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_014",
+      "q": "test_015",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_014",
+      "q": "test_016",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_014",
+      "q": "test_017",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_014",
+      "q": "test_018",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_014",
+      "q": "test_019",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_015",
+      "q": "test_016",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_015",
+      "q": "test_017",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_015",
+      "q": "test_018",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_015",
+      "q": "test_019",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_016",
+      "q": "test_017",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_016",
+      "q": "test_018",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_016",
+      "q": "test_019",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_017",
+      "q": "test_018",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_017",
+      "q": "test_019",
+      "jaccard": 1.0
+    },
+    {
+      "p": "test_018",
+      "q": "test_019",
+      "jaccard": 1.0
+    }
+  ],
+  "per_pocket_ref_tanimoto": {
+    "test_010": 0.08536585365853659,
+    "test_011": 0.11688311688311688,
+    "test_012": 0.10344827586206896,
+    "test_013": 0.13725490196078433,
+    "test_014": 0.2558139534883721,
+    "test_015": 0.2558139534883721,
+    "test_016": 0.1,
+    "test_017": 0.1323529411764706,
+    "test_018": 0.14925373134328357,
+    "test_019": 0.1746031746031746
+  },
+  "root_cause": "reference_ligand_resolver.py:323 returns missing_pocket_features for every row because the local CrossDocked2020 manifest does NOT carry per-pocket residue features.  All 30 cells collapse to the same legacy [Pt]C#C fallback root.",
+  "evidence": {
+    "warning_lines_in_log": 30,
+    "warning_text": "[reference_ligand_resolver] falling back to legacy cisplatin seed (reason=missing_pocket_features).  Pocket-conditioned reference ligand lookup failed; using '[Pt]C#C'.",
+    "unique_candidate_sets": 1,
+    "byte_identical_to_baseline": true
+  },
+  "follow_ups": [
+    "Extend manifest schema with pocket_residues + hydrophobic/polar counts + centroid",
+    "Document --use-pocket-conditioned-reference data dependency in CLI help",
+    "Run 10x3 on test_020..029 as third control",
+    "Wire F2(a) MetalLigandExchange into click pool for fallback diversity"
+  ],
+  "comparison_to_baseline": {
+    "baseline_report": "molmetal/reports/wf_r15_round_re_runs/r12_deflex_allon_10x3/final.md",
+    "baseline_pocket_subset": "test_000..009",
+    "baseline_jaccard": 1.0,
+    "this_run_pocket_subset": "test_010..019",
+    "this_run_jaccard": 1.0,
+    "delta_jaccard": 0.0,
+    "ref_tanimoto_delta": 0.0096,
+    "diversity_tanimoto_delta": 0.0,
+    "wall_clock_delta_min": 37.0
+  }
+}

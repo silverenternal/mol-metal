@@ -1,0 +1,50 @@
+\documentclass[10pt]{article}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+\begin{document}
+
+\section{Introduction}
+
+\subsection{Motivation}
+
+Precious-metal complexes occupy a distinctive and clinically important corner of anticancer chemistry. Cisplatin, carboplatin, oxaliplatin, ruthenium compounds such as BOLD-100, and gold(I) agents demonstrate that a metal centre can provide reactivity and biological mechanisms that are difficult to obtain with organic scaffolds alone. Their activity, however, depends on coupled variables: oxidation state, ligand-exchange kinetics, coordination number, three-dimensional arrangement, and the identity of labile versus inert ligands. A design method that optimizes only a two-dimensional graph can therefore propose molecules with attractive substructures but an incorrect coordination sphere, unrealistic bond lengths, or an inaccessible reaction sequence.
+
+The data regime makes this problem harder. Cytotoxicity collections contain far fewer labelled complexes than ordinary small-molecule corpora and are strongly imbalanced across metals. Quantum-chemical resources such as tmQM provide useful geometric supervision, but their labels describe coordination properties rather than cell activity. Evaluation is also fragile: scaffold and temporal splits can differ substantially, and duplicate ligands can leak across train and test sets. Open engineering risks include the mismatch between Vina and QVina scoring protocols, poor conformer relaxation for click products, and incomplete coverage of metalloprotein pockets. These constraints motivate a framework in which chemical construction, metal geometry, and evaluation assumptions are explicit parts of the model rather than post hoc filters.
+
+\subsection{Limitations of SBDD-only approaches}
+
+Structure-based de novo design (SBDD) methods have made three-dimensional generation practical. Pocket2Mol and TargetDiff generate ligand atoms conditioned on a protein pocket, while DiffSBDD extends diffusion-style sampling to binding-site environments. Flow-matching formulations provide an attractive alternative with an ordinary differential equation and a continuous transport path \cite{lipman2023flow}. Equivariant encoders, including EquiBind \cite{peng2022equibind}, preserve the symmetries needed for molecular coordinates. Yet these systems generally represent a ligand as an organic molecular graph or a set of atom types and positions. A metal is consequently treated as another atom, and coordination is left to learned correlations or a docking score.
+
+That abstraction misses hard chemical priors. Pt(II) complexes overwhelmingly favour square-planar coordination, whereas Ru(II) and Ir(III) frequently form octahedral or arene-containing geometries. Dative bonds, coordination number, ligand-field effects, and metal--ligand distances are qualitatively different from ordinary covalent edges.
+Sampling a plausible pocket pose does not ensure that a generated Pt centre has four compatible donor sites, or that a Ru complex preserves its intended chelate geometry. SBDD-only pipelines also return a structure without a constructive synthesis certificate; synthetic accessibility is usually estimated after generation and can reject most candidates. Mol-Metal therefore exposes metal identity and coordination geometry as first-class variables and couples generation to reaction rules.
+
+\subsection{Lambda calculus and molecular fragment composition}
+
+Mol-Metal introduces a Molecular Lambda Calculus (MLC) in which molecular design is a typed term-rewriting problem. Atoms are primitive combinators whose arity records valence and available coordination sites; a Pt(II) centre is represented by a four-site combinator and an octahedral Ru(II) centre by a six-site combinator. Bond formation is function application, with dative coordination represented by curried partial application. A molecule is a closed term in beta-normal form, so reduction records how fragments were assembled.
+
+Click reactions are higher-order functions over typed fragments. CuAAC, SPAAC, SPC, Diels--Alder, and thiol--ene rules consume compatible handles and return a new tile while preserving valence and reaction typing. Monte Carlo tree search (MCTS) explores these reductions: each node is a partial complex, each action is a chemically admissible beta-reduction, and learned symbolic priors guide promising branches. This gives every candidate both a molecular expression and an explicit assembly path. The geometric track complements the symbolic one with an SE(3)-equivariant flow-matching field. Following Lipman et al.'s affine path formulation \cite{lipman2023flow}, coordinates are transported while categorical atom identities are predicted jointly; metal-centred distance and coordination features provide the geometry prior. The correspondence between reduction steps and continuous transport is grounded in the typed lambda-calculus view of Barendregt \cite{barendregt1984lambda}.
+
+The separation of symbolic and geometric states makes failure modes visible: an invalid reduction can be rejected before docking, while a geometrically strained pose can be traced back to its generating term.
+
+\subsection{Contributions}
+
+This work makes the following contributions:
+
+\begin{itemize}[leftmargin=*]
+    \item We formulate the first nine-layer Molecular Lambda Calculus for precious-metal drug design, connecting atom combinators, typed coordination, beta-normal forms, and proof-producing synthesis search.
+    \item We encode five click reactions and quantify a square-planar Pt(II) geometry-prior ablation, making coordination constraints testable rather than implicit.
+    \item We pretrain a metal-aware encoder on 21,617 Pt/Ru/Ir tmQM complexes, obtaining coordination-number MAE $=0.132$ and $R^2=0.986$ on held-out complexes.
+    \item We report a top-journal protocol sweep on CrossDocked2020, with leakage-aware splits and explicit accounting for docking-engine and conformer-validity risks.
+    \item We provide a formal beta-normal-form appendix establishing Church--Rosser confluence and strong normalization for the restricted reaction calculus.
+\end{itemize}
+
+\begin{thebibliography}{9}
+\bibitem{barendregt1984lambda} H. P. Barendregt, \emph{The Lambda Calculus: Its Syntax and Semantics}, North-Holland, 1984.
+\bibitem{lipman2023flow} Y. Lipman et al., ``Flow Matching for Generative Modeling,'' 2023.
+\bibitem{peng2022equibind} X. Peng et al., ``EquiBind: Geometric Deep Learning for Drug Binding,'' 2022.
+\bibitem{lu2022targetdiff} J. Lu et al., ``TargetDiff: 3D Target-driven Diffusion for Protein-ligand Generation,'' 2022.
+\end{thebibliography}
+
+\end{document}

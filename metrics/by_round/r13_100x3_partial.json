@@ -1,0 +1,64 @@
+{
+  "round": "R13",
+  "workflow": "wf_round13_100x3",
+  "date_utc": "2026-09-15",
+  "config": {
+    "n_pockets_spec": 100,
+    "n_seeds_spec": 3,
+    "n_total_evaluations_spec": 300,
+    "n_simulations_spec": 1000,
+    "metal_seed": "cisplatin",
+    "click_rules": "auto-pt-strict",
+    "sa_weight": 0.3,
+    "pb_relax_mmff94": true,
+    "pb_mode": "dock",
+    "engine": "both",
+    "command_template": "uv run python molmetal/scripts/r4_lambda_only_run.py --manifest molmetal/data/crossdocked100_manifest.csv --pockets 100 --seeds 42 0 1234 --n-simulations 1000 --n-top-k 20 --metal-seed cisplatin --click-rules auto-pt-strict --sa-weight 0.3 --pb-relax-mmff94 --pb-mode dock --pb-check --engine both --output-dir molmetal/reports/wf_round13_100x3/r13_100x3/"
+  },
+  "phase_results": {
+    "phase_1_sweep_design": "DELIVERED — molmetal/reports/wf_round13_100x3/sweep_design.md",
+    "phase_2_sweep_execution": "PARTIAL — process killed mid-run at 55% (no final report.json)",
+    "phase_3_paper_integration": "DELIVERED — paper §4.2/§4.3/§4.6 updated with honest framing"
+  },
+  "aggregate_metrics": {
+    "n_evaluations_total": 30,
+    "lambda_path_evaluated": 0,
+    "lambda_path_status": "missing (process killed before report.json produced)",
+    "pb_path_evaluated": 30,
+    "pb_path_n_no_candidates": 15,
+    "pb_path_n_seed_only": 15,
+    "pb_path_n_docked": 0,
+    "pb_path_pb_eligible_cells": 0,
+    "pb_path_pb_pass_rate_aggregate": null,
+    "pb_path_wall_seconds_mean": 7.75,
+    "cfm_path_status": "BLOCKED (ModuleNotFoundError + GPU HSA userland outage)",
+    "lambda_diversity_tanimoto_mean": null,
+    "lambda_n_distinct_mean": null,
+    "cfm_vina_mean": null,
+    "paper_grade_data_ready": false
+  },
+  "honest_deviation_from_spec": {
+    "lambda_n_sim": "spec=1000, executed=200 (reached pocket test_055 /165 cells before being killed)",
+    "pb_n_pockets": "spec=100, executed=10 (per-cell cost dominated by MCTS search, not Vina/PB)",
+    "cfm_path": "spec=run full sweep, BLOCKED (r10_cfg_real_crossdocked.py import fails + dGPU HSA userland outage)"
+  },
+  "verdict": {
+    "status": "NEGATIVE_RESULT_HONEST",
+    "summary": "Round-13 100x3 sweep NOT deliverable as paper-grade 300-cell sweep in this session. Lambda path killed mid-run; PB path 30/30 search-bound (n_distinct=1 collapse persists across 10 new pockets); CFM path BLOCKED. The PathA-10x3 diversity lift (n_distinct 1->20, div_tan 0->0.1065) was on a 1x1 smoke of 10 specific pockets (test_000..test_009) — does NOT generalize to 100 pockets when search-bound reappears.",
+    "key_insight_1": "GPU is healthier than wf_gpu_auto_recover/final.md claimed (cuda_available=True under uv run, 2 devices RX 7800 XT + Radeon 780M iGPU). System Python (3.14) cannot import ROCm libtorch but uv run can.",
+    "key_insight_2": "PB path is SEARCH-BOUND, not compute-bound. 30/30 cells produced no_candidates or seed_only. Bottleneck is upstream of Vina/PB; the MCTSProofSearch cannot produce a kept candidate from reference ligand at n_sim<=200/depth=3 for these 10 NEW pockets (test_010..test_019).",
+    "key_insight_3": "Concurrent sweeps contended for CPU. n_sim=200 reached test_055 in ~60min; n_sim=1000 reached test_012 in ~102min. n_sim=1000 still in flight at /tmp/round13_lambda.log with ETA ~9 more hours."
+  },
+  "path_forward": [
+    "Serialize Lambda runs (kill PID 110660, launch single n_sim=200 sweep, ETA ~110 min)",
+    "Fix r10_cfg_real_crossdocked.py import (one-line sys.path or PYTHONPATH)",
+    "PB path needs MCTS search budget lift before re-running at scale (per wf_lambda_fix_full_path_v2)",
+    "F2(a) MetalLigandExchange SMARTS rule is structural fix for singleton attractor — currently NOT shipped"
+  ],
+  "paper_updates": [
+    "paper/sections/04_evaluation.tex: §4.2 / §4.3 / §4.6 updated with honest framing",
+    "paper/sections/CROSS_REFS.md: append Row",
+    "TODO-26: status line update needed"
+  ],
+  "source": "molmetal/reports/wf_round13_100x3/final.md"
+}

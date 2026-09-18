@@ -1,0 +1,71 @@
+{
+  "metric": "diversity_tanimoto",
+  "description": "Mean pairwise Tanimoto distance between generated molecules (1 - Tanimoto similarity)",
+  "unit": "ratio (0-1, higher = more diverse)",
+  "scope": "Lambda-only MCTS path",
+  "measurements": [
+    {
+      "run": "wf_lambda_only_mini_pilot (5x1, no metal-seed, n_sim=100)",
+      "value": 0.005,
+      "n_samples": 5,
+      "status": "MEASURED",
+      "date_utc": "2026-09-14"
+    },
+    {
+      "run": "wf_lambda1c_pilot_v3 (5x3 ablation, cisplatin seed, n_sim=100)",
+      "value": 0.0,
+      "n_samples": 15,
+      "status": "MEASURED",
+      "note": "all 15 cells collapse to single molecule"
+    },
+    {
+      "run": "wf_round12_lambda_pilot (10x3, n_sim=1000, cisplatin+all-5)",
+      "value": 0.0,
+      "n_samples": 30,
+      "status": "MEASURED",
+      "date_utc": "2026-09-14",
+      "note": "n_distinct=1 collapse -> diversity forced to 0"
+    },
+    {
+      "run": "wf_round12_lambda_pathb (10x3, Path B without all 4 fixes)",
+      "value": 0.0,
+      "n_samples": 30,
+      "status": "MEASURED",
+      "date_utc": "2026-09-15",
+      "note": "Path B alone did not lift (n_distinct=1 still)"
+    },
+    {
+      "run": "wf_round12_lambda_patha_10x3 (10x3, Path A with ALL 4 FIXES + decoder_rework)",
+      "value": 0.1065,
+      "n_samples": 30,
+      "status": "MEASURED",
+      "date_utc": "2026-09-15",
+      "wall_sec_per_cell": 98.27,
+      "cell_std": 0.0,
+      "n_distinct_mean": 20,
+      "deterministic_per_cell": true
+    },
+    {
+      "run": "wf_lift_ev3 (10x3 sweep at --sa-weight 0.3 on test_001)",
+      "value": 0.13656567595469193,
+      "n_samples": 30,
+      "status": "MEASURED",
+      "date_utc": "2026-09-17",
+      "note": "+28% lift vs R12 PathA 0.1065. Pool-diversity ceiling; further lift requires fragment-pool expansion (TODO-25 P2.3)."
+    }
+  ],
+  "aggregate": {
+    "best_measured": 0.13656567595469193,
+    "lit_target_targetdiff": "0.860 (Guan 2023)",
+    "gap": "-0.7535",
+    "trajectory": "0.0 -> 0.005 -> 0.1065 (Path A with all 4 fixes)",
+    "the_4_fixes": [
+      "Rule-symmetry (CuAAC/SPAAC/Suzuki can fire either direction)",
+      "Decoder rework (chem-aware soft bond prior)",
+      "Scaffold-aware gate (auto-pt-strict -> 3 strict-Pt_II compatible rules)",
+      "Partner tiles (8 new: 3 azides + 3 boronic + 2 bromides)"
+    ],
+    "2026_09_17_EV3_lift": "+28.3% over R12 Path A"
+  },
+  "verdict": "VERIFIED_LIFT \u2014 diversity_tanimoto 0.000 -> 0.1065 on 30 cells after all 4 fixes ship + decoder_rework. Deterministic per-cell (std=0.0). Path B alone did NOT lift (need all 4). Gap to TargetDiff 0.860 still large but lift is real and reproducible."
+}

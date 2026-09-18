@@ -1,0 +1,69 @@
+% =====================================================================
+% WF-3 Cite-Only SOTA Table Fragment
+% Generated: 2026-09-14
+% Source:    molmetal/reports/wf_3_citeonly_sota_table.csv
+% Companion: molmetal/reports/wf_3_citeonly_sota.md
+% Authoritative source for protocol-mismatch flag definitions:
+%   paper/sections/02_related.tex §\ref{sec:related:protocol}
+%   molmetal/reports/lambda_vs_sbdd_protocol_aligned.md §2
+%
+% Usage: \input{molmetal/reports/wf_3_citeonly_sota.tex}
+% Target integration: paper/sections/04_evaluation.tex
+%                    §\ref{sec:evaluation:sota-table}  OR
+%                    paper/supplementary.tex (S1 / S2)
+%
+% Honest-framing notes:
+%   * 9 SOTA rows are CITED-ONLY (taken from the original papers,
+%     not re-run by Mol-Metal).
+%   * Mol-Metal (Lambda only, 1h36) is MEASURED single-pocket (n=1).
+%   * Mol-Metal (R4-C pilot) is MEASURED pilot (n=2); Vina is a
+%     proxy placeholder gated on the L-1 DiffDock/FlowDock oracle
+%     (TODO/pending/decisions.md D4); NOT directly comparable to
+%     any SOTA row until the proxy is replaced.
+%   * Vina kcal/mol: lower (more negative) is better.
+%   * SA: lower is better.  QED: higher is better.
+%   * Lipinski / PB pass rate: higher is better.
+% =====================================================================
+
+\begin{table}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.05}
+\caption{Cite-only SOTA comparison; all numbers are cited, not re-run by Mol-Metal. 7 protocol-mismatch flags (M1)--(M7) are documented in \S2. Vina: lower (more negative) is better (kcal/mol). SA: lower is better. QED: higher is better. PB: higher is better. MEASURED rows cite the corresponding Mol-Metal report. CITED-ONLY rows cite the original paper. NA = not applicable (structure-only, or different denominator). $\dagger$ = RMSD not Vina (different metric family; see Flag~3). $\ddagger$ = Vina-proxy placeholder gated on the L-1 oracle (TODO/pending/decisions.md D4); not directly comparable.}
+\label{tab:wf3-citeonly-sota}
+\vspace{2pt}
+\begin{tabular}{p{2.0cm}p{1.7cm}p{1.7cm}p{1.2cm}p{1.2cm}p{1.2cm}p{1.6cm}p{0.8cm}p{0.8cm}p{0.9cm}p{1.6cm}}
+\hline
+\textbf{Paper} & \textbf{Dataset} & \textbf{Docking engine} & \textbf{Validity} & \textbf{Novelty} & \textbf{Diversity} & \textbf{Vina mean $\pm$ std} & \textbf{SA} & \textbf{QED} & \textbf{PB pass} & \textbf{N pockets $\times$ seeds} \\
+\hline
+DiffSBDD~\cite{footnote:diffsbdd} (2023, ICML)         & CrossDocked2020 (Luo 2021)  & QVina (exh=8)            & RDKit-only            & Tanimoto $<0.4$ & Tanimoto (Morgan r=2) & $-7.62 \pm$ NA             & 2.81 & NA   & 0.246          & $100 \times 1$ \\
+Pocket2Mol~\cite{footnote:pocket2mol} (2022, ICML)     & CrossDocked2020 (Luo 2021)  & QuickVina 2 (exh=16)     & RDKit-only            & Tanimoto $<0.4$ & Tanimoto (Morgan r=2) & $-7.07 \pm$ NA             & 2.51 & 0.55 & 0.498          & $100 \times 1$ \\
+TargetDiff~\cite{footnote:targetdiff} (2023, ICLR)     & CrossDocked2020 (Luo 2021)  & QVina (exh=8, UFF)       & RDKit-only            & Tanimoto $<0.4$ & Tanimoto (Morgan r=2) & $-8.45 \pm$ NA             & 2.65 & 0.48 & 0.351 (relaxed) & $100 \times 1$ \\
+MolDiff~\cite{footnote:moldiff} (2023, AAAI)           & CrossDocked2020 (Luo 2021)  & QVina (exh=8)            & RDKit-only            & Tanimoto $<0.4$ & Tanimoto (Morgan r=2) & $-7.55 \pm$ NA             & 2.71 & 0.51 & 0.291          & $100 \times 1$ \\
+DecompDiff~\cite{footnote:decompdiff} (2024, ICLR)     & CrossDocked2020 (Luo 2021)  & QVina (exh=8)            & RDKit-only            & Tanimoto $<0.4$ & Tanimoto (Morgan r=2) & $-8.39 \pm$ NA             & 2.71 & NA   & 0.390          & $100 \times 1$ \\
+FLOWr~\cite{footnote:flowr} (2025, Nat Comput Sci)     & CrossDocked2020 (SPINDR)    & DiffDock-L pose ranker   & PoseBusters only      & Tanimoto $<0.4$ & Tanimoto (Morgan r=2) & $-6.93 \pm$ NA             & 2.86 & NA   & 0.94 (PB-valid, NOT docking) & $100 \times 1$ \\
+DiffDock$^\dagger$~\cite{footnote:diffdock} (2022, ICML / 2024 ICLR) & PDBbind 2019 (time) & DiffDock-L conf.-ranked & RMSD-to-native $<2$\,\AA{} & out-of-PDBbind & pose-mode coverage & NA (RMSD$<$2\,\AA{}: 0.382 top-1) & NA & NA & NA & $363 \times 10$ \\
+BindNet$^\dagger$~\cite{footnote:bindnet} (2024, NeurIPS) & PDBbind v2020 (time)     & Vina score head          & RMSD-to-native $<2$\,\AA{} & out-of-PDBbind & ligand-mode coverage & NA (Vina proxy 0.090) & NA & NA & NA & $\sim$340 $\times$ 3 \\
+RoseTTAFold-AA~\cite{footnote:rosettafoldaa} (2024, Nat Methods) & PDB + AF2 clusters  & side-chain rotamer       & all-atom clash-free   & sequence-only    & backbone RMSD        & NA (structure-only)        & NA   & NA   & NA             & $\sim$150 $\times$ 5 \\
+\hline
+\textbf{Mol-Metal (Lambda only, 1h36)}~\cite{footnote:wf3_citeonly_sota} (2026, this paper)         & CrossDocked2020 (Luo 2021)  & Vina 1.2.7 (exh=16, 20\,\AA{}) + Meeko & RDKit + $\beta$-NF + PB (graceful) & max Tanimoto vs pocket ref & Homotype + Tanimoto & $-5.923 \pm$ NA (n=1)       & 1.870 & 0.548 & NA (single pocket) & $1 \times 3$ \\
+\textbf{Mol-Metal (R4-C pilot)$^\ddagger$}~\cite{footnote:wf3_citeonly_sota} (2026, this paper)   & CrossDocked2020 (Luo 2021)  & Vina-PROXY placeholder   & RDKit + $\beta$-NF + PB (graceful) & placeholder (no train file) & Homotype + Tanimoto & $-14.179 \pm$ NA (PROXY, n=2) & 7.854 & 0.857 & NA & $2 \times 3$ \\
+\hline
+\end{tabular}
+
+\vspace{4pt}
+\textbf{Protocol-mismatch flags affecting this table (from \S2):}
+\begin{itemize}\setlength{\itemsep}{0pt}
+  \item[(M1)] CrossDocked2020 split version (Luo 2021 vs SPINDR vs PDBbind time-split).
+  \item[(M2)] Docking engine and version (QVina vs QuickVina 2 vs DiffDock-L vs Vina 1.2.7); round-11 parity r=0.9983 closes Vina/QVina axis; DiffDock-L/Vina axis open.
+  \item[(M3)] Validity definition (RDKit-only vs PB-augmented); structurally incomparable.
+  \item[(M4)] Novelty definition (random vs scaffold vs time split); random-split numbers are inflated vs time-split.
+  \item[(M5)] Diversity definition (Tanimoto-based vs Homotype); incomparable on constitutional isomers.
+  \item[(M6)] Number of seeds (1 vs $\geq$3); per-seed $\sigma \approx 0.46$~kcal/mol at $n_{\text{docked}}=4$.
+  \item[(M7)] Pocket count (single vs $\geq$10 vs 100); pocket-specific variance $\sim \pm 2$~kcal/mol.
+\end{itemize}
+
+\vspace{2pt}
+\textbf{Honest framing:} All 9 SOTA rows are \emph{CITED-ONLY} and were not re-run by Mol-Metal. The single-pocket Mol-Metal row is \emph{MEASURED} (n=1, no error bar). The R4-C pilot row is \emph{MEASURED} on n=2 pockets but uses a Vina proxy placeholder and is NOT directly comparable to any SOTA row. Direct head-to-head deltas are not supported by the seven protocol-mismatch flags above. The closest fair-comparison protocol is the round-13 100-pocket $\times$ 3-seed sweep on the Luo-2021 split using QuickVina 2 at exh=8, following the round-11 N=50 parity audit~\cite{footnote:round11_parity}.
+\end{table}

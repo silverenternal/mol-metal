@@ -1,0 +1,39 @@
+{
+  "round": "R12",
+  "workflow": "wf_round12_lambda_pathb",
+  "date_utc": "2026-09-15",
+  "config": {
+    "n_pockets": 10,
+    "n_seeds": 3,
+    "n_simulations": 1000,
+    "metal_seed": "cisplatin",
+    "click_rules": "auto-pt-strict",
+    "decoder": "ReworkedDecoder (Path B)",
+    "physical_docking": false,
+    "pb_check": false,
+    "all_fixes": ["rule_symmetry", "decoder_rework", "scaffold_aware_gate", "partner_tiles", "diversity_bonus", "bare_metal_seed"]
+  },
+  "aggregate_metrics": {
+    "n_distinct_mean": 1.0,
+    "n_distinct_pathb_vs_baseline": "1 == 1 (NO LIFT)",
+    "validity_rate": 1.0,
+    "synthesizability_rate": 1.0,
+    "metal_compliance_rate_pathb": 0.0,
+    "metal_compliance_rate_baseline": 1.0,
+    "diversity_tanimoto_pathb": 0.0,
+    "diversity_tanimoto_baseline": 0.0,
+    "diversity_homotype_pathb": 0.0,
+    "novelty": 1.0,
+    "sa_mean": 6.0081,
+    "qed_mean": 0.5087
+  },
+  "verdict": {
+    "status": "NEGATIVE_RESULT_HONEST",
+    "summary": "Path B does NOT lift n_distinct off 1 on this configuration. All 30 cells still collapse. metal_compliance REGRESSED 1.0 → 0.0 (seed excluded by truthfulness metric). Structural F2(a) MetalLigandExchange SMARTS rule still needed.",
+    "singleton_collapse_persists": true,
+    "metal_compliance_truthful_design_win": true,
+    "rule_symmetry_click_can_fire": true,
+    "structural_fix_needed": "F2(a) MetalLigandExchange SMARTS"
+  },
+  "source": "molmetal/reports/wf_round12_lambda_pathb/final.md"
+}

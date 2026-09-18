@@ -1,0 +1,62 @@
+{
+  "metric": "pb_pass_rate",
+  "description": "PoseBusters pass rate of generated+docked molecules (26 checks: 14 chemistry + 12 protein-aware)",
+  "unit": "ratio (0-1, higher = more passes)",
+  "scope": "PB validation outer-gate",
+  "measurements": [
+    {
+      "run": "wf_pb_pass_real_dock (1-pocket smoke, pb_mode=mol chemistry-only)",
+      "value": 1.0,
+      "n_samples": 1,
+      "status": "MEASURED",
+      "date_utc": "2026-09-14",
+      "note": "1/1 chemistry-valid; no protein clash check"
+    },
+    {
+      "run": "wf_pb_mmff94_relax (1-pocket click_tile, post-MMFF94s relax, all 26 checks)",
+      "value": 0.846,
+      "n_samples": 26,
+      "status": "MEASURED",
+      "date_utc": "2026-09-15",
+      "note": "22/26 checks pass; 4 fail on protein-aware distance/cofactor"
+    },
+    {
+      "run": "wf_pb_pass_10x3_smoke (30-cell production, search-bound)",
+      "value": null,
+      "n_samples": 0,
+      "status": "UNDEFINED",
+      "date_utc": "2026-09-15",
+      "note": "0/30 PB-eligible due to n_distinct=1 collapse (no candidates to dock)"
+    },
+    {
+      "run": "wf_round13_100x3 (PB path on 10 new pockets, search-bound)",
+      "value": null,
+      "n_samples": 0,
+      "status": "UNDEFINED",
+      "date_utc": "2026-09-15",
+      "note": "30/30 cells (10 pockets x 3 seeds, test_010..test_019) ALL search-bound: n_no_candidates=15, n_seed_only=15, n_docked=0. SAME singleton collapse reappears on these 10 NEW pockets."
+    },
+    {
+      "run": "wf_lift_ev2 (15-cell production @ n_sim=1000 on test_001..test_005, --pb-check + --pb-mode dock)",
+      "value": null,
+      "n_samples": 2,
+      "n_target": 15,
+      "status": "INCOMPLETE_drive_aborted",
+      "date_utc": "2026-09-17",
+      "note": "DRIVER ABORTED after 2/15 cells. Two specific findings: (1) Runtime fingerprint detector caught proof_search.py + wetlab_reward_channel.py mtime bumps (need tolerance for __pycache__ writes); (2) PB adapter direct path reports 0 PB pass vs Vina dispatcher reports 20 PB pass for the SAME docked pose (PB adapter invoked on SMILES-only without docked pose). Both must be fixed before any paper-grade PB smoke. Per-cell vina_best on the 2 completed cells: test_001 seed=42 = -5.973 kcal/mol (n_docked=1), test_001 seed=0 = -6.209 kcal/mol (n_docked=20). Compare to 1-pocket smoke = -6.929 (n_docked=1) and 30-cell search-bound = None. Honest framing: EV-2 neither lift nor regression \u2014 INCOMPLETE due to driver bug, not paper claim failure."
+    }
+  ],
+  "aggregate": {
+    "best_measured_smoke": 0.846,
+    "production_n_evaluated_zero": true,
+    "lit_target_targetdiff": "0.94 (Guan 2023 ICLR)",
+    "lit_target_uni_mol_v2": "0.75+",
+    "gap_to_targetdiff": "-0.094 (smoke, no production)",
+    "production_gap": "UNDEFINED (no production eval yet at any scale)",
+    "n_evaluated": 2,
+    "n_target": 15,
+    "EV2_status": "INCOMPLETE_drive_aborted \u2014 2/15 cells before runtime_fingerprint abort; vina_best measured (-5.973 / -6.209) but pb_pass_rate null. NOT a lift vs prior baselines.",
+    "best_measured_vina_kcal": -6.209
+  },
+  "verdict": "PRODUCTION_BLOCKED_AT_ALL_SCALES \u2014 PB adapter works (1.0 chemistry-only smoke; 0.846 with all 26 checks on click_tile). BUT 60 cells (10x3 + 30x3) ALL search-bound on test_000..test_019. n_distinct=1 collapse persists across both tested pocket subsets. Production 100x3 sweep killed before completion. F2(a) MetalLigandExchange SMARTS rule is structural fix but NOT shipped yet."
+}

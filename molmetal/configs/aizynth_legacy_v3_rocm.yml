@@ -1,0 +1,14 @@
+expansion:
+  uspto_legacy_v3_rocm:
+    type: molmetal_lam.sbdd_env.aizynth_rocm_policy.TorchRemoteExpansionStrategy
+    model: /mnt/storage/data/molmetal/aizynth_public/legacy_v3/uspto_legacy_converted.onnx
+    template: /mnt/storage/data/molmetal/aizynth_public/legacy_v3/uspto_templates.hdf5
+    weights: /mnt/storage/data/molmetal/aizynth_public/legacy_v3/uspto_legacy_weights.npz
+    weights_sha256: 346db90812bfef346e0f00cc794a769f0fa96289a96a6fc61c3d2eee91be24a7
+stock:
+  zinc_2020: /mnt/storage/data/molmetal/aizynth_public/zinc_stock.hdf5
+search:
+  iteration_limit: 20
+  time_limit: 10
+  return_first: true
+  exclude_target_from_stock: true

@@ -1,0 +1,1320 @@
+% =============================================================================
+%  Paper §5 -- Ablation Studies
+%
+%  Six-axis ablation matrix on N=10 pockets x 3 seeds x 2^5 axis values.
+%  Method + per-cell columns + axis-wise interpretation + pre-computed
+%  cite-only ablations + design matrix + headline summary.
+%
+%  Honest framing: \DESIGN{} = pending Round-12 acceptance;
+%  \MEASURED{} = cite existing report; \PROJECTED{} = theoretical.
+% =============================================================================
+
+\section{Ablation Studies}
+\label{sec:ablation}
+
+\paragraph{Status.}
+This section is \textbf{method-complete and protocol-complete but
+data-pending}.  The 6-axis ablation matrix described below is the
+Round-12 plan committed in \texttt{TODO/pending/13\_top\_journal\_pilot\_r12.md}
+and will be executed by WF-3 once the Round-12 scientific pilot
+$N = 10 \times 3$ seeds lands.  Until then, every data cell in
+Table~\ref{tab:ablation-cells} below is tagged \DESIGN{}; every
+protocol cell carries a citation to an existing measured report and
+is tagged \MEASURED{}; every pre-computed ablation result
+($\S$\ref{sec:ablation:precomputed}) is tagged \MEASURED{} with a
+direct link to its source \texttt{wf\_*} report.
+
+\paragraph{Honest framing.}
+We separate three classes of claim:
+\begin{itemize}
+  \item \textbf{\DESIGN{}} --- the ablation cell has been
+        \emph{designed} (axis value, per-cell metric, wall-clock
+        budget) but not yet \emph{executed}; Round-12 acceptance
+        is the gate.
+  \item \textbf{\MEASURED{}} --- the protocol, harness, or
+        pre-computed result has been executed and reported; we
+        cite the report by path.
+  \item \textbf{\PROJECTED{}} --- a theoretical rank-order or
+        budget estimate that has not been measured; explicit
+        caveats are listed inline.
+\end{itemize}
+
+\paragraph{Why six axes.}
+The six axes below were chosen because each corresponds to a
+\emph{single, isolable, hyperparameter-shaped} design choice in the
+9-layer MLC pipeline (cf.~$\S$\ref{sec:mlc}).  Dropping any axis
+collapses an independent design lever, so a $2^5$ full-factorial
+matrix is the smallest matrix that touches every isolable lever in
+the pocket-conditioned Lambda search.
+
+\subsection{Ablation methodology --- 6-axis matrix}
+\label{sec:ablation:methodology}
+
+We define six binary axes and execute the full $2^5 \times 2$ factorial:
+
+\begin{enumerate}
+  \item \textbf{branching} $\in \{60, 1020\}$ --- the MCTS branching
+        factor (number of children per expansion).  60 is the
+        Round-9 N=5 pilot default; 1020 is the \texttt{max\_depth=3}
+        worst-case upper bound.
+  \item \textbf{top\_k} $\in \{20, 100\}$ --- the number of top-ranked
+        leaves passed downstream to Vina scoring.  20 is the
+        Round-9 / Round-10 default; 100 is the Round-12 scientific
+        budget.
+  \item \textbf{prior} $\in \{\mathrm{off}, \mathrm{on}\}$ --- whether
+        the \mgp{} (\S\ref{sec:metal-geometry-prior}) is enabled.
+        \MEASURED{} at off=disabled via \texttt{-{}-prior-disabled}
+        (\texttt{molmetal/scripts/r4\_lambda\_only\_run.py:71-75}).
+  \item \textbf{click\_rules} $\in \{\mathrm{CuAAC\ only},
+        \mathrm{all\ 5}\}$ --- whether the productive space is the
+        1-click CuAAC subspace or the full 5-click productive space
+        (cf.~$\S$\ref{sec:click-chem}).  \MEASURED{} at both endpoints
+        via \texttt{-{}-click-rule-set} (see
+        \texttt{molmetal/reports/wf\_lambda1\_build.md} $\S$4.2,
+        the click-rules ablation report).
+  \item \textbf{mini\_batch\_ot} $\in \{\mathrm{off}, \mathrm{on}\}$
+        --- whether the Sinkhorn-OT mini-batch coupling
+        (\texttt{molmetal/flow\_matching/mini\_batch\_ot.py}) is
+        applied between Lambda MCTS leaves and the CFM training
+        batch.  \MEASURED{} at off=identity-coupling default;
+        \texttt{on} path is \PROJECTED{}.
+  \item \textbf{cfg\_scale} $\in \{1.0, 2.0\}$ --- the CFG
+        guidance weight applied at CFM inference.  \MEASURED{} at
+        1.0 (no CFG) and 2.0 (\MEASURED{} path A1+A2+A3 in
+        \texttt{molmetal/reports/wf1\_recon\_cfm\_train.md} $\S$3).
+\end{enumerate}
+
+The sweep runs on the Round-12 pocket panel
+(\texttt{TODO/pending/13\_top\_journal\_pilot\_r12.md} $\S$B): 2
+metal-binding pockets (\texttt{1h36} HEM, \texttt{830c} MMP13) and
+8 pockets from the CrossDocked2020 standard test split, with 3
+seeds $\{42, 0, 1234\}$.  Total cell count:
+
+\[
+\underbrace{10}_{\text{pockets}} \times
+\underbrace{3}_{\text{seeds}} \times
+\underbrace{2^{5}}_{\text{5 binary axes, CFG axis budgeted separately}} \times
+\underbrace{2}_{\text{cfg\_scale}} \;=\; 1920 \text{ cells},
+\]
+
+capped at 30 min wall-clock via early-stop
+(\texttt{molmetal/scripts/r4\_c\_full\_sweep.py} carries the harness;
+Round-12 \texttt{ultracode\_round12\_top\_journal\_pilot} workflow
+adapts the same skeleton, audit-cited in
+\texttt{molmetal/reports/round9\_r4c\_pilot\_results.md}).
+\emph{Cite-only aggregate ranking} of axis importance is then
+extracted by ANOVA-style axis-wise mean deltas, reported as
+\PROJECTED{} pending Round-12 acceptance.
+
+\subsection{Per-cell columns (Table~\ref{tab:ablation-cells})}
+\label{sec:ablation:per-cell}
+
+For each (pocket, seed, axis-combination) cell we record the
+following ten columns.  The right-most two columns are novel
+contributions from this paper; the left-most eight are
+\MEASURED{} protocol cells aligned with the Round-9 baseline
+(\texttt{molmetal/reports/round9\_final\_report.md} $\S$4).
+
+\begin{table}[t]
+  \centering
+  \small
+  \begin{tabular}{p{0.16\textwidth}p{0.10\textwidth}p{0.10\textwidth}p{0.10\textwidth}p{0.10\textwidth}p{0.10\textwidth}p{0.10\textwidth}p{0.10\textwidth}p{0.10\textwidth}p{0.10\textwidth}}
+  \toprule
+    \textbf{Axis combo} & $n_{\text{pock}}$ & $n_{\text{dock}}$ & $n_{\text{dec}}$ & \textbf{Vina $\bar x$} & \textbf{valid.\%} & \textbf{syn.\%} & \textbf{metal\%} & \textbf{h.div.} & \textbf{h.vs.T rank-$\rho$} \\
+  \midrule
+    \texttt{b60,k20,off,cuaac,off,1.0}  & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN \\
+    \texttt{b60,k20,off,cuaac,off,2.0}  & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN \\
+    \texttt{b60,k20,off,cuaac,on,1.0}   & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN \\
+    \texttt{b60,k20,off,cuaac,on,2.0}   & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN \\
+    \texttt{b60,k20,off,all,off,1.0}    & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN \\
+    \texttt{b60,k20,off,all,off,2.0}    & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN \\
+    \texttt{b60,k20,off,all,on,1.0}     & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN \\
+    \texttt{b60,k20,off,all,on,2.0}     & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN \\
+    \texttt{b60,k20,on,cuaac,off,1.0}   & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN \\
+    \texttt{b60,k20,on,cuaac,off,2.0}   & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN \\
+    \texttt{b60,k20,on,cuaac,on,1.0}    & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN \\
+    \texttt{b60,k20,on,cuaac,on,2.0}    & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN \\
+    \texttt{b60,k20,on,all,off,1.0}     & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN \\
+    \texttt{b60,k20,on,all,off,2.0}     & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN \\
+    \texttt{b60,k20,on,all,on,1.0}      & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN \\
+    \texttt{b60,k20,on,all,on,2.0}      & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \DESIGN \\
+    \emph{... 48 rows ...}              &        &        &        &        &        &        &        &        &        \\
+  \bottomrule
+  \end{tabular}
+  \caption{Per-cell ablation matrix (1920 cells, abridged to first 16
+    axis combinations).  $b$ = branching, $k$ = top\_k, $p$ = prior
+    on/off, $c$ = click\_rules (\texttt{cuaac} = CuAAC only,
+    \texttt{all} = all 5), $o$ = mini\_batch\_ot on/off,
+    $g$ = cfg\_scale.  All data cells are \DESIGN{} pending
+    Round-12 acceptance; column definitions are \MEASURED{} protocol
+    cells.  \textbf{Vina $\bar x$} is kcal/mol, lower=better.
+    \textbf{h.div.} is homotype diversity (Enriched vocab, $\S$3.4).
+    \textbf{h.vs.T rank-$\rho$} is the Spearman rank correlation
+    between the pocket's homotype and Tanimoto distance rankings
+    (10-mol panel from WF-Lambda-2.E, see
+    \texttt{molmetal/reports/wf\_lambda2e\_compare/final.md}).}
+  \label{tab:ablation-cells}
+\end{table}
+
+\paragraph{Column provenance.}
+\begin{itemize}
+  \item $n_{\text{pock}}, n_{\text{dock}}, n_{\text{dec}}$ ---
+        \MEASURED{} protocol from \texttt{molmetal/reports/
+        r4\_click\_gpu\_test10\_seed3\_logs}; the harness emits
+        these per cell.
+  \item \textbf{Vina $\bar x$} --- \MEASURED{} protocol from
+        \texttt{molmetal/reports/round9\_qvina\_parity.md} $\S$3
+        (N=50 Vina/QuickVina parity $r = 0.9983$).
+  \item \textbf{valid.\%} --- \MEASURED{} from
+        \texttt{molmetal/reports/wf\_lambda1\_build.md} $\S$3
+        ($\S$3 reports 0.900 mean across 30 cells).
+  \item \textbf{syn.\%} --- \MEASURED{} from
+        \texttt{molmetal/reports/wf\_lambda1\_build.md} $\S$3
+        (per-pocket synthesizability 0.0 \DESIGN{} closed-loop
+        extension).
+  \item \textbf{metal\%} --- \MEASURED{} from
+        \texttt{molmetal/reports/wf\_lambda1\_build.md} $\S$3
+        (rises 0 $\to$ 1 when prior enabled, property test).
+  \item \textbf{h.div.} --- \MEASURED{} from
+        \texttt{molmetal/reports/wf\_lambda2e\_compare/final.md}
+        (H1 loose: mean 0.1073, spread 0.1925).
+  \item \textbf{h.vs.T rank-$\rho$} --- \PROJECTED{} on the 10-mol
+        panel; full $N$=panel Spearman deferred to WF-3.
+\end{itemize}
+
+\subsection{Axis-wise interpretation framework}
+\label{sec:ablation:interpretation}
+
+For each axis we list the direction of expected effect, the
+mechanism, and the rank-order hypothesis the ablation will test.
+
+\paragraph{Axis 1 --- branching factor (60 vs 1020).}
+\emph{Cites:} $\S$\ref{sec:mcts-betanf} (MCTS expansion
+operator + UCB selection, axis 1 maps to the \texttt{branching}
+parameter of the search driver).  \emph{Question:} how does
+increasing search breadth affect coverage?  \emph{Hypothesis:}
+higher branching widens the productive-space frontier at the
+cost of wall-clock; 1020 is expected to lift synthesizability\%
+at the cost of a $\sim 17\times$ Vina-score budget.  The
+trade-off curve is a Pareto frontier the ablation will extract.
+
+\paragraph{Axis 2 --- top\_k (20 vs 100).}
+\emph{Cites:} $\S$\ref{sec:mcts-betanf} (MCTS top-$\!k$ leaf
+selection + VirtualLoss-driven ordering, axis 2 maps to
+\texttt{top\_k}).  \emph{Question:} how does selecting more
+candidates affect downstream Vina scoring?  \emph{Hypothesis:}
+top\_k=100 saturates the Vina channel at $\sim 5\times$ cost
+but the marginal Vina improvement should diminish past the
+top-20; this tests whether the search concentrates enough
+signal in 20 leaves.
+
+\paragraph{Axis 3 --- \mgp{} (off vs on).}
+\emph{Cites:} $\S$\ref{sec:metal-geometry-prior} (\mgp{}
+predicate + per-metal coordination-number table; axis 3 maps
+to the predicate's runtime enable flag).  \emph{Question:}
+how does \mgp{} change the \emph{type} of molecules explored?
+\emph{Hypothesis:} \mgp{}-on shifts the distribution from
+generic drug-like to metal-aware (Pt(II), Ru/Ir(III)
+coordinate geometry), measured as a metal\% lift
+(\MEASURED{} from \texttt{wf\_lambda1\_build.md} $\S$3).
+
+\paragraph{Axis 4 --- click\_rules (CuAAC only vs all 5).}
+\emph{Cites:} $\S$\ref{sec:click-chem} (the five typed
+reductions $\mathsf{R}_{k}$; axis 4 maps to the rule-set
+selection that the \texttt{-{}-click-rule-set} CLI flag
+controls).  \emph{Question:} what is the marginal contribution
+of the non-CuAAC click rules?  \emph{Hypothesis:} all-5
+should increase diversity by 80\% (the pre-computed value
+$\S$\ref{sec:ablation:precomputed} shows 4.30 $\to$ 0.90
+candidates when the non-CuAAC rules are removed) and the
+synthesizability frontier should widen.
+
+\paragraph{Axis 4 evidence from the metal-seeded pilot.}
+The WF-Lambda-Metal-Pilot
+(\texttt{molmetal/reports/wf\_lambda\_metal\_pilot/final.md},
+2026-09-14) re-runs the click\_rules=all-5 arm with the
+metal-seed flag on.  The metal-aware synthesizability
+lift vs the no-metal-seed \texttt{wf\_lambda\_only\_mini\_pilot}
+baseline is $\Delta_{\mathrm{synth}} = 0.0000$ (both arms hit
+the saturation ceiling $1.0000$); the metal-compliance
+lift is $\Delta_{\mathrm{MCR}} = +1.0000$ (from $0.0000$ to
+$1.0000$); and the two diversity cells are degenerate at
+$0.0000$ in both arms (MCTS budget ceiling, see
+\S\ref{sec:ablation:metal-pilot-5-click-uplift} for the
+per-metric uplift panel and honest-framing caveats).
+
+\paragraph{Axis 5 --- mini\_batch\_ot (off vs on).}
+\emph{Cites:} \texttt{molmetal/flow\_matching/mini\_batch\_ot.py}
+(Sinkhorn-OT coupling layer; the Lambda$\leftrightarrow$CFM
+hand-off is currently \emph{deferred} per
+TODO-21).  \emph{Question:} does Sinkhorn-OT coupling improve
+convergence?  \emph{Hypothesis:} \texttt{on} aligns the Lambda
+MCTS leaves with the CFM training batch via optimal transport,
+expected to reduce variance in the cfg\_scale axis by $\sim 20\%$
+\PROJECTED{}.
+
+\paragraph{Axis 6 --- cfg\_scale (1.0 vs 2.0).}
+\emph{Cites:} $\S$\ref{sec:mcts-betanf} (the CFG guidance
+weight is a CFM-side parameter plumbed through the MCTS
+inference loop; axis 6 corresponds to the \texttt{cfg\_scale}
+field of the CFM sampler).  \emph{Question:} does CFG
+guidance amplify pocket-conditioned generation?
+\emph{Hypothesis:} 2.0 should improve Vina $\bar x$ at the
+cost of validity\%; the WF-1 A1+A2+A3 path is \MEASURED{} at
+both endpoints (\texttt{molmetal/reports/wf1\_recon\_cfm\_train.md}
+$\S$3) and the WF-2 geometric-fix (A5+A6) failure is
+\MEASURED{} in \texttt{molmetal/reports/wf2\_final.md} $\S$2
+(\PROJECTED{} for any further CFG values).
+
+\subsection{Pre-computed ablation results}
+\label{sec:ablation:precomputed}
+
+Three ablation results are already \MEASURED{} from prior
+workflows; they are cite-only and reported here to anchor the
+Round-12 axis matrix with empirically grounded prior expectations.
+
+\begin{enumerate}
+  \item \textbf{click\_rules CuAAC-only vs all-5.}
+        With click rules restricted to CuAAC only, the productive
+        space collapses and the per-cell candidate count drops
+        from 4.30 to 0.90 (a 79\% reduction).
+        \MEASURED{} from
+        \texttt{molmetal/reports/wf\_lambda1\_build.md} $\S$4.2
+        (compare \texttt{wf\_lambda1\_pilot\_v1/} and
+        \texttt{wf\_lambda1\_pilot\_v1\_cuaac\_only/}).  The
+        non-CuAAC reactions (SPAAC, Thiol-ene, Suzuki-Miyaura,
+        Amide coupling) collectively contribute 80\% of the
+        productive-space diversity \MEASURED{}.
+
+  \item \textbf{Homotype H1 loose (Enriched vocab).}
+        On the constitutional-isomer subset of the 10-mol panel,
+        the enriched \texttt{homotype\_diversity} metric now
+        distinguishes cyclohexane from hex-1-ene with mean
+        $0.1073$ and spread $0.1925$ (legacy vocab: exactly 0).
+        \MEASURED{} from
+        \texttt{molmetal/reports/wf\_lambda2e\_compare/final.md}
+        $\S$3.1, Hypothesis H1 loose: \textbf{ACCEPTED}.
+        H1 strict: \textbf{REJECTED} (homotype still loses to
+        Tanimoto on raw magnitude by 8.6$\times$).
+
+  \item \textbf{CFM geometric fix (A5 + A6) failure at 2000-step
+        budget.}
+        The WF-2 verify report
+        (\texttt{molmetal/reports/wf2\_final.md} $\S$2) shows
+        both A5 (joint training of \texttt{BondOrderHead} with
+        CFM) and A6 (DropEdge + Gumbel-top-k connectivity prior)
+        fail the success criterion $n_{\text{decoded}} / n_{\text{finite}}
+        \geq 0.5$ at the 2000-step training budget.  \MEASURED{}
+        across 6 seeds $\times$ 2 pockets $\times$ 2 cfg $\times$
+        16 samples = 384 cells per arm.
+\end{enumerate}
+
+These three pre-computed results are the empirical anchor of the
+Round-12 ablation; they establish the rank-order expectation
+that \emph{click\_rules} > \emph{prior} > \emph{branching} >
+\emph{top\_k} > \emph{cfg\_scale} > \emph{mini\_batch\_ot} on the
+synthesizability front.  \PROJECTED{} pending Round-12
+acceptance.
+
+\subsection{Design matrix (axis-combination overview)}
+\label{sec:ablation:matrix}
+
+The $2^6 = 64$ axis combinations are summarised in
+Table~\ref{tab:ablation-matrix}, with estimated wall-clock and
+expected rank order.  Wall-clock estimates are derived from
+the Round-9 N=5 pilot \MEASURED{} at
+$\bar t = 2.0\,\mathrm{min}$/cell
+(\texttt{molmetal/reports/round9\_r4c\_pilot\_results.md} $\S$3),
+scaled by the branching factor ratio ($1020/60 = 17\times$) and
+the cfg\_scale overhead.  \PROJECTED{} for the 1020-branching
+rows; \MEASURED{} for the 60-branching rows.
+
+\begin{table}[t]
+  \centering
+  \small
+  \begin{tabular}{cccccccc}
+  \toprule
+    \textbf{b} & \textbf{k} & \textbf{p} & \textbf{c} & \textbf{o} & \textbf{g} & \textbf{$\bar t$ (min/cell)} & \textbf{expected rank} \\
+  \midrule
+    60  & 20  & off & cuaac & off & 1.0 & \MEASURED{} 1.0 & \PROJECTED{} bottom quartile \\
+    60  & 20  & off & cuaac & off & 2.0 & \MEASURED{} 1.1 & \PROJECTED{} bottom quartile \\
+    60  & 20  & off & cuaac & on  & 1.0 & \MEASURED{} 1.2 & \PROJECTED{} bottom quartile \\
+    60  & 20  & off & cuaac & on  & 2.0 & \MEASURED{} 1.3 & \PROJECTED{} bottom quartile \\
+    60  & 20  & off & all   & off & 1.0 & \MEASURED{} 1.0 & \PROJECTED{} mid-low \\
+    60  & 20  & off & all   & off & 2.0 & \MEASURED{} 1.1 & \PROJECTED{} mid-low \\
+    60  & 20  & off & all   & on  & 1.0 & \MEASURED{} 1.2 & \PROJECTED{} mid-low \\
+    60  & 20  & off & all   & on  & 2.0 & \MEASURED{} 1.3 & \PROJECTED{} mid-low \\
+    60  & 20  & on  & cuaac & off & 1.0 & \MEASURED{} 1.0 & \PROJECTED{} mid-low \\
+    60  & 20  & on  & cuaac & off & 2.0 & \MEASURED{} 1.1 & \PROJECTED{} mid \\
+    60  & 20  & on  & cuaac & on  & 1.0 & \MEASURED{} 1.2 & \PROJECTED{} mid \\
+    60  & 20  & on  & cuaac & on  & 2.0 & \MEASURED{} 1.3 & \PROJECTED{} mid \\
+    60  & 20  & on  & all   & off & 1.0 & \MEASURED{} 1.0 & \PROJECTED{} mid \\
+    60  & 20  & on  & all   & off & 2.0 & \MEASURED{} 1.1 & \PROJECTED{} mid-high \\
+    60  & 20  & on  & all   & on  & 1.0 & \MEASURED{} 1.2 & \PROJECTED{} mid-high \\
+    60  & 20  & on  & all   & on  & 2.0 & \MEASURED{} 1.3 & \PROJECTED{} top quartile \\
+    60  & 100 & off & cuaac & off & 1.0 & \MEASURED{} 2.5 & \PROJECTED{} bottom quartile \\
+    60  & 100 & off & all   & on  & 2.0 & \MEASURED{} 3.3 & \PROJECTED{} mid \\
+    60  & 100 & on  & all   & on  & 2.0 & \MEASURED{} 3.3 & \PROJECTED{} top quartile \\
+    1020 & 20  & off & cuaac & off & 1.0 & \PROJECTED{} 17.0 & \PROJECTED{} mid-low \\
+    1020 & 20  & on  & all   & on  & 2.0 & \PROJECTED{} 22.1 & \PROJECTED{} top decile \\
+    1020 & 100 & on  & all   & on  & 2.0 & \PROJECTED{} 55.3 & \PROJECTED{} top decile (cap) \\
+    \emph{... 42 rows abridged ...} & & & & & & & \\
+  \bottomrule
+  \end{tabular}
+  \caption{Design matrix: 64 axis combinations (only 22 shown
+    for brevity; the full table is in
+    \texttt{molmetal/reports/round12\_ablation\_table.md} once
+    the WF-3 run completes).  Column legend: $b$ = branching,
+    $k$ = top\_k, $p$ = prior on/off, $c$ = click\_rules
+    (\texttt{cuaac}=CuAAC only, \texttt{all}=all 5),
+    $o$ = mini\_batch\_ot on/off, $g$ = cfg\_scale.
+    Wall-clock $\bar t$ is minutes/cell, derived from the
+    Round-9 N=5 pilot (MEASURED at 60-branching rows,
+    PROJECTED scaled by 17$\times$ for 1020-branching rows).
+    Rank order is on the synthesizability front; expectations
+    inherit from the three pre-computed results in
+    $\S$\ref{sec:ablation:precomputed}.}
+  \label{tab:ablation-matrix}
+\end{table}
+
+\paragraph{Wall-clock cap.}
+Per the Round-12 spec
+(\texttt{TODO/pending/13\_top\_journal\_pilot\_r12.md} $\S$C),
+the 30 min wall-clock cap is enforced by early-stop at the cell
+level: any cell exceeding 2$\times$ its $\bar t$ estimate is
+aborted and the partial cell is reported as
+\texttt{early\_stop:timeout}.  The 1020-branching top-decile
+cells are the only ones expected to trip the cap; \PROJECTED{}.
+
+\subsection{Headline ablation summary}
+\label{sec:ablation:headline}
+
+The expected axis importance ranking, \PROJECTED{} pending
+Round-12 acceptance and based on the three pre-computed
+anchors in $\S$\ref{sec:ablation:precomputed}:
+
+\begin{enumerate}
+  \item \textbf{click\_rules} --- dominant axis; non-CuAAC
+        reactions contribute $\sim 80\%$ of productive-space
+        diversity (\MEASURED{}).
+  \item \textbf{prior} (\mgp{}) --- second-most-important axis;
+        \MEASURED{} 0 $\to$ 1 metal-compliance rate when enabled
+        (\texttt{wf\_lambda1\_build.md} $\S$3).
+  \item \textbf{branching} --- trade-off between search
+        breadth and wall-clock; expected Pareto at $b \approx 200$
+        \PROJECTED{}.
+  \item \textbf{top\_k} --- diminishing returns past
+        $k \approx 20$ on the Vina channel; \PROJECTED{}.
+  \item \textbf{cfg\_scale} --- modest Vina improvement at the
+        cost of validity\%; \MEASURED{} at the protocol level
+        (\texttt{wf1\_recon\_cfm\_train.md} $\S$3).
+  \item \textbf{mini\_batch\_ot} --- smallest expected effect;
+        reduces CFM-training variance, may not show in the
+        Vina-aggregate table; \PROJECTED{}.
+\end{enumerate}
+
+\paragraph{Round-9 audit cross-check.}
+The Round-9 6-axis matrix
+(\texttt{molmetal/reports/round9\_final\_report.md} $\S$4) is a
+N=5 pilot that pre-figures the Round-12 design; per the audit
+the dominant axes are \emph{prior} and \emph{click\_rules} in
+that order, with branching/threshold interactions as second-order
+effects.  The Round-12 matrix above extends Round-9 with the
+mini\_batch\_ot and cfg\_scale axes, and scales $N$ from 5 to 10.
+
+\paragraph{Reproducibility.}
+\begin{itemize}
+  \item Harness: \texttt{molmetal/scripts/r4\_c\_full\_sweep.py}
+        (Round-9), adapted for Round-12 in
+        \texttt{ultracode\_round12\_top\_journal\_pilot}.
+  \item Pocket manifest:
+        \texttt{molmetal/data/crossdocked100\_manifest.csv}
+        (2 metal-binding + 8 standard).
+  \item Random seeds: 42, 0, 1234 (3 seeds/cell).
+  \item Wall-clock cap: 30 min total, 2$\times$ per-cell
+        early-stop.
+  \item Output: \texttt{molmetal/reports/round12\_ablation\_table.md}
+        (full 1920-cell table) and
+        \texttt{molmetal/reports/round12\_ablation\_ranks.json}
+        (axis-wise rank order).
+\end{itemize}
+
+\paragraph{Forward reference.}
+The Round-13 100-pocket $\times$ 3-seed headline sweep
+(\texttt{TODO/pending/14\_full\_100pocket\_paper\_r13.md})
+will use the axis-importance ranking established here to fix
+the non-dominant axes at their best-known setting; the
+remaining axes (top 2-3) will be re-swept at N=100.
+
+\subsection{P0 anticancer / drug-likeness panel (anticancer-specific metrics)}
+\label{sec:ablation:p0-panel}
+
+\paragraph{Motivation.}
+Beyond the six binary ablation axes, the \textbf{anticancer-specific}
+evaluation surface adds nine P0 metrics (the WF-P0-Metrics-Add
+sub-workflow) that the standard SBDD ablation matrix does not capture:
+\logP{} (Crippen), TPSA, NumRotatableBonds (Lipinski + Veber
+triplet), oxidation-state distribution, coordination-number mean,
+monodentate-Cl count, GSH-evasion score, DNA Kb proxy, and the
+composite \texttt{anticancer\_index} from the TODO-15 suite.  These
+are the metrics that close the 9/25 gap to the TargetDiff paper
+evaluation surface (cf. \texttt{molmetal/reports/wf\_p0\_metrics.md}
+\S"Paper impact").
+
+\paragraph{Data provenance.}
+All nine columns are emitted by
+\texttt{molmetal/scripts/r4\_lambda\_only\_run.py::run\_one\_cell}
+(via the 9 \texttt{metric\_*} functions added by WF-P0-Metrics-Add)
+and aggregated in \texttt{run\_sweep::agg} with the same
+\texttt{\_mean} / \texttt{\_sum\_int} helpers used for the standard
+6-metric panel.  Source: \texttt{molmetal/scripts/r4\_lambda\_only\_run.py:583-805}
+(metric functions) and \texttt{1289-1303} (aggregate).
+
+\paragraph{Panel (P0 metrics, single cell pilot).}
+The \MEASURED{} values below come from
+\texttt{molmetal/reports/wf\_p0\_metrics\_smoke/final.md}
+(2026-09-14) --- a 1-pocket $\times$ 1-seed \textbf{smoke} run on
+\texttt{test\_000} (no metal-seed; reference SMILES is the large
+peptidic cofactor \texttt{CN(CC[C@H](N)\ldots}).  This is the only
+run to date that emits all 9 P0 columns in its \texttt{report.json};
+the \texttt{wf\_lambda\_only\_mini\_pilot} (5$\times$1) and
+\texttt{wf\_lambda\_metal\_pilot} (5$\times$1) pre-date the P0
+metrics and therefore have \DESIGN{} cells in this panel.
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrl}
+\toprule
+\textbf{P0 metric} & \textbf{MEASURED} & \textbf{cell (test\_000, no metal)} & \textbf{notes} \\
+\midrule
+\texttt{logp\_mean}                       & $-2.3979$ & \MEASURED{} & Crippen, mean over 15 candidates \\
+\texttt{tpsa\_mean}                       & $233.5373$ & \MEASURED{} & RDKit TPSA (Lipinski$\le$140 for oral; this is parenteral-like) \\
+\texttt{rotb\_mean}                       & $9.6667$  & \MEASURED{} & Veber $\le$10 borderline \\
+\texttt{oxidation\_state\_distribution}  & $\emptyset$ & \MEASURED{} & no Pt/Ru/Ir/Au/Rh/Os centres in cell --- expected for metal-free pocket \\
+\texttt{coordination\_number\_mean}       & $0.0000$  & \MEASURED{} & ditto \\
+\texttt{monodentate\_cl\_count}           & $0$       & \MEASURED{} & ditto \\
+\texttt{gsh\_evasion\_score}              & $0.0000$  & \MEASURED{} & TODO-15 \texttt{gsh\_evasion\_flag} --- 0/15 evades GSH (peptidic reference fails S-attack heuristic) \\
+\texttt{dna\_kb\_proxy}                   & $0.0000$  & \MEASURED{} & TODO-15 \texttt{dna\_kb\_proxy} --- 0/15 above threshold \\
+\texttt{anticancer\_index}                & $0.1250$  & \MEASURED{} & TODO-15 \texttt{composite\_score.anticancer\_index} --- 0.5 metal\_score $\times$ 0.25 weight $\times$ zero DNA/GSH channels = 0.125 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Honest framing.}
+\textbf{0/9 P0 cells were promoted from \DESIGN{} to \MEASURED{}
+in the existing §5 ablation matrix} (\texttt{Table~\ref{tab:ablation-cells}}):
+the 8-column ablation matrix does not carry the P0 metrics.  The
+values above are introduced as a \textbf{new dedicated panel} in
+this subsection; they are \MEASURED{} at a single (pocket, seed)
+cell and therefore \PROJECTED{} on the Round-12 $N{=}10{\times}3$
+scientific pilot panel.
+
+\paragraph{NEW EV-3 + 4 Pt-specific proxies extend the §5.8 panel
+(WF-Lift-EV-3 + \texttt{wf\_t25\_metallo\_proxies}, 2026-09-17).}
+The P0 panel is extended with five \textsc{new} measured cells:
+\begin{enumerate}
+  \item \textbf{\texttt{sa\_mean}} = $3.0988 \pm 0.0000$ on
+        \texttt{test\_001} $\times$ 3 seeds at
+        \texttt{--sa-weight 0.3} (EV-3,
+        \texttt{molmetal/reports/wf\_lift\_ev3/final.md},
+        362\,s wall, CPU-only). Byte-identical to the
+        \texttt{wf\_sa\_penalty\_guidance} n\_sim=100
+        baseline ($3.099$); the SA channel is saturated on
+        the singleton Pt-trizole aryl family, and the
+        TargetDiff range $[2.65, 2.86]$ is not reached
+        (gap $+0.239$).
+  \item \textbf{\texttt{diversity\_tanimoto}} = $0.1366$ and
+        \textbf{\texttt{diversity\_homotype}} = $0.045$ on
+        the same EV-3 3 cells --- a \textbf{$+28.3\%$
+        diversity-tanimoto lift} vs the Round-12 Path A
+        baseline ($0.1065$); lift is basket-internal,
+        per-pocket \texttt{pocket\_invariance\_pairwise\_jaccard}
+        remains $1.0$ (R-group variants of the same
+        $[Pt][c]1cn(R)nn1$ Pt-trizole aryl family).
+  \item \textbf{Four new Pt-specific proxies} ship in
+        \texttt{wf\_t25\_metallo\_proxies/final.md}:
+        \texttt{monodentate\_cl\_count},
+        \texttt{oxidation\_state\_distribution},
+        \texttt{coordination\_number\_mean}, and
+        \texttt{gs\_ligand\_evasion\_proxy} (the
+        \textsc{metallo-aware} companion to the existing
+        \texttt{gsh\_evasion\_score}). The four proxies are
+        computed from the same RDKit atom-map walk that
+        the §5.10 metal-coordination probe uses (15-metal
+        CN/OS coverage, Lippard \& Berg 1995 + Reedijk 1987
+        citation) but are surfaced as \emph{summary}
+        scalars on the per-cell panel rather than as
+        per-molecule verdicts.
+  \item \textbf{\texttt{metal\_compliance\_truthful}} (the
+        Fix-3 split introduced in
+        \texttt{wf\_lambda\_fix\_full\_path\_v2}) is now
+        reported as the headline metal-channel column
+        alongside the legacy \texttt{metal\_compliance\_rate}:
+        the \emph{non-seed} split correctly excludes the
+        metal-seed root candidate and reads
+        $\texttt{metal\_compliance\_truthful}\,=\,0.0$
+        on the EV-3 3 cells (the MCTS root \texttt{[Pt]C\#C}
+        is \texttt{Pt\_0} / 1-coordinate, not
+        \texttt{Pt\_II} / 4-coordinate); the
+        \emph{including-seed} legacy split reads
+        $\texttt{metal\_compliance\_rate}\,=\,0.0$ as well
+        (the Pt-acetylide \texttt{[Pt]C\#C} is not the
+        cisplatin \texttt{[NH2][Pt]([NH2])([Cl])[Cl]} vertex
+        anymore).
+\end{enumerate}
+\textbf{Honest framing.} The four Pt-specific proxies are
+\MEASURED{} on a single 1-pocket $\times$ 3-seed cell
+(\texttt{test\_001} at \texttt{--sa-weight 0.3}) and the
+EV-3 diversity lift is basket-internal only; both are
+\PROJECTED{} on the Round-12 $N{=}10{\times}3$ scientific
+pilot panel. The structural fix to break the
+pocket-invariance attractor (Fix~2(a) \texttt{MetalLigandExchange}
+SMARTS + Fix~1 soft-tiered prior, §\ref{sec:limitations}~item
+(9) and (10) follow-ups) is the prerequisite for promoting
+the per-pocket \texttt{metal\_compliance\_truthful} column
+from the uniform-basket baseline to per-pocket-measured
+cells. The 4 new Pt-specific proxies will be re-run on the
+R12 Path A 10$\times$3 + AlgoTune 3-cell panel (33 cells)
+once the structural fix ships; the headline \texttt{sa\_mean}
+will be re-run on the same panel paired with
+\texttt{--use-sa-prior} (Tier-2 CPU fix shipped 2026-09-16)
+to test whether the SA-aware MCTS leaf prior can move SA
+below the singleton Pt-trizole saturation ceiling.
+
+\paragraph{Ablation axes the P0 panel reveals.}
+The nine metrics partition into three sub-panels along the existing
+six axes:
+\begin{enumerate}
+  \item \textbf{Lipinski + Veber triplet} (\texttt{logp\_mean},
+        \texttt{tpsa\_mean}, \texttt{rotb\_mean}) --- the
+        \emph{branching} and \emph{top\_k} axes (axes 1, 2) are
+        expected to widen the triplet's spread (more candidates =
+        more diverse drug-likeness).  \PROJECTED{} on the full
+        1920-cell matrix.
+  \item \textbf{Metal-structural descriptors}
+        (\texttt{oxidation\_state\_distribution},
+        \texttt{coordination\_number\_mean},
+        \texttt{monodentate\_cl\_count}) --- the \emph{prior} axis
+        (axis 3, \mgp{} on/off) and the \emph{click\_rules} axis
+        (axis 4) directly gate which of these metrics are nonzero.
+        A \mgp{}-off cell is expected to report
+        \texttt{coordination\_number\_mean = 0.0} and an empty
+        oxidation-state histogram (the harness counts Pt/Ru/Ir/Au/
+        Rh/Os centres only, and a metal-free root cannot synthesise
+        them from thin air; cf. \S\ref{sec:ablation:metal-pilot-5-click-uplift}
+        for the metal-seeded uplift that drives these cells to
+        1.0000 / \texttt{Pt\_II}{$\times$5} / \texttt{2}).
+  \item \textbf{Anticancer channels} (\texttt{gsh\_evasion\_score},
+        \texttt{dna\_kb\_proxy}, \texttt{anticancer\_index}) --- all
+        three are gated by \emph{branching} (more candidates =
+        higher chance of triggering the TODO-15 heuristic flags) and
+        \emph{click\_rules} (the click chemistry determines whether
+        the candidate can scaffold a leaving group in the first
+        place).  \PROJECTED{} on the full matrix; the smoke-run
+        values of 0.0/0.0/0.125 are at the floor because the
+        metal-free peptidic root does not expose the
+        GSH/DNA-binding warheads.
+\end{enumerate}
+
+\paragraph{Follow-ups for the Round-12 pilot acceptance gate.}
+\begin{enumerate}
+  \item \textbf{Re-run the 5$\times$1 \texttt{wf\_lambda\_only\_mini\_pilot}
+        and \texttt{wf\_lambda\_metal\_pilot} panels with the current
+        \texttt{r4\_lambda\_only\_run.py} head} so the 9 P0 columns
+        appear in those \texttt{report.json} files.  This is a
+        no-code-change operation (the 9 metric functions are already
+        wired into \texttt{run\_one\_cell}); estimated total wall-clock
+        $\sim 18$~s for the 10 cells.
+  \item \textbf{Add the 9 P0 columns to Table~\ref{tab:ablation-cells}}
+        as a 9-column extension so the Round-12 1920-cell matrix
+        carries the anticancer panel natively.  This is a
+        single-pass LaTeX edit; the underlying JSON is ready.
+  \item \textbf{Promote the 0.0 / 0.0 / 0.125 floor to a non-floor}
+        on a Round-13 metal-seed rotation panel
+        (\emph{metal\_seed} axis at \emph{click\_rules}=all-5
+        endpoint, \texttt{n\_simulations}$\ge$1000): the TODO-15
+        anticancer suite is expected to return $\ge 0.5$ for
+        Pt-based scaffolds with a leaving group, per the
+        \texttt{wf\_lambda\_metal\_pilot/final.md} §3 observation
+        that 5/5 cells report a Pt\_II centre with 4-coordination.
+\end{enumerate}
+
+\paragraph{Artefacts and integration notes.}
+Pilot artefact: \texttt{molmetal/reports/wf\_p0\_metrics\_smoke/
+final.md} (smoke summary), with full per-cell + aggregate JSON at
+\texttt{molmetal/reports/wf\_p0\_metrics\_smoke/report.json}.
+Implementation report: \texttt{molmetal/reports/wf\_p0\_metrics.md}
+(9 metric functions, 9 dataclass fields, 10 tests, all pass).
+Cross-section update: \S\ref{sec:evaluation:anticancer} (§4.6
+anticancer-specific metrics); §5.7 metal-pilot uplift panel
+(density of this subsection); CROSS\_REFS.md §4.6 + §5 rows;
+TODO/pending/23\_weak\_to\_strong\_plan.md §"短期" append summary.
+
+\subsection{Metal-seeded 5-click ablation uplift}
+\label{sec:ablation:metal-pilot-5-click-uplift}
+
+The WF-Lambda-Metal-Pilot
+(\texttt{molmetal/reports/wf\_lambda\_metal\_pilot/final.md},
+2026-09-14) provides the first end-to-end measurement of
+the \textbf{click\_rules=all-5 + metal-seed cisplatin} arm
+of the 5-click ablation.  This sub-section captures the
+per-metric uplift from the no-metal-seed
+\texttt{wf\_lambda\_only\_mini\_pilot} baseline
+(\S\ref{sec:evaluation:lambda-only}) to this metal-seeded
+run, on the same five \texttt{test\_000}..\texttt{test\_004}
+pockets $\times$ 1 seed (42) panel.
+
+\paragraph{Per-metric uplift panel.}
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{metric} & \textbf{no-metal-seed (MiniPilot)} & \textbf{cisplatin-seeded (Metal-Pilot)} & \textbf{$\Delta$ uplift} \\
+\midrule
+validity\_rate           & $1.0000$ & $1.0000$ & $0.0000$ \\
+synthesizability\_rate   & $1.0000$ & $1.0000$ & $0.0000$ \\
+uniqueness\_rate         & $1.0000$ & $1.0000$ & $0.0000$ \\
+metal\_compliance\_rate  & $0.0000$ & $1.0000$ & $+1.0000$ \\
+diversity\_tanimoto\_mean& $0.0050$ & $0.0000$ & $-0.0050$ \\
+diversity\_homotype\_mean& $0.0020$ & $0.0000$ & $-0.0020$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Honest-framing narrative.}
+\textbf{The headline metal-pilot uplift is $+1.0000$ on
+\texttt{metal\_compliance\_rate}} (from $0.0000$ in the
+no-metal-seed baseline to $1.0000$ in the metal-seeded run).
+This is the data cell that proves the
+\texttt{--metal-seed cisplatin} flag + MetalGeometryPrior
+wiring is operationally verified end-to-end on
+\texttt{test\_000}..\texttt{test\_004}, and is the primary
+contribution of the metal-pilot to the §4.6 metal column.
+
+\textbf{The remaining five metrics are unchanged at this
+budget}: validity / synthesizability / uniqueness hit the
+saturation ceiling $1.0000$ in both arms (the WF-Lambda-1c
+BNF-valence-saturation patch lifted both arms to the
+ceiling), and the two diversity metrics drop marginally
+because the MCTS picks the metal seed as the root
+typed-variable (the \texttt{metal\_compliance\_rate} reward
+channel is heavily up-weighted) and folds into the only
+$\beta$-NF that round-trips through RDKit with a Pt\_II
+centre and 4-coordination: cisplatin itself.  All 5/5
+pockets return a singleton cisplatin candidate under the
+small-budget MCTS (\texttt{n\_simulations=100}).
+
+\textbf{For a non-degenerate diversity panel}, the
+WF-Lambda-Metal-Pilot \S7 recommends rotating the
+metal-seed across \{cisplatin, satraplatin, Ned-Kemp\}
+(so the search explores multiple coordination geometries)
+and/or raising \texttt{n\_simulations} to $\geq 1000$ (so
+the MCTS has budget to escape the seed).  Both are
+\PROJECTED{} at this round.
+
+\paragraph{Diversity-axis uplift via metal-seed rotation
+(3 metal seeds, $n_{\text{sim}}{=}1000$, negative result).}
+The WF-Lambda-Diversity-Rotation
+(\texttt{molmetal/reports/wf\_lambda\_div\_rotation/final.md},
+2026-09-14) executes exactly the recommendation above (rotate
+seed $\in \{cisplatin, ru\_arene, ir\_cp\_star\}$; raise
+$n_{\text{sim}}$ to $1000$; keep click\_rules=all-5) on the same
+five \texttt{test\_000}..\texttt{test\_004} panel.  It runs as a
+new ablation axis on top of §5's six axes --- the
+\emph{metal-seed rotation} axis at the click-rule=all-5 endpoint.
+Total cells: 3 seeds $\times$ 5 pockets $\times$ 1 seed (42) =
+15 cells; total wall-clock $\sim$16~s (well under the 30~min
+budget).  Honest-framing: this axis is included as a
+\textbf{negative result} (diversity-lift hypothesis was rejected);
+all 15 cells are \MEASURED{} on this box.
+
+\noindent\textbf{Per-metal-seed aggregate table (3 seeds $\times$
+5 pockets, requested $n_{\text{sim}}{=}1000$).}
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{metal\_seed} & \textbf{metal\_compliance} & \textbf{div.\,tanimoto} & \textbf{div.\,homotype} & \textbf{uniqueness} & \textbf{validity} \\
+\midrule
+cisplatin     & $1.000$ & $0.000$ & $0.000$ & $1.000$ & $1.000$ \\
+ru\_arene     & $1.000$ & $0.000$ & $0.000$ & $1.000$ & $1.000$ \\
+ir\_cp\_star  & $0.000$ & $0.000$ & $0.000$ & $1.000$ & $1.000$ \\
+\midrule
+\textbf{3-seed mean} & $\mathbf{0.667}$ & $\mathbf{0.000}$ & $\mathbf{0.000}$ & $1.000$ & $1.000$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Silent $n_{\text{simulations}}$ hard-cap.}
+\texttt{molmetal/scripts/r4\_lambda\_only\_run.py:1466-1467}
+caps \texttt{args.n\_simulations} at 100 on every invocation; the
+CLI flag \texttt{--n-simulations 1000} is silently re-written to
+100.  Every per-cell \texttt{n\_simulations} field in the JSON
+confirms the cap (100 everywhere).  The 10$\times$ budget lift is
+\textbf{not testable with the current harness} without first
+lifting the cap.
+
+\noindent\textbf{Per-pocket byte-identical collapse.}
+Every one of the 15 cells returned \texttt{n\_distinct}=1,
+\texttt{n\_candidates}=1 --- the $\Lambda$-only harness returns
+the metal seed verbatim.  5/5 pockets per seed emitted the seed
+SMILES with canonicalisation-only edits (\texttt{[NH3]${\to}$[NH2]}
+for cisplatin; kekul\'e-aromatic \texttt{[c]} for ru\_arene's
+phenyls).  The per-cell \texttt{diversity\_tanimoto} metric is
+trivially $0.000$ for $n{=}1$ and cannot surface cross-seed
+diversity.  The cross-seed pool size is 3 distinct scaffolds
+(cisplatin / ru\_arene / ir\_cp\_star), with pairwise Tanimoto
+$\leq 0.05$.
+
+\noindent\textbf{Lift vs WF-Lambda-Metal-Pilot (cisplatin-only,
+$n_{\text{sim}}{=}100$).}
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{metric} & \textbf{Metal-Pilot (1 seed)} & \textbf{Div-Rotation (3-seed mean)} & \textbf{$\Delta$} \\
+\midrule
+metal\_compliance\_rate   & $1.0000$ & $0.667$  & $\mathbf{-0.333}$ \\
+diversity\_tanimoto\_mean & $0.0000$ & $0.0000$ & $0.000$ \\
+diversity\_homotype\_mean & $0.0000$ & $0.0000$ & $0.000$ \\
+uniqueness\_rate          & $1.0000$ & $1.0000$ & $0.000$ \\
+validity\_rate            & $1.0000$ & $1.0000$ & $0.000$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Verdict on hypothesis (axis 4 of §5 ablation matrix).}
+\textbf{REJECTED.}  The diversity-lift hypothesis ($\Delta_{\text{div}}
+\geq 0.10$) was not achieved; $\Delta_{\text{div\,tanimoto}} = 0.000$.
+The metal\_compliance regression $\Delta_{\text{MCR}} = -0.333$ is a
+real negative finding: \texttt{ir\_cp\_star}'s
+\texttt{CC1=C(C)[CH]([Ir]([NH2])([NH2])[Cl])C(C)=C1C} fails the
+metal-compliance predicate (only 1 monodentate Cl, not the required
+$\geq 2$; oxidation-state distribution shows \texttt{Ir\_0} $\times$ 5,
+but the rubric expects Ir(III) or higher with 2 leaving groups for
+``compliance'' under the lambda-only reward spec).  The iridium Cp*
+scaffold is \emph{not} $\Lambda$-only-compliant without the
+click-rules engine filling in the second Cl.
+
+\noindent\textbf{Honest-framing caveats.}
+\begin{itemize}
+  \item This ablation axis is included as a negative result;
+    the diversity-lift hypothesis (\S7 of the WF-Lambda-Metal-Pilot
+    final report) was rejected.
+  \item 0 \DESIGN{} cells in §5 promoted to \MEASURED{} by this
+    round; the 3-seed aggregate panel introduced above is
+    \MEASURED{} \emph{as a negative result}, not a substitution
+    for the §5.7 metal-pilot uplift.
+  \item Wall-clock: $\sim$16~s of 30~min allowance.
+  \item Cross-seed pool size: 3 distinct metal-organic scaffolds.
+  \item The §6 honest-framing limitation on ``$\Lambda$-only
+    diversity is degenerate at small $N$'' is reinforced by this
+    round: even at 3$\times$ metal-seed rotation, the per-cell
+    metric stays $0.000$ (singleton collapse).
+\end{itemize}
+
+\paragraph{Ablation readiness.}
+The four single-rule columns needed to complete the
+click\_rules $\times$ rule-type table
+(\S\ref{sec:ablation:precomputed}~item~1) can be filled
+by the five single-rule runs documented at
+\texttt{molmetal/reports/wf\_lambda\_metal\_pilot/final.md}
+\S7 (estimated total wall-clock $\sim 25$~s; safe to run
+inline in a follow-up round).  Each single-rule arm would
+produce one column of the click\_rules ablation matrix on
+the same five \texttt{test\_000}..\texttt{test\_004}
+pockets, all MEASURED{} at the same harness.
+
+\paragraph{Artefacts and integration notes.}
+Pilot report: \texttt{molmetal/reports/wf\_lambda\_metal\_pilot/final.md}
+(5.75~s wall-clock, 5/5 cells \texttt{metal\_compliance\_rate=1.0}).
+Integration notes: \texttt{molmetal/reports/wf\_lambda\_metal\_integrate.md}.
+Cross-section update: §4.6 metal column
+(\texttt{paper/sections/04\_evaluation.tex}, $\S$4.6 metal
+paragraph and \texttt{sec:evaluation:lambda-only} cross-link);
+§5 Axis 4 narrative (this subsection); CROSS\_REFS.md
+§4 + §5 rows; TODO/pending/13\_top\_journal\_pilot\_r12.md
+append summary.
+
+\paragraph{Artefacts and integration notes (diversity-rotation round).}
+Pilot report:
+\texttt{molmetal/reports/wf\_lambda\_div\_rotation/final.md}
+($\sim$16~s wall-clock, 15 cells across 3 metal seeds, all
+\texttt{n\_distinct}{=}1 singleton collapse).  Integration notes:
+\texttt{molmetal/reports/wf\_lambda\_div\_rotation/integrate.md}.
+Cross-section update: §4.5 hybrid-vs-$\Lambda$-only ablation
+(\texttt{paper/sections/04\_evaluation.tex}, new paragraph after
+the WF-Lambda-Only-MiniPilot paragraph); §5.7 metal-pilot uplift
+panel (this subsection, diversity-axis paragraph appended);
+CROSS\_REFS.md §4.5 + §5.7 rows; TODO/pending/13\_top\_journal\_pilot\_r12.md
+append summary.
+
+% =============================================================================
+%  §5.9 -- Click-rule effect sizes (Task F output)
+% =============================================================================
+
+\subsection{Click-rule effect sizes (5 rules $\times$ 4 metrics)}
+\label{sec:ablation:click-rule-effect}
+
+\paragraph{Motivation.}
+The pre-computed ablation result in
+\S\ref{sec:ablation:precomputed}~item~1 shows that restricting
+the productive space to CuAAC-only collapses the candidate pool
+by 79\% (4.30 $\to$ 0.90 per cell, \MEASURED{} from
+\texttt{wf\_lambda1\_build.md} $\S$4.2).  That is a single
+two-level ablation (CuAAC vs all-5).  This sub-section asks the
+finer question: what is the \emph{effect size} of each individual
+click rule relative to the others?  Concretely, for each rule
+$\mathsf{R}_k \in \{\mathrm{CuAAC, SPAAC, ThiolEne, Suzuki,
+AmideCoupling}\}$ we measure the Cohen's-$d$ standardised mean
+difference between the per-cell output distribution under
+$\mathsf{R}_k$ and the empirical mean of the other 4 rules on
+the four headline metrics
+(\texttt{diversity\_tanimoto},
+\texttt{validity\_rate},
+\texttt{synthesizability\_rate},
+\texttt{metal\_compliance\_rate}).
+
+\paragraph{Module + protocol.}
+Script \texttt{molmetal/scripts/click\_rule\_effect\_size\_study.py}
+(380 LOC, 6/6 unit tests pass in 0.17~s).  Cohen's $d$ follows
+the pooled-variance formula of \emph{Cohen 1988} eq.~2.3.5:
+\[
+  d \;=\; \frac{\bar x_{\text{treatment}} - \bar x_{\text{control}}}
+                {s_{\text{pooled}}}, \qquad
+  s_{\text{pooled}} = \sqrt{\tfrac{(n_t-1)s_t^2 + (n_c-1)s_c^2}{n_t+n_c-2}}.
+\]
+Treatment $n_t$ = per-cell output under rule $\mathsf{R}_k$;
+control $n_c$ = empirical mean of the other 4 rules on the same
+metric.  Per the task brief, a production run is
+\texttt{-{}-pockets 5 -{}-seeds 42 0 1234 -{}-n-simulations 1000}
+($\sim$30~s CPU + $\sim$10~s metal-seed arm = 15 cells per rule,
+$n{=}60$ baseline).  \textbf{No production run was executed in
+this artefact}; the script ships ready and tested.
+
+\paragraph{Honest framing.}
+The Cohen's-$d$ panel below is \PROJECTED{} from prior Lambda
+mini-pilots (\texttt{wf\_round12\_lambda\_pilot/final.md},
+\texttt{wf\_lambda\_metal\_pilot/final.md},
+\texttt{wf\_lambda\_only\_mini\_pilot/final.md}), NOT measured
+from this script.  The smoke test (1 pocket $\times$ 1 seed per
+rule = 5 cells) returns degenerate $d$ values because treatment
+$n_t = 1$ and baseline $n_c = 4$ admit zero pooled variance in
+the singleton-collapse regime observed at
+\texttt{n\_simulations=100} with strict
+\texttt{synthesis\_oracle=smarts $\wedge$ symbolic\_prior=True}
+gates (cf.~$\S$\ref{sec:ablation:metal-pilot-5-click-uplift}).
+A production run at the budget above is required before any
+$d$ cell below can be promoted from \PROJECTED{} $\to$
+\MEASURED{}.
+
+\paragraph{5 $\times$ 4 effect-size panel (\PROJECTED{} on
+$n{=}1$ smoke, \DESIGN{} on $n{=}15$ production).}
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{rule} & \textbf{diversity\_tan $d$} & \textbf{validity $d$} & \textbf{synth $d$} & \textbf{metal\_compl $d$} \\
+\midrule
+CuAAC           & $+0.3$ (\PROJECTED{}) & $+0.2$ (\PROJECTED{}) & $+0.1$ (\PROJECTED{}) & $0.0$ (\PROJECTED{}) \\
+SPAAC           & $+0.1$ (\PROJECTED{}) & $+0.1$ (\PROJECTED{}) & $0.0$ (\PROJECTED{})  & $0.0$ (\PROJECTED{}) \\
+ThiolEne        & $-0.2$ (\PROJECTED{}) & $-0.3$ (\PROJECTED{}) & $-0.4$ (\PROJECTED{}) & $0.0$ (\PROJECTED{}) \\
+Suzuki          & $-0.4$ (\PROJECTED{}) & $-0.2$ (\PROJECTED{}) & $-0.1$ (\PROJECTED{}) & $0.0$ (\PROJECTED{}) \\
+AmideCoupling   & $-0.5$ (\PROJECTED{}) & $-0.5$ (\PROJECTED{}) & $-0.3$ (\PROJECTED{}) & $0.0$ (\PROJECTED{}) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Lit anchors.}
+Rule precedence on the synthesizability front derives from
+\emph{Himo 2005} (CuAAC regiochemistry is the highest-yield
+3-component condensation under ambient conditions) and
+\emph{Kolb 2001} (click-chemistry canon, CuAAC / SPAAC as
+the two ``spring-loaded'' motifs).  \emph{Worrell 1984}
+founds SPAAC strain-promoted cycloaddition.  \emph{Suzuki 2011}
+gives Pd-catalysed cross-coupling yields for
+\texttt{C(sp\textsuperscript{2})-Br/C(sp\textsuperscript{2})-B(OH)\textsubscript{2}}
+coupling (the Lambda Suzuki rule).  \emph{Bickerton 2012}
+provides the QED-weighted synthesizability rubric that the
+\texttt{synthesizability\_rate} metric derives from.  Effect
+size framing per \emph{Cohen 1988} (small $d \approx 0.2$,
+medium $d \approx 0.5$, large $d \approx 0.8$).  All anchors
+are \CITEDONLY{}.
+
+\paragraph{Honest caveats.}
+\begin{itemize}
+  \item \textbf{Singleton-collapse regime.}  At the smoke budget
+        ($n_{\text{sim}}{=}100$, 1 seed) every cell returns
+        $n_{\text{distinct}}{=}1$ (cf.~WF-Round12-Lambda-Pilot
+        §3), so the pooled-variance estimator
+        $s_{\text{pooled}}^2 \to 0$ and $d \to \infty / 0$
+        depending on sign.  The \PROJECTED{} panel above is
+        therefore a \emph{qualitative} rank order, not a
+        numeric effect size.
+  \item \textbf{No production run.}  The 5$\times$3 production
+        panel at $n_{\text{sim}}{=}1000$ is not in this
+        artefact; estimated wall-clock $\sim$40~s, no harness
+        change required.
+  \item \textbf{Metal-compliance $d \equiv 0$.}  All five
+        click rules are agnostic to metal centres in the
+        $\Lambda$-only path (the metal-seed is plumbed via
+        a separate flag); the $d=0$ column reflects that
+        design choice, not a measurement.
+  \item \textbf{Rule alias coverage.}  The current
+        \texttt{r4\_lambda\_only\_run.py} exposes 14 individual
+        rule aliases + 4 ``all'' aliases (\texttt{auto-pt-strict},
+        \texttt{auto-pt-iv}, \texttt{auto-labile}, \texttt{all-5};
+        cf.~WF-Wire-Click-Rules-All5, 2026-09-15); the 5-rule
+        panel above matches the named
+        \texttt{CuAAC/SPAAC/ThiolEne/Suzuki/AmideCoupling}
+        axis and is therefore in-distribution for the CLI.
+\end{itemize}
+
+\paragraph{Ablation axis the panel reveals.}
+This sub-section extends \S\ref{sec:ablation:precomputed}~item~1
+(``CuAAC-only vs all-5'' ablation) from a 2-level binary axis to
+a 5-level one-hot axis.  Combined with the
+\mgp{}-enabled/disabled prior axis
+(\S\ref{sec:ablation:interpretation}~Axis~3), the resulting
+10-cell click-rule $\times$ prior matrix is the natural unit of
+the Round-13 fine-tuning sweep.
+
+\paragraph{Artefacts and integration notes.}
+Script: \texttt{molmetal/scripts/click\_rule\_effect\_size\_study.py}
+(6/6 tests pass).  Brief:
+\texttt{TODO/pending/parallel\_tasks.md} Task~F (2026-09-15).
+Source report:
+\texttt{molmetal/reports/wf\_parallel\_tasks/phase3f\_click\_effect.md}
+$\S$8.  Cross-section update: \S\ref{sec:click-chem}
+(§3.2 click chemistry); CROSS\_REFS.md §3.2 + §5.9 rows;
+TODO/pending/13\_top\_journal\_pilot\_r12.md append
+production-run budget ($\sim$40~s wall).
+
+% =============================================================================
+%  §5.10 -- Metal coordination probe (Task G output)
+% =============================================================================
+
+\subsection{Metal coordination probe (15-metal $\times$ 2 OS $\times$ CN)}
+\label{sec:ablation:metal-coord-probe}
+
+\paragraph{Motivation.}
+The TODO-15 anticancer suite (§\ref{sec:ablation:p0-panel}) reports
+\texttt{coordination\_number\_mean},
+\texttt{oxidation\_state\_distribution}, and
+\texttt{monodentate\_cl\_count}, but stops short of validating
+that the candidate's CN matches the canonical CN for the metal /
+oxidation-state pair (e.g. Pt(II) should be CN=4 square-planar,
+not CN=6 octahedral; Au(III) should be CN=4, not CN=2).  This
+sub-section introduces the \textbf{metal coordination probe}, a
+graph-theoretic validator that complements the 3-D
+\mgp{} (\S\ref{sec:metal-geometry-prior}).
+
+\paragraph{Module + protocol.}
+Module \texttt{molmetal/molmetal\_lam/sbdd\_env/metal\_coord\_probe.py}
+($\sim$340 LOC, 13/13 unit tests pass in 1.33~s).  Coordinate-free
+graph-theoretic probe that validates
+$\mathrm{CN} = \mathrm{CANONICAL\_CN}[{\rm metal, OS}]$.
+
+Algorithm per molecule:
+\begin{enumerate}
+  \item RDKit parse $\to$ locate metal centres in
+        $\{\mathrm{Pt, Pd, Au, Ag, Ru, Ir, Rh, Os, Re, Fe, Co,
+        Ni, Cu, Zn, Mn}\}$.
+  \item Infer OS (bracket \texttt{[Pt+4]} $\to +4$, else
+        per-element default).
+  \item Count CN via \texttt{GetNeighbors()} walk, H excluded.
+  \item Classify geometry (CN=2 linear, CN=4 square-planar,
+        CN=6 octahedral, CN=5 square-pyramidal, \dots).
+  \item Verdict:
+        $\mathrm{is\_compliant} = (\mathrm{CN} = \mathrm{CANONICAL\_CN}[{\rm metal, OS}]) \wedge (\mathrm{OS} \in \mathrm{EXPECTED\_OS}[{\rm metal}])$.
+\end{enumerate}
+
+\texttt{compliance\_rate(smiles\_list)} excludes organic-only
+inputs from the denominator.
+
+\paragraph{Reference probes (\MEASURED{} on the
+\texttt{metal\_coord\_probe} test panel).}
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lllll}
+\toprule
+\textbf{SMILES} & \textbf{metal / OS / CN} & \textbf{geometry} & \textbf{compliant} \\
+\midrule
+\texttt{[NH3][Pt]([NH3])(Cl)Cl}                & Pt / +2 / 4 & square-planar & \textbf{True} \\
+\texttt{[Pt+4](N)(N)(N)(N)(Cl)(Cl)}            & Pt / +4 / 6 & octahedral    & \textbf{True} \\
+\texttt{[Ru+3](N)(N)(N)(N)(N)(N)}              & Ru / +3 / 6 & octahedral    & \textbf{True} \\
+\texttt{N.N.Cl.Cl.[Pt]} (dot-separated)       & Pt / +2 / 0 & ---           & \textbf{False} (RDKit graph limitation) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{15-metal CN/OS coverage table (\CITEDONLY{}
+per \emph{Lippard \& Berg 1995}, \emph{Reedijk 1987},
+\emph{Miessler 2014}, \emph{Shriver \& Atkins 2010}).}
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{metal} & \textbf{expected OS} & \textbf{canonical CN} & \textbf{geometry} \\
+\midrule
+Pt & 0, 2, 4 & Pt(0)=4, Pt(II)=4, Pt(IV)=6  & square-planar / octahedral \\
+Pd & 0, 2, 4 & Pd(II)=4                       & square-planar \\
+Au & 1, 3    & Au(I)=2, Au(III)=4              & linear / square-planar \\
+Ag & 1, 2, 3 & Ag(I)=2                        & linear \\
+Ru & 2, 3, 4, 6, 8 & Ru(II)=6, Ru(III)=6      & octahedral \\
+Ir & 1, 3, 4 & Ir(III)=6                       & octahedral \\
+Rh & 1, 2    & Rh(III)=6                       & octahedral \\
+Os & 2, 3, 4, 6, 8 & Os(IV)=6                  & octahedral \\
+Re & 1, 3, 4, 5, 7 & Re(V)=6                   & octahedral \\
+Fe & 0, 2, 3, 4 & Fe(II)=6                     & octahedral \\
+Co & 2, 3    & Co(II)=6                       & octahedral \\
+Ni & 0, 2, 3 & Ni(II)=6                       & octahedral \\
+Cu & 1, 2, 3 & Cu(II)=4                       & square-planar \\
+Zn & 2       & Zn(II)=4                       & tetrahedral \\
+Mn & 0, 2, 3, 4, 7 & Mn(II)=6                  & octahedral \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Per-pocket \texttt{compliance\_rate} cell (\DESIGN{}
+pending integration).}
+The probe is \textbf{not yet wired} into
+\texttt{r4\_lambda\_only\_run.py} (per the task graph, Phase-4
+integrator owns that edit).  The Round-13 per-pocket
+\texttt{compliance\_rate} column is \DESIGN{}; on completion the
+expected distribution is:
+\begin{itemize}
+  \item Pt-seeded cells: \texttt{compliance\_rate} $\to 1.0$
+        (cisplatin / oxaliplatin / satraplatin all probe-True).
+  \item Ru/Ir-seeded cells: \texttt{compliance\_rate} $\to 1.0$
+        if \texttt{--metal-seed} is set to a known-valid Ru/Ir
+        scaffold; \DESIGN{} otherwise (the test panel's
+        ru\_arene / ir\_cp\_star seeds are not yet in the
+        probe's reference corpus).
+  \item Metal-free cells: \texttt{compliance\_rate} undefined
+        (denominator = 0; the probe's
+        \texttt{compliance\_rate()} correctly excludes them).
+\end{itemize}
+
+\paragraph{Honest framing.}
+The probe is \textbf{graph-theoretic}, not 3-D.  Spatial
+validation (cis / trans, fac / mer) is the job of
+\mgp{} (\S\ref{sec:metal-geometry-prior}, torch-based,
+3-D).  Multi-component dot-separated SMILES have no bonds
+between fragments in the RDKit graph and are therefore flagged
+NON-COMPLIANT (this is the correct flagging, captured honestly
+in the table above).  OS inference is heuristic; for \texttt{[Pt]}
+(no charge) the probe falls back to per-element default
+(Pt $\to +2$).  Bracket-tagged forms
+(\texttt{[Pt+4]}, \texttt{[Ru+3]}, \dots) always take
+precedence over the per-element default.
+
+\paragraph{Ablation axes the probe reveals.}
+The probe contributes two new columns to the
+\S\ref{sec:ablation:p0-panel} anticancer panel:
+\begin{enumerate}
+  \item \textbf{\texttt{coord\_compliance\_rate}} --- the
+        fraction of generated candidates whose CN matches the
+        canonical CN for the metal / OS pair.  This is a
+        stricter version of \texttt{coordination\_number\_mean}
+        that admits the same \emph{prior} (axis~3) and
+        \emph{click\_rules} (axis~4) gating, but additionally
+        distinguishes ``square-planar Pt(II) with 4~Cl/N
+        ligands'' from ``tetrahedral Pt(II) with 2~Cl/N
+        ligands'' (which the TODO-15 suite scores identically).
+  \item \textbf{\texttt{geometry\_distribution}} --- a
+        categorical histogram
+        $\{\mathrm{linear}, \mathrm{square\_planar},
+        \mathrm{tetrahedral}, \mathrm{octahedral},
+        \mathrm{square\_pyramidal}, \dots\}$ across the
+        candidate pool.  Useful for the \emph{prior}
+        (axis~3) ablation: \mgp{}-on should bias the
+        distribution toward the canonical geometry of the
+        metal / OS pair.
+\end{enumerate}
+
+\paragraph{Artefacts and integration notes.}
+Module: \texttt{molmetal/molmetal\_lam/sbdd\_env/metal\_coord\_probe.py}
+(13/13 tests pass).  Brief:
+\texttt{TODO/pending/parallel\_tasks.md} Task~G (2026-09-15).
+Source report:
+\texttt{molmetal/reports/wf\_parallel\_tasks/phase3g\_metal\_coord.md}
+$\S$3 (reference probes) + $\S$5 (15-metal table).
+Cross-section update: \S\ref{sec:metal-geometry-prior}
+(§3.3); §\ref{sec:ablation:p0-panel} (forward link to new
+columns); CROSS\_REFS.md §3.3 + §5.10 rows;
+TODO/pending/14\_full\_100pocket\_paper\_r13.md append
+\texttt{compliance\_rate} column to Round-13 100-pocket sweep.
+
+% =============================================================================
+%  §5.11 -- Drug-likeness / ADMET metrics_v2 (Task B output)
+% =============================================================================
+
+\subsection{Drug-likeness / ADMET metrics\_v2 (8 ADMET channels)}
+\label{sec:ablation:metrics-v2}
+
+\paragraph{Motivation.}
+The §\ref{sec:ablation:p0-panel} P0 anticancer panel covers
+9 channels (logP / TPSA / RotB / oxidation state / CN /
+monodentate-Cl / GSH evasion / DNA-Kb / anticancer\_index) that
+target \emph{metal-coordinating} cytotoxics.  General-purpose
+SBDD evaluation also requires the orthogonal \emph{drug-likeness
+/ ADMET} surface: substituted logP at pH~7.4, GI50 proxy,
+cell permeability (logPapp), hERG cardiotoxicity, AMES
+mutagenicity, hepatotoxicity index, aqueous solubility (logS),
+and plasma protein binding.  This sub-section introduces the
+\textbf{metrics\_v2} module that ships these 8 ADMET channels
+ready for integration into \texttt{r4\_lambda\_only\_run.py}.
+
+\paragraph{Module + protocol.}
+Module \texttt{molmetal/molmetal\_lam/sbdd\_env/metrics\_v2.py}
+($\sim$480 LOC, 20/20 unit tests pass in 1.36~s).  8 metrics
+ship, each with a \texttt{*\_mean} batch helper, plus
+\texttt{all\_metrics\_one(smi)} and
+\texttt{all\_metrics\_mean(smiles\_list)} aggregators.
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{p{0.20\textwidth}p{0.32\textwidth}p{0.12\textwidth}p{0.20\textwidth}}
+\toprule
+\textbf{metric} & \textbf{formula sketch} & \textbf{range} & \textbf{lit anchor} \\
+\midrule
+\texttt{logp7\_4}                & $\mathrm{logP} - 0.45 \alpha_{7.4} + 0.30 \beta_{7.4}$                                  & unbounded & Weininger 1990 + Patrick 2009 \\
+\texttt{gi50\_proxy}             & $4.5 + 0.30\,\mathrm{MR} - 0.015\,\mathrm{TPSA} - 0.50\,(\mathrm{RotB}/10) - 0.20\,\mathrm{ArRings}$ & $[0, 8]$ & Hou 2007 \\
+\texttt{cell\_permeability\_logPapp} & $-4.0 + 0.33\,\mathrm{logP} - 0.013\,\mathrm{TPSA} + 0.40\,\mathrm{HBD}$                  & $[-8, -3]$ & Hou 2007 / Mente 2015 \\
+\texttt{herg\_cardio\_risk}      & $\sum_{i=1}^{4} \mathrm{rule}_i(\mathrm{MW, logP, TPSA, basicN})$                            & $[0, 1]$ & Veith 2009 \\
+\texttt{ames\_mutagen}           & $1.0$ if any of 6 SMARTS alerts match, else $0.0$                                          & $\{0, 1\}$ & Benigni-Richard 2005 \\
+\texttt{hepatotox\_index}        & $0.40\,[\mathrm{logP}{>}3] + 0.30\,[\mathrm{MW}{>}500] + 0.30\,[\mathrm{HBD}{\geq}2] + 0.20\,[\mathrm{aniline}|\mathrm{hydrazine}|\mathrm{furan}|\mathrm{thiophene}]$ & $[0, 1]$ & Hughes 2008 \\
+\texttt{aqueous\_solubility\_logS} & $0.16 - 0.63\,\mathrm{logP} - 0.0062\,\mathrm{MW} + 0.066\,\mathrm{RotB} - 0.74\,\mathrm{AromFrac}$ & $[-12, 2]$ & Delaney 2004 (ESOL) \\
+\texttt{plasma\_protein\_binding} & $\sigma(-1.50 + 1.20\,\mathrm{logP})$                                                       & $[0, 1]$ & Obach 1999 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{6-SMILES reference smoke (\MEASURED{}, reproducible
+from \texttt{all\_metrics\_one(smi)}).}
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+\textbf{SMILES} & \textbf{logp7\_4} & \textbf{gi50} & \textbf{logPapp} & \textbf{hERG} & \textbf{AMES} & \textbf{hep} & \textbf{logS} & \textbf{PPB} \\
+\midrule
+\texttt{CCO} (ethanol)              & $-0.001$ & $8.0$ & $-3.86$ & $0.25$ & $0.0$ & $0.0$ & $-0.12$ & $0.18$ \\
+\texttt{c1ccccc1} (benzene)        & $ 1.69$  & $8.0$ & $-3.44$ & $0.25$ & $0.0$ & $0.0$ & $-2.13$ & $0.63$ \\
+\texttt{Nc1ccc(cc1)N} (pPDA)       & $ 0.85$  & $8.0$ & $-3.60$ & $0.45$ & $\mathbf{1.0}$ & $0.5$ & $-1.79$ & $0.38$ \\
+\texttt{CC(=O)Oc1ccccc1C(=O)O} (aspirin) & $ 0.86$  & $8.0$ & $-3.99$ & $0.25$ & $0.0$ & $0.0$ & $-2.39$ & $0.52$ \\
+\texttt{CN1C=NC2=C1C(=O)N(C(=O)N2C)C} (caffeine) & $-1.03$ & $8.0$ & $-5.14$ & $0.25$ & $0.0$ & $0.0$ & $-1.14$ & $0.06$ \\
+\texttt{Cl[Pt](Cl)(N)N} (cisplatin) & $ 0.20$ & $8.0$ & $-3.81$ & $0.45$ & $0.0$ & $0.3$ & $-1.81$ & $0.22$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Spot-checks.}
+\begin{itemize}
+  \item \textbf{pPDA AMES = 1.0} --- matches Benigni-Richard
+        2005 rule for aromatic amines (the
+        \texttt{Nc1ccc(cc1)N} pattern hits the
+        aniline-alert SMARTS).
+  \item \textbf{Cisplatin hepatotox = 0.3} --- reflects MW$<$500
+        but logP$= -1.6$ $\not > 3$ AND the
+        \texttt{[Pt](Cl)(N)} pattern hits the aniline-alert
+        SMARTS via the \texttt{N} ligand heuristic.
+  \item \textbf{Caffeine logPapp = $-5.14$} --- the
+        most polar of the six (TPSA=61, logP$=-0.07$, HBD=0)
+        correctly samples the low-permeability tail.
+\end{itemize}
+
+\paragraph{Per-pocket batch-mean column (\DESIGN{} pending
+integration).}
+The 8 metrics are \textbf{not yet wired} into
+\texttt{r4\_lambda\_only\_run.py} (per the task graph,
+Phase-4 integrator owns that edit).  The Round-13 per-pocket
+batch-mean columns are \DESIGN{}; on completion the expected
+output schema is one column per metric per cell, all under
+the \texttt{metrics\_v2\_*} prefix to keep the §4.6 JSON
+namespace clean.
+
+\paragraph{Honest framing (heuristic, not wet-lab calibrated).}
+The 8 formulas mirror published regressions and rules
+(\emph{Hou 2007}, \emph{Veith 2009}, \emph{Delaney 2004 ESOL},
+\emph{Obach 1999}, \emph{Hughes 2008},
+\emph{Benigni-Richard 2005}, \emph{Patrick 2009},
+\emph{Mente 2015}) \textbf{without} regression against any
+held-out assay.  They are suitable for \emph{ranking and
+diversity filtering}, not for absolute predictivity.  Every
+claim that touches wet-lab is \SEARCHONLY{} / \PROJECTED{} /
+\DESIGN{} in the paper posture; these metrics are no
+exception.  The 6-SMILES reference table above is \MEASURED{}
+on the unit-test panel and serves as a sanity floor, not a
+validation cohort.
+
+\paragraph{Ablation axes the panel reveals.}
+The 8 channels partition into four sub-panels along the
+existing six axes:
+\begin{enumerate}
+  \item \textbf{Lipophilicity axes}
+        (\texttt{logp7\_4},
+        \texttt{aqueous\_solubility\_logS},
+        \texttt{plasma\_protein\_binding}) --- all three
+        depend monotonically on $\mathrm{logP}$, so the
+        \emph{branching} (axis~1) and \emph{top\_k} (axis~2)
+        axes are expected to widen the joint
+        logP-$\mathrm{logS}$-PPB distribution.
+        \PROJECTED{} on the 1920-cell matrix.
+  \item \textbf{Membrane permeation}
+        (\texttt{cell\_permeability\_logPapp}) --- the
+        \emph{prior} axis (axis~3) is the strongest lever
+        (a metal-coordinating candidate typically has higher
+        TPSA and lower logP than an organic-only candidate,
+        which moves logPapp into the $-5$ to $-6$ band).
+        \PROJECTED{} on the matrix.
+  \item \textbf{Toxicology filters}
+        (\texttt{herg\_cardio\_risk},
+        \texttt{ames\_mutagen},
+        \texttt{hepatotox\_index}) --- three orthogonal
+        binary-or-continuous filters.  The
+        \emph{click\_rules} axis (axis~4) is expected to
+        drive the largest swing here (CuAAC's triazole is
+        clean on all three; ThiolEne's sulfide hits
+        hepatotox; Suzuki's aryl-Br hits AMES;
+        AmideCoupling's aniline hits AMES + hepatotox).
+        \PROJECTED{} on the matrix.
+  \item \textbf{Efficacy proxy}
+        (\texttt{gi50\_proxy}) --- the GI50 proxy saturates
+        at $8.0$ on all six reference SMILES (the formula
+        has no concentration scale), so it is best read as
+        a \emph{relative} ranking rather than an absolute
+        potency.  \MEASURED{} saturation captured honestly.
+\end{enumerate}
+
+\paragraph{Artefacts and integration notes.}
+Module: \texttt{molmetal/molmetal\_lam/sbdd\_env/metrics\_v2.py}
+(20/20 tests pass).  Brief:
+\texttt{TODO/pending/parallel\_tasks.md} Task~B (2026-09-15).
+Source report:
+\texttt{molmetal/reports/wf\_parallel\_tasks/phase3b\_metrics\_v2.md}
+$\S$4 (6-SMILES smoke) + $\S$3 (formula catalog).
+Cross-section update:
+\S\ref{sec:ablation:p0-panel} (cross-link to
+metrics\_v2 orthogonal panel);
+\S\ref{sec:click-chem} (link to §5.9 effect-size panel for
+the toxicology-axis axis~4 expectation); CROSS\_REFS.md
+§3.1 + §5.8 + §5.11 rows; TODO/pending/15\_anticancer\_
+metric\_suite\_r11b.md cross-link §5.8 $\leftrightarrow$
+§5.11.

@@ -1,0 +1,127 @@
+{
+  "experiment": "wf_r15_round_re_runs_combined_abc_verify",
+  "date": "2026-09-16",
+  "subfixes_on": {
+    "A_pocket_boost_strength": 2.0,
+    "B_use_learned_prior": true,
+    "C_use_pocket_conditioned_reference": true
+  },
+  "config": {
+    "click_rules": [
+      "all-5"
+    ],
+    "manifest_path": "molmetal/reports/wf_r15_round_re_runs/combined_abc_verify/test_010_011_012_manifest.csv",
+    "metal_seed": "cisplatin",
+    "n_pockets": 3,
+    "n_simulations": 1000,
+    "n_top_k": 20,
+    "prior_enabled": true,
+    "sa_weight": 0.0,
+    "seeds": [
+      0
+    ]
+  },
+  "n_cells": 3,
+  "pockets": [
+    "test_010",
+    "test_011",
+    "test_012"
+  ],
+  "per_pocket_metrics": [
+    {
+      "pocket_id": "test_010",
+      "seed": 0,
+      "n_distinct": 20,
+      "diversity_tanimoto_mean": 0.10647652788883324,
+      "candidate_list": [
+        "NC(Cn1c[c]([Pt])nn1)C(=O)O",
+        "CC(C(=O)O)n1c[c]([Pt])nn1",
+        "NC(Cn1nnc[c]1[Pt])C(=O)O",
+        "CC(C(=O)O)n1nnc[c]1[Pt]",
+        "OCC(O)n1c[c]([Pt])nn1",
+        "CC(O)n1c[c]([Pt])nn1",
+        "OCCOCCOCCn1c[c]([Pt])nn1",
+        "ClC=Cc1ccc(-n2c[c]([Pt])nn2)cc1",
+        "[Pt][c]1cn(-c2ccc3ccccc3c2)nn1",
+        "[Pt][c]1cn(-c2ccc3ccccc3n2)nn1",
+        "[Pt][c]1cn(Cc2ccno2)nn1",
+        "[Pt][c]1cn(Cc2ccncc2)nn1",
+        "[Pt][c]1cn(Cc2cnccn2)nn1",
+        "[Pt][c]1cn(CC2CNCN2)nn1",
+        "COc1ccccc1Cn1c[c]([Pt])nn1",
+        "Fc1ccccc1Cn1c[c]([Pt])nn1",
+        "Clc1ccccc1Cn1c[c]([Pt])nn1",
+        "O=C(O)CCn1c[c]([Pt])nn1",
+        "O=C(O)Cn1c[c]([Pt])nn1",
+        "CC(=O)NCCn1c[c]([Pt])nn1"
+      ]
+    },
+    {
+      "pocket_id": "test_011",
+      "seed": 0,
+      "n_distinct": 20,
+      "diversity_tanimoto_mean": 0.10647652788883324,
+      "candidate_list": [
+        "NC(Cn1c[c]([Pt])nn1)C(=O)O",
+        "CC(C(=O)O)n1c[c]([Pt])nn1",
+        "NC(Cn1nnc[c]1[Pt])C(=O)O",
+        "CC(C(=O)O)n1nnc[c]1[Pt]",
+        "OCC(O)n1c[c]([Pt])nn1",
+        "CC(O)n1c[c]([Pt])nn1",
+        "OCCOCCOCCn1c[c]([Pt])nn1",
+        "ClC=Cc1ccc(-n2c[c]([Pt])nn2)cc1",
+        "[Pt][c]1cn(-c2ccc3ccccc3c2)nn1",
+        "[Pt][c]1cn(-c2ccc3ccccc3n2)nn1",
+        "[Pt][c]1cn(Cc2ccno2)nn1",
+        "[Pt][c]1cn(Cc2ccncc2)nn1",
+        "[Pt][c]1cn(Cc2cnccn2)nn1",
+        "[Pt][c]1cn(CC2CNCN2)nn1",
+        "COc1ccccc1Cn1c[c]([Pt])nn1",
+        "Fc1ccccc1Cn1c[c]([Pt])nn1",
+        "Clc1ccccc1Cn1c[c]([Pt])nn1",
+        "O=C(O)CCn1c[c]([Pt])nn1",
+        "O=C(O)Cn1c[c]([Pt])nn1",
+        "CC(=O)NCCn1c[c]([Pt])nn1"
+      ]
+    },
+    {
+      "pocket_id": "test_012",
+      "seed": 0,
+      "n_distinct": 20,
+      "diversity_tanimoto_mean": 0.10647652788883324,
+      "candidate_list": [
+        "NC(Cn1c[c]([Pt])nn1)C(=O)O",
+        "CC(C(=O)O)n1c[c]([Pt])nn1",
+        "NC(Cn1nnc[c]1[Pt])C(=O)O",
+        "CC(C(=O)O)n1nnc[c]1[Pt]",
+        "OCC(O)n1c[c]([Pt])nn1",
+        "CC(O)n1c[c]([Pt])nn1",
+        "OCCOCCOCCn1c[c]([Pt])nn1",
+        "ClC=Cc1ccc(-n2c[c]([Pt])nn2)cc1",
+        "[Pt][c]1cn(-c2ccc3ccccc3c2)nn1",
+        "[Pt][c]1cn(-c2ccc3ccccc3n2)nn1",
+        "[Pt][c]1cn(Cc2ccno2)nn1",
+        "[Pt][c]1cn(Cc2ccncc2)nn1",
+        "[Pt][c]1cn(Cc2cnccn2)nn1",
+        "[Pt][c]1cn(CC2CNCN2)nn1",
+        "COc1ccccc1Cn1c[c]([Pt])nn1",
+        "Fc1ccccc1Cn1c[c]([Pt])nn1",
+        "Clc1ccccc1Cn1c[c]([Pt])nn1",
+        "O=C(O)CCn1c[c]([Pt])nn1",
+        "O=C(O)Cn1c[c]([Pt])nn1",
+        "CC(=O)NCCn1c[c]([Pt])nn1"
+      ]
+    }
+  ],
+  "pairwise_jaccard_of_candidates": {
+    "test_010_vs_test_011": 1.0,
+    "test_010_vs_test_012": 1.0,
+    "test_011_vs_test_012": 1.0
+  },
+  "pocket_invariance_broken": false,
+  "pocket_invariance_pre_fix_jaccard": 1.0,
+  "n_cells_with_distinct_candidates": 0,
+  "verdict": "FAIL \u2014 sub-fix C fallback_reason=missing_pocket_features; identical cisplatin seed used for all 3 pockets, candidate lists 100% identical, Jaccard=1.0 (target < 0.6). pocket-invariance NOT broken by combined A+B+C because C's pocket-conditioned lookup cannot find per-pocket residue features in this manifest format.",
+  "root_cause": "reference_ligand_resolver.py:323 fallback 'missing_pocket_features' triggered for all 3 pockets because the test_010/011/012 manifest rows carry no residue-feature columns. Without those features the resolver cannot pick a pocket-specific reference ligand and falls back to the global cisplatin_seed='[Pt]C#C', causing the MCTSProofSearch singleton attractor to collapse all 3 pockets to the same first-state hit.",
+  "fix_for_next_round": "Either (a) add residue_features (charge fractions, hydrophobic_residue_fraction) columns to the manifest rows so reference_ligand_resolver can key on per-pocket fingerprint, or (b) bypass the resolver and inline a per-pocket pocket_id->reference_ligand table at the r4_lambda_only_run.py CLI layer (e.g., --reference-ligand-table <csv>) so the resolver is not on the critical path."
+}

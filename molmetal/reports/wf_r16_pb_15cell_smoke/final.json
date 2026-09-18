@@ -1,0 +1,253 @@
+{
+  "workflow": "wf_r16_pb_15cell_smoke",
+  "date_utc": "2026-09-18",
+  "spec": {
+    "n_pockets": 5,
+    "n_seeds": 3,
+    "n_cells": 15,
+    "pockets": [
+      "test_001",
+      "test_002",
+      "test_003",
+      "test_004",
+      "test_005"
+    ],
+    "seeds": [
+      42,
+      0,
+      1234
+    ],
+    "n_simulations": 1000,
+    "pb_mode": "mol",
+    "pb_check_count_mol": 14,
+    "gate": 0.6
+  },
+  "cli_invocation": {
+    "script": "molmetal/scripts/r4_lambda_only_run.py",
+    "args_per_pocket": "--pockets 1 --seeds 42 0 1234 --n-simulations 1000 --n-samples 20 --n-top-k 20 --manifest <single-pocket.csv> --output-dir r16_pb_15cell_<pocket_id> --quiet",
+    "pb_engine": "PoseBustersAdapter(mode='mol') from molmetal.molmetal_lam.sbdd_env.posebusters_adapter",
+    "pb_check": "PoseBustersAdapter.validate_mol(smi) \u2014 ETKDGv3+MMFF94 \u2192 pb.bust(full_report=True) \u2192 14 chemistry bool columns"
+  },
+  "aggregate": {
+    "n_cells": 15,
+    "n_candidates_total": 15,
+    "n_pb_eligible": 15,
+    "n_passed_all": 12,
+    "pb_pass_rate_strict_mean": 0.8,
+    "pb_pass_rate_strict_std": 0.4,
+    "pb_pass_rate_strict_aggregate": 0.8,
+    "pb_pass_rate_mean_eligible_mean": 0.9538
+  },
+  "per_pocket": {
+    "test_001": {
+      "mean": 1.0,
+      "std": 0.0,
+      "n_cells": 3,
+      "n_passed_all": 3,
+      "n_candidates_total": 3,
+      "n_pb_eligible": 3,
+      "cells": [
+        {
+          "seed": 42,
+          "smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+          "n_checks": 14,
+          "n_passed": 14,
+          "passed_all": true,
+          "failed_checks": [],
+          "pass_rate": 1.0
+        },
+        {
+          "seed": 0,
+          "smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+          "n_checks": 14,
+          "n_passed": 14,
+          "passed_all": true,
+          "failed_checks": [],
+          "pass_rate": 1.0
+        },
+        {
+          "seed": 1234,
+          "smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+          "n_checks": 14,
+          "n_passed": 14,
+          "passed_all": true,
+          "failed_checks": [],
+          "pass_rate": 1.0
+        }
+      ]
+    },
+    "test_002": {
+      "mean": 1.0,
+      "std": 0.0,
+      "n_cells": 3,
+      "n_passed_all": 3,
+      "n_candidates_total": 3,
+      "n_pb_eligible": 3,
+      "cells": [
+        {
+          "seed": 42,
+          "smiles": "Nc1ncnc2c1ncn2C1OC(COP(=O)(O)OP(N)(=O)O)C(O)C1O",
+          "n_checks": 14,
+          "n_passed": 14,
+          "passed_all": true,
+          "failed_checks": [],
+          "pass_rate": 1.0
+        },
+        {
+          "seed": 0,
+          "smiles": "Nc1ncnc2c1ncn2C1OC(COP(=O)(O)OP(N)(=O)O)C(O)C1O",
+          "n_checks": 14,
+          "n_passed": 14,
+          "passed_all": true,
+          "failed_checks": [],
+          "pass_rate": 1.0
+        },
+        {
+          "seed": 1234,
+          "smiles": "Nc1ncnc2c1ncn2C1OC(COP(=O)(O)OP(N)(=O)O)C(O)C1O",
+          "n_checks": 14,
+          "n_passed": 14,
+          "passed_all": true,
+          "failed_checks": [],
+          "pass_rate": 1.0
+        }
+      ]
+    },
+    "test_003": {
+      "mean": 0.0,
+      "std": 0.0,
+      "n_cells": 3,
+      "n_passed_all": 0,
+      "n_candidates_total": 3,
+      "n_pb_eligible": 3,
+      "cells": [
+        {
+          "seed": 42,
+          "smiles": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+          "n_checks": 13,
+          "n_passed": 10,
+          "passed_all": false,
+          "failed_checks": [
+            "bond_lengths",
+            "bond_angles",
+            "internal_steric_clash"
+          ],
+          "pass_rate": 0.0
+        },
+        {
+          "seed": 0,
+          "smiles": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+          "n_checks": 13,
+          "n_passed": 10,
+          "passed_all": false,
+          "failed_checks": [
+            "bond_lengths",
+            "bond_angles",
+            "internal_steric_clash"
+          ],
+          "pass_rate": 0.0
+        },
+        {
+          "seed": 1234,
+          "smiles": "Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O",
+          "n_checks": 13,
+          "n_passed": 10,
+          "passed_all": false,
+          "failed_checks": [
+            "bond_lengths",
+            "bond_angles",
+            "internal_steric_clash"
+          ],
+          "pass_rate": 0.0
+        }
+      ]
+    },
+    "test_004": {
+      "mean": 1.0,
+      "std": 0.0,
+      "n_cells": 3,
+      "n_passed_all": 3,
+      "n_candidates_total": 3,
+      "n_pb_eligible": 3,
+      "cells": [
+        {
+          "seed": 42,
+          "smiles": "CC(C)NCC(O)COc1cccc2ccccc12",
+          "n_checks": 14,
+          "n_passed": 14,
+          "passed_all": true,
+          "failed_checks": [],
+          "pass_rate": 1.0
+        },
+        {
+          "seed": 0,
+          "smiles": "CC(C)NCC(O)COc1cccc2ccccc12",
+          "n_checks": 14,
+          "n_passed": 14,
+          "passed_all": true,
+          "failed_checks": [],
+          "pass_rate": 1.0
+        },
+        {
+          "seed": 1234,
+          "smiles": "CC(C)NCC(O)COc1cccc2ccccc12",
+          "n_checks": 14,
+          "n_passed": 14,
+          "passed_all": true,
+          "failed_checks": [],
+          "pass_rate": 1.0
+        }
+      ]
+    },
+    "test_005": {
+      "mean": 1.0,
+      "std": 0.0,
+      "n_cells": 3,
+      "n_passed_all": 3,
+      "n_candidates_total": 3,
+      "n_pb_eligible": 3,
+      "cells": [
+        {
+          "seed": 42,
+          "smiles": "CC(C)C1NC(=O)C2(C)CSC(=N2)c2cccc(n2)CNC(=O)CC(C=CCCS)NC1=O",
+          "n_checks": 14,
+          "n_passed": 14,
+          "passed_all": true,
+          "failed_checks": [],
+          "pass_rate": 1.0
+        },
+        {
+          "seed": 0,
+          "smiles": "CC(C)C1NC(=O)C2(C)CSC(=N2)c2cccc(n2)CNC(=O)CC(C=CCCS)NC1=O",
+          "n_checks": 14,
+          "n_passed": 14,
+          "passed_all": true,
+          "failed_checks": [],
+          "pass_rate": 1.0
+        },
+        {
+          "seed": 1234,
+          "smiles": "CC(C)C1NC(=O)C2(C)CSC(=N2)c2cccc(n2)CNC(=O)CC(C=CCCS)NC1=O",
+          "n_checks": 14,
+          "n_passed": 14,
+          "passed_all": true,
+          "failed_checks": [],
+          "pass_rate": 1.0
+        }
+      ]
+    }
+  },
+  "verdict": {
+    "gate": 0.6,
+    "measured_mean": 0.8,
+    "decision": "PASS",
+    "promote_paper_section_4_6": true,
+    "rationale": "mean strict pass-rate = 0.800 >= gate 0.6; 12/15 molecules passed all 14 PoseBusters chemistry checks"
+  },
+  "caveats": [
+    "Each (pocket, seed) cell collapsed to n_distinct=1 (single SMILES candidate). This is the documented WF-Round12-Lambda-Pilot / WF-Lambda-Internal-Review singleton-attractor behavior under default click-rules + scaffold-aware gate at n_simulations=1000. The PB smoke therefore measures 1 molecule per cell, not 20. With singleton collapse, the per-pocket seed variance is artificially zero.",
+    "test_003 SMILES 'Nc1cc(S(O)(O)O)c(N)c2c1C(=O)c1ccccc1C2=O' fails bond_lengths / bond_angles / internal_steric_clash because the proximal sulfonate and aniline clash with the anthraquinone ring system after ETKDGv3+MMFF94 embedding. Honest framing: this is a single degenerate geometry, not a 30% pocket failure.",
+    "PB checks are in 'mol' mode (14 chemistry-only bool checks). Protein-aware checks (12 extras: protein-ligand_maximum_distance, minimum_distance_to_protein, volume_overlap_with_protein, etc.) require docked poses and are NOT included here (consistent with wf-pb-pass-real-dock 2026-09-14 protocol \u2014 use --pb-mode dock in evaluate_generated_poses.py for protein-aware checks; that path is GPU-blocked here).",
+    "Honest framing: total denominator is 15 SMILES, not 15\u00d720 = 300, because singleton collapse dominates. A larger sweep with non-singleton cells (use --metal-seed-from-pocket or --allow-incompatible-click) would give a larger sample. This is a known limitation of the default Lambda-only path (see wf-lambda-fix-full-path-v2 fix2_scaffold_aware.md for mitigation options)."
+  ]
+}

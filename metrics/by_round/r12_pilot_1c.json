@@ -1,0 +1,20 @@
+{
+  "round": "R12",
+  "workflow": "wf_lambda1c_pilot_v3",
+  "date_utc": "2026-09-13",
+  "config": {
+    "n_pockets": 5,
+    "n_seeds": 3,
+    "metal_seed_ablation": "cisplatin vs none"
+  },
+  "aggregate_metrics": {
+    "metal_compliance_with_cisplatin_seed": 1.0,
+    "metal_compliance_without_seed": 0.0,
+    "ablation_delta": "1.0 (controlled — mechanically from root-only vs free)"
+  },
+  "verdict": {
+    "status": "CONTROL_VERIFIED",
+    "summary": "metal_compliance_rate is mechanically driven by metal-seed, NOT learned. 1.0 with cisplatin seed, 0.0 without. Honest framing — NOT a 'learned' metric."
+  },
+  "source": "molmetal/reports/wf_lambda1c_pilot_v3/final.md"
+}
