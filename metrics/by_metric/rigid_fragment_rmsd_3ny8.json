@@ -1,0 +1,38 @@
+{
+  "metric": "rigid_fragment_rmsd",
+  "description": "Rigid fragment RMSD: self-RMSD between two ETKDGv3 + UFF-optimised conformers of the same molecule (deterministic seed). A near-zero value indicates a rigid molecule that embeds reproducibly; high values indicate flexible molecules with multiple minima.",
+  "unit": "Angstroms (mean +/- std across pool)",
+  "scope": "3D geometry diagnostic for pocket 3ny8",
+  "source": "RDKit AllChem.EmbedMultipleConfs(numConfs=2, randomSeed=42) + UFFOptimizeMolecule + GetBestRMS.",
+  "value": {
+    "mean_A": 1.241,
+    "std_A": 0.626,
+    "median_A": 1.429,
+    "min_A": 0.0,
+    "max_A": 2.246,
+    "n_parsed": 20,
+    "n_failed": 0,
+    "n_smiles": 20,
+    "note": "Self-RMSD between two ETKDGv3 + UFF-optimised conformers with the same random seed (a measure of how rigidly the molecule embeds)."
+  },
+  "pocket": {
+    "name": "3ny8",
+    "pdb_path": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/pdb_3ny8.pdb",
+    "pdbqt_path": "/tmp/receptors_pdbqt/receptor_3ny8.pdbqt",
+    "engine": "AutoDock Vina 1.2.7 (Python binding)",
+    "exhaustiveness": 4,
+    "n_poses": 1,
+    "box_side_A": 24.075514694206618,
+    "co_crystal_ligand_residue": "JRZ",
+    "co_crystal_ligand_n_atoms": 20,
+    "co_crystal_ligand_center_A": [
+      2.2488,
+      4.68495,
+      51.3982
+    ],
+    "seed": 42
+  },
+  "n_samples": 20,
+  "timestamp": "2026-09-21",
+  "status": "MEASURED"
+}

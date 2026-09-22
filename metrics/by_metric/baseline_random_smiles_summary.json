@@ -1,0 +1,34 @@
+{
+  "baseline": "random_smiles",
+  "n_samples": 100,
+  "rows": [
+    {
+      "scorer": "ptiv_reduction_potential",
+      "label": "ptiv",
+      "value": 0.3606960714285728,
+      "scored_fraction": 0.14,
+      "n_samples": 100
+    },
+    {
+      "scorer": "coord_geometry_proxy",
+      "label": "coord_compliance",
+      "value": 0.11,
+      "scored_fraction": 0.14,
+      "n_samples": 100
+    },
+    {
+      "scorer": "phototherapy_activity",
+      "label": "phototherapy_active",
+      "value": 0.08072169242534853,
+      "scored_fraction": 0.14,
+      "n_samples": 100
+    },
+    {
+      "scorer": "metalloprotein_affinity",
+      "label": "metalloprotein_affinity",
+      "value": 0.7518007818290826,
+      "scored_fraction": 0.14,
+      "n_samples": 100
+    }
+  ]
+}

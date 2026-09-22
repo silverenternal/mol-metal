@@ -1,0 +1,47 @@
+{
+  "metric": "vina_reference",
+  "description": "Vina reference: co-crystal ligand redocked into the staged pocket \u2014 the binding-affinity floor that any generated molecule must beat to claim a hit (TODO-22 metric #1 denominator).",
+  "unit": "kcal/mol (single best pose; lower = better)",
+  "scope": "pocket-bound docking metric reference floor (TODO-22 metric #1) \u2014 Phase-1B pocket 4rlu",
+  "source": "Co-crystal ligand (HETATM residue HCC, 19 heavy atoms) extracted from PDB 4rlu and redocked at exhaustiveness=8, n_poses=1.",
+  "value": {
+    "score_kcal_mol": -6.373,
+    "smiles": null,
+    "residue": "HCC",
+    "n_atoms": 19,
+    "exhaustiveness": 8,
+    "n_poses": 1,
+    "box_side_A": 25.565100767652446,
+    "box_center_A": [
+      -0.736,
+      22.755473684210525,
+      -31.236894736842107
+    ],
+    "error": null
+  },
+  "pocket": {
+    "name": "4rlu",
+    "pdb_path": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/pdb_4rlu.pdb",
+    "pdbqt_path": "/tmp/receptors_pdbqt/receptor_4rlu.pdbqt",
+    "engine": "AutoDock Vina 1.2.7 (Python binding)",
+    "exhaustiveness": 4,
+    "n_poses": 1,
+    "box_side_A": 25.565100767652446,
+    "co_crystal_ligand_residue": "HCC",
+    "co_crystal_ligand_n_atoms": 19,
+    "co_crystal_ligand_center_A": [
+      -0.736,
+      22.755473684210525,
+      -31.236894736842107
+    ],
+    "seed": 42
+  },
+  "notes": [
+    "Co-crystal ligand (residue HCC) extracted from 4rlu.pdb HETATM lines; coords written to a PDB file and prepared via meeko.mk_prepare_ligand.",
+    "Reference score: -6.373 kcal/mol at exhaustiveness=8, n_poses=1, box center at the ligand heavy-atom centroid + box side = max(20, 2*r+16) A.",
+    "High-affinity / triple-threshold / relaxed-success metrics (#3, #4, #5) are computed against this floor on pocket 4rlu."
+  ],
+  "n_samples": 1,
+  "timestamp": "2026-09-21",
+  "status": "MEASURED"
+}

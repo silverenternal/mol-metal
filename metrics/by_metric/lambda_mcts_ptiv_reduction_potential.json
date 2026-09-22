@@ -1,0 +1,40 @@
+{
+  "metric": "lambda_mcts_ptiv_reduction_potential",
+  "value": {
+    "n": 20,
+    "min": -0.7337225000000008,
+    "max": 0.6375150000000019,
+    "mean": 0.36759150000000135,
+    "median": 0.6033625000000018,
+    "std": 0.44779117283017733,
+    "scored_n": 20,
+    "scored_fraction": 1.0,
+    "per_candidate": {
+      "cand_0000": 0.613080000000002,
+      "cand_0001": 0.6029550000000018,
+      "cand_0002": 0.6139400000000019,
+      "cand_0003": 0.627145000000002,
+      "cand_0004": 0.02999999999999984,
+      "cand_0005": 0.07559999999999993,
+      "cand_0006": -0.3686024999999985,
+      "cand_0007": -0.7337225000000008,
+      "cand_0008": -0.7304650000000008,
+      "cand_0009": 0.5884750000000019,
+      "cand_0010": 0.5895500000000019,
+      "cand_0011": 0.5895500000000019,
+      "cand_0012": 0.6133100000000019,
+      "cand_0013": 0.6375150000000019,
+      "cand_0014": 0.5798750000000011,
+      "cand_0015": 0.6037700000000018,
+      "cand_0016": 0.6037700000000018,
+      "cand_0017": 0.6042450000000019,
+      "cand_0018": 0.6042450000000019,
+      "cand_0019": 0.6075950000000018
+    }
+  },
+  "n_samples": 20,
+  "source": "Lambda MCTS smoke 2026-09-21",
+  "timestamp": "2026-09-21",
+  "computation": "ptiv_reduction_potential \u2014 adapted from cloned precious-metal scoring project. Smiles-only wrapper around the upstream scoring logic; missing dependencies return None.",
+  "context": "Lambda MCTS smoke candidates from report.json (cell pocket=test_000, seed=0, n_simulations=20)"
+}

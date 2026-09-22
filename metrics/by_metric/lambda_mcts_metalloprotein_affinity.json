@@ -1,0 +1,40 @@
+{
+  "metric": "lambda_mcts_metalloprotein_affinity",
+  "value": {
+    "n": 20,
+    "min": 0.7118943942152675,
+    "max": 0.7737927100979065,
+    "mean": 0.7528790558350722,
+    "median": 0.7568432510168804,
+    "std": 0.021288428584873297,
+    "scored_n": 20,
+    "scored_fraction": 1.0,
+    "per_candidate": {
+      "cand_0000": 0.7569201302563904,
+      "cand_0001": 0.7735668749783886,
+      "cand_0002": 0.7571926095452287,
+      "cand_0003": 0.7736365740843557,
+      "cand_0004": 0.7555290529626663,
+      "cand_0005": 0.7639031579612156,
+      "cand_0006": 0.7567663717773705,
+      "cand_0007": 0.7136595781093987,
+      "cand_0008": 0.7118943942152675,
+      "cand_0009": 0.7682029496358852,
+      "cand_0010": 0.7737927100979065,
+      "cand_0011": 0.7678238193981188,
+      "cand_0012": 0.7728535517291703,
+      "cand_0013": 0.7550899813535696,
+      "cand_0014": 0.7482038705667173,
+      "cand_0015": 0.7139980509719039,
+      "cand_0016": 0.7123630278540846,
+      "cand_0017": 0.7706998556235252,
+      "cand_0018": 0.7556022349074243,
+      "cand_0019": 0.7558823206728559
+    }
+  },
+  "n_samples": 20,
+  "source": "Lambda MCTS smoke 2026-09-21",
+  "timestamp": "2026-09-21",
+  "computation": "metalloprotein_affinity \u2014 adapted from cloned precious-metal scoring project (MetalloDock / ZhangHui 2025, MIT). SMILES + descriptor proxy: RandomForestRegressor trained on heuristic metalloprotein-binding target over the molmetal canonical pool. Missing dependencies or non-metal SMILES return None.",
+  "context": "Lambda MCTS smoke candidates from report.json (cell pocket=test_000, seed=0, n_simulations=20)"
+}

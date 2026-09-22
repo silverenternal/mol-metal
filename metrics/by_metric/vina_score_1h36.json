@@ -1,0 +1,57 @@
+{
+  "metric": "vina_score",
+  "description": "Vina Score: mean +/- std AutoDock Vina top-pose kcal/mol across docked molecules per pocket (TargetDiff Table 1 convention; TODO-22 metric #1).",
+  "unit": "kcal/mol (mean +/- std across pool; lower = better)",
+  "scope": "pocket-bound docking metric (TODO-22 metric #1) \u2014 Phase-1B pocket 1h36",
+  "source": "Pool: 100 drug-like SMILES sampled from molmetal/data/metallo_drugs_500_train.csv (metallo complexes filtered out, Vina can't dock them via meeko). Engine: VinaDockingAdapter-equivalent direct Vina API. Receptors prepared with mk_prepare_receptor.py --allow_bad_res --default_altloc A. Exhaustiveness=4 (reduced from 830c reference 8 for time budget). Wall-clock: 35.3 s for 20 mols.",
+  "value": {
+    "mean": -4.4465,
+    "std": 3.8416,
+    "median": -5.264,
+    "min": -6.465,
+    "max": 12.123,
+    "n_docked": 20,
+    "n_valid": 20,
+    "n_failed": 0,
+    "failure_reasons": {}
+  },
+  "scores_per_smiles_first10": {
+    "c1ccc(-c2cn[nH]n2)cc1": -5.515,
+    "CCc1cn(CCO)nn1": -3.984,
+    "OCCc1cn(-c2ccccc2)nn1": -4.819,
+    "CCCc1cn(-c2ccc(F)cc2)nn1": -4.991,
+    "OCCCc1cn(-c2ccc(Cl)cc2)nn1": -5.177,
+    "CCCCc1cn(-c2ccc(O)cc2)nn1": -4.876,
+    "Nc1ccc(-n2cc(Cc3ccccc3)nn2)cc1": -5.77,
+    "O=C(O)c1ccc(-n2cc(Cc3ccc(F)cc3)nn2)cc1": -6.465,
+    "NC(=O)c1ccc(-n2cc(Cc3ccc(O)cc3)nn2)cc1": 12.123,
+    "Nc1ccc(Cc2cn(Cc3ccccc3)nn2)cc1": -5.93
+  },
+  "pocket": {
+    "name": "1h36",
+    "pdb_path": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/pdb_1h36.pdb",
+    "pdbqt_path": "/tmp/receptors_pdbqt/receptor_1h36.pdbqt",
+    "engine": "AutoDock Vina 1.2.7 (Python binding)",
+    "exhaustiveness": 4,
+    "n_poses": 1,
+    "box_side_A": 28.0,
+    "co_crystal_ligand_residue": "R88",
+    "co_crystal_ligand_n_atoms": 25,
+    "co_crystal_ligand_center_A": [
+      65.45251999999999,
+      70.69028,
+      66.85792000000001
+    ],
+    "seed": 42
+  },
+  "candidate_pool": "20 drug-like SMILES \u2014 the pre-shipped 500-mol metallo pool at molmetal/data/metallo_drugs_500_train.csv is 100% metallo complexes (filtered to 0), so the fallback pool of 20 unique 1,4-disubstituted 1,2,3-triazole Lambda click products from molmetal/data/mmp13_real/dock_results.csv is used instead (these are known to dock cleanly with Vina).",
+  "n_samples": 20,
+  "timestamp": "2026-09-21",
+  "status": "MEASURED",
+  "note": "Phase-1B measurement on pocket 1h36. Pool is drug-like sub-sample of the pre-shipped 500-mol pool, not Lambda MCTS products (the MCTS requires CrossDocked2020 extract which is not in this snapshot). Co-crystal reference docked separately at exhaustiveness=8 (see vina_reference_1h36.json).",
+  "reproducibility": {
+    "script": "/tmp/run_pocket_metrics_phase1b.py",
+    "underlying": "vina.Vina (Python binding) + meeko.MoleculePreparation",
+    "receptor_prep": "mk_prepare_receptor.py --read_pdb <pdb> -o <base> -p --allow_bad_res --default_altloc A"
+  }
+}

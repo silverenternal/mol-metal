@@ -1,0 +1,327 @@
+{
+  "metric": "lambda_mcts_coord_geometry_proxy",
+  "value": {
+    "n": 20,
+    "min": 0.0,
+    "max": 0.0,
+    "mean": 0.0,
+    "median": 0.0,
+    "std": 0.0,
+    "compliant_n": 0,
+    "compliant_fraction": 0.0,
+    "scored_n": 20,
+    "by_metal": {
+      "Pt": 20
+    },
+    "by_geometry": {
+      "atypical": 20
+    },
+    "per_candidate": {
+      "cand_0000": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0001": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0002": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0003": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0004": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0005": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0006": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0007": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0008": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0009": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0010": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0011": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0012": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0013": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0014": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0015": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0016": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0017": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0018": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0019": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 1,
+        "geometry": "atypical",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      }
+    }
+  },
+  "n_samples": 20,
+  "source": "Lambda MCTS smoke 2026-09-21",
+  "timestamp": "2026-09-21",
+  "computation": "coord_geometry_proxy \u2014 MetalHawk-inspired SMILES proxy; CN + OS lookup per Miessler 2014 / Lippard-Berg 1994. Missing SMILES return None.",
+  "context": "Lambda MCTS smoke candidates from report.json (cell pocket=test_000, seed=0, n_simulations=20)"
+}

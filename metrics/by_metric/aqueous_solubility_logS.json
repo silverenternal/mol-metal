@@ -1,0 +1,11 @@
+{
+  "metric": "aqueous_solubility_logS",
+  "description": "Aqueous solubility logS via ESOL method (Delaney 2004). Clipped to [-12, 2].",
+  "unit": "logS (mol/L)",
+  "scope": "drug-likeness panel (metrics_v2 Phase-3B)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:aqueous_solubility_logS",
+  "value": -7.612188409757133,
+  "n_samples": 449,
+  "timestamp": "2026-09-18",
+  "data_source": "metallo_drugs_500_train.csv (449 SMILES)"
+}

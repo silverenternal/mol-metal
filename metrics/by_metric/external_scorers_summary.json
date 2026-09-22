@@ -1,0 +1,43 @@
+{
+  "scorers": [
+    {
+      "name": "ptiv_reduction_potential",
+      "source": "molmetal/data/metallo_drugs_500_train.csv",
+      "lambda_mcts_mean": 0.36759150000000135,
+      "pool_mean": 0.49583616197183267,
+      "pt_drug_mean": 0.5960000000000022,
+      "lift": "-0.259"
+    },
+    {
+      "name": "coord_geometry_proxy",
+      "source": "molmetal/data/metallo_drugs_500_train.csv",
+      "lambda_mcts_mean": 0.0,
+      "pool_mean": 0.7746478873239436,
+      "pt_drug_mean": 0.0,
+      "lift": "-1.000"
+    },
+    {
+      "name": "phototherapy_activity",
+      "source": "molmetal/data/metallo_drugs_500_train.csv",
+      "lambda_mcts_mean": 0.1511559300823137,
+      "pool_mean": 0.13939582910733034,
+      "pt_drug_mean": 0.07156090438365936,
+      "lift": "+0.084"
+    },
+    {
+      "name": "metalloprotein_affinity",
+      "source": "molmetal/data/metallo_drugs_500_train.csv",
+      "lambda_mcts_mean": 0.7528790558350722,
+      "pool_mean": 0.7443600476173773,
+      "pt_drug_mean": 0.7467701396304258,
+      "lift": "+0.011"
+    }
+  ],
+  "context": {
+    "lambda_mcts_report": "molmetal/reports/wf_lambda1_/tmp/molmetal_external_scorers_smoke/report.json",
+    "pool_size": 449,
+    "known_pt_drug_size": 8,
+    "timestamp": "2026-09-21",
+    "timestamp_phase4c": "2026-09-21"
+  }
+}

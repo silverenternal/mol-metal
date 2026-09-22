@@ -1,0 +1,28 @@
+{
+  "metric": "steric_clash_pb_dock",
+  "description": "Steric clash: PoseBusters 'dock' mode per-pose clash check between docked ligand and receptor (TODO-22 metric #16).",
+  "unit": "pass-rate (fraction in [0, 1])",
+  "scope": "pocket-bound docking validity metric (TODO-22 metric #16)",
+  "source": "n/a \u2014 no receptor for pocket test_001 (receptors missing) + RDKit/PoseBusters not installed",
+  "value": {
+    "rate": null,
+    "n_passed": null,
+    "n_total": 0,
+    "criteria": "PoseBusters 'dock' mode \u2014 chemistry + protein-ligand clash checks per docked pose"
+  },
+  "pocket": {
+    "name": "test_001",
+    "receptor_pdb": null,
+    "engine": "AutoDock Vina 1.2.7",
+    "exhaustiveness": 8,
+    "n_poses": 5
+  },
+  "notes": [
+    "Pocket test_001 has no receptor \u2014 steric clash check is null on the missing-pocket axis. PoseBusters 'dock' mode also requires RDKit + posebusters which are not installed in this snapshot."
+  ],
+  "n_samples": 0,
+  "timestamp": "2026-09-21",
+  "status": "DEFERRED",
+  "deferred_reason": "deferred_receptors_missing_and_posebusters_unavailable",
+  "deferred_detail": "Receptor missing on disk AND PoseBusters/RDKit not installed; per-pose clash check cannot run."
+}

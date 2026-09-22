@@ -1,0 +1,47 @@
+{
+  "metric": "vina_reference",
+  "description": "Vina reference: co-crystal ligand redocked into the staged pocket \u2014 the binding-affinity floor that any generated molecule must beat to claim a hit (TODO-22 metric #1 denominator).",
+  "unit": "kcal/mol (single best pose; lower = better)",
+  "scope": "pocket-bound docking metric reference floor (TODO-22 metric #1) \u2014 Phase-1B pocket 3eml",
+  "source": "Co-crystal ligand (HETATM residue ZMA, 25 heavy atoms) extracted from PDB 3eml and redocked at exhaustiveness=8, n_poses=1.",
+  "value": {
+    "score_kcal_mol": -7.753,
+    "smiles": null,
+    "residue": "ZMA",
+    "n_atoms": 25,
+    "exhaustiveness": 8,
+    "n_poses": 1,
+    "box_side_A": 28.0,
+    "box_center_A": [
+      -9.06364,
+      -7.1446,
+      55.8626
+    ],
+    "error": null
+  },
+  "pocket": {
+    "name": "3eml",
+    "pdb_path": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/pdb_3eml.pdb",
+    "pdbqt_path": "/tmp/receptors_pdbqt/receptor_3eml.pdbqt",
+    "engine": "AutoDock Vina 1.2.7 (Python binding)",
+    "exhaustiveness": 4,
+    "n_poses": 1,
+    "box_side_A": 28.0,
+    "co_crystal_ligand_residue": "ZMA",
+    "co_crystal_ligand_n_atoms": 25,
+    "co_crystal_ligand_center_A": [
+      -9.06364,
+      -7.1446,
+      55.8626
+    ],
+    "seed": 42
+  },
+  "notes": [
+    "Co-crystal ligand (residue ZMA) extracted from 3eml.pdb HETATM lines; coords written to a PDB file and prepared via meeko.mk_prepare_ligand.",
+    "Reference score: -7.753 kcal/mol at exhaustiveness=8, n_poses=1, box center at the ligand heavy-atom centroid + box side = max(20, 2*r+16) A.",
+    "High-affinity / triple-threshold / relaxed-success metrics (#3, #4, #5) are computed against this floor on pocket 3eml."
+  ],
+  "n_samples": 1,
+  "timestamp": "2026-09-21",
+  "status": "MEASURED"
+}

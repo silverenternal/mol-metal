@@ -1,0 +1,28 @@
+{
+  "metric": "known_pt_drug_metalloprotein_affinity",
+  "value": {
+    "n": 1,
+    "min": 0.7467701396304258,
+    "max": 0.7467701396304258,
+    "mean": 0.7467701396304258,
+    "median": 0.7467701396304258,
+    "std": 0.0,
+    "scored_n": 1,
+    "scored_fraction": 0.125,
+    "per_candidate": {
+      "cand_0000": 0.7467701396304258,
+      "cand_0001": null,
+      "cand_0002": null,
+      "cand_0003": null,
+      "cand_0004": null,
+      "cand_0005": null,
+      "cand_0006": null,
+      "cand_0007": null
+    }
+  },
+  "n_samples": 8,
+  "source": "molmetal/data/known_pt_drugs_smiles.csv",
+  "timestamp": "2026-09-21",
+  "computation": "metalloprotein_affinity \u2014 adapted from cloned precious-metal scoring project (MetalloDock / ZhangHui 2025, MIT). SMILES + descriptor proxy: RandomForestRegressor trained on heuristic metalloprotein-binding target over the molmetal canonical pool. Missing dependencies or non-metal SMILES return None.",
+  "context": "8 known Pt drugs from known_pt_drugs_smiles.csv"
+}

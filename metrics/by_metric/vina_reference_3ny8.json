@@ -1,0 +1,47 @@
+{
+  "metric": "vina_reference",
+  "description": "Vina reference: co-crystal ligand redocked into the staged pocket \u2014 the binding-affinity floor that any generated molecule must beat to claim a hit (TODO-22 metric #1 denominator).",
+  "unit": "kcal/mol (single best pose; lower = better)",
+  "scope": "pocket-bound docking metric reference floor (TODO-22 metric #1) \u2014 Phase-1B pocket 3ny8",
+  "source": "Co-crystal ligand (HETATM residue JRZ, 20 heavy atoms) extracted from PDB 3ny8 and redocked at exhaustiveness=8, n_poses=1.",
+  "value": {
+    "score_kcal_mol": -7.14,
+    "smiles": null,
+    "residue": "JRZ",
+    "n_atoms": 20,
+    "exhaustiveness": 8,
+    "n_poses": 1,
+    "box_side_A": 24.075514694206618,
+    "box_center_A": [
+      2.2488,
+      4.68495,
+      51.3982
+    ],
+    "error": null
+  },
+  "pocket": {
+    "name": "3ny8",
+    "pdb_path": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/pdb_3ny8.pdb",
+    "pdbqt_path": "/tmp/receptors_pdbqt/receptor_3ny8.pdbqt",
+    "engine": "AutoDock Vina 1.2.7 (Python binding)",
+    "exhaustiveness": 4,
+    "n_poses": 1,
+    "box_side_A": 24.075514694206618,
+    "co_crystal_ligand_residue": "JRZ",
+    "co_crystal_ligand_n_atoms": 20,
+    "co_crystal_ligand_center_A": [
+      2.2488,
+      4.68495,
+      51.3982
+    ],
+    "seed": 42
+  },
+  "notes": [
+    "Co-crystal ligand (residue JRZ) extracted from 3ny8.pdb HETATM lines; coords written to a PDB file and prepared via meeko.mk_prepare_ligand.",
+    "Reference score: -7.14 kcal/mol at exhaustiveness=8, n_poses=1, box center at the ligand heavy-atom centroid + box side = max(20, 2*r+16) A.",
+    "High-affinity / triple-threshold / relaxed-success metrics (#3, #4, #5) are computed against this floor on pocket 3ny8."
+  ],
+  "n_samples": 1,
+  "timestamp": "2026-09-21",
+  "status": "MEASURED"
+}

@@ -1,0 +1,50 @@
+{
+  "metric": "vina_min_score",
+  "description": "Vina Min: AutoDock Vina best kcal/mol after UFF-minimisation of the ligand 3D conformer (TargetDiff Table 1 convention; TODO-22 metric #19).",
+  "unit": "kcal/mol (mean +/- std across pool)",
+  "scope": "binding-affinity / docking pool (TODO-22 metric #19)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:vina_min_score + vina_min_pool",
+  "value": {
+    "mean": -4.1579,
+    "std": 0.7622302728761755,
+    "n_docked": 10,
+    "n_total": 10
+  },
+  "scores_per_smiles": {
+    "aspirin": -4.746,
+    "ibuprofen": -4.916,
+    "acetaminophen": -4.802,
+    "caffeine": -4.218,
+    "salicylic_acid": -5.011,
+    "indole": -3.84,
+    "nicotine": -3.518,
+    "biphenyl": -3.974,
+    "ethanol": -2.547,
+    "benzene": -4.007
+  },
+  "pocket": {
+    "name": "830c",
+    "pdb_path": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/830c.pdb",
+    "source": "molmetal/data/mmp13_real/830c.pdb (MMP13, mmp13_real)",
+    "receptor_prep": "mk_prepare_receptor.py --allow_bad_res (meeko 0.8.0)",
+    "engine": "AutoDock Vina 1.2.7 (Python binding)",
+    "exhaustiveness": 2,
+    "n_poses": 1,
+    "box_padding_A": 4.0,
+    "seed": 42
+  },
+  "ligand_prep": {
+    "force_field": "UFF (Universal Force Field, Rappe 1992)",
+    "max_iters": 200,
+    "pdbqt_writer": "meeko.PDBQTWriterLegacy"
+  },
+  "n_samples": 10,
+  "data_source": "Curated 10 organic drug-like SMILES (Lipinski-compliant; aspirin / ibuprofen / acetaminophen / caffeine / salicylic acid / indole / nicotine / biphenyl / ethanol / benzene)",
+  "timestamp": "2026-09-18",
+  "status": "MEASURED",
+  "note": "Vina Min post-UFF on 830c (MMP13) pocket, the only TODO-22 staged receptor available in this snapshot. 1h36 and test_001 are NOT staged on disk (1h36 PDB missing entirely; test_001 manifest points to /mnt/storage/data/... which is not mounted), so they are NOT included in this JSON. The metallo_drugs_500_train.csv (449 SMILES) was attempted first but the Pt/Y/coordination-chemistry SMILES fail at meeko prep (non-finite Gasteiger charges) - those failures are honest negatives for Vina Min and confirm the soft-degrade behaviour (returns None instead of raising). Expanding to N=100x3 on the Round-13 100-pocket cohort is the scaling target.",
+  "receptors_unavailable": {
+    "1h36": "PDB not on disk in this snapshot; TODO-22 plan calls for it as a staged receptor",
+    "test_001": "Manifest points to /mnt/storage/data/... which is not mounted; crossdocked_first10_resolved/test_001 does NOT have a selected_conformer.pdb on disk"
+  }
+}

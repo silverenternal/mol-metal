@@ -1,0 +1,40 @@
+{
+  "metric": "vina_score",
+  "description": "Vina Score: mean +/- std AutoDock Vina top-pose kcal/mol across docked molecules per pocket (TargetDiff Table 1 convention; TODO-22 metric #1).",
+  "unit": "kcal/mol (mean +/- std across pool; lower = better)",
+  "scope": "pocket-bound docking metric (TODO-22 metric #1)",
+  "source": "no dock_results.csv produced for pocket test_001 (receptors missing)",
+  "value": {
+    "mean": null,
+    "std": null,
+    "median": null,
+    "min": null,
+    "max": null,
+    "n_docked": 0,
+    "n_valid": 0,
+    "n_failed": 0
+  },
+  "scores_per_smiles_first10": {},
+  "pocket": {
+    "name": "test_001",
+    "pdb_path": null,
+    "source": "manifest referenced at molmetal/data/test_*_subset_manifest.csv",
+    "receptor_prep": "n/a \u2014 receptors not staged",
+    "engine": "AutoDock Vina 1.2.7",
+    "exhaustiveness": 8,
+    "n_poses": 5,
+    "box_padding_A": 8.0,
+    "pocket_radius_A": 10.0,
+    "seed": 42
+  },
+  "candidate_pool": "n/a \u2014 pocket not staged; would have been the same 100 1,4-disubstituted 1,2,3-triazoles Lambda MCTS best-state materialisation used at 830c.",
+  "n_samples": 0,
+  "timestamp": "2026-09-21",
+  "status": "DEFERRED_receptors_missing",
+  "deferred_reason": "receptor .pdb / .pdbqt not staged on disk for pocket test_001 in this snapshot; the TODO-22 #1-5 + #16 metric is null until the receptor is staged and molmetal/scripts/run_pocket_metrics.py is re-run with test_001 added to POCKETS. Manifest reference: molmetal/data/test_*_subset_manifest.csv.",
+  "note": "Pocket test_001 is in TODO-22 inventory but no real receptor .pdb / .pdbqt is staged on disk in this snapshot. The 830c pocket (MMP13) is the only one with a fully-staged receptor + ligand + box; the TODO-22 #1-5 metrics for test_001 are deferred until the receptor is staged. See molmetal/data/test_001_subset_manifest.csv (and test_010_019_subset_manifest.csv) for the staged-paths expected by TODO-22.",
+  "reproducibility": {
+    "script": "molmetal/scripts/run_pocket_metrics_stub_unstaged.py",
+    "underlying": "n/a \u2014 stub emitter for unstaged pockets; when receptors are staged, re-run molmetal/scripts/run_pocket_metrics.py with the new pocket added to POCKETS."
+  }
+}

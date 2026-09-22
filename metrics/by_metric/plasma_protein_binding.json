@@ -1,0 +1,11 @@
+{
+  "metric": "plasma_protein_binding",
+  "description": "Plasma protein binding fraction from Obach 1999 logistic regression on Crippen logP. Range [0, 1].",
+  "unit": "ratio (0-1)",
+  "scope": "drug-likeness panel (metrics_v2 Phase-3B)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:plasma_protein_binding",
+  "value": 0.7899702612139372,
+  "n_samples": 449,
+  "timestamp": "2026-09-18",
+  "data_source": "metallo_drugs_500_train.csv (449 SMILES)"
+}

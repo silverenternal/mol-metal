@@ -1,0 +1,12 @@
+{
+  "metric": "herg_cardio_risk",
+  "description": "hERG cardiotoxicity risk heuristic (Veith 2009). 4-rule shortcut: MW>400, logP>3.5, TPSA<75, basic N. Higher = more risk.",
+  "unit": "ratio (0-1)",
+  "scope": "drug-likeness panel (metrics_v2 Phase-3B)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:herg_cardio_risk",
+  "value": 0.598663697104677,
+  "n_samples": 449,
+  "timestamp": "2026-09-18",
+  "data_source": "metallo_drugs_500_train.csv (449 SMILES)",
+  "note": "metrics_v2 herg_cardio_risk is independent of the existing by_metric/herg_cardio_risk.json which uses the anticancer_metric_suite.py implementation (TODO-15 P0 metric). Both are MEASURED but use different heuristics."
+}

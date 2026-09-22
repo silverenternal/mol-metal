@@ -1,0 +1,11 @@
+{
+  "metric": "cell_permeability_logPapp",
+  "description": "Cell permeability logPapp from PSA + logP heuristic (Hou 2007 / Mente 2015), clipped [-8, -3].",
+  "unit": "logPapp (cm/s)",
+  "scope": "anticancer / drug-likeness (metrics_v2 Phase-3B)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:cell_permeability_logPapp",
+  "value": -3.7784748866599998,
+  "n_samples": 5000,
+  "timestamp": "2026-09-18",
+  "data_source": "data/MetalCytoToxDB.csv (cap 5000)"
+}

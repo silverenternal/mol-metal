@@ -1,0 +1,40 @@
+{
+  "metric": "lambda_mcts_phototherapy_activity",
+  "value": {
+    "n": 20,
+    "min": 0.007577320095151663,
+    "max": 0.4140022099018097,
+    "mean": 0.1511559300823137,
+    "median": 0.1223304308950901,
+    "std": 0.11756858941452424,
+    "scored_n": 20,
+    "scored_fraction": 1.0,
+    "per_candidate": {
+      "cand_0000": 0.1029568538069725,
+      "cand_0001": 0.1218348890542984,
+      "cand_0002": 0.024122310802340508,
+      "cand_0003": 0.031843554228544235,
+      "cand_0004": 0.34816139936447144,
+      "cand_0005": 0.109584279358387,
+      "cand_0006": 0.023372603580355644,
+      "cand_0007": 0.1747758984565735,
+      "cand_0008": 0.3860352039337158,
+      "cand_0009": 0.4140022099018097,
+      "cand_0010": 0.14145301282405853,
+      "cand_0011": 0.007577320095151663,
+      "cand_0012": 0.20756953954696655,
+      "cand_0013": 0.20621566474437714,
+      "cand_0014": 0.05816249921917915,
+      "cand_0015": 0.2208789587020874,
+      "cand_0016": 0.1228259727358818,
+      "cand_0017": 0.042624980211257935,
+      "cand_0018": 0.07660532742738724,
+      "cand_0019": 0.2025161236524582
+    }
+  },
+  "n_samples": 20,
+  "source": "Lambda MCTS smoke 2026-09-21",
+  "timestamp": "2026-09-21",
+  "computation": "phototherapy_activity \u2014 adapted from cloned precious-metal scoring project. Smiles-only wrapper around the upstream scoring logic; missing dependencies return None.",
+  "context": "Lambda MCTS smoke candidates from report.json (cell pocket=test_000, seed=0, n_simulations=20)"
+}

@@ -1,0 +1,31 @@
+{
+  "metric": "vina_relaxed_success",
+  "description": "Relaxed Success Rate: fraction of docked molecules with top-pose Vina kcal/mol < -8.0 (TargetDiff Table 1 'Success' relaxed definition; TODO-22 metric #5).",
+  "unit": "fraction in [0, 1]",
+  "scope": "pocket-bound docking metric (TODO-22 metric #5)",
+  "source": "computed from /mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/dock_results.csv (100 rows) \u2014 threshold top_pose_kcal_mol < -8.0",
+  "value": {
+    "rate": 0.0,
+    "n_below_threshold": 0,
+    "n_total": 100,
+    "threshold_kcal_mol": -8.0,
+    "criteria": "top_pose_kcal_mol < -8.0",
+    "best_observed_kcal_mol": -1.82,
+    "gap_to_threshold_kcal_mol": -6.18
+  },
+  "pocket": {
+    "name": "830c",
+    "receptor_pdb": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/830c.pdb",
+    "engine": "AutoDock Vina 1.2.7",
+    "exhaustiveness": 8,
+    "n_poses": 5
+  },
+  "notes": [
+    "Relaxed success rate = 0/100 = 0.00 on 830c pocket.",
+    "This is an honest negative, not a measurement error: at exhaustiveness=8 against a hydroxamate pocket with pocket_radius=10.0 A and box_padding=8.0 A, drug-like triazoles without a Zn-chelator simply cannot score < -8.0 kcal/mol. To close this gap a follow-on pool would need hydroxamate / sulfonamide / carboxylic-acid Zn-chelators.",
+    "Not measured on 1h36 / test_001..test_019 because the staged receptors are missing in this snapshot."
+  ],
+  "n_samples": 100,
+  "timestamp": "2026-09-18",
+  "status": "MEASURED"
+}

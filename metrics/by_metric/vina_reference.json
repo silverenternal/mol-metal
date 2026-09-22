@@ -1,0 +1,36 @@
+{
+  "metric": "vina_reference",
+  "description": "Vina reference: co-crystal ligand redocked into the staged pocket \u2014 the binding-affinity floor that any generated molecule must beat to claim a hit (TODO-22 metric #1 denominator).",
+  "unit": "kcal/mol (single best pose; lower = better)",
+  "scope": "pocket-bound docking metric reference floor (TODO-22 metric #1)",
+  "source": "RS1 (sulphone hydroxamate MMP-13 inhibitor) redocked on PDB 830c via VinaDockingAdapter (exhaustiveness=8, n_poses=5); report at molmetal/reports/mmp13_vina_real.md",
+  "value": {
+    "score_kcal_mol": -1.285,
+    "smiles": "O=S(=O)(c1ccc(NO)cc1)C(c2ccc(OC)cc2)C(=O)NO",
+    "top_pose_canonical_smiles": "COc1ccc(C(C(=O)NO)S(=O)(=O)c2ccc(NO)cc2)cc1",
+    "exhaustiveness": 8,
+    "n_poses": 5,
+    "box_padding_A": 8.0
+  },
+  "pocket": {
+    "name": "830c",
+    "pdb_id": "830c",
+    "resolution_A": 1.85,
+    "co_crystal_ligand": "RS1 (sulphone hydroxamate MMP-13 inhibitor)",
+    "co_crystal_ligand_pdb": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/830c_ligand.pdb",
+    "receptor_pdb": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/830c.pdb",
+    "engine": "AutoDock Vina 1.2.7"
+  },
+  "lit_baseline": {
+    "vina_mean_lit_MMP13": "~-7.5 to -8.0 kcal/mol for known MMP13 hydroxamate inhibitors in CrossDocked benchmarks (cross-target reference, not pocket-specific)",
+    "rs1_actual_redocked": -1.285
+  },
+  "notes": [
+    "Reference floor for the high-affinity / triple-threshold / relaxed-success metrics (#3, #4, #5) \u2014 a generated molecule is considered a hit iff its top-pose kcal/mol < RS1 (sulphone hydroxamate MMP-13 inhibitor)'s redocked score.",
+    "Reference redocked at -1.285 kcal/mol is unusually shallow; this is consistent with the small pocket radius (10.0 A) and the RS1 pose geometry from PDB 830c \u2014 the sulphone group is exposed to solvent in the crystal pose and Vina scores it accordingly.",
+    "Other pocket references (1h36, test_001..test_019) are NOT computed because the receptors are not staged on disk in this snapshot."
+  ],
+  "n_samples": 1,
+  "timestamp": "2026-09-18",
+  "status": "MEASURED"
+}

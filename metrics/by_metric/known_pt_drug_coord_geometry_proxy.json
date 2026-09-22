@@ -1,0 +1,49 @@
+{
+  "metric": "lambda_mcts_coord_geometry_proxy",
+  "value": {
+    "n": 1,
+    "min": 0.0,
+    "max": 0.0,
+    "mean": 0.0,
+    "median": 0.0,
+    "std": 0.0,
+    "compliant_n": 0,
+    "compliant_fraction": 0.0,
+    "scored_n": 1,
+    "by_metal": {
+      "Pt": 1
+    },
+    "by_geometry": {
+      "linear": 1
+    },
+    "per_candidate": {
+      "cand_0000": {
+        "metal": "Pt",
+        "oxidation_state": 2,
+        "coordination_number": 2,
+        "geometry": "linear",
+        "is_compliant": false,
+        "validity_score": 0.0,
+        "os_source": "default",
+        "expected_oxidation_states": [
+          0,
+          2,
+          4
+        ],
+        "source": "MetalHawk (Sgueglia 2023, JCIM) \u2014 SMILES proxy"
+      },
+      "cand_0001": null,
+      "cand_0002": null,
+      "cand_0003": null,
+      "cand_0004": null,
+      "cand_0005": null,
+      "cand_0006": null,
+      "cand_0007": null
+    }
+  },
+  "n_samples": 8,
+  "source": "molmetal/data/known_pt_drugs_smiles.csv",
+  "timestamp": "2026-09-21",
+  "computation": "coord_geometry_proxy \u2014 MetalHawk-inspired SMILES proxy; CN + OS lookup per Miessler 2014 / Lippard-Berg 1994. Missing SMILES return None.",
+  "context": "8 known Pt drugs from known_pt_drugs_smiles.csv"
+}

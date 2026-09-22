@@ -1,0 +1,40 @@
+{
+  "metric": "vina_high_affinity",
+  "description": "High Affinity rate: fraction of docked molecules whose top-pose Vina kcal/mol is BELOW the co-crystal reference redocked score (TargetDiff Table 1 'High Affinity' convention; TODO-22 metric #3).",
+  "unit": "fraction in [0, 1]",
+  "scope": "pocket-bound docking metric (TODO-22 metric #3)",
+  "source": "computed from /mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/dock_results.csv (100 rows) and vina_reference.json#value.score_kcal_mol = -1.285",
+  "value": {
+    "rate": 0.51,
+    "n_better_than_ref": 51,
+    "n_total": 100,
+    "reference_score_kcal_mol": -1.285,
+    "criteria": "top_pose_kcal_mol < reference_score_kcal_mol"
+  },
+  "pocket": {
+    "name": "830c",
+    "receptor_pdb": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/830c.pdb",
+    "engine": "AutoDock Vina 1.2.7",
+    "exhaustiveness": 8,
+    "n_poses": 5
+  },
+  "per_smiles_first10": {
+    "c1ccc(-c2cn[nH]n2)cc1": false,
+    "c1ccc(-c2cn[nH]n2)cc1_v2": false,
+    "CCc1cn(CCO)nn1": false,
+    "c1ccc(-c2cn[nH]n2)cc1_v3": false,
+    "c1ccc(-c2cn[nH]n2)cc1_v4": false,
+    "OCCc1cn(-c2ccccc2)nn1": true,
+    "CCCc1cn(-c2ccc(F)cc2)nn1": false,
+    "OCCCc1cn(-c2ccc(Cl)cc2)nn1": true,
+    "CCCCc1cn(-c2ccc(O)cc2)nn1": false,
+    "Nc1ccc(-n2cc(Cc3ccccc3)nn2)cc1": true
+  },
+  "notes": [
+    "High-affinity rate = 51/100 = 0.51 on 830c pocket.",
+    "Not measured on 1h36 / test_001..test_019 because the staged receptors are missing in this snapshot."
+  ],
+  "n_samples": 100,
+  "timestamp": "2026-09-18",
+  "status": "MEASURED"
+}

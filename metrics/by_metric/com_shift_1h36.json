@@ -1,0 +1,38 @@
+{
+  "metric": "com_shift",
+  "description": "Center-of-mass displacement: distance from the embedded-conformer CoM to the Vina box center, across the candidate pool. Diagnostic for whether the pool's geometry sits near the pocket.",
+  "unit": "Angstroms (mean +/- std across pool)",
+  "scope": "3D geometry diagnostic for pocket 1h36",
+  "source": "RDKit ETKDGv3 embed + UFFOptimizeMolecule (maxIters=200); CoM from heavy atoms only; box center = co-crystal ligand centroid at [65.45251999999999, 70.69028, 66.85792000000001].",
+  "value": {
+    "mean_A": 117.167,
+    "std_A": 0.35,
+    "median_A": 117.138,
+    "min_A": 116.447,
+    "max_A": 118.099,
+    "n_parsed": 20,
+    "n_failed": 0,
+    "n_smiles": 20,
+    "note": "CoM displacement of the embedded conformation from the Vina box center (larger = the embedded geometry sits far from the box center before docking)."
+  },
+  "pocket": {
+    "name": "1h36",
+    "pdb_path": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/pdb_1h36.pdb",
+    "pdbqt_path": "/tmp/receptors_pdbqt/receptor_1h36.pdbqt",
+    "engine": "AutoDock Vina 1.2.7 (Python binding)",
+    "exhaustiveness": 4,
+    "n_poses": 1,
+    "box_side_A": 28.0,
+    "co_crystal_ligand_residue": "R88",
+    "co_crystal_ligand_n_atoms": 25,
+    "co_crystal_ligand_center_A": [
+      65.45251999999999,
+      70.69028,
+      66.85792000000001
+    ],
+    "seed": 42
+  },
+  "n_samples": 20,
+  "timestamp": "2026-09-21",
+  "status": "MEASURED"
+}

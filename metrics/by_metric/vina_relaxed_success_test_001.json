@@ -1,0 +1,30 @@
+{
+  "metric": "vina_relaxed_success",
+  "description": "Relaxed Success Rate: fraction of docked molecules with top-pose Vina kcal/mol < -8.0 (TargetDiff Table 1 'Success' relaxed definition; TODO-22 metric #5).",
+  "unit": "fraction in [0, 1]",
+  "scope": "pocket-bound docking metric (TODO-22 metric #5)",
+  "source": "n/a \u2014 no dock results for pocket test_001 (receptors missing)",
+  "value": {
+    "rate": null,
+    "n_below_threshold": 0,
+    "n_total": 0,
+    "threshold_kcal_mol": -8.0,
+    "criteria": "top_pose_kcal_mol < -8.0",
+    "best_observed_kcal_mol": null,
+    "gap_to_threshold_kcal_mol": null
+  },
+  "pocket": {
+    "name": "test_001",
+    "receptor_pdb": null,
+    "engine": "AutoDock Vina 1.2.7",
+    "exhaustiveness": 8,
+    "n_poses": 5
+  },
+  "notes": [
+    "Pocket test_001 has no dock results \u2014 Relaxed Success rate is null until the receptor is staged."
+  ],
+  "n_samples": 0,
+  "timestamp": "2026-09-21",
+  "status": "DEFERRED_receptors_missing",
+  "deferred_reason": "receptor .pdb / .pdbqt not staged on disk for pocket test_001 in this snapshot; the TODO-22 #1-5 + #16 metric is null until the receptor is staged and molmetal/scripts/run_pocket_metrics.py is re-run with test_001 added to POCKETS. Manifest reference: molmetal/data/test_*_subset_manifest.csv."
+}

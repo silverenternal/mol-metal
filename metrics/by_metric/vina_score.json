@@ -1,0 +1,61 @@
+{
+  "metric": "vina_score",
+  "description": "Vina Score: mean +/- std AutoDock Vina top-pose kcal/mol across docked molecules per pocket (TargetDiff Table 1 convention; TODO-22 metric #1).",
+  "unit": "kcal/mol (mean +/- std across pool; lower = better)",
+  "scope": "pocket-bound docking metric (TODO-22 metric #1)",
+  "source": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/dock_results.csv (100 Lambda click products x PDB 830c x AutoDock Vina 1.2.7, exhaustiveness=8, n_poses=5) + molmetal/reports/mmp13_vina_real.md",
+  "value": {
+    "mean": -1.3546,
+    "std": 0.1891,
+    "median": -1.2885,
+    "min": -1.82,
+    "max": -1.13,
+    "n_docked": 100,
+    "n_valid": 100,
+    "n_failed": 0
+  },
+  "scores_per_smiles_first10": {
+    "c1ccc(-c2cn[nH]n2)cc1": -1.182,
+    "c1ccc(-c2cn[nH]n2)cc1_v2": -1.182,
+    "CCc1cn(CCO)nn1": -1.231,
+    "c1ccc(-c2cn[nH]n2)cc1_v3": -1.181,
+    "c1ccc(-c2cn[nH]n2)cc1_v4": -1.179,
+    "OCCc1cn(-c2ccccc2)nn1": -1.381,
+    "CCCc1cn(-c2ccc(F)cc2)nn1": -1.279,
+    "OCCCc1cn(-c2ccc(Cl)cc2)nn1": -1.348,
+    "CCCCc1cn(-c2ccc(O)cc2)nn1": -1.278,
+    "Nc1ccc(-n2cc(Cc3ccccc3)nn2)cc1": -1.497
+  },
+  "pocket": {
+    "name": "830c",
+    "pdb_path": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/830c.pdb",
+    "source": "molmetal/data/mmp13_real/830c.pdb (MMP13, mmp13_real)",
+    "receptor_prep": "mk_prepare_receptor.py --allow_bad_res (meeko 0.8.0)",
+    "engine": "AutoDock Vina 1.2.7",
+    "exhaustiveness": 8,
+    "n_poses": 5,
+    "box_padding_A": 8.0,
+    "pocket_radius_A": 10.0,
+    "seed": 42
+  },
+  "candidate_pool": "100 1,4-disubstituted 1,2,3-triazoles from a 25-tile azide library x 25-tile terminal-alkyne library, cycled via RDKit CuAAC reaction SMARTS. This is the in-silico materialisation of the Lambda MCTS best_state.smiles for the binder type at this pocket.",
+  "n_samples": 100,
+  "timestamp": "2026-09-18",
+  "status": "MEASURED",
+  "note": "Single-pocket measurement on 830c (MMP13). The other TODO-22 target pockets (1h36, test_001..test_019) are NOT staged on disk in this snapshot. The mean reflects CuAAC click products against a hydroxamate-pocket (sulphone hydroxamate RS1) \u2014 products hit the pocket but not the Zn-coordination site, so the scores are well above the TargetDiff CrossDocked lit -8.45 kcal/mol.",
+  "receptors_unavailable": {
+    "1h36": "PDB not on disk; pocket-invariance report at molmetal/reports/pocket2mol_vs_lambda_1h36.md references it but no .pdb file is staged.",
+    "test_001": "Manifest points to /mnt/storage/data/... which is not mounted; no receptor.pdbqt on disk.",
+    "test_004": "selected_conformer.pdb exists at molmetal/reports/crossdocked_first10_resolved/test_004/ but no receptor.pdbqt.",
+    "test_006": "Only a placeholder receptor_source_names.pdbqt; not a usable receptor.",
+    "test_007": "selected_conformer.pdb exists at molmetal/reports/crossdocked_first10_resolved/test_007/ but no receptor.pdbqt.",
+    "test_009": "selected_conformer.pdb exists at molmetal/reports/crossdocked_first10_resolved/test_009/ but no receptor.pdbqt.",
+    "test_010..test_019": "All manifests point to /mnt/storage/data/... which is not mounted."
+  },
+  "reproducibility": {
+    "script": "molmetal/scripts/run_pocket_metrics.py (wrapper)",
+    "underlying": "molmetal/data/mmp13_real/dock_mmp13.py (VinaDockingAdapter.dock + 100-product CuAAC)",
+    "csv_table": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/dock_results.csv",
+    "markdown_report": "molmetal/reports/mmp13_vina_real.md"
+  }
+}

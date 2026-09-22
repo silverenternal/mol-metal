@@ -1,0 +1,49 @@
+{
+  "metric": "vina_high_affinity",
+  "description": "High Affinity rate: fraction of docked molecules with top-pose Vina kcal/mol < co-crystal reference redocked score (TargetDiff Table 1 'High Affinity'; TODO-22 metric #3).",
+  "unit": "fraction in [0, 1]",
+  "scope": "pocket-bound docking metric (TODO-22 metric #3) \u2014 Phase-1B pocket 4aaw",
+  "source": "Computed from 20 dock results against reference -4.5370 kcal/mol (residue R84).",
+  "value": {
+    "rate": 0.65,
+    "n_better_than_reference": 13,
+    "n_total": 20,
+    "reference_kcal_mol": -4.537,
+    "criteria": "top_pose_kcal_mol < reference_kcal_mol"
+  },
+  "pocket": {
+    "name": "4aaw",
+    "pdb_path": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/pdb_test_001_4aaw.pdb",
+    "pdbqt_path": "/tmp/receptors_pdbqt/receptor_4aaw.pdbqt",
+    "engine": "AutoDock Vina 1.2.7 (Python binding)",
+    "exhaustiveness": 4,
+    "n_poses": 1,
+    "box_side_A": 28.0,
+    "co_crystal_ligand_residue": "R84",
+    "co_crystal_ligand_n_atoms": 44,
+    "co_crystal_ligand_center_A": [
+      53.45188636363636,
+      19.81,
+      -26.944340909090908
+    ],
+    "seed": 42
+  },
+  "per_smiles_first10": {
+    "c1ccc(-c2cn[nH]n2)cc1": true,
+    "CCc1cn(CCO)nn1": false,
+    "OCCc1cn(-c2ccccc2)nn1": false,
+    "CCCc1cn(-c2ccc(F)cc2)nn1": true,
+    "OCCCc1cn(-c2ccc(Cl)cc2)nn1": true,
+    "CCCCc1cn(-c2ccc(O)cc2)nn1": true,
+    "Nc1ccc(-n2cc(Cc3ccccc3)nn2)cc1": true,
+    "O=C(O)c1ccc(-n2cc(Cc3ccc(F)cc3)nn2)cc1": true,
+    "NC(=O)c1ccc(-n2cc(Cc3ccc(O)cc3)nn2)cc1": true,
+    "Nc1ccc(Cc2cn(Cc3ccccc3)nn2)cc1": true
+  },
+  "notes": [
+    "High-affinity rate = 13/20 = 0.65 on pocket 4aaw (reference -4.537 kcal/mol)."
+  ],
+  "n_samples": 20,
+  "timestamp": "2026-09-21",
+  "status": "MEASURED"
+}

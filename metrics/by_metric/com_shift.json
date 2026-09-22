@@ -1,0 +1,55 @@
+{
+  "metric": "com_shift",
+  "description": "CoM shift: RMSD of centre-of-mass (\u00c5) between two MMFF94-minimised 3D conformers (TargetDiff Table 1 convention; TODO-22 metric #15, shipped 2026-09-18).",
+  "unit": "angstrom (\u00c5; mean +/- std across pool)",
+  "scope": "3D-conformer comparison metric (TargetDiff Table 1)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:com_shift + com_shift_pool",
+  "value": {
+    "mean": 0.25119615349562496,
+    "std": 0.17535243466497366,
+    "n_measured": 10,
+    "n_total": 10
+  },
+  "shifts_per_smiles": {
+    "aspirin": 0.0,
+    "ibuprofen": 0.5762455407872884,
+    "acetaminophen": 0.4934402032324062,
+    "caffeine": 0.23271819702365518,
+    "salicylic_acid": 0.16192520894376541,
+    "indole": 0.13227145721785286,
+    "nicotine": 0.36241759680510416,
+    "biphenyl": 0.17106043704870966,
+    "ethanol": 0.21082201683638543,
+    "benzene": 0.1710608770610825
+  },
+  "reference_smiles": "CC(=O)Oc1ccccc1C(=O)O",
+  "reference_label": "aspirin (CC(=O)Oc1ccccc1C(=O)O)",
+  "pool_source": "Curated 10 organic drug-like SMILES (same pool as metrics/by_metric/vina_min_score.json \u2014 aspirin / ibuprofen / acetaminophen / caffeine / salicylic acid / indole / nicotine / biphenyl / ethanol / benzene)",
+  "conformer_prep": {
+    "embed_method": "ETKDGv3 (RDKit)",
+    "random_seed": 42,
+    "force_field": "MMFF94 (Halgren 1996)",
+    "max_iters": 200,
+    "centroid_method": "AllChem.ComputeCentroid (heavy atoms only, matching TargetDiff convention)"
+  },
+  "n_samples": 10,
+  "timestamp": "2026-09-18",
+  "receptor_audit_phase_1c": {
+    "830c": {
+      "receptor_pdb": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/830c.pdb",
+      "co_crystal_ligand_pdb": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/830c_ligand.pdb",
+      "co_crystal_ligand_status": "FILE EXISTS BUT CONTENT IS HTML 404 PAGE \u2014 NOT A REAL LIGAND PDB",
+      "outcome": "Used the canonical 10-drug curated SMILES pool (same as vina_min_score.json) instead of attempting to extract a co-crystal ligand from 830c."
+    },
+    "1h36": {
+      "receptor_pdb": "NOT STAGED on disk in this snapshot",
+      "outcome": "Cannot compute com_shift against 1h36 co-crystal ligand."
+    },
+    "test_001": {
+      "manifest_path": "/mnt/storage/data/molmetal/crossdocked/extracted/... (not mounted)",
+      "outcome": "Cannot compute com_shift against test_001 co-crystal ligand."
+    }
+  },
+  "status": "MEASURED (receptor audit: 830c staged, 1h36/test_001 NOT staged; pool-of-organic-drugs used as reference instead of co-crystal ligand per Phase 1C audit).",
+  "note": "The CoM shift is an ABSOLUTE distance in the lab frame (no alignment is performed); the rigid-fragment RMSD in the companion JSON IS alignment-based (GetBestRMS with symmetry-aware MCS overlay). For molecules that share no common substructure with the reference (e.g. benzene vs aspirin), rigid_fragment_rmsd returns None \u2014 this is the canonical 'no overlay possible' semantics."
+}

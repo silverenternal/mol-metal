@@ -1,0 +1,34 @@
+{
+  "metric": "vina_triple_success",
+  "description": "Triple-threshold Success Rate: fraction of docked molecules satisfying ALL three conditions \u2014 Vina kcal/mol < -8.0 AND SA score < 4 AND QED > 0.5 (TargetDiff Table 1 'Success' strict definition; TODO-22 metric #4).",
+  "unit": "fraction in [0, 1]",
+  "scope": "pocket-bound docking metric (TODO-22 metric #4)",
+  "source": "computed from /mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/dock_results.csv (100 rows) for the Vina sub-criterion; SA/QED sub-criteria require RDKit which is not installed in this snapshot",
+  "value": {
+    "rate_vina_only": 0.0,
+    "rate_full_triple": 0.0,
+    "n_below_vina_threshold": 0,
+    "n_total": 100,
+    "vina_threshold_kcal_mol": -8.0,
+    "sa_threshold": 4.0,
+    "qed_threshold": 0.5,
+    "criteria": "top_pose_kcal_mol < -8.0 AND sa_score < 4.0 AND qed > 0.5"
+  },
+  "pocket": {
+    "name": "830c",
+    "receptor_pdb": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/830c.pdb",
+    "engine": "AutoDock Vina 1.2.7",
+    "exhaustiveness": 8,
+    "n_poses": 5
+  },
+  "notes": [
+    "Triple-threshold success rate = 0/100 = 0.00 on 830c pocket. The CuAAC products have top-pose kcal/mol in [-1.82, -1.13]; the Vina sub-criterion (top_pose_kcal_mol < -8.0) is the binding constraint and none of the 100 products reach it.",
+    "SA and QED sub-criteria were not evaluated because RDKit is not available in this snapshot; they would be additive. With 0 products passing the Vina sub-criterion, the conjunction is identically 0 regardless of SA/QED.",
+    "This is an honest negative: Zn-chelating sub-pockets (sulphone-hydroxamate MMP13) need hydroxamate-bearing pools; pure 1,2,3-triazole click products cannot reach the strict -8.0 kcal/mol success threshold.",
+    "Not measured on 1h36 / test_001..test_019 because the staged receptors are missing in this snapshot."
+  ],
+  "n_samples": 100,
+  "timestamp": "2026-09-18",
+  "status": "MEASURED",
+  "honest_negative_reason": "Vina sub-criterion binds at 0; RDKit unavailable for SA/QED sub-criteria (both upstream and downstream are zero, so conjunction is zero by construction)"
+}

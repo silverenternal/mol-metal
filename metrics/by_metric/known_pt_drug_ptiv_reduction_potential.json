@@ -1,0 +1,28 @@
+{
+  "metric": "lambda_mcts_ptiv_reduction_potential",
+  "value": {
+    "n": 1,
+    "min": 0.5960000000000022,
+    "max": 0.5960000000000022,
+    "mean": 0.5960000000000022,
+    "median": 0.5960000000000022,
+    "std": 0.0,
+    "scored_n": 1,
+    "scored_fraction": 0.125,
+    "per_candidate": {
+      "cand_0000": 0.5960000000000022,
+      "cand_0001": null,
+      "cand_0002": null,
+      "cand_0003": null,
+      "cand_0004": null,
+      "cand_0005": null,
+      "cand_0006": null,
+      "cand_0007": null
+    }
+  },
+  "n_samples": 8,
+  "source": "molmetal/data/known_pt_drugs_smiles.csv",
+  "timestamp": "2026-09-21",
+  "computation": "ptiv_reduction_potential \u2014 adapted from cloned precious-metal scoring project. Smiles-only wrapper around the upstream scoring logic; missing dependencies return None.",
+  "context": "8 known Pt drugs from known_pt_drugs_smiles.csv"
+}

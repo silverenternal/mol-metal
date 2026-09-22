@@ -442,6 +442,79 @@ def plasma_protein_binding(smiles: str) -> float:
 
 
 # ---------------------------------------------------------------------------
+# Metric 9: ring_size_distribution — per-molecule ring-size histogram
+# ---------------------------------------------------------------------------
+#: Canonical ring-size histogram schema (TargetDiff Table 5 convention).
+_RING_SIZE_BUCKETS = ("3", "4", "5", "6", "7", "8", "9", "other")
+
+
+def _empty_ring_histogram() -> Dict[str, int]:
+    """Return a fresh zero-filled ``{3..9, 'other'}`` histogram dict."""
+    return {bucket: 0 for bucket in _RING_SIZE_BUCKETS}
+
+
+def ring_size_distribution(smiles: str) -> Dict[str, int]:
+    """Per-molecule ring-size histogram in the canonical 3-9 + ``other`` schema.
+
+    For *smiles*, this returns a dict mapping ring-size bucket to the
+    count of rings of that size on the molecule:
+
+        {"3": n3, "4": n4, ..., "9": n9, "other": n_other}
+
+    Ring sizes >= 10 are bucketed into ``"other"``.  Returns the zero
+    histogram (all zeros) on parse failure (matches the other metric
+    functions' graceful-degradation convention).
+
+    Lit: TargetDiff Table 5 (Q1 SBDD, arXiv:2303.03543); matches
+    TargetDiff's per-molecule ring-size-distribution metric exactly
+    so Mol-Metal can be compared head-to-head on this axis.
+    """
+    hist = _empty_ring_histogram()
+    mol = _safe_mol(smiles)
+    if mol is None:
+        return hist
+    try:
+        ring_info = mol.GetRingInfo()
+    except Exception:
+        return hist
+    try:
+        atom_rings = ring_info.AtomRings()
+    except Exception:
+        return hist
+    for ring in atom_rings:
+        size = len(ring)
+        if 3 <= size <= 9:
+            hist[str(size)] += 1
+        else:
+            hist["other"] += 1
+    return hist
+
+
+def ring_size_distribution_mean(candidates: Sequence[str]) -> Dict[str, float]:
+    """Mean per-molecule ring-size histogram across *candidates*.
+
+    For each bucket ``b`` in ``{"3".. "9", "other"}``:
+
+        mean[b] = (sum over candidates of hist[b]) / len(candidates)
+
+    Empty input returns the zero histogram.  Invalid SMILES contribute
+    zero (their hist is the zero schema).
+
+    Lit: TargetDiff Table 5 mean over generated molecules.
+    """
+    pooled = _empty_ring_histogram()
+    n = 0
+    for s in candidates:
+        h = ring_size_distribution(s)
+        n += 1
+        for bucket in pooled:
+            pooled[bucket] += h[bucket]
+    if n == 0:
+        return {bucket: 0.0 for bucket in pooled}
+    return {bucket: float(v) / float(n) for bucket, v in pooled.items()}
+
+
+# ---------------------------------------------------------------------------
 # Batch mean helpers (parallel to ``metric_*_mean`` in r4_lambda_only_run.py)
 # ---------------------------------------------------------------------------
 def _mean(values: List[float]) -> float:
@@ -553,11 +626,145 @@ def plasma_protein_binding_mean(candidates: Sequence[str]) -> float:
 
 
 # ---------------------------------------------------------------------------
+# md_relax wrappers — Phase-3B wirable energy from ``sbdd_env.md_relax``.
+# ---------------------------------------------------------------------------
+def md_relax_energy(
+    smiles: str,
+    *,
+    steps: int = 50,
+    temperature_K: float = 300.0,
+    minimize_steps: int = 0,
+) -> Optional[float]:
+    """Return the MD-relax energy (kcal/mol) for *smiles* or ``None``.
+
+    Thin wrapper around :func:`molmetal_lam.sbdd_env.md_relax.md_relax`
+    so the panel helpers can surface MD-relax-derived properties without
+    forcing callers to import the md_relax module directly (which
+    requires OpenMM at import time).
+    """
+    try:
+        from molmetal_lam.sbdd_env.md_relax import md_relax
+    except Exception:
+        return None
+    try:
+        energy, _success, _smi = md_relax(
+            smiles,
+            steps=int(steps),
+            temperature_K=float(temperature_K),
+            minimize_steps=int(minimize_steps),
+        )
+    except Exception:
+        return None
+    return energy
+
+
+def md_relax_pool(
+    candidates: Sequence[str],
+    *,
+    steps: int = 50,
+    temperature_K: float = 300.0,
+    minimize_steps: int = 0,
+) -> dict:
+    """Aggregate MD-relax energies across *candidates*.
+
+    Returns ``{mean, std, n_relaxed, n_total, energies, errors}``.
+    Empty input returns the documented empty schema
+    (``{mean=None, std=None, n_relaxed=0, n_total=0, energies=[], errors=[]}``).
+    """
+    seq = list(candidates)
+    n_total = len(seq)
+    if n_total == 0:
+        return {
+            "mean": None,
+            "std": None,
+            "n_relaxed": 0,
+            "n_total": 0,
+            "energies": [],
+            "errors": [],
+        }
+    energies: List[float] = []
+    errors: List[str] = []
+    for s in seq:
+        e = md_relax_energy(
+            s,
+            steps=steps,
+            temperature_K=temperature_K,
+            minimize_steps=minimize_steps,
+        )
+        if e is None or e != e:  # nan guard
+            errors.append(str(s))
+        else:
+            energies.append(float(e))
+    n_relaxed = len(energies)
+    if n_relaxed == 0:
+        mean_val: Optional[float] = None
+        std_val: Optional[float] = None
+    else:
+        import math
+        mean_val = float(sum(energies) / n_relaxed)
+        if n_relaxed > 1:
+            var = sum((e - mean_val) ** 2 for e in energies) / (n_relaxed - 1)
+            std_val = float(math.sqrt(max(var, 0.0)))
+        else:
+            std_val = 0.0
+    return {
+        "mean": mean_val,
+        "std": std_val,
+        "n_relaxed": n_relaxed,
+        "n_total": n_total,
+        "energies": energies,
+        "errors": errors,
+    }
+
+
+def md_relax_energy_mean(
+    candidates: Sequence[str],
+    *,
+    steps: int = 50,
+    temperature_K: float = 300.0,
+    minimize_steps: int = 0,
+) -> Optional[float]:
+    """Return the mean MD-relax energy across *candidates* or ``None``."""
+    pool = md_relax_pool(
+        candidates,
+        steps=steps,
+        temperature_K=temperature_K,
+        minimize_steps=minimize_steps,
+    )
+    return pool["mean"]
+
+
+# ---------------------------------------------------------------------------
 # Convenience: aggregate 8-metric panel for one SMILES (audit-friendly)
 # ---------------------------------------------------------------------------
-def all_metrics_one(smiles: str) -> dict:
-    """Return a dict of all 8 metrics for *smiles* (audit-friendly panel)."""
-    return {
+def all_metrics_one(
+    smiles: str,
+    *,
+    md_relax_enabled: bool = False,
+    md_relax_steps: int = 50,
+    external_scorers_enabled: bool = False,
+) -> dict:
+    """Return a dict of all 8 metrics for *smiles* (audit-friendly panel).
+
+    Parameters
+    ----------
+    smiles : str
+        The SMILES to evaluate.
+    md_relax_enabled : bool, default ``False``
+        When ``True`` the panel also computes the MD-relax energy
+        (``md_relax_energy`` key).  Default ``False`` keeps the panel
+        lightweight for headless environments that lack OpenMM.
+    md_relax_steps : int, default ``50``
+        Forwarded to :func:`md_relax_energy` when ``md_relax_enabled``.
+    external_scorers_enabled : bool, default ``False``
+        When ``True`` the panel also computes the three Phase-4A
+        external scorers (``ptiv_reduction_potential``,
+        ``coord_geometry_proxy``, ``phototherapy_activity``).  Each
+        returns ``None`` when its dependency stack is missing —
+        ``False`` keeps the panel lightweight and skips the heavy
+        model load.
+    """
+    panel = {
         "logp7_4": logp7_4(smiles),
         "gi50_proxy": gi50_proxy(smiles),
         "cell_permeability_logPapp": cell_permeability_logPapp(smiles),
@@ -566,13 +773,56 @@ def all_metrics_one(smiles: str) -> dict:
         "hepatotox_index": hepatotox_index(smiles),
         "aqueous_solubility_logS": aqueous_solubility_logS(smiles),
         "plasma_protein_binding": plasma_protein_binding(smiles),
+        "ring_size_distribution": ring_size_distribution(smiles),
+        "md_relax_energy": (
+            md_relax_energy(smiles, steps=md_relax_steps)
+            if md_relax_enabled else None
+        ),
+        # Phase-4A external scorers (no-op when disabled or missing deps).
+        "ptiv_reduction_potential": (
+            ptiv_reduction_potential(smiles)
+            if external_scorers_enabled else None
+        ),
+        "coord_geometry_proxy": (
+            coord_geometry_proxy(smiles)
+            if external_scorers_enabled else None
+        ),
+        "phototherapy_activity": (
+            phototherapy_activity(smiles)
+            if external_scorers_enabled else None
+        ),
     }
+    return panel
 
 
-def all_metrics_mean(candidates: Iterable[str]) -> dict:
-    """Return a dict of 8 mean metrics across *candidates*."""
+def all_metrics_mean(
+    candidates: Iterable[str],
+    *,
+    md_relax_enabled: bool = False,
+    md_relax_steps: int = 50,
+    external_scorers_enabled: bool = False,
+) -> dict:
+    """Return a dict of 8 mean metrics across *candidates*.
+
+    Parameters
+    ----------
+    candidates : iterable of str
+        The SMILES pool to evaluate.
+    md_relax_enabled : bool, default ``False``
+        When ``True`` the panel also computes the MD-relax energy
+        statistics (``md_relax_energy_mean`` / ``md_relax_energy_std``
+        keys).  Default ``False`` keeps the panel lightweight.
+    md_relax_steps : int, default ``50``
+        Forwarded to :func:`md_relax_energy_mean` when ``md_relax_enabled``.
+    external_scorers_enabled : bool, default ``False``
+        When ``True`` the panel also computes mean values for the three
+        Phase-4A external scorers
+        (``ptiv_reduction_potential``,
+        ``coord_geometry_proxy``, ``phototherapy_activity``).
+        Each returns ``None`` when its dependency stack is missing.
+    """
     seq = list(candidates)
-    return {
+    panel = {
         "logp7_4": logp7_4_mean(seq),
         "gi50_proxy": gi50_proxy_mean(seq),
         "cell_permeability_logPapp": cell_permeability_logPapp_mean(seq),
@@ -581,7 +831,98 @@ def all_metrics_mean(candidates: Iterable[str]) -> dict:
         "hepatotox_index": hepatotox_index_mean(seq),
         "aqueous_solubility_logS": aqueous_solubility_logS_mean(seq),
         "plasma_protein_binding": plasma_protein_binding_mean(seq),
+        "ring_size_distribution": ring_size_distribution_mean(seq),
+        "md_relax_energy_mean": None,
+        "md_relax_energy_std": None,
+        "ptiv_reduction_potential": (
+            ptiv_reduction_potential_mean(seq)
+            if external_scorers_enabled else None
+        ),
+        "coord_geometry_proxy": (
+            coord_geometry_proxy_mean(seq)
+            if external_scorers_enabled else None
+        ),
+        "phototherapy_activity": (
+            phototherapy_activity_mean(seq)
+            if external_scorers_enabled else None
+        ),
     }
+    if md_relax_enabled:
+        pool = md_relax_pool(seq, steps=md_relax_steps)
+        panel["md_relax_energy_mean"] = pool["mean"]
+        panel["md_relax_energy_std"] = pool["std"]
+    return panel
+
+
+# ---------------------------------------------------------------------------
+# Phase-4A optional external scorers
+# ---------------------------------------------------------------------------
+# Thin wrappers around the three adapters in
+# :mod:`molmetal_lam.sbdd_env.external_scorers`.  Each returns ``None``
+# when the underlying adapter cannot import its dependencies, so
+# callers can drop these into the metrics panel without guarding the
+# import.
+def _safe_external_score(adapter_name: str, scorer_name: str, smiles: str) -> Optional[float]:
+    """Best-effort call into one external scorer; returns ``None`` on failure."""
+    if not isinstance(smiles, str) or not smiles.strip():
+        return None
+    try:
+        from molmetal_lam.sbdd_env import external_scorers as _es
+    except Exception:
+        return None
+    adapter = getattr(_es, adapter_name, None)
+    if adapter is None:
+        return None
+    try:
+        if scorer_name == "coord_geometry_proxy":
+            rec = adapter.score(smiles)
+            if rec is None:
+                return None
+            return float(rec.get("validity_score", 0.0))
+        return adapter.score(smiles)
+    except Exception:
+        return None
+
+
+def ptiv_reduction_potential(smiles: str) -> Optional[float]:
+    """Phase-4A scorer: predicted Pt(IV) reduction potential (V vs NHE)."""
+    return _safe_external_score("ptiv_reduction_potential", "ptiv_reduction_potential", smiles)
+
+
+def coord_geometry_proxy(smiles: str) -> Optional[float]:
+    """Phase-4A scorer: MetalHawk-inspired coordination-geometry validity (0..1)."""
+    return _safe_external_score("coord_geometry_proxy", "coord_geometry_proxy", smiles)
+
+
+def phototherapy_activity(smiles: str) -> Optional[float]:
+    """Phase-4A scorer: phototherapy activity probability (0..1)."""
+    return _safe_external_score("phototherapy_activity", "phototherapy_activity", smiles)
+
+
+def _external_mean(adapter_name: str, scorer_name: str, candidates: Sequence[str]) -> Optional[float]:
+    vals: List[float] = []
+    for s in candidates:
+        v = _safe_external_score(adapter_name, scorer_name, s)
+        if isinstance(v, (int, float)) and v == v:
+            vals.append(float(v))
+    if not vals:
+        return None
+    return float(sum(vals) / len(vals))
+
+
+def ptiv_reduction_potential_mean(candidates: Sequence[str]) -> Optional[float]:
+    """Mean predicted Pt(IV) reduction potential (V) across *candidates*."""
+    return _external_mean("ptiv_reduction_potential", "ptiv_reduction_potential", candidates)
+
+
+def coord_geometry_proxy_mean(candidates: Sequence[str]) -> Optional[float]:
+    """Mean coordination-geometry validity score across *candidates*."""
+    return _external_mean("coord_geometry_proxy", "coord_geometry_proxy", candidates)
+
+
+def phototherapy_activity_mean(candidates: Sequence[str]) -> Optional[float]:
+    """Mean phototherapy-activity probability across *candidates*."""
+    return _external_mean("phototherapy_activity", "phototherapy_activity", candidates)
 
 
 __all__ = [
@@ -594,6 +935,8 @@ __all__ = [
     "hepatotox_index",
     "aqueous_solubility_logS",
     "plasma_protein_binding",
+    "ring_size_distribution",
+    "ring_size_distribution_mean",
     # Batch mean helpers
     "logp7_4_mean",
     "gi50_proxy_mean",
@@ -603,6 +946,17 @@ __all__ = [
     "hepatotox_index_mean",
     "aqueous_solubility_logS_mean",
     "plasma_protein_binding_mean",
+    # MD-relax wrappers
+    "md_relax_energy",
+    "md_relax_pool",
+    "md_relax_energy_mean",
+    # Phase-4A external scorers (no-op when adapter deps missing)
+    "ptiv_reduction_potential",
+    "coord_geometry_proxy",
+    "phototherapy_activity",
+    "ptiv_reduction_potential_mean",
+    "coord_geometry_proxy_mean",
+    "phototherapy_activity_mean",
     # Convenience
     "all_metrics_one",
     "all_metrics_mean",

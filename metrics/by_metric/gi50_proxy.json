@@ -1,0 +1,11 @@
+{
+  "metric": "gi50_proxy",
+  "description": "NCI60 GI50 heuristic from Hou 2007 descriptors (-log10[GI50_molair], clipped [0, 8]).",
+  "unit": "-log10(mol/L)",
+  "scope": "cytotoxicity / anticancer (metrics_v2 Phase-3B)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:gi50_proxy",
+  "value": 8.0,
+  "n_samples": 5000,
+  "timestamp": "2026-09-18",
+  "data_source": "data/MetalCytoToxDB.csv (cap 5000)"
+}

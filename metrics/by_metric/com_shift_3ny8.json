@@ -1,0 +1,38 @@
+{
+  "metric": "com_shift",
+  "description": "Center-of-mass displacement: distance from the embedded-conformer CoM to the Vina box center, across the candidate pool. Diagnostic for whether the pool's geometry sits near the pocket.",
+  "unit": "Angstroms (mean +/- std across pool)",
+  "scope": "3D geometry diagnostic for pocket 3ny8",
+  "source": "RDKit ETKDGv3 embed + UFFOptimizeMolecule (maxIters=200); CoM from heavy atoms only; box center = co-crystal ligand centroid at [2.2488, 4.68495, 51.3982].",
+  "value": {
+    "mean_A": 51.65,
+    "std_A": 0.213,
+    "median_A": 51.687,
+    "min_A": 51.335,
+    "max_A": 52.154,
+    "n_parsed": 20,
+    "n_failed": 0,
+    "n_smiles": 20,
+    "note": "CoM displacement of the embedded conformation from the Vina box center (larger = the embedded geometry sits far from the box center before docking)."
+  },
+  "pocket": {
+    "name": "3ny8",
+    "pdb_path": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/pdb_3ny8.pdb",
+    "pdbqt_path": "/tmp/receptors_pdbqt/receptor_3ny8.pdbqt",
+    "engine": "AutoDock Vina 1.2.7 (Python binding)",
+    "exhaustiveness": 4,
+    "n_poses": 1,
+    "box_side_A": 24.075514694206618,
+    "co_crystal_ligand_residue": "JRZ",
+    "co_crystal_ligand_n_atoms": 20,
+    "co_crystal_ligand_center_A": [
+      2.2488,
+      4.68495,
+      51.3982
+    ],
+    "seed": 42
+  },
+  "n_samples": 20,
+  "timestamp": "2026-09-21",
+  "status": "MEASURED"
+}

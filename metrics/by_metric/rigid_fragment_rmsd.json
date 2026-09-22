@@ -1,0 +1,55 @@
+{
+  "metric": "rigid_fragment_rmsd",
+  "description": "Rigid-fragment RMSD: symmetry-aware MCS overlay RMSD (\u00c5) of the maximum common substructure after MMFF94 minimization (TargetDiff Table 1 convention; TODO-22 metric #13, shipped 2026-09-18).",
+  "unit": "angstrom (\u00c5; mean +/- std across overlayable pool)",
+  "scope": "3D-conformer comparison metric (TargetDiff Table 1)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:rigid_fragment_rmsd + rigid_fragment_rmsd_pool",
+  "value": {
+    "mean": 0.42813547905001414,
+    "std": 0.5474395796625067,
+    "n_overlay": 10,
+    "n_total": 10
+  },
+  "rmsd_per_smiles": {
+    "aspirin": 0.0,
+    "ibuprofen": 1.4379012581237292,
+    "acetaminophen": 0.03705072018054836,
+    "caffeine": 0.6330748912668454,
+    "salicylic_acid": 0.9961733722932423,
+    "indole": 0.10511725074671965,
+    "nicotine": 1.0277907179765138,
+    "biphenyl": 0.0116519593987289,
+    "ethanol": 0.021881478987083335,
+    "benzene": 0.01071314152673081
+  },
+  "reference_smiles": "CC(=O)Oc1ccccc1C(=O)O",
+  "reference_label": "aspirin (CC(=O)Oc1ccccc1C(=O)O)",
+  "pool_source": "Curated 10 organic drug-like SMILES (same pool as metrics/by_metric/vina_min_score.json \u2014 aspirin / ibuprofen / acetaminophen / caffeine / salicylic acid / indole / nicotine / biphenyl / ethanol / benzene)",
+  "conformer_prep": {
+    "embed_method": "ETKDGv3 (RDKit)",
+    "random_seed": 42,
+    "force_field": "MMFF94 (Halgren 1996)",
+    "max_iters": 200,
+    "overlay_method": "rdkit.Chem.AllChem.GetBestRMS with symmetrizeConjugatedTerminalGroups=True (symmetry-aware MCS overlay); falls back to rdFMCS.FindMCS + AllChem.AlignMol with explicit atomMap when GetBestRMS raises (no strict substructure match). Returns None when no common substructure with >= 3 atoms exists."
+  },
+  "n_samples": 10,
+  "timestamp": "2026-09-18",
+  "receptor_audit_phase_1c": {
+    "830c": {
+      "receptor_pdb": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/830c.pdb",
+      "co_crystal_ligand_pdb": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/830c_ligand.pdb",
+      "co_crystal_ligand_status": "FILE EXISTS BUT CONTENT IS HTML 404 PAGE \u2014 NOT A REAL LIGAND PDB",
+      "outcome": "Used the canonical 10-drug curated SMILES pool (same as vina_min_score.json) instead of attempting to extract a co-crystal ligand from 830c."
+    },
+    "1h36": {
+      "receptor_pdb": "NOT STAGED on disk in this snapshot",
+      "outcome": "Cannot compute rigid_fragment_rmsd against 1h36 co-crystal ligand."
+    },
+    "test_001": {
+      "manifest_path": "/mnt/storage/data/molmetal/crossdocked/extracted/... (not mounted)",
+      "outcome": "Cannot compute rigid_fragment_rmsd against test_001 co-crystal ligand."
+    }
+  },
+  "status": "MEASURED (receptor audit: 830c staged, 1h36/test_001 NOT staged; pool-of-organic-drugs used as reference instead of co-crystal ligand per Phase 1C audit).",
+  "note": "Rigid-fragment RMSD is the symmetry-aware MCS overlay RMSD after MMFF94 minimization. GetBestRMS raises RuntimeError when there is no strict substructure match; we catch this and fall back to rdFMCS.FindMCS + AllChem.AlignMol with an explicit atomMap derived from the MCS. Pairs whose MCS has fewer than 3 atoms (e.g. benzene-aspirin where only a single C-C bond is shared) are reported as errors (no rigid fragment)."
+}

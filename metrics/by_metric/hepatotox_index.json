@@ -1,0 +1,11 @@
+{
+  "metric": "hepatotox_index",
+  "description": "Hepatotoxicity heuristic (Hughes 2008 rule-of-2 + Stepan 2011 alerts). Composite of logP, MW, HBD, aniline/hydrazine/furan/thiophene alerts.",
+  "unit": "ratio (0-1)",
+  "scope": "drug-likeness panel (metrics_v2 Phase-3B)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:hepatotox_index",
+  "value": 0.5476614699331848,
+  "n_samples": 449,
+  "timestamp": "2026-09-18",
+  "data_source": "metallo_drugs_500_train.csv (449 SMILES)"
+}

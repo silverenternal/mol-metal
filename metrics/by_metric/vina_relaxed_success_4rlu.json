@@ -1,0 +1,40 @@
+{
+  "metric": "vina_relaxed_success",
+  "description": "Relaxed Success Rate: fraction of docked molecules with Vina < -8.0 (TargetDiff Table 1 'Success' relaxed; TODO-22 metric #5).",
+  "unit": "fraction in [0, 1]",
+  "scope": "pocket-bound docking metric (TODO-22 metric #5) \u2014 Phase-1B pocket 4rlu",
+  "source": "Computed from 20 dock results; threshold top_pose_kcal_mol < -8.0.",
+  "value": {
+    "rate": 0.0,
+    "n_below_threshold": 0,
+    "n_total": 20,
+    "threshold_kcal_mol": -8.0,
+    "criteria": "top_pose_kcal_mol < -8.0",
+    "best_observed_kcal_mol": -7.079,
+    "gap_to_threshold_kcal_mol": -0.92
+  },
+  "pocket": {
+    "name": "4rlu",
+    "pdb_path": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/pdb_4rlu.pdb",
+    "pdbqt_path": "/tmp/receptors_pdbqt/receptor_4rlu.pdbqt",
+    "engine": "AutoDock Vina 1.2.7 (Python binding)",
+    "exhaustiveness": 4,
+    "n_poses": 1,
+    "box_side_A": 25.565100767652446,
+    "co_crystal_ligand_residue": "HCC",
+    "co_crystal_ligand_n_atoms": 19,
+    "co_crystal_ligand_center_A": [
+      -0.736,
+      22.755473684210525,
+      -31.236894736842107
+    ],
+    "seed": 42
+  },
+  "notes": [
+    "Relaxed success rate = 0/20 = 0.00 on pocket 4rlu.",
+    "Best observed kcal/mol is the lower bound of the pool \u2014 drug-like molecules with no pocket-specific binding features will not hit -8.0 against a high-affinity co-crystal reference."
+  ],
+  "n_samples": 20,
+  "timestamp": "2026-09-21",
+  "status": "MEASURED"
+}

@@ -1,0 +1,28 @@
+{
+  "metric": "vina_high_affinity",
+  "description": "High Affinity rate: fraction of docked molecules with top-pose Vina kcal/mol < co-crystal reference ligand Vina (TargetDiff Table 1 'High Affinity'; TODO-22 metric #3).",
+  "unit": "fraction in [0, 1]",
+  "scope": "pocket-bound docking metric (TODO-22 metric #3)",
+  "source": "n/a \u2014 no dock results for pocket test_001 (receptors missing)",
+  "value": {
+    "rate": null,
+    "n_better_than_reference": 0,
+    "n_total": 0,
+    "criteria": "top-pose kcal/mol < reference Vina",
+    "reference_kcal_mol": null
+  },
+  "pocket": {
+    "name": "test_001",
+    "receptor_pdb": null,
+    "engine": "AutoDock Vina 1.2.7",
+    "exhaustiveness": 8,
+    "n_poses": 5
+  },
+  "notes": [
+    "Pocket test_001 has no dock results \u2014 High Affinity rate is null until the receptor is staged and a reference redock is produced."
+  ],
+  "n_samples": 0,
+  "timestamp": "2026-09-21",
+  "status": "DEFERRED_receptors_missing",
+  "deferred_reason": "receptor .pdb / .pdbqt not staged on disk for pocket test_001 in this snapshot; the TODO-22 #1-5 + #16 metric is null until the receptor is staged and molmetal/scripts/run_pocket_metrics.py is re-run with test_001 added to POCKETS. Manifest reference: molmetal/data/test_*_subset_manifest.csv."
+}

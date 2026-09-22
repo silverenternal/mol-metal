@@ -1,0 +1,29 @@
+{
+  "metric": "vina_reference",
+  "description": "Vina reference: co-crystal ligand redocked into the staged pocket \u2014 the binding-affinity floor that any generated molecule must beat to claim a hit (TODO-22 metric #1 denominator).",
+  "unit": "kcal/mol (single best pose; lower = better)",
+  "scope": "pocket-bound docking metric reference floor (TODO-22 metric #1)",
+  "source": "no co-crystal ligand redocked for pocket test_001 (receptors missing)",
+  "value": {
+    "score_kcal_mol": null,
+    "smiles": null,
+    "top_pose_canonical_smiles": null,
+    "exhaustiveness": 8,
+    "n_poses": 5,
+    "box_padding_A": 8.0
+  },
+  "pocket": {
+    "name": "test_001",
+    "receptor_pdb": null,
+    "engine": "AutoDock Vina 1.2.7",
+    "exhaustiveness": 8,
+    "n_poses": 5
+  },
+  "notes": [
+    "Pocket test_001 has no co-crystal ligand redocked \u2014 no Vina reference floor can be computed until the receptor is staged."
+  ],
+  "n_samples": 0,
+  "timestamp": "2026-09-21",
+  "status": "DEFERRED_receptors_missing",
+  "deferred_reason": "receptor .pdb / .pdbqt not staged on disk for pocket test_001 in this snapshot; the TODO-22 #1-5 + #16 metric is null until the receptor is staged and molmetal/scripts/run_pocket_metrics.py is re-run with test_001 added to POCKETS. Manifest reference: molmetal/data/test_*_subset_manifest.csv."
+}

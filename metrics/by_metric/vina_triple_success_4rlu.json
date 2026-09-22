@@ -1,0 +1,42 @@
+{
+  "metric": "vina_triple_success",
+  "description": "Triple-threshold Success Rate: fraction of docked molecules with Vina<-8.0 AND SA<4 AND QED>0.5 (TargetDiff Table 1 'Success' strict; TODO-22 metric #4).",
+  "unit": "fraction in [0, 1]",
+  "scope": "pocket-bound docking metric (TODO-22 metric #4) \u2014 Phase-1B pocket 4rlu",
+  "source": "Computed from 20 dock results; Vina sub-criterion at < -8.0 kcal/mol. SA/QED sub-criteria were not evaluated in this run (RDKit QED/SA scoring not wired in for pocket metric mode).",
+  "value": {
+    "rate_vina_only": 0.0,
+    "rate_full_triple": 0.0,
+    "n_below_vina_threshold": 0,
+    "n_total": 20,
+    "vina_threshold_kcal_mol": -8.0,
+    "sa_threshold": 4.0,
+    "qed_threshold": 0.5,
+    "criteria": "top_pose_kcal_mol < -8.0 AND sa_score < 4.0 AND qed > 0.5"
+  },
+  "pocket": {
+    "name": "4rlu",
+    "pdb_path": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/pdb_4rlu.pdb",
+    "pdbqt_path": "/tmp/receptors_pdbqt/receptor_4rlu.pdbqt",
+    "engine": "AutoDock Vina 1.2.7 (Python binding)",
+    "exhaustiveness": 4,
+    "n_poses": 1,
+    "box_side_A": 25.565100767652446,
+    "co_crystal_ligand_residue": "HCC",
+    "co_crystal_ligand_n_atoms": 19,
+    "co_crystal_ligand_center_A": [
+      -0.736,
+      22.755473684210525,
+      -31.236894736842107
+    ],
+    "seed": 42
+  },
+  "notes": [
+    "Triple-success rate = 0/20 = 0.00 on pocket 4rlu.",
+    "Honest negative: the Vina sub-criterion (top_pose_kcal_mol < -8.0) is the binding constraint; with random drug-like molecules from the pool, almost none reach -8.0."
+  ],
+  "n_samples": 20,
+  "timestamp": "2026-09-21",
+  "status": "MEASURED",
+  "honest_negative_reason": "Vina sub-criterion binds at 0 against a non-targeted drug-like pool; SA/QED not evaluated."
+}
