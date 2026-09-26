@@ -1,0 +1,181 @@
+{
+  "metric": "dmpnn_ckpt_status",
+  "description": "D-MPNN model checkpoint inventory on disk. Read-only snapshot of ``.ckpt/*.pt`` and ``.ckpt/*.pth`` files used for the multi-task + 4-cell resistance + multi-metal LOMO training runs.",
+  "unit": "n_files + per-file metadata",
+  "scope": "model_checkpoint_inventory",
+  "source": "filesystem scan of .ckpt/ + molmetal/checkpoints/",
+  "n_checkpoints": 12,
+  "checkpoints": [
+    {
+      "filename": "affinity_platinai_seed0.pt",
+      "size_bytes": 4037921,
+      "mtime_utc": "2026-09-26T05:27:53.742752+00:00"
+    },
+    {
+      "filename": "affinity_platinai_seed1.pt",
+      "size_bytes": 60641,
+      "mtime_utc": "2026-09-26T05:18:04.853684+00:00"
+    },
+    {
+      "filename": "dmpnn_pic50_ru_seed0.pt",
+      "size_bytes": 758733,
+      "mtime_utc": "2026-09-26T12:53:38.157786+00:00",
+      "metal": "Ru",
+      "seed": 0,
+      "test_pearson": 0.362,
+      "test_rmse": 4.707,
+      "sha256": "e5bad61c038e200db7caecf5ad9cf0b594dbf29d985abf1e26b92120a8e47bb2",
+      "epochs": 10
+    },
+    {
+      "filename": "dmpnn_pic50_ru_seed1.pt",
+      "size_bytes": 758733,
+      "mtime_utc": "2026-09-26T12:54:52.930080+00:00",
+      "metal": "Ru",
+      "seed": 1,
+      "test_pearson": 0.19,
+      "test_rmse": 3.53,
+      "sha256": "869f7453ef30fca5cc430d821866ac8f98f2ba52b2bf38e036c79715ed1e5c6f",
+      "epochs": 10
+    },
+    {
+      "filename": "dmpnn_pic50_ir_seed0.pt",
+      "size_bytes": 758733,
+      "mtime_utc": "2026-09-26T12:55:19.249535+00:00",
+      "metal": "Ir",
+      "seed": 0,
+      "test_pearson": -0.028,
+      "test_rmse": 4.941,
+      "sha256": "afc2e103f013bcda57cde488e7da38b4010f3f4df705cc83a5ab243d9adc2874",
+      "epochs": 10
+    },
+    {
+      "filename": "dmpnn_pic50_ir_seed1.pt",
+      "size_bytes": 758733,
+      "mtime_utc": "2026-09-26T12:55:38.046859+00:00",
+      "metal": "Ir",
+      "seed": 1,
+      "test_pearson": 0.059,
+      "test_rmse": 3.766,
+      "sha256": "97819bfa047bf6c745cc16a87d4483f6fbefdbb5096184ee1e74e40cc401679b",
+      "epochs": 10
+    },
+    {
+      "filename": "dmpnn_pic50_rh_seed0.pt",
+      "size_bytes": 758733,
+      "mtime_utc": "2026-09-26T12:55:39.337882+00:00",
+      "metal": "Rh",
+      "seed": 0,
+      "test_pearson": -0.411,
+      "test_rmse": 4.953,
+      "sha256": "142f63bc3923fc915c4b30b0a3e141dcc517e98d58a972abba318e4f442eeaae",
+      "epochs": 10
+    },
+    {
+      "filename": "dmpnn_pic50_rh_seed1.pt",
+      "size_bytes": 758733,
+      "mtime_utc": "2026-09-26T19:06:05.609392+00:00",
+      "metal": "Rh",
+      "seed": 1,
+      "test_pearson": 0.276,
+      "test_rmse": 3.204,
+      "sha256": "117e0d53917420393b6c02d3b3cbb56bdc9bd5d8d461c27b1af9f77fffe73977",
+      "epochs": 30
+    },
+    {
+      "filename": "dmpnn_pic50_os_seed0.pt",
+      "size_bytes": 758733,
+      "mtime_utc": "2026-09-26T12:55:42.030928+00:00",
+      "metal": "Os",
+      "seed": 0,
+      "test_pearson": -0.224,
+      "test_rmse": 6.325,
+      "sha256": "8662bd6a622418f6b70b5f9266433ad5cd8f61f2847af89f4e160463c53b7fdf",
+      "epochs": 10
+    },
+    {
+      "filename": "dmpnn_pic50_os_seed1.pt",
+      "size_bytes": 758733,
+      "mtime_utc": "2026-09-26T12:55:43.241949+00:00",
+      "metal": "Os",
+      "seed": 1,
+      "test_pearson": 0.336,
+      "test_rmse": 4.286,
+      "sha256": "ae6b8bb681cc286fab34a5d23c066cae1a5819c87f6ab7f680a12a4ab438edd9",
+      "epochs": 10
+    },
+    {
+      "filename": "dmpnn_pic50_re_seed0.pt",
+      "size_bytes": 758733,
+      "mtime_utc": "2026-09-26T12:55:46.234001+00:00",
+      "metal": "Re",
+      "seed": 0,
+      "test_pearson": 0.055,
+      "test_rmse": 4.381,
+      "sha256": "7cde065c94df2060cbb71fb5b430942dd007358149facc1e3f9b8428dc77ee8c",
+      "epochs": 10
+    },
+    {
+      "filename": "dmpnn_pic50_re_seed1.pt",
+      "size_bytes": 758733,
+      "mtime_utc": "2026-09-26T12:55:49.711061+00:00",
+      "metal": "Re",
+      "seed": 1,
+      "test_pearson": -0.004,
+      "test_rmse": 3.764,
+      "sha256": "1ccc2ac4288d3a6a2b3c71507de289897c1b3137e94d7eb43b04374fb7cb441b",
+      "epochs": 10
+    }
+  ],
+  "per_metal_summary": {
+    "Ru": {
+      "n_ckpts": 2,
+      "test_pearson_mean": 0.276,
+      "test_pearson_std": 0.122,
+      "test_rmse_mean": 4.119,
+      "test_r2_mean": 0.076,
+      "n_train": 2509,
+      "n_test": 796
+    },
+    "Ir": {
+      "n_ckpts": 2,
+      "test_pearson_mean": 0.015,
+      "test_pearson_std": 0.062,
+      "test_rmse_mean": 4.354,
+      "test_r2_mean": 0.0,
+      "n_train": 784,
+      "n_test": 301
+    },
+    "Rh": {
+      "n_ckpts": 2,
+      "test_pearson_mean": -0.067,
+      "test_pearson_std": 0.486,
+      "test_rmse_mean": 4.079,
+      "test_r2_mean": 0.005,
+      "n_train": 60,
+      "n_test": 38
+    },
+    "Os": {
+      "n_ckpts": 2,
+      "test_pearson_mean": 0.056,
+      "test_pearson_std": 0.396,
+      "test_rmse_mean": 5.306,
+      "test_r2_mean": 0.003,
+      "n_train": 66,
+      "n_test": 14
+    },
+    "Re": {
+      "n_ckpts": 2,
+      "test_pearson_mean": 0.026,
+      "test_pearson_std": 0.042,
+      "test_rmse_mean": 4.072,
+      "test_r2_mean": 0.001,
+      "n_train": 121,
+      "n_test": 36
+    }
+  },
+  "timestamp": "2026-09-27",
+  "status": "MEASURED",
+  "honest_framing_note": "10 fresh D-MPNN pIC50 ckpts trained on the metalcytotox_5metal_multitask.csv splits (5 metals \u00d7 2 seeds, 10 epochs each, alpha=1.0 pure pIC50 regression). Ru has the most data (2509 train) and best per-seed Pearson spread (0.19-0.36). Rh/Os/Re <150 train rows have noisy per-seed R\u00b2 with std>0.27. Diagnostic verified all 10 ckpts load strict-OK with finite pIC50 forward pass on probe SMILES.",
+  "wf_phase": "Wf-120 Phase 1 \u2014 Rh seed1 retrain + SHA256 audit (30 epochs, alpha=1.0)"
+}
