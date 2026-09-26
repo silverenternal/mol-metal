@@ -1,8 +1,8 @@
 # Wf-41 Phase 1 — Deflexpressor + Multi-PH + ASTSR 3-way bench
 
 **Dataset**: PlatinAI 5K (synthetic ``qed * qed`` target)  
-**n_samples loaded**: 80 (requested 80)  
-**Seeds**: [0, 1]  
+**n_samples loaded**: 100 (requested 100)  
+**Seeds**: [0, 1, 2]  
 **Methods**: ['ast', 'hilbert', 'multiph', 'joint', '3way']  
 **Epochs (PD iters)**: 200  
 **12-d RDKit** -> **64-d Hilbert-padded** + **64-d Multi-PH** (n_bins=8) + **16-d PLL** -> 3-way design matrix is 92-d.
@@ -12,31 +12,31 @@
 
 | Method | R² mean ± std | Lift over AST | Wall (s) | n_features |
 |---|---|---|---|---|
-| ast | -1.1717 ± 0.0678 | +0.0000 | 0.277 | 12 |
-| hilbert | -0.1423 ± 0.1760 | +1.0295 | 0.030 | 64 |
-| multiph | -1.8704 ± 0.4402 | -0.6986 | 0.001 | 64 |
-| joint | -0.3155 ± 0.0974 | +0.8562 | 0.012 | 76 |
-| 3way | -0.3215 ± 0.1150 | +0.8502 | 0.001 | 92 |
+| ast | -1.1119 ± 0.0300 | +0.0000 | 0.401 | 12 |
+| hilbert | -0.2829 ± 0.1217 | +0.8290 | 0.029 | 64 |
+| multiph | -4.7818 ± 2.9867 | -3.6699 | 0.001 | 64 |
+| joint | -0.2929 ± 0.3009 | +0.8190 | 0.011 | 76 |
+| 3way | -0.3595 ± 0.2806 | +0.7524 | 0.001 | 92 |
 
 ## Per-seed R²
 
-| Method | seed 0 | seed 1 |
-|---|---|---|
-| ast | -1.1039 | -1.2396 |
-| hilbert | -0.3182 | +0.0337 |
-| multiph | -1.4301 | -2.3106 |
-| joint | -0.2182 | -0.4129 |
-| 3way | -0.2066 | -0.4365 |
+| Method | seed 0 | seed 1 | seed 2 |
+|---|---|---|---|
+| ast | -1.0695 | -1.1298 | -1.1363 |
+| hilbert | -0.1110 | -0.3624 | -0.3752 |
+| multiph | -1.3592 | -4.3493 | -8.6367 |
+| joint | +0.1154 | -0.3934 | -0.6007 |
+| 3way | +0.0350 | -0.5187 | -0.5947 |
 
 ## Per-seed wall time (s)
 
-| Method | seed 0 | seed 1 |
-|---|---|---|
-| ast | 0.281 | 0.273 |
-| hilbert | 0.031 | 0.028 |
-| multiph | 0.001 | 0.001 |
-| joint | 0.015 | 0.009 |
-| 3way | 0.001 | 0.001 |
+| Method | seed 0 | seed 1 | seed 2 |
+|---|---|---|---|
+| ast | 0.543 | 0.322 | 0.337 |
+| hilbert | 0.032 | 0.028 | 0.028 |
+| multiph | 0.001 | 0.001 | 0.001 |
+| joint | 0.016 | 0.010 | 0.009 |
+| 3way | 0.001 | 0.001 | 0.001 |
 
 ## Honest framing
 
@@ -49,5 +49,5 @@
 * Wall-time is machine-dependent; speedup is the intended *relative* metric.
 
 
-**Run timestamp (UTC):** 2026-09-26T05:44:32.653335+00:00
+**Run timestamp (UTC):** 2026-09-26T05:53:24.040046+00:00
 
