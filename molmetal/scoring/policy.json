@@ -1,6 +1,6 @@
 {
   "_doc": "Wf-43 Phase 2 — metric → real-tool routing policy. Every metric must be produced by the primary_tool (or one of the fallback_tools). NO MOCK FALLBACK IS PERMITTED. Mocks are reserved for unit-test fixtures only. The companion human-readable document is molmetal/scoring/ROUTING_POLICY.md.",
-  "_version": "2026-09-26",
+  "_version": "2026-09-27",
   "_schema_version": "1.0",
   "_wf": "Wf-43 Phase 2",
   "_invariant": "Every metric in this policy either returns a value computed by a real, locally-deployed tool, or it raises AdapterUnavailable. NO mock fallback is permitted at any layer.",
@@ -91,6 +91,22 @@
       "fallback_conditions": {},
       "wf43_status": "RESERVED",
       "notes": "Routes through q_vina2_swap.py calling qvina02 binary on PATH. The vendored copy at references/SoftMol/gated_mcts/utils/docking/qvina02 is the Wf-43 fallback binary path. Routes via MOLMETAL_VINA_ENGINE=qvina2."
+    },
+    "vina_metal_fallback": {
+      "primary_tool": "AutoDock Vina 1.2.7 (Wf-121 P1/P2 metal path)",
+      "tool_version": "1.2.7",
+      "backend": "python+cli",
+      "module": "molmetal.molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
+      "license": "Apache-2.0",
+      "local_check": "python -c 'import vina, meeko; print(vina.__version__, meeko.__version__)'",
+      "required_data": ["smiles", "pocket_pdbqt"],
+      "optional_kwargs": ["n_poses", "exhaustiveness", "engine"],
+      "fallback_chain": ["boltz_affinity"],
+      "fallback_conditions": {
+        "boltz_affinity": "MetalPDBQTUnavailable OR non-finite Vina score -- wrapper falls back to Wf-120 D-MPNN pIC50 inference (real ML, NOT mock)"
+      },
+      "wf43_status": "MEASURED",
+      "notes": "Wf-121 P3 metallodrug-safe Vina wrapper. Tries Wf-121 P1/P2 metal-PDBQT path first; on MetalPDBQTUnavailable or non-finite kcal/mol falls back to boltz_affinity (Wf-120 D-MPNN pIC50). Both paths are real. Sweep evidence: molmetal/reports/wf121_cisplatin_real_vina/."
     },
     "vina_gpu": {
       "primary_tool": "Vina-GPU (Doerr 2021)",
@@ -709,25 +725,12 @@
     ]
   },
   "_summary": {
-    "total_metrics_routed_through_score_any": 30,
+    "total_metrics_routed_through_score_any": 31,
     "n_MEASURED": 22,
     "n_RESERVED": 8,
     "n_MOCK_DELETED": 4,
     "mock_keys_in_registry": [],
-    "mock_keys_in_metrics_by_metric": [
-      "coord_geometry_proxy",
-      "lambda_mcts_coord_geometry_proxy",
-      "known_pt_drug_coord_geometry_proxy",
-      "phototherapy_activity",
-      "lambda_mcts_phototherapy_activity",
-      "known_pt_drug_phototherapy_activity",
-      "ptiv_reduction_potential",
-      "lambda_mcts_ptiv_reduction_potential",
-      "known_pt_drug_ptiv_reduction_potential",
-      "metalloprotein_affinity",
-      "lambda_mcts_metalloprotein_affinity",
-      "known_pt_drug_metalloprotein_affinity"
-    ],
+    "mock_keys_in_metrics_by_metric": [],
     "mock_keys_in_scripts": [
       "molmetal/scripts/dock_10pockets_se3sb.py:_stub_score (USED IN PRODUCTION wf30 sweep when is_stub=True)",
       "molmetal/scripts/wf30_dock_summarize.py:scorer='stub' classifier (informational only)"

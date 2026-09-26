@@ -40,6 +40,7 @@ name in `REGISTRY` contains the substring `"mock"`.
 | `vina_min_score` | AutoDock Vina 1.2.7 | `vina_qvina2` → `vina_gpu` | smiles + pocket_pdbqt + cutoff_kcal | MEASURED |
 | `vina_qvina2` | QuickVina 2 (CASO-derived `qvina02` binary) | — | smiles + pocket_pdbqt | RESERVED |
 | `vina_gpu` | Vina-GPU (CUDA + `vina_gpu` extension) | `vina_score` | smiles + pocket_pdbqt | RESERVED |
+| `vina_metal_fallback` | AutoDock Vina 1.2.7 (Wf-121 P1/P2 metal path) | `boltz_affinity` | smiles + pocket_pdbqt | MEASURED |
 | `vina_reference` | AutoDock Vina 1.2.7 (co-crystal redock) | `vina_qvina2` | reference_ligand_pdbqt + co_crystal_pocket_pdbqt | MEASURED |
 | `glide_score` | Glide (Schrödinger, commercial) | `vina_score` | smiles + pocket_pdbqt | RESERVED |
 
@@ -156,6 +157,20 @@ These four Phase-4A scorers were stubs in
 **non-existent** module `molmetal_lam.sbdd_env.external_scorers`. Wf-43
 Phase 2 marks them `MOCK_DELETED`. Each alias pointing at these names
 (`lambda_mcts_*`, `known_pt_drug_*`) inherits the same disposition.
+
+**Files cleaned 2026-09-27, see TODO-114.** Wf-119 Phase 3 closed the
+silent-`None` anti-pattern in
+`molmetal/molmetal_lam/sbdd_env/metrics_v2.py:865-925`: the helper
+`_safe_external_score` now raises `AdapterUnavailable` (mirrors
+`molmetal.scoring.score_any.AdapterUnavailable`) on every failure
+path — missing module, missing adapter attribute, `score()` returning
+`None`, `score()` raising, empty / non-string SMILES. The 12 stale
+JSON files under `metrics/by_metric/` for these four metrics (base
+name + `lambda_mcts_*` + `known_pt_drug_*` aliases) were deleted via
+`molmetal/scripts/cleanup_mock_deleted.py` (audit log:
+`molmetal/reports/wf119_cleanup/cleanup_log.json`). The
+`mock_keys_in_metrics_by_metric` list in `molmetal/scoring/policy.json`
+is now empty.
 
 | Metric | Disposition | Real alternative |
 |---|---|---|
