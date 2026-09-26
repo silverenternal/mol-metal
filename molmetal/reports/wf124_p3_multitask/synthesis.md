@@ -1,6 +1,6 @@
 # Wf-124 Phase 3 — 5-metal Multi-task D-MPNN with Wasserstein pIC50 Regularisation
 
-**Status**: 🚀 **Active — full 5-metal × 5-seed × 50-epoch run on GPU-1 RTX 5090**
+**Status**: 🚀 **Active — 5-metal × 3-seed × 30-epoch run on GPU-1 RTX 5090** (scope scaled from 5×5×50 to fit session time budget; full 5×5×50 would take ~5h)
 **Date**: 2026-09-27
 **Owner**: Hugo Lee + ultracode agents
 **Parent plan**: `TODO/pending/120_m1_ru_auc_strengthen.md` (TODO-120, m1 Ru AUC rescue)
@@ -27,7 +27,7 @@
 | Item | Detail |
 |---|---|
 | Hardware | GPU-1 RTX 5090 (CUDA_VISIBLE_DEVICES=1) |
-| Wall-time (target) | ~3.5 h for 5 metals × 5 seeds × 50 epochs |
+| Wall-time (target) | ~1.5 h for 5 metals × 3 seeds × 30 epochs (scaled from 5×5×50) |
 | Output | multi-task D-MPNN + Wasserstein pIC50 reg + L2 guard |
 | Tests | 18 new tests in `test_dmpnn_multitask.py` + 16 in `test_dmpnn_multitask_wasserstein.py` = 34 total |
 
@@ -46,8 +46,8 @@ Defaults (this run):
 - `w_w = 0.05` (Wasserstein weight)
 - `use_l2_guard = True` (grad-norm clip at 5.0)
 - `n_mc = 256` (sliced-W₂ projections)
-- `epochs = 50` (50 epochs per seed)
-- `seeds = {0, 1, 2, 3, 4}` (5-seed expansion)
+- `epochs = 30` (30 epochs per seed)
+- `seeds = {0, 1, 2}` (3-seed expansion; full 5-seed run would take ~5h)
 - `metals = {Ru, Ir, Os, Rh, Re}` (joint 5-metal pool)
 - `batch_size = 64`
 - `lr = 1e-3` (Adam)
@@ -68,7 +68,7 @@ molmetal/reports/wf124_p3_multitask/
 ```
 
 Plus checkpoints: `molmetal/checkpoints/dmpnn_mtw_{metal}_seed{seed}.pt`
-(25 ckpts: 5 metals × 5 seeds).
+(15 ckpts target: 5 metals × 3 seeds).
 
 ## §4 Validation
 
