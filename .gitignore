@@ -6,6 +6,12 @@
 # =============================================================================
 
 # --- Python bytecode & venv -------------------------------------------------
+# .venv is the stale local env that uv auto-creates by default. Mol-Metal
+# routes uv to the shared /home/hugo/codes/CadButEaas/.venv-vlm via
+# UV_PROJECT_ENVIRONMENT in env.sh; pyproject.toml sets [tool.uv] managed =
+# false so uv does not recreate mol-metal/.venv silently. The pre-commit /
+# CI guard at molmetal/scripts/check_no_stale_venv.sh fails if a stale venv
+# reappears here.
 .venv/
 venv/
 __pycache__/
@@ -115,6 +121,13 @@ molmetal/reports/**/*.json
 !molmetal/reports/**/summary.md
 !molmetal/reports/**/final_small.json
 !molmetal/reports/**/summary_small.json
+# Wf-30 Phase 4 load-bearing analysis (small, MEASURED, source of truth)
+!molmetal/reports/wf30_dock/m3_lift_analysis.json
+!molmetal/reports/wf30_dock/m3_lift_summary.md
+# Wf-44 Phase 2 baseline check (small, source of truth for R² debug)
+!molmetal/reports/wf44_r2_debug/baseline_check.json
+!molmetal/reports/wf44_r2_debug/root_cause_catalog.md
+!molmetal/reports/wf44_r2_debug/root_cause_checklist.json
 
 # --- Joblib caches (rebuilt by build_cache.py) ------------------------------
 molmetal/molmetal_lam/tile_lib/.cache/
@@ -143,3 +156,10 @@ core.*
 
 # --- Claude-code / agent meta (LOCAL only, do NOT ship) ---------------------
 .claude/
+
+# --- Local dataset cache (per-host symlinks + downloaded corpora) ----------
+#   DATA_STATUS.md at the project root IS tracked (dataset inventory doc);
+#   everything else under .data/ is host-specific.
+.data/molmetal/
+.data/cache/
+*.venv*

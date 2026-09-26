@@ -1,0 +1,247 @@
+{
+  "$schema_version": "1.0",
+  "workflow": "Wf-44",
+  "phase": "Phase 1",
+  "title": "Negative R-squared Root Cause Checklist",
+  "description": "Machine-readable per-cause triage checklist. Phase 2 will run these checks top-down (priority order) against Wf-32 m16 / Wf-37 L5 / Wf-39 composite / Wf-25 Hilbert joint to localize the regression mechanism.",
+  "date_utc": "2026-09-26",
+  "companion_doc": "molmetal/reports/wf44_r2_debug/root_cause_catalog.md",
+  "n_causes": 8,
+  "ordering": "priority_desc_then_cause_id_asc",
+  "causes": [
+    {
+      "id": "C1",
+      "rank": 1,
+      "title": "Baseline issue: model predicts all mean (R2 less than 0)",
+      "priority": "critical",
+      "summary": "Model output has near-zero variance — predictor collapsed to mean.",
+      "known_hits": [
+        {"workflow": "Wf-25", "value": -0.353, "note": "Hilbert composite, 8-d tile inflate to 64-d."},
+        {"workflow": "Wf-32 m16 smoke", "value": -0.040, "note": "PlatinAI 4-cell 1-seed × 1-epoch."}
+      ],
+      "check_method": {
+        "step_1": "Compute y_train.mean(), y_test.mean(); confirm within 0.1 * std(y_train).",
+        "step_2": "Compute pred_test.std() and pred_test.mean(). Flag if pred_test.std() < 0.1 * y_test.std().",
+        "step_3": "Compare R^2(model) vs R^2(constant_mean). If R^2(model) < 0, model is worse than mean."
+      },
+      "expected_signal": "pred_test.std() / y_test.std() < 0.1",
+      "diagnostic_code": "np.std(pred_test) < 0.1 * np.std(y_test)",
+      "fix_priority": "first",
+      "mitigations": [
+        "Replace model head with Linear(dim, 1) + identity (no sigmoid, no clamp).",
+        "Inspect Hilbert tile-inflate; replace tile(8,8) with pad(8,64) + learned bias col.",
+        "Confirm loss is MSE (not BCE) for regression targets."
+      ]
+    },
+    {
+      "id": "C2",
+      "rank": 2,
+      "title": "Feature mismatch: features not informative for target",
+      "priority": "critical",
+      "summary": "Train R^2 much greater than test R^2; features carry no transferable signal.",
+      "known_hits": [
+        {"workflow": "Wf-25", "value": -0.353, "note": "8-d RDKit against noisy binary; no electronic descriptors."},
+        {"workflow": "Wf-39", "value": -0.0905, "note": "AST branch 12-d RDKit against NCI-60 pIC50; AST symbol library too narrow."}
+      ],
+      "check_method": {
+        "step_1": "Per-feature Spearman rho with y_train. Flag if max |rho| < 0.05.",
+        "step_2": "Train ridge regressor; flag train_R^2 - test_R^2 > 0.3.",
+        "step_3": "Re-train with shuffled targets (y_shuf = y_train[randperm]). Flag if shuffled R^2 ~ real R^2."
+      },
+      "expected_signal": "train_R^2 - test_R^2 > 0.3 AND max(|spearman(features, y)|) < 0.05",
+      "diagnostic_code": "from scipy.stats import spearmanr; max_rho = max(abs(spearmanr(X_train[:, i], y_train)[0]) for i in range(X_train.shape[1]))",
+      "fix_priority": "first",
+      "mitigations": [
+        "Add 3D-aware features: asphericity, radius_of_gyration, PMI (after MMFF94s conformer).",
+        "Add electronic descriptors: HOMO, LUMO, Gap, Polarizability (PlatinAI schema).",
+        "Widen ASTSR symbol library: sin, cos, exp, log, sqrt, sigmoid."
+      ]
+    },
+    {
+      "id": "C3",
+      "rank": 3,
+      "title": "Target normalization reversed: should be max minus pic50, not reverse",
+      "priority": "major",
+      "summary": "y_pred sign-flip vs y_test; or train/test mean centering mismatch.",
+      "known_hits": [
+        {"workflow": "Wf-25 -> Wf-37 swap", "value": -0.353, "note": "Original target was binary {0,1} + N(0,0.05); Wf-37 swapped to real pIC50 [3.5, 9.5] continuous."}
+      ],
+      "check_method": {
+        "step_1": "Print y_train.mean(), y_test.mean(), y_pred.mean(); confirm on same scale.",
+        "step_2": "If (y_pred - y_test).mean() / y_test.std() > 0.5, model is biased not unstable.",
+        "step_3": "If np.corrcoef(y_pred, y_test)[0,1] ~ -1.0, model learned wrong sign."
+      },
+      "expected_signal": "sign(corrcoef(y_pred, y_test)) == -1",
+      "diagnostic_code": "np.corrcoef(y_pred, y_test)[0, 1] < -0.95",
+      "fix_priority": "second",
+      "mitigations": [
+        "Pin conversion at loader: pIC50 = -log10(IC50_M) consistently.",
+        "Compute y_train.mean() once; apply (y - y_mean) before training; use same y_mean at test.",
+        "If regression target bounded [a,b], normalise to [0,1] (not [-1,1]); inverse at eval."
+      ]
+    },
+    {
+      "id": "C4",
+      "rank": 4,
+      "title": "Data leakage: train set leak into test (scaffold split not strict)",
+      "priority": "major",
+      "summary": "Train and test scaffolds overlap; or cohort mismatch makes test OOD.",
+      "known_hits": [
+        {"workflow": "Wf-32 m16", "value": -0.040, "note": "Train PlatinAI 4-cell (synthetic IC50 from HOMO/LUMO); test HeLa48h/dark (real measurements) — different scaffolds, different target distributions."}
+      ],
+      "check_method": {
+        "step_1": "Verify split is scaffold_split (Bemis-Murcko) not random_split.",
+        "step_2": "Compute train-test scaffold overlap = len(set(train_scaffold) & set(test_scaffold)) / len(test_scaffold). Flag if > 0.",
+        "step_3": "Compute KL(train_y || test_y). Flag if > 0.5 nats — test target out-of-distribution."
+      },
+      "expected_signal": "scaffold overlap > 0 OR KL(train_y || test_y) > 0.5",
+      "diagnostic_code": "from scipy.stats import entropy; kl = entropy(np.histogram(y_train, bins=20)[0] + 1e-10, np.histogram(y_test, bins=20)[0] + 1e-10)",
+      "fix_priority": "second",
+      "mitigations": [
+        "Re-split with strict scaffold_split (Bemis-Murcko grouped; train/val/test disjoint at scaffold level).",
+        "Re-run on dual cohorts: train on PlatinAI 4-cell + HeLa48h; test on held-out cohort disjoint by scaffold.",
+        "Remove overlapping molecules if scaffold overlap detected pre-split."
+      ]
+    },
+    {
+      "id": "C5",
+      "rank": 5,
+      "title": "Target distribution extreme: most pIC50 concentrated, model predict mean",
+      "priority": "major",
+      "summary": "Heavy mode near mean; upper-tail variance unexplained; regressor converges to median.",
+      "known_hits": [
+        {"workflow": "Wf-37 L5", "value": 0.163, "note": "PlatinAI 4-cell synthetic IC50 from HOMO/LUMO/Gap/Polarizability — bounded [4,8] with heavy mode near midpoint; R^2 plateau at +0.16 rather than +0.5+."}
+      ],
+      "check_method": {
+        "step_1": "Compute y_train.skew(), y_train.kurtosis(). Flag if |skew| > 1.",
+        "step_2": "Compute y_train.quantile([0.01, 0.05, 0.5, 0.95, 0.99]). Flag if q95 - q5 < 1.0 (pIC50 units).",
+        "step_3": "Train quantile regressor at q=0.5 (median). Flag if median-MAE < mean-MAE by > 20%."
+      },
+      "expected_signal": "y_train.skew() > 1 AND q95 - q5 < 1.0",
+      "diagnostic_code": "from scipy.stats import skew, kurtosis; skew_y = skew(y_train); q_range = np.quantile(y_train, 0.95) - np.quantile(y_train, 0.05)",
+      "fix_priority": "second",
+      "mitigations": [
+        "Apply log1p(y) transformation if y > 0 (IC50 in nM).",
+        "Apply Yeo-Johnson power transform (handles negatives) before regression.",
+        "Stratify training set by y bins; oversample the tails (q < 0.1 and q > 0.9)."
+      ]
+    },
+    {
+      "id": "C6",
+      "rank": 6,
+      "title": "Hilbert optimizer step too large: inner product overflow leads to NaN, loss = 0",
+      "priority": "major",
+      "summary": "PD step overflows; iterate jumps out of feasible set; loss collapses to 0; gradient becomes NaN.",
+      "known_hits": [
+        {"workflow": "Wf-25 joint Hilbert", "value": -0.443, "note": "Constant lr=0.01 on sparse-RDKit scale (||x|| ~ 400); first PD iterate jumped to ||x_k|| ~ 1e6; inner product overflowed; gradient became NaN; regressor outputted mean for remaining iters."}
+      ],
+      "check_method": {
+        "step_1": "Inspect loss_curve[:10]. Flag if loss[5:] ~ 0 AND loss[:5] is finite.",
+        "step_2": "Check np.isnan(grad).any() or np.isinf(grad).any(). Flag if true.",
+        "step_3": "Inspect np.linalg.norm(x_k, 2) over iters. Flag if ||x_k|| grows by > 100x in first 5 iters."
+      },
+      "expected_signal": "loss_curve[5:] == 0 AND np.isnan(grad) somewhere in trajectory",
+      "diagnostic_code": "np.any(np.isnan(grad)) and np.all(loss[5:] < 1e-6)",
+      "fix_priority": "second",
+      "mitigations": [
+        "Add gradient clipping: grad = grad * min(1, 1.0 / (||grad|| + 1e-8)).",
+        "Use warmup-cosine LR schedule: lr_warmup=50, lr_max=0.005, lr_min=0.0005 (Wf-37 fix).",
+        "Pad input features with bias column (Wf-37 fix) instead of tile-inflate.",
+        "Switch to float64 for Hilbert inner product; cast back to float32 only for final prediction."
+      ]
+    },
+    {
+      "id": "C7",
+      "rank": 7,
+      "title": "Numerical precision: float32 leads to R-squared noise floor plus-minus 0.05",
+      "priority": "minor",
+      "summary": "Float32 Hilbert inner product accumulates error; R^2 has noise floor +/- 0.05 to +/- 0.5.",
+      "known_hits": [
+        {"workflow": "Wf-39 Deflexpressor seed 2", "value": -1.4252, "note": "Hilbert R^2 = -1.4252 on one seed; R^2 std = 0.6802 across 5 seeds; consistent with +/- 0.5 R^2 noise floor at hilbert_dim=64 in float32."}
+      ],
+      "check_method": {
+        "step_1": "Compute R^2.std() across 5+ seeds. Flag if R^2.std() > 0.5 * |R^2.mean()|.",
+        "step_2": "Re-run same seed in float64. Flag if |R^2_fp32 - R^2_fp64| > 0.1.",
+        "step_3": "Re-run with hilbert_dim=128. Flag if R^2(128) ~ R^2(64) — dim is not bottleneck."
+      },
+      "expected_signal": "R^2.std() / |R^2.mean()| > 0.5",
+      "diagnostic_code": "r2_scores = [train_one_seed(s) for s in range(5)]; noise_ratio = np.std(r2_scores) / max(abs(np.mean(r2_scores)), 1e-8)",
+      "fix_priority": "third",
+      "mitigations": [
+        "Use float64 for Hilbert inner product (hot loop small enough that wall cost is acceptable).",
+        "Report R^2.mean() +/- R^2.std() honestly; do not cherry-pick seeds.",
+        "Re-run with seeds=[0..9]; require R^2.mean() > 0.0 AND R^2.mean() > 2 * R^2.std() for positive ship."
+      ]
+    },
+    {
+      "id": "C8",
+      "rank": 8,
+      "title": "Feature-target correlation truly weak: ASTSR features weakly correlated with IC50",
+      "priority": "minor",
+      "summary": "All Causes 1-7 ruled out; features fundamentally cannot carry the signal.",
+      "known_hits": [
+        {"workflow": "Wf-37 L5", "value": 0.163, "note": "ASTSR 12-d RDKit features weakly correlated with Pt binding affinity at scaffold-level split; upper bound ~+0.5 requires 3D / electronic descriptors not in current 12-d set."}
+      ],
+      "check_method": {
+        "step_1": "Compute information-theoretic upper bound: R^2_max = 1 - H(y_test) / log(N_test). Flag if R^2_max < 0.2.",
+        "step_2": "Compute ridge baseline on same train/test split. Flag if ridge_R^2 < 0.",
+        "step_3": "Compute per-target Spearman rho with best 3-d feature subset (greedy forward selection). Flag if max |rho| < 0.05."
+      },
+      "expected_signal": "ridge_R^2 < 0 AND R^2_max < 0.2",
+      "diagnostic_code": "from sklearn.linear_model import Ridge; ridge_r2 = Ridge().fit(X_train, y_train).score(X_test, y_test)",
+      "fix_priority": "third",
+      "mitigations": [
+        "Augment features with 3D conformer descriptors (after MMFF94s relax).",
+        "Add metal-specific descriptors: Pt-N_bond_length, trans_effect_angle, coordination_geometry.",
+        "If dataset too small (< 100), augment with PlatinAI synthetic data ONLY for training (never for test)."
+      ]
+    }
+  ],
+  "cross_cause_interactions": [
+    {
+      "case_workflow": "Wf-25 Hilbert joint",
+      "value": -0.443,
+      "overlapping_causes": ["C1", "C6", "C2"],
+      "explanation": "Baseline collapse (C1) + PD step overflow (C6) + 8-d features against binary target (C2)."
+    },
+    {
+      "case_workflow": "Wf-32 m16 smoke",
+      "value": -0.040,
+      "overlapping_causes": ["C1", "C4", "C2"],
+      "explanation": "Baseline collapse (C1) + PlatinAI/HeLa48h cohort mismatch (C4) + 12-d features against synthetic IC50 (C2)."
+    },
+    {
+      "case_workflow": "Wf-37 L5 Hilbert",
+      "value": 0.163,
+      "overlapping_causes": ["C5", "C8"],
+      "explanation": "PlatinAI 4-cell concentrated target (C5) + weak feature-target correlation (C8); +0.16 is ship acceptable."
+    },
+    {
+      "case_workflow": "Wf-39 composite",
+      "value": 0.186,
+      "overlapping_causes": ["C7", "C1"],
+      "explanation": "Float32 noise floor (C7) + AST branch baseline collapse (C1); composite branch rescues ship."
+    }
+  ],
+  "phase_2_execution_order": [
+    "Re-measure Wf-32 m16 in float64 (C7 check) + Wf-37 L5 setup on same seed. If R^2 >= 0, C7 is dominant noise.",
+    "Inspect Wf-32 trainer for target normalization (C3) and cohort split (C4). If found, fix and re-run.",
+    "Re-split PlatinAI 4-cell by strict scaffold (C4 mitigation) and re-train.",
+    "If all above fail: Phase 3 ships C2 / C8 mitigation (3D + electronic features)."
+  ],
+  "phase_2_exit_criterion": "At least one Wf-32 m16 cohort hits Pearson r >= 0.0 AND R^2 >= 0.0 on real spread pIC50 (no synthetic).",
+  "lit_anchors": [
+    "Sun & Zheng 2026 — 数学学报 53(4): 821-846 — Hilbert PD O(1/k) bound.",
+    "Chambolle & Pock 2011 — J. Math. Imaging Vision 40(1): 120-145 — canonical PD reference.",
+    "Bemis & Murcko 1996 — J. Med. Chem. 39(15): 2887-2893 — Bemis-Murcko scaffold split.",
+    "Wu et al. 2018 — Molecules 23(6): 1379 — MoleculeNet scaffold split caveats.",
+    "Pedregosa et al. 2011 — JMLR 12: 2825-2830 — scikit-learn ridge baseline."
+  ],
+  "honest_framing": {
+    "is_prior_knowledge": true,
+    "is_speculative": false,
+    "multi_causes_are_rule": true,
+    "phase_2_goal": "debugging not leaderboard chasing",
+    "r2_negative_not_always_bug": "If C8 trips after C1-C7 are ruled out, ship negative R^2 as known limitation."
+  }
+}
