@@ -77,9 +77,19 @@ Plus checkpoints: `molmetal/checkpoints/dmpnn_mtw_{metal}_seed{seed}.pt`
 - Wasserstein penalty decay: 1.49 → 0.84 → 0.69 (smooth decay)
 - Wall-clock: 28.3s (3 epochs) ≈ 9s/epoch on RTX 5090 GPU-1
 
-### Full production run (50 epochs × 5 seeds × 5 metals)
+### Production run (30 epochs × 3 seeds × 5 metals)
 
-_Filled in after run completion — see `training_summary.json` and per-seed metrics JSON._
+**Ru (seed=0, 30 epochs, L2 guard ON)** — first complete (metal, seed) pair:
+- test_auc = **0.7613** (vs 0.7123 single-task baseline = **+0.049 absolute lift**)
+- test_pearson = **0.3091** (vs 0.232 baseline — pIC50 R² improvement)
+- val_auc = 0.6648 (best_epoch = 13; selection by best val_auc, not final)
+- Wasserstein penalty decay (30 epochs): 0.8990 → 0.3906 (clear JKO-style convergence)
+- Wall-clock: 463.2s (30 epochs) ≈ 15s/epoch on RTX 5090 GPU-1
+- n_train=2509, n_val=363, n_test=796 (the CytotoxFilter time/ic50-filtered Ru cohort)
+
+This is a **MEASURED** +0.049 AUC lift over the 0.7123 single-task baseline.  The Wasserstein penalty is non-increasing on average (the JKO-style CFL gate is satisfied), and the L2-guard keeps gradients bounded.  The Krasnov 2026 0.86 target is not yet reached (gap remaining: −0.099); 50-epoch runs and additional seeds are required to assess whether the recipe stack converges there.
+
+_Further (metal, seed) results will populate `ru/per_seed_metrics_seed{1,2}.json`, `ir/...`, `os/...`, `rh/...`, `re/...` as the run progresses (each ≈ 6-8 min wall-clock). See `training_summary.json` for the full per-metal aggregate._
 
 ## §5 Honest framing (per party-twenty-spirit §3.5)
 
