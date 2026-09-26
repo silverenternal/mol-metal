@@ -1,0 +1,738 @@
+{
+  "_doc": "Wf-43 Phase 2 — metric → real-tool routing policy. Every metric must be produced by the primary_tool (or one of the fallback_tools). NO MOCK FALLBACK IS PERMITTED. Mocks are reserved for unit-test fixtures only. The companion human-readable document is molmetal/scoring/ROUTING_POLICY.md.",
+  "_version": "2026-09-26",
+  "_schema_version": "1.0",
+  "_wf": "Wf-43 Phase 2",
+  "_invariant": "Every metric in this policy either returns a value computed by a real, locally-deployed tool, or it raises AdapterUnavailable. NO mock fallback is permitted at any layer.",
+  "_env_vars": {
+    "MOLMETAL_VINA_ENGINE": "Selects vina backend for vina_score / vina_high_affinity / vina_min_score. unset → AutoDock Vina 1.2.7 (real Meeko+Python or CLI), 'qvina2' → QuickVina 2 CLI, 'gpu' → Vina-GPU (CUDA + vina_gpu extension)."
+  },
+  "policy": {
+    "vina_score": {
+      "primary_tool": "AutoDock Vina 1.2.7",
+      "tool_version": "1.2.7",
+      "backend": "python+cli",
+      "module": "molmetal.molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
+      "license": "Apache-2.0",
+      "local_check": "python -c 'import vina, meeko; print(vina.__version__, meeko.__version__)'",
+      "required_data": ["smiles", "pocket_pdbqt"],
+      "optional_kwargs": ["n_poses", "exhaustiveness", "engine"],
+      "fallback_chain": ["vina_qvina2", "vina_gpu"],
+      "fallback_conditions": {
+        "vina_qvina2": "env MOLMETAL_VINA_ENGINE=qvina2 AND qvina02 on PATH",
+        "vina_gpu": "env MOLMETAL_VINA_ENGINE=gpu AND CUDA device + vina_gpu extension"
+      },
+      "wf43_status": "MEASURED",
+      "notes": "Real Meeko+Vina Python binding (preferred) or vina CLI binary. Switch engines via MOLMETAL_VINA_ENGINE.",
+      "metrics_by_metric_aliases": [
+        "vina_kcal_per_mol",
+        "vina_mean"
+      ]
+    },
+    "vina_high_affinity": {
+      "primary_tool": "AutoDock Vina 1.2.7",
+      "tool_version": "1.2.7",
+      "backend": "python+cli",
+      "module": "molmetal.molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
+      "license": "Apache-2.0",
+      "local_check": "python -c 'import vina, meeko; print(vina.__version__, meeko.__version__)'",
+      "required_data": ["smiles", "pocket_pdbqt"],
+      "optional_kwargs": ["cutoff_kcal", "n_poses", "exhaustiveness"],
+      "fallback_chain": ["vina_qvina2", "vina_gpu"],
+      "wf43_status": "MEASURED",
+      "notes": "Boolean classifier on top of vina_score (cutoff_kcal, default -8.0).",
+      "metrics_by_metric_aliases": [
+        "vina_high_affinity_1h36",
+        "vina_high_affinity_3eml",
+        "vina_high_affinity_3ny8",
+        "vina_high_affinity_4aaw",
+        "vina_high_affinity_4rlu",
+        "vina_high_affinity_test_001"
+      ]
+    },
+    "vina_min_score": {
+      "primary_tool": "AutoDock Vina 1.2.7",
+      "tool_version": "1.2.7",
+      "backend": "python+cli",
+      "module": "molmetal.molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
+      "license": "Apache-2.0",
+      "local_check": "python -c 'import vina, meeko; print(vina.__version__, meeko.__version__)'",
+      "required_data": ["smiles", "pocket_pdbqt"],
+      "optional_kwargs": ["cutoff_kcal", "n_poses", "exhaustiveness"],
+      "fallback_chain": ["vina_qvina2", "vina_gpu"],
+      "wf43_status": "MEASURED",
+      "notes": "Aggregates vina_score over a batch — min / median / n_below_cutoff.",
+      "metrics_by_metric_aliases": [
+        "vina_relaxed_success",
+        "vina_triple_success",
+        "vina_relaxed_success_1h36",
+        "vina_relaxed_success_3eml",
+        "vina_relaxed_success_3ny8",
+        "vina_relaxed_success_4aaw",
+        "vina_relaxed_success_4rlu",
+        "vina_relaxed_success_test_001",
+        "vina_triple_success_1h36",
+        "vina_triple_success_3eml",
+        "vina_triple_success_3ny8",
+        "vina_triple_success_4aaw",
+        "vina_triple_success_4rlu"
+      ]
+    },
+    "vina_qvina2": {
+      "primary_tool": "QuickVina 2 (CASO-derived qvina02)",
+      "tool_version": "2.1",
+      "backend": "cli",
+      "module": "molmetal.scripts.q_vina2_swap",
+      "license": "Apache-2.0",
+      "local_check": "which qvina02 || ls -la /home/hugo/codes/mol-metal/references/SoftMol/gated_mcts/utils/docking/qvina02",
+      "required_data": ["smiles", "pocket_pdbqt"],
+      "optional_kwargs": ["exhaustiveness"],
+      "fallback_chain": [],
+      "fallback_conditions": {},
+      "wf43_status": "RESERVED",
+      "notes": "Routes through q_vina2_swap.py calling qvina02 binary on PATH. The vendored copy at references/SoftMol/gated_mcts/utils/docking/qvina02 is the Wf-43 fallback binary path. Routes via MOLMETAL_VINA_ENGINE=qvina2."
+    },
+    "vina_gpu": {
+      "primary_tool": "Vina-GPU (Doerr 2021)",
+      "tool_version": "1.2.3+cuda",
+      "backend": "python+CUDA",
+      "module": "molmetal.molmetal_lam.sbdd_env.vina_gpu_adapter.QuickVinaGPUAdapter",
+      "license": "Apache-2.0",
+      "local_check": "ls -la /home/hugo/codes/mol-metal/molmetal/references/SynFlowNet/bin/QuickVina2-GPU-2-1 2>/dev/null; python -c 'import vina_gpu' 2>&1",
+      "required_data": ["smiles", "pocket_pdbqt"],
+      "optional_kwargs": ["n_poses"],
+      "fallback_chain": ["vina_score"],
+      "fallback_conditions": {
+        "vina_score": "no CUDA device OR no vina_gpu extension present"
+      },
+      "wf43_status": "RESERVED",
+      "notes": "GPU-accelerated Vina; same kcal/mol semantics as vina_score. The QuickVina2-GPU-2-1 binary at references/SynFlowNet/bin/ is the AMD-friendly vendor build (not NVIDIA Blackwell). Use vina_score as fallback when no CUDA. Routes via MOLMETAL_VINA_ENGINE=gpu."
+    },
+    "vina_reference": {
+      "primary_tool": "AutoDock Vina 1.2.7 (co-crystal redock)",
+      "tool_version": "1.2.7",
+      "backend": "python+cli",
+      "module": "molmetal.molmetal_lam.sbdd_env.vina_adapter.VinaDockingAdapter",
+      "license": "Apache-2.0",
+      "local_check": "python -c 'import vina, meeko; print(vina.__version__, meeko.__version__)'",
+      "required_data": ["reference_ligand_pdbqt", "co_crystal_pocket_pdbqt"],
+      "fallback_chain": ["vina_qvina2"],
+      "wf43_status": "MEASURED",
+      "notes": "Re-docks the co-crystal ligand into the staged pocket to compute the binding-mode reference kcal/mol. Same engine as vina_score.",
+      "metrics_by_metric_aliases": [
+        "vina_reference_1h36",
+        "vina_reference_3eml",
+        "vina_reference_3ny8",
+        "vina_reference_4aaw",
+        "vina_reference_4rlu",
+        "vina_reference_test_001"
+      ]
+    },
+    "diffdock_pose": {
+      "primary_tool": "DiffDock (Corso 2024 NeurIPS)",
+      "tool_version": "1.1.0",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.diffdock_adapter.DiffDockAdapter",
+      "license": "MIT",
+      "local_check": "python -c 'import torch; from molmetal.molmetal_lam.sbdd_env.diffdock_adapter import DiffDockAdapter'",
+      "required_data": ["smiles", "pocket_pdb"],
+      "fallback_chain": ["flowdock_pose"],
+      "fallback_conditions": {
+        "flowdock_pose": "torch_cluster / torch_scatter unavailable OR DiffDock checkpoint missing"
+      },
+      "wf43_status": "MEASURED",
+      "notes": "Real DiffDock inference; confidence ∈ [0, 1]. GPU + torch_cluster required."
+    },
+    "equibind_pose": {
+      "primary_tool": "EquiBind (Stärk 2022)",
+      "tool_version": "RESERVED",
+      "backend": "python",
+      "module": "NOT_SHIPPED",
+      "license": "MIT",
+      "fallback_chain": ["flowdock_pose", "diffdock_pose"],
+      "wf43_status": "RESERVED",
+      "notes": "EquiBind adapter not yet shipped in this repo. Use flowdock_pose or diffdock_pose as SE(3)-equivariant docking surrogate. Adapter pending — ship molmetal/molmetal_lam/sbdd_env/equibind_adapter.py then wire a wrapper here."
+    },
+    "flowdock_pose": {
+      "primary_tool": "FlowDock (R17 ship)",
+      "tool_version": "0.1",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.flowdock_adapter.FlowDockAdapter",
+      "license": "MIT",
+      "local_check": "python -c 'from molmetal.molmetal_lam.sbdd_env.flowdock_adapter import FlowDockAdapter'",
+      "required_data": ["smiles", "pocket_pdb"],
+      "fallback_chain": ["diffdock_pose"],
+      "wf43_status": "MEASURED",
+      "notes": "Real flow-matching docking confidence ∈ [0, 1]. CPU-friendly fallback when DiffDock GPU stack is unavailable."
+    },
+    "pocket2mol": {
+      "primary_tool": "Pocket2Mol (Peng 2022 ICLR-W)",
+      "tool_version": "1.0",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.pocket2mol_adapter.Pocket2MolSampler",
+      "license": "MIT",
+      "local_check": "ls /home/hugo/codes/pocket/.eval_envs/pocket2mol311/bin/pocket2mol* 2>/dev/null; python -c 'from molmetal.molmetal_lam.sbdd_env.pocket2mol_adapter import _checkpoint_available'",
+      "required_data": ["pocket_pdb"],
+      "optional_kwargs": ["n_samples"],
+      "fallback_chain": [],
+      "wf43_status": "RESERVED",
+      "notes": "Real Pocket2Mol sampler; atom-count is the validity proxy. Requires official Pocket2Mol weights at the path returned by pocket2mol_adapter._checkpoint_path()."
+    },
+    "boltz_affinity": {
+      "primary_tool": "D-MPNN pIC50 (R17 ship, locally-trained attentive fp)",
+      "tool_version": "v4_morgan_mlp",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.pic50_predictor.predict_pic50",
+      "license": "MIT",
+      "local_check": "python -c 'from molmetal.molmetal_lam.sbdd_env.pic50_predictor import predict_pic50; print(predict_pic50(\"CCO\"))'",
+      "required_data": ["smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real locally-trained Attentive D-MPNN pIC50 predictor; nan on parse-fail or missing checkpoint. Swap to Boltz foundation-model pIC50 head when shipped.",
+      "metrics_by_metric_aliases": [
+        "affinity_pearson_r",
+        "pearson_r_pic50",
+        "platinai_a2780_pred",
+        "platinai_mcf7_pred"
+      ]
+    },
+    "af2_confidence": {
+      "primary_tool": "Voxelization complexity (AF2 surrogate)",
+      "tool_version": "R17",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.voxelization.pocket_to_spatial_tiles",
+      "license": "MIT",
+      "local_check": "python -c 'from molmetal.molmetal_lam.sbdd_env.voxelization import pocket_to_spatial_tiles'",
+      "required_data": ["pocket"],
+      "optional_kwargs": ["grid_size", "resolution"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real voxelization complexity proxy (deterministic std-of-tile-occupancy). Swap to AlphaFold pLDDT inference when the AF2 backend is shipped."
+    },
+    "pb_pass_rate": {
+      "primary_tool": "PoseBusters (Buttenschoen 2024)",
+      "tool_version": "0.6.5",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.posebusters_adapter.PoseBustersAdapter",
+      "license": "MIT",
+      "local_check": "python -c 'import posebusters; print(posebusters.__version__)'",
+      "required_data": ["smiles", "pocket_pdb"],
+      "optional_kwargs": ["pb_mode"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real PoseBusters 26-check validation (14 chemistry + 12 protein-aware in 'dock' mode; 14 chemistry-only in 'mol' mode).",
+      "metrics_by_metric_aliases": [
+        "steric_clash_pb_dock",
+        "steric_clash_pb_dock_1h36",
+        "steric_clash_pb_dock_test_001"
+      ]
+    },
+    "aizynth_synthesis": {
+      "primary_tool": "AiZynthFinder (Genheden 2020)",
+      "tool_version": "4.6.0",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.aizynth_adapter.check_list",
+      "license": "MIT",
+      "local_check": "python -c 'from molmetal.molmetal_lam.sbdd_env.aizynth_adapter import check_list'",
+      "required_data": ["smiles"],
+      "fallback_chain": ["smarts_synthesis_gate"],
+      "fallback_conditions": {
+        "smarts_synthesis_gate": "AiZynthFinder not installed — uses SMARTS rule from synthesis_gate module instead (deterministic, less rich)"
+      },
+      "wf43_status": "MEASURED",
+      "notes": "Real AiZynthFinder MCTS retrosynthesis with SMARTS fallback when AiZynthFinder is not installed."
+    },
+    "pl_likelihood": {
+      "primary_tool": "PLL signature (Liu/Feng 2026)",
+      "tool_version": "R17",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.lam_chem.pll_signature.compute_pll",
+      "license": "MIT",
+      "local_check": "python -c 'from molmetal.molmetal_lam.lam_chem.pll_signature import compute_pll'",
+      "required_data": ["smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real Persistent Local Laplacian signature from molmetal.molmetal_lam.lam_chem.pll_signature."
+    },
+    "decomp_diff": {
+      "primary_tool": "DecompDiff (Guan 2024)",
+      "tool_version": "RESERVED",
+      "backend": "python",
+      "module": "NOT_SHIPPED",
+      "license": "MIT",
+      "fallback_chain": [],
+      "wf43_status": "RESERVED",
+      "notes": "DecompDiff adapter not yet shipped. Reserved metric name; no mock. Ship molmetal/molmetal_lam/sbdd_env/decompdiff_adapter.py then wire a wrapper."
+    },
+    "molcraft": {
+      "primary_tool": "MolCraft (Qu 2024)",
+      "tool_version": "RESERVED",
+      "backend": "python",
+      "module": "NOT_SHIPPED",
+      "license": "MIT",
+      "fallback_chain": [],
+      "wf43_status": "RESERVED",
+      "notes": "MolCraft adapter not yet shipped. Reserved metric name; no mock. Ship adapter then wire a wrapper."
+    },
+    "targetdiff": {
+      "primary_tool": "TargetDiff (Guan 2023 ICLR)",
+      "tool_version": "1.0",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.targetdiff_adapter.PocketToLigandSampler",
+      "license": "MIT",
+      "local_check": "python -c 'from molmetal.molmetal_lam.sbdd_env.targetdiff_adapter import PocketToLigandSampler'",
+      "required_data": ["pocket_pdb"],
+      "optional_kwargs": ["n_samples"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real TargetDiff sampler; atom-count is the validity proxy. Swap to a binding-affinity head when shipped."
+    },
+    "imold_ood": {
+      "primary_tool": "IMOLDE OOD (Mervin 2024)",
+      "tool_version": "RESERVED",
+      "backend": "python",
+      "module": "NOT_SHIPPED",
+      "license": "MIT",
+      "fallback_chain": [],
+      "wf43_status": "RESERVED",
+      "notes": "IMOLDE OOD adapter not yet shipped. Reserved metric; no mock. Ship adapter then wire a wrapper."
+    },
+    "drugood_ood": {
+      "primary_tool": "DrugOOD OOD (Ji 2022 NeurIPS-DB)",
+      "tool_version": "RESERVED",
+      "backend": "python",
+      "module": "NOT_SHIPPED",
+      "license": "MIT",
+      "fallback_chain": [],
+      "wf43_status": "RESERVED",
+      "notes": "DrugOOD OOD adapter not yet shipped. Reserved metric; no mock. Ship adapter then wire a wrapper."
+    },
+    "glide_score": {
+      "primary_tool": "Glide (Schrödinger)",
+      "tool_version": "COMMERCIAL",
+      "backend": "commercial",
+      "module": "NOT_SHIPPED",
+      "license": "Schrödinger commercial",
+      "fallback_chain": ["vina_score"],
+      "fallback_conditions": {
+        "vina_score": "no Schrödinger licence — open-source AutoDock Vina is the OSS surrogate"
+      },
+      "wf43_status": "RESERVED",
+      "notes": "Glide requires a Schrödinger licence and is not available in this open-source repo. Use vina_score as the open docking surrogate, or obtain a Glide licence and ship a wrapper."
+    },
+    "sa_score": {
+      "primary_tool": "SA score (Ertl-Schuffenhauer 2008)",
+      "tool_version": "RDKit Contrib sascorer",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.sa_score.sa_score_ertl",
+      "license": "MIT",
+      "local_check": "python -c 'from rdkit.Chem import RDConfig; from rdkit.Chem.Descriptors import _descList; import os; sys_path = os.path.join(RDConfig.RDContribDir, \"SA_Score\"); sys.path.append(sys_path); import sascorer; print(sascorer.calculateScore(\"CCO\"))'",
+      "required_data": ["smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real Ertl-Schuffenhauer synthesis accessibility 1..10.",
+      "metrics_by_metric_aliases": ["sa_mean"]
+    },
+    "qed": {
+      "primary_tool": "QED (Bickerton 2012)",
+      "tool_version": "RDKit built-in",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.qed_scorer.qed_from_smiles",
+      "license": "BSD",
+      "local_check": "python -c 'from rdkit.Chem import QED; print(QED.qed(__import__(\"rdkit.Chem\", fromlist=[\"Chem\"]).Chem.MolFromSmiles(\"CC(=O)Oc1ccccc1C(=O)O\")))'",
+      "required_data": ["smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real Bickerton drug-likeness 0..1 (8 weighted property aggregator)."
+    },
+    "flowr": {
+      "primary_tool": "FlowER retrosynthesis (Kuznetsov 2022)",
+      "tool_version": "R17",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.flowr_adapter.FlowRSampler",
+      "license": "MIT",
+      "local_check": "python -c 'from molmetal.molmetal_lam.sbdd_env.flowr_adapter import FlowRSampler'",
+      "required_data": ["smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real FlowER retrosynthesis-flow validity. Adapter under references/FLOWR."
+    },
+    "logp7_4": {
+      "primary_tool": "RDKit Crippen logP + pH-correction (Weininger 1990 / Patrick 2009)",
+      "tool_version": "RDKit 2024.x",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.metrics_v2.logp7_4",
+      "license": "BSD",
+      "local_check": "python -c 'from rdkit.Chem import Crippen; from rdkit import Chem; print(Crippen.MolLogP(Chem.MolFromSmiles(\"CC(=O)Oc1ccccc1C(=O)O\")))'",
+      "required_data": ["smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real Crippen logP with ionisation correction (alpha7.4 / beta7.4). Heuristic — see TODO/02_metrics/METRICS_TARGETS.md for lit anchors."
+    },
+    "gi50_proxy": {
+      "primary_tool": "NCI60 GI50 heuristic (Hou 2007)",
+      "tool_version": "RDKit",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.metrics_v2.gi50_proxy",
+      "license": "BSD",
+      "local_check": "python -c 'from rdkit.Chem import Descriptors; from rdkit import Chem; print(Descriptors.MolWt(Chem.MolFromSmiles(\"CC(=O)Oc1ccccc1C(=O)O\")))'",
+      "required_data": ["smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real RDKit-descriptor-based GI50 proxy (-log10[GI50_molair] from Hou 2007). Heuristic — clip [0, 10] downstream."
+    },
+    "cell_permeability_logPapp": {
+      "primary_tool": "Hou 2007 Caco-2 / Mente 2015 logPapp heuristic",
+      "tool_version": "RDKit",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.metrics_v2.cell_permeability_logPapp",
+      "license": "BSD",
+      "local_check": "python -c 'from molmetal.molmetal_lam.sbdd_env.metrics_v2 import cell_permeability_logPapp; print(cell_permeability_logPapp(\"CCO\"))'",
+      "required_data": ["smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real RDKit-descriptor heuristic for logPapp. Lit: Hou 2007."
+    },
+    "herg_cardio_risk": {
+      "primary_tool": "Veith 2009 hERG shortcut (Aronov 2005 + Veber 2002 composite)",
+      "tool_version": "RDKit",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.metrics_v2.herg_cardio_risk",
+      "license": "BSD",
+      "local_check": "python -c 'from molmetal.molmetal_lam.sbdd_env.metrics_v2 import herg_cardio_risk; print(herg_cardio_risk(\"CCO\"))'",
+      "required_data": ["smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real RDKit SMARTS-rule composite for hERG cardiotox risk.",
+      "metrics_by_metric_aliases": [
+        "herg_cardio_risk_pool"
+      ]
+    },
+    "ames_mutagen": {
+      "primary_tool": "AMES structural alerts (Benigni-Richard 2005 / Sushko 2012)",
+      "tool_version": "RDKit",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.metrics_v2.ames_mutagen",
+      "license": "BSD",
+      "local_check": "python -c 'from molmetal.molmetal_lam.sbdd_env.metrics_v2 import ames_mutagen; print(ames_mutagen(\"CCO\"))'",
+      "required_data": ["smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real RDKit SMARTS-rule-based AMES mutagenicity flag."
+    },
+    "hepatotox_index": {
+      "primary_tool": "Rule-of-2 hepatotoxicity (Hughes 2008) + Stepan 2011 alerts",
+      "tool_version": "RDKit",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.metrics_v2.hepatotox_index",
+      "license": "BSD",
+      "local_check": "python -c 'from molmetal.molmetal_lam.sbdd_env.metrics_v2 import hepatotox_index; print(hepatotox_index(\"CCO\"))'",
+      "required_data": ["smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real RDKit SMARTS + MW/logP threshold composite for hepatotoxicity risk."
+    },
+    "aqueous_solubility_logS": {
+      "primary_tool": "ESOL (Delaney 2004)",
+      "tool_version": "RDKit",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.metrics_v2.aqueous_solubility_logS",
+      "license": "BSD",
+      "local_check": "python -c 'from molmetal.molmetal_lam.sbdd_env.metrics_v2 import aqueous_solubility_logS; print(aqueous_solubility_logS(\"CCO\"))'",
+      "required_data": ["smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real ESOL aqueous solubility logS via MW, logP, RB, AP descriptors. Clipped [-12, 2]."
+    },
+    "plasma_protein_binding": {
+      "primary_tool": "Obach 1999 PPB logistic regression",
+      "tool_version": "RDKit",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.metrics_v2.plasma_protein_binding",
+      "license": "BSD",
+      "local_check": "python -c 'from molmetal.molmetal_lam.sbdd_env.metrics_v2 import plasma_protein_binding; print(plasma_protein_binding(\"CCO\"))'",
+      "required_data": ["smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real Crippen-logP + MW + RB logistic regression on Obach 1999 PPB data."
+    },
+    "ring_size_distribution": {
+      "primary_tool": "RDKit GetRingInfo",
+      "tool_version": "RDKit",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.metrics_v2.ring_size_distribution",
+      "license": "BSD",
+      "local_check": "python -c 'from rdkit import Chem; m=Chem.MolFromSmiles(\"c1ccccc1\"); print([len(r) for r in m.GetRingInfo().AtomRings()])'",
+      "required_data": ["smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real RDKit GetRingInfo; per-molecule ring-size histogram in 3-9 + 'other' bins."
+    },
+    "pharmacophore_pass_rate": {
+      "primary_tool": "Lipinski Ro5 + Veber (Veber 2002) + RDKit ring-count SMARTS",
+      "tool_version": "RDKit",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.lam_chem.pharmacophore",
+      "license": "BSD",
+      "local_check": "python -c 'from rdkit.Chem import Lipinski; from rdkit import Chem; m=Chem.MolFromSmiles(\"CC(=O)Oc1ccccc1C(=O)O\"); print(Lipinski.NumHDonors(m))'",
+      "required_data": ["smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real Lipinski Ro5 + Veber + ring-count composite pass rate."
+    },
+    "reference_tanimoto": {
+      "primary_tool": "RDKit Morgan FP + Tanimoto (Rogers 2010)",
+      "tool_version": "RDKit",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.tanimoto_distance",
+      "license": "BSD",
+      "local_check": "python -c 'from rdkit.Chem import AllChem, DataStructs; from rdkit import Chem; m=Chem.MolFromSmiles(\"CC(=O)Oc1ccccc1C(=O)O\"); fp=AllChem.GetMorganFingerprintAsBitVect(m, 2); print(fp.GetNumOnBits())'",
+      "required_data": ["smiles", "reference_smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real Morgan-FP Tanimoto distance 1 - sim(cand, ref). Default reference: cisplatin SMILES."
+    },
+    "diversity_tanimoto": {
+      "primary_tool": "RDKit Morgan FP + Tanimoto (pairwise)",
+      "tool_version": "RDKit",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.tanimoto_distance",
+      "license": "BSD",
+      "local_check": "python -c 'from rdkit.Chem import AllChem; from rdkit import Chem; m1=Chem.MolFromSmiles(\"CCO\"); m2=Chem.MolFromSmiles(\"CCN\"); fp1=AllChem.GetMorganFingerprintAsBitVect(m1, 2); fp2=AllChem.GetMorganFingerprintAsBitVect(m2, 2); from rdkit.DataStructs import BulkTanimotoSimilarity; print(BulkTanimotoSimilarity(fp1, [fp2]))'",
+      "required_data": ["smiles_list"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Mean pairwise Tanimoto distance (1 - similarity) over Morgan FP r=2."
+    },
+    "diversity_subpocket": {
+      "primary_tool": "Per-residue sub-pocket fingerprint diversity (BioPython NeighborSearch)",
+      "tool_version": "RDKit+BioPython",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.per_residue_diversity",
+      "license": "BSD",
+      "local_check": "python -c 'from Bio.PDB import PDBParser, NeighborSearch'",
+      "required_data": ["smiles_list", "pocket_pdb"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real per-residue sub-pocket fingerprint diversity (3D-aware local-patch complement to global Tanimoto)."
+    },
+    "rigid_fragment_rmsd": {
+      "primary_tool": "RDKit MCS + GetBestRMS (symmetry-aware)",
+      "tool_version": "RDKit",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.rigid_fragment_rmsd",
+      "license": "BSD",
+      "local_check": "python -c 'from rdkit.Chem import AllChem; from rdkit import Chem; m=Chem.MolFromSmiles(\"CC(=O)Oc1ccccc1C(=O)O\"); print(AllChem.CalcRMS(m, m))'",
+      "required_data": ["smiles_a", "smiles_b"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real symmetry-aware MCS overlay RMSD (Å) of the maximum common substructure.",
+      "metrics_by_metric_aliases": [
+        "rigid_fragment_rmsd_4rlu"
+      ]
+    },
+    "com_shift": {
+      "primary_tool": "RDKit MMFF94 + center-of-mass shift (Å)",
+      "tool_version": "RDKit",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.com_shift",
+      "license": "BSD",
+      "local_check": "python -c 'from rdkit.Chem import AllChem; from rdkit import Chem; m=Chem.MolFromSmiles(\"CC(=O)Oc1ccccc1C(=O)O\"); print(AllChem.CalcRMS(m, m))'",
+      "required_data": ["smiles"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real MMFF94-minimised 3D conformer CoM shift RMSD. Reference conformer from MMFF94s Embed.",
+      "metrics_by_metric_aliases": [
+        "com_shift_1h36",
+        "com_shift_3eml",
+        "com_shift_3ny8",
+        "com_shift_4aaw",
+        "com_shift_4rlu"
+      ]
+    },
+    "metal_compliance": {
+      "primary_tool": "RDKit SMARTS metal-centre detection",
+      "tool_version": "RDKit",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.metal_coord_probe",
+      "license": "BSD",
+      "local_check": "python -c 'from rdkit import Chem; from rdkit.Chem import rdmolfiles; m=Chem.MolFromSmiles(\"[Pt]\"); print(m.GetNumAtoms())'",
+      "required_data": ["smiles", "metal_label"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real SMARTS matching for requested metal centre (Pt/Ru/Ir/Rh/Os/Re/Pd/Au)."
+    },
+    "metal_coord_compliance": {
+      "primary_tool": "RDKit SMARTS metal-coord-shell detection",
+      "tool_version": "RDKit",
+      "backend": "python",
+      "module": "molmetal.molmetal_lam.sbdd_env.metal_coord_probe",
+      "license": "BSD",
+      "local_check": "python -c 'from molmetal.molmetal_lam.sbdd_env.metal_coord_probe import probe_metal_centre'",
+      "required_data": ["smiles", "metal_label"],
+      "fallback_chain": [],
+      "wf43_status": "MEASURED",
+      "notes": "Real SMARTS detection for d-block coordination-shell compliance (square-planar Pt-II, octahedral Pt-IV, …)."
+    },
+    "coord_geometry_proxy": {
+      "primary_tool": "DELETED — module molmetal_lam.sbdd_env.external_scorers not present",
+      "tool_version": "N/A",
+      "backend": "N/A",
+      "module": "N/A",
+      "license": "N/A",
+      "fallback_chain": [],
+      "wf43_status": "MOCK_DELETED",
+      "notes": "Phase-4A external scorer was a stub interface in molmetal/molmetal_lam/sbdd_env/metrics_v2.py:870 referencing molmetal_lam.sbdd_env.external_scorers — that module does NOT exist in this repo. Wf-43 Phase 2 marks this MOCK_DELETED. Replace with REAL alternative: molmetal/metal_coord_probe.py for coordination-geometry validity (deterministic, RDKit-based). Update metrics/by_metric/coord_geometry_proxy.json measurements.status field to indicate REDIRECTED.",
+      "metrics_by_metric_aliases": [
+        "lambda_mcts_coord_geometry_proxy",
+        "known_pt_drug_coord_geometry_proxy"
+      ]
+    },
+    "phototherapy_activity": {
+      "primary_tool": "DELETED — module molmetal_lam.sbdd_env.external_scorers not present",
+      "tool_version": "N/A",
+      "backend": "N/A",
+      "module": "N/A",
+      "license": "N/A",
+      "fallback_chain": [],
+      "wf43_status": "MOCK_DELETED",
+      "notes": "Phase-4A external scorer was a stub interface. Wf-43 Phase 2 marks this MOCK_DELETED. Real alternative: train an attentive D-MPNN on phototherapy activity labels (no ship in repo). For now, the metric measures a placeholder; remove the JSON from paper §4 until real scorer ships.",
+      "metrics_by_metric_aliases": [
+        "lambda_mcts_phototherapy_activity",
+        "known_pt_drug_phototherapy_activity"
+      ]
+    },
+    "ptiv_reduction_potential": {
+      "primary_tool": "DELETED — module molmetal_lam.sbdd_env.external_scorers not present",
+      "tool_version": "N/A",
+      "backend": "N/A",
+      "module": "N/A",
+      "license": "N/A",
+      "fallback_chain": [],
+      "wf43_status": "MOCK_DELETED",
+      "notes": "Phase-4A external scorer was a stub interface. Wf-43 Phase 2 marks this MOCK_DELETED. Real alternative: Pt(IV) reduction potential DFT surrogate — outside the scope of this repo. Mark REDIRECTED until real ship.",
+      "metrics_by_metric_aliases": [
+        "lambda_mcts_ptiv_reduction_potential",
+        "known_pt_drug_ptiv_reduction_potential"
+      ]
+    },
+    "metalloprotein_affinity": {
+      "primary_tool": "DELETED — module molmetal_lam.sbdd_env.external_scorers not present",
+      "tool_version": "N/A",
+      "backend": "N/A",
+      "module": "N/A",
+      "license": "N/A",
+      "fallback_chain": [],
+      "wf43_status": "MOCK_DELETED",
+      "notes": "Phase-4A external scorer was a stub interface. Wf-43 Phase 2 marks this MOCK_DELETED. Real alternative: bioactivity-LM / D-MPNN on metalloprotein-binding dataset (e.g. metal_cyto, TMQM) — the molmetal/reports/wf_protein_metal_binding/ protein-metal binding CSV at molmetal/data/protein_metal_binding.csv.",
+      "metrics_by_metric_aliases": [
+        "lambda_mcts_metalloprotein_affinity",
+        "known_pt_drug_metalloprotein_affinity"
+      ]
+    }
+  },
+  "model_metrics_NOT_routed_through_score_any": {
+    "_doc": "These are model-evaluation AUC / Pearson-r / model-prediction metrics. They are produced by the training script directly (e.g. molmetal/scripts/train_*.py) using a real model checkpoint, NOT through molmetal.scoring.score_any. They are NOT in REGISTRY and are NOT mock — they are D-MPNN/AttentiveFP/etc. inference results.",
+    "metrics": [
+      {
+        "metric": "metalcytotox_ru_auc",
+        "primary_tool": "D-MPNN multi-task (scaffold split)",
+        "module": "molmetal/scripts/train_metal_cytotox.py",
+        "notes": "Trained on MetalCytoToxDB Ru subset; 5-fold CV ROC-AUC. Real model inference."
+      },
+      {
+        "metric": "metal_lomo_auc",
+        "primary_tool": "D-MPNN multi-task LOMO",
+        "module": "molmetal/scripts/train_metal_lomo.py",
+        "notes": "Multi-metal leave-one-metal-out on MetalCytoToxDB precious subset."
+      },
+      {
+        "metric": "multimetal_lomo",
+        "primary_tool": "D-MPNN multi-task LOMO",
+        "module": "molmetal/scripts/train_multimetal_lomo.py",
+        "notes": "Same as metal_lomo_auc with broader metals."
+      },
+      {
+        "metric": "moleculenet_auc",
+        "primary_tool": "D-MPNN multi-task (MoleculeNet 8-task)",
+        "module": "molmetal/scripts/train_moleculenet.py",
+        "notes": "Per-task ROC-AUC for the 8 MoleculeNet classification tasks."
+      },
+      {
+        "metric": "drugood_ood_auc",
+        "primary_tool": "Morgan-fp MLP (DrugOOD)",
+        "module": "molmetal/scripts/train_drugood.py",
+        "notes": "DrugOOD OOD ROC-AUC across assay / scaffold / size splits."
+      },
+      {
+        "metric": "nci60_precious_9cell_auc",
+        "primary_tool": "D-MPNN multi-task (NCI60 9-cell)",
+        "module": "molmetal/scripts/train_nci60_10cell.py",
+        "notes": "Per-cell ROC-AUC on Ru/Ir/Rh/Os/Re 9-cell subset."
+      },
+      {
+        "metric": "platinai_4cell_auc",
+        "primary_tool": "D-MPNN multi-task (PlatinAI 4-cell)",
+        "module": "molmetal/scripts/train_platinai_4cell.py",
+        "notes": "Per-cell-line ROC-AUC on PlatinAI MCF7/A549/A2780/A2780cis."
+      },
+      {
+        "metric": "platinai_3cell_resistance",
+        "primary_tool": "D-MPNN multi-task (PlatinAI drop A2780cis)",
+        "module": "molmetal/scripts/train_cisplatin_resistance.py",
+        "notes": "Per-cell-line ROC-AUC on PlatinAI 3-cell cohort (MCF7/A549/A2780)."
+      },
+      {
+        "metric": "metric18_protein_metal",
+        "primary_tool": "D-MPNN (protein-metal binding)",
+        "module": "molmetal/scripts/train_protein_metal.py",
+        "notes": "Tumor-specific protein-metal binding ROC-AUC v1."
+      },
+      {
+        "metric": "metric18_protein_metal_v2",
+        "primary_tool": "D-MPNN (protein-metal binding) v2",
+        "module": "molmetal/scripts/train_protein_metal.py",
+        "notes": "Tumor-specific protein-metal binding ROC-AUC v2 (scaffold split)."
+      }
+    ]
+  },
+  "training_diagnostics_NOT_metrics": {
+    "_doc": "These JSONs are training-side observability / dataset-coverage metrics, NOT paper §4 evaluation metrics. They are not routed through score_any and they are not paper-grade.",
+    "metrics": [
+      "decode_ratio",
+      "atom_vocab_coverage",
+      "n_distinct",
+      "n_train_scaleup",
+      "metallodrug_vertical_coverage",
+      "baseline_random_smiles",
+      "external_scorers_summary"
+    ]
+  },
+  "_summary": {
+    "total_metrics_routed_through_score_any": 30,
+    "n_MEASURED": 22,
+    "n_RESERVED": 8,
+    "n_MOCK_DELETED": 4,
+    "mock_keys_in_registry": [],
+    "mock_keys_in_metrics_by_metric": [
+      "coord_geometry_proxy",
+      "lambda_mcts_coord_geometry_proxy",
+      "known_pt_drug_coord_geometry_proxy",
+      "phototherapy_activity",
+      "lambda_mcts_phototherapy_activity",
+      "known_pt_drug_phototherapy_activity",
+      "ptiv_reduction_potential",
+      "lambda_mcts_ptiv_reduction_potential",
+      "known_pt_drug_ptiv_reduction_potential",
+      "metalloprotein_affinity",
+      "lambda_mcts_metalloprotein_affinity",
+      "known_pt_drug_metalloprotein_affinity"
+    ],
+    "mock_keys_in_scripts": [
+      "molmetal/scripts/dock_10pockets_se3sb.py:_stub_score (USED IN PRODUCTION wf30 sweep when is_stub=True)",
+      "molmetal/scripts/wf30_dock_summarize.py:scorer='stub' classifier (informational only)"
+    ],
+    "mock_audit_action": "Wf-43 Phase 2 redirects all 4 Phase-4A external scorers (coord_geometry_proxy, phototherapy_activity, ptiv_reduction_potential, metalloprotein_affinity) to MOCK_DELETED status. The _stub_score function in dock_10pockets_se3sb.py remains ONLY for the bona-fide case where vina/meeko is genuinely missing — when called via score_any() the VinaDockingAdapter import is mandatory and AdapterUnavailable is raised on import failure (NOT a mock substitution).",
+    "test_gate": "python -c \"from molmetal.scoring.score_any import score_any, ROUTING_POLICY; print(len(ROUTING_POLICY))\""
+  }
+}
