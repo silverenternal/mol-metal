@@ -1,0 +1,86 @@
+{
+  "audit_tag": "Wf-120 Phase 1 \u2014 D-MPNN pIC50 ckpt SHA256 audit",
+  "checkpoints": [
+    {
+      "filename": "dmpnn_pic50_ir_seed0.pt",
+      "metal": "Ir",
+      "seed": 0,
+      "sha256": "afc2e103f013bcda57cde488e7da38b4010f3f4df705cc83a5ab243d9adc2874",
+      "size_bytes": 758733
+    },
+    {
+      "filename": "dmpnn_pic50_ir_seed1.pt",
+      "metal": "Ir",
+      "seed": 1,
+      "sha256": "97819bfa047bf6c745cc16a87d4483f6fbefdbb5096184ee1e74e40cc401679b",
+      "size_bytes": 758733
+    },
+    {
+      "filename": "dmpnn_pic50_os_seed0.pt",
+      "metal": "Os",
+      "seed": 0,
+      "sha256": "8662bd6a622418f6b70b5f9266433ad5cd8f61f2847af89f4e160463c53b7fdf",
+      "size_bytes": 758733
+    },
+    {
+      "filename": "dmpnn_pic50_os_seed1.pt",
+      "metal": "Os",
+      "seed": 1,
+      "sha256": "ae6b8bb681cc286fab34a5d23c066cae1a5819c87f6ab7f680a12a4ab438edd9",
+      "size_bytes": 758733
+    },
+    {
+      "filename": "dmpnn_pic50_re_seed0.pt",
+      "metal": "Re",
+      "seed": 0,
+      "sha256": "7cde065c94df2060cbb71fb5b430942dd007358149facc1e3f9b8428dc77ee8c",
+      "size_bytes": 758733
+    },
+    {
+      "filename": "dmpnn_pic50_re_seed1.pt",
+      "metal": "Re",
+      "seed": 1,
+      "sha256": "1ccc2ac4288d3a6a2b3c71507de289897c1b3137e94d7eb43b04374fb7cb441b",
+      "size_bytes": 758733
+    },
+    {
+      "filename": "dmpnn_pic50_rh_seed0.pt",
+      "metal": "Rh",
+      "seed": 0,
+      "sha256": "142f63bc3923fc915c4b30b0a3e141dcc517e98d58a972abba318e4f442eeaae",
+      "size_bytes": 758733
+    },
+    {
+      "filename": "dmpnn_pic50_rh_seed1.pt",
+      "metal": "Rh",
+      "seed": 1,
+      "sha256": "117e0d53917420393b6c02d3b3cbb56bdc9bd5d8d461c27b1af9f77fffe73977",
+      "size_bytes": 758733
+    },
+    {
+      "filename": "dmpnn_pic50_ru_seed0.pt",
+      "metal": "Ru",
+      "seed": 0,
+      "sha256": "e5bad61c038e200db7caecf5ad9cf0b594dbf29d985abf1e26b92120a8e47bb2",
+      "size_bytes": 758733
+    },
+    {
+      "filename": "dmpnn_pic50_ru_seed1.pt",
+      "metal": "Ru",
+      "seed": 1,
+      "sha256": "869f7453ef30fca5cc430d821866ac8f98f2ba52b2bf38e036c79715ed1e5c6f",
+      "size_bytes": 758733
+    }
+  ],
+  "ckpt_dir": "/home/hugo/codes/mol-metal/molmetal/checkpoints",
+  "duplicate_shas": {},
+  "json_mismatches": [],
+  "json_missing_sha": [],
+  "n_ckpts_scanned": 10,
+  "n_duplicate_shas": 0,
+  "n_json_mismatches": 0,
+  "n_json_missing_sha": 0,
+  "n_parse_errors": 0,
+  "parse_errors": [],
+  "status": "PASS"
+}

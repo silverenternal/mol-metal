@@ -1,0 +1,23 @@
+{
+  "metal": "Rh",
+  "seed": 1,
+  "epochs": 30,
+  "alpha": 1.0,
+  "ckpt_path": "/home/hugo/codes/mol-metal/molmetal/checkpoints/dmpnn_pic50_rh_seed1.pt",
+  "n_train": 60,
+  "n_val": 10,
+  "n_test": 38,
+  "elapsed_seconds": 8.833882570266724,
+  "val_pic50_metrics": {
+    "mae": 3.251910024881363,
+    "rmse": 3.3172436566856667,
+    "pearson": 0.0653617549592952,
+    "n": 10
+  },
+  "test_pic50_metrics": {
+    "mae": 3.169498024802459,
+    "rmse": 3.203579576132454,
+    "pearson": 0.2758516857766585,
+    "n": 38
+  }
+}

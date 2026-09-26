@@ -1,0 +1,43 @@
+{
+  "wf_tag": "Wf-120 Phase 1 \u2014 D-MPNN Rh seed1 retrain (30 epochs)",
+  "date_utc": "2026-09-26T19:06:15.455211+00:00",
+  "metal": "Rh",
+  "seed": 1,
+  "n_train": 60,
+  "n_val": 10,
+  "n_test": 38,
+  "epochs": 30,
+  "alpha": 1.0,
+  "lr": 0.001,
+  "batch_size": 50,
+  "device": "cuda:0 (RTX 5090, CUDA_VISIBLE_DEVICES=1)",
+  "elapsed_seconds": 8.833882570266724,
+  "checkpoint_path": "molmetal/checkpoints/dmpnn_pic50_rh_seed1.pt",
+  "sha256_current": "117e0d53917420393b6c02d3b3cbb56bdc9bd5d8d461c27b1af9f77fffe73977",
+  "sha256_pre_retrain_backup": "ef3c6be4cffee31139d2efbfa55ffe351c61d6860a4d6de3c9bfd52f3f6e89dc",
+  "pre_post_differ": true,
+  "per_seed_metrics": {
+    "metal": "Rh",
+    "seed": 1,
+    "epochs": 30,
+    "alpha": 1.0,
+    "ckpt_path": "/home/hugo/codes/mol-metal/molmetal/checkpoints/dmpnn_pic50_rh_seed1.pt",
+    "n_train": 60,
+    "n_val": 10,
+    "n_test": 38,
+    "elapsed_seconds": 8.833882570266724,
+    "val_pic50_metrics": {
+      "mae": 3.251910024881363,
+      "rmse": 3.3172436566856667,
+      "pearson": 0.0653617549592952,
+      "n": 10
+    },
+    "test_pic50_metrics": {
+      "mae": 3.169498024802459,
+      "rmse": 3.203579576132454,
+      "pearson": 0.2758516857766585,
+      "n": 38
+    }
+  },
+  "honest_framing_note": "Retrained from scratch with explicit seed=1, 30 epochs (was 10). Test_pearson 0.276, test_rmse 3.204. SHA256 differs from pre-retrain backup and from seed0 (audit PASS \u2014 no duplicate SHAs)."
+}

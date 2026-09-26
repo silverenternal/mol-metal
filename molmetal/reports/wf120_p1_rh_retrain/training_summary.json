@@ -1,0 +1,35 @@
+{
+  "wf_tag": "Wf-84 Phase 3 \u2014 D-MPNN pIC50 per-metal training on 5-metal",
+  "dataset": "metalcytotox_5metal",
+  "metals": [
+    "Rh"
+  ],
+  "seeds": [
+    1
+  ],
+  "epochs": 30,
+  "alpha": 1.0,
+  "device": "cuda:0",
+  "elapsed_seconds_total": 10.272189855575562,
+  "per_metal": {
+    "Rh": {
+      "n_seeds": 1,
+      "n_train": 60,
+      "n_val": 10,
+      "n_test": 38,
+      "test_pearson_mean": 0.2758516857766585,
+      "test_pearson_std": 0.0,
+      "test_rmse_mean": 3.203579576132454,
+      "test_rmse_std": 0.0,
+      "test_mae_mean": 3.169498024802459,
+      "test_mae_std": 0.0,
+      "test_r2_mean": 0.07609415254582433,
+      "test_r2_std": 0.0,
+      "ckpt_paths": [
+        "/home/hugo/codes/mol-metal/molmetal/checkpoints/dmpnn_pic50_rh_seed1.pt"
+      ],
+      "status": "OK"
+    }
+  },
+  "honest_framing_note": "Smaller metals (Rh/Os/Re < 1.2k rows each) produce noisier per-seed pIC50 R\u00b2; we report mean \u00b1 std across seeds without smoothing. Pure pIC50 regression (alpha=1.0); BCE term is zero."
+}
