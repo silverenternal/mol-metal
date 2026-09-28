@@ -1,0 +1,59 @@
+{
+  "metric": "platinai_4cell_auc",
+  "description": "Test ROC-AUC per cell line on PlatinAI 4,078 Pt 4-cell-line dataset (synthetic IC50 labels) with D-MPNN 4-cell-line multi-task (4 cls + 4 reg heads).",
+  "unit": "ROC-AUC (0-1, higher better) per cell line",
+  "scope": "tier1_precious_metal_anticancer",
+  "source": "molmetal/scripts/train_platinai_4cell.py (seeds=[0, 1, 2], epochs=50, scaffold_split=True)",
+  "rusanov_2025_baseline_note": "Rusanov 2025 reports per-cell-line AUC for 4,078 Pt / 18,995 IC50, 4 cell lines (MCF-7, A549, A2780, A2780cis). Exact numbers in paper Tables S4-S5 (supplementary xlsx, Cloudflare-blocked from this host). Our dataset is built with synthetic IC50 labels \u2014 see build_platinai_4cell.py for the honest framing.",
+  "value_overall_mean_auc": 0.5531726597598308,
+  "value_overall_mean_std": 0.009325184754621551,
+  "value_a2780cis_auc": 0.6475694444444444,
+  "value_a2780cis_std": 0.00649593296314921,
+  "per_cell_line": {
+    "MCF7": {
+      "auc_mean": 0.5844155844155844,
+      "auc_std": 0.023178035215308816,
+      "per_seed": [
+        0.5887445887445888,
+        0.6103896103896104,
+        0.5541125541125541
+      ]
+    },
+    "A549": {
+      "auc_mean": 0.6302294197031039,
+      "auc_std": 0.029994751377723162,
+      "per_seed": [
+        0.6032388663967612,
+        0.6720647773279352,
+        0.6153846153846154
+      ]
+    },
+    "A2780": {
+      "auc_mean": 0.35047619047619044,
+      "auc_std": 0.018856180831641284,
+      "per_seed": [
+        0.33714285714285713,
+        0.33714285714285713,
+        0.37714285714285717
+      ]
+    },
+    "A2780cis": {
+      "auc_mean": 0.6475694444444444,
+      "auc_std": 0.00649593296314921,
+      "per_seed": [
+        0.65625,
+        0.6458333333333333,
+        0.640625
+      ]
+    }
+  },
+  "n_seeds": 3,
+  "n_rows": 4078,
+  "timestamp": "2026-09-25",
+  "data_source": "molmetal/data/platinai_4cell.csv (synthesised from platinai_5k + known_pt_drugs + tmQM)",
+  "status": "MEASURED_SYNTHETIC_LABELS",
+  "framing": "synthetic IC50 labels for pipeline test; see build_platinai_4cell.py for honest framing",
+  "split": "scaffold",
+  "model": "dmpnn_4cell_multitask",
+  "honest_framing": "Data source: PlatinAI 4,078 Pt 4-cell dataset with synthetic IC50 labels (see build_platinai_4cell.py for honest framing). Model: D-MPNN 4-cell-line multi-task (dmpnn_4cell_multitask) with 4 cls + 4 reg heads. Protocol: scaffold split, 3 seeds [0,1,2], 50 epochs. Rusanov 2025 baseline cite-only (numbers in paper Tables S4-S5 supplementary xlsx Cloudflare-blocked); iMoLD cite-only. NOT a head-to-head against Rusanov chemprop v2 — same-protocol comparison requires chemprop v2 backbone + full training, out of scope for this D-MPNN paper. Cites TODO-140/141/142/143/144."
+}

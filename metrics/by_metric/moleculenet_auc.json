@@ -1,0 +1,123 @@
+{
+  "date": "2026-09-25",
+  "model": "morgan_mlp_v4",
+  "featurization": "morgan_fp_2048_r2",
+  "split": "scaffold (Bemis-Murcko, 70/10/20)",
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "epochs": 50,
+  "batch_size": 32,
+  "lr": 0.001,
+  "hidden": 256,
+  "tasks": {
+    "bbbp": {
+      "n_seeds_total": 3,
+      "n_seeds_valid": 3,
+      "test_auc_mean": 0.8719660850200514,
+      "test_auc_std": 0.01136947633147656,
+      "test_pr_auc_mean": 0.9475048498735443,
+      "test_hit_top5_mean": 0.9855072463768116,
+      "per_seed_auc": [
+        0.8823768823768824,
+        0.8561489493549659,
+        0.8773724233283057
+      ],
+      "per_seed_pr_auc": [
+        0.9419042285264163,
+        0.9470027200895381,
+        0.9536076010046786
+      ],
+      "per_seed_hit_top5": [
+        1.0,
+        0.9565217391304348,
+        1.0
+      ],
+      "task": "bbbp",
+      "chemprop_dmpnn_baseline": 0.94,
+      "chemprop_rf_baseline": 0.728
+    },
+    "bace": {
+      "n_seeds_total": 3,
+      "n_seeds_valid": 3,
+      "test_auc_mean": 0.8608997649053236,
+      "test_auc_std": 0.019014016277019173,
+      "test_pr_auc_mean": 0.8331163798033551,
+      "test_hit_top5_mean": 0.9777777777777777,
+      "per_seed_auc": [
+        0.8382812156397061,
+        0.8848026944608802,
+        0.8596153846153846
+      ],
+      "per_seed_pr_auc": [
+        0.8123413533404802,
+        0.8435991032229122,
+        0.8434086828466728
+      ],
+      "per_seed_hit_top5": [
+        0.9333333333333333,
+        1.0,
+        1.0
+      ],
+      "task": "bace",
+      "chemprop_dmpnn_baseline": 0.876,
+      "chemprop_rf_baseline": 0.868
+    },
+    "hiv": {
+      "n_seeds_total": 3,
+      "n_seeds_valid": 3,
+      "test_auc_mean": 0.7470004694692738,
+      "test_auc_std": 0.017999675205504335,
+      "test_pr_auc_mean": 0.3157736862041908,
+      "test_hit_top5_mean": 0.30375125807365716,
+      "per_seed_auc": [
+        0.752757026774357,
+        0.7226482764728023,
+        0.7655961051606622
+      ],
+      "per_seed_pr_auc": [
+        0.36804667834888405,
+        0.2633645826500691,
+        0.3159097976136191
+      ],
+      "per_seed_hit_top5": [
+        0.3686746987951807,
+        0.22384428223844283,
+        0.31873479318734793
+      ],
+      "task": "hiv",
+      "chemprop_dmpnn_baseline": 0.823,
+      "chemprop_rf_baseline": 0.761
+    },
+    "clintox": {
+      "n_seeds_total": 3,
+      "n_seeds_valid": 3,
+      "test_auc_mean": 0.7016315973723443,
+      "test_auc_std": 0.08959020576579436,
+      "test_pr_auc_mean": 0.2874448022117634,
+      "test_hit_top5_mean": 0.3111111111111111,
+      "per_seed_auc": [
+        0.5962550607287449,
+        0.8152415087898959,
+        0.6933982225983919
+      ],
+      "per_seed_pr_auc": [
+        0.17881269739397657,
+        0.3789398866698088,
+        0.3045818225715048
+      ],
+      "per_seed_hit_top5": [
+        0.13333333333333333,
+        0.4666666666666667,
+        0.3333333333333333
+      ],
+      "task": "clintox",
+      "chemprop_dmpnn_baseline": 0.894,
+      "chemprop_rf_baseline": 0.832
+    }
+  },
+  "gate_mean_auc_threshold": 0.8,
+  "chemprop_dmpnn_baseline_mean": 0.88325
+}

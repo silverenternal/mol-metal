@@ -25,6 +25,15 @@ Usage
 
 from __future__ import annotations
 
+
+# --- Wf-130 GPU default -----------------------------------------
+# RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
+# BEFORE `import torch` so CUDA init sees the env var.
+import os as _wf130_os
+_wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
+del _wf130_os
+# --- end Wf-130 ------------------------------------------------
+
 import argparse
 import io
 import os
@@ -55,6 +64,9 @@ from molmetal.domain import Molecule, Pocket
 from molmetal.models._scatter import scatter_sum_legacy as _scatter_sum
 from molmetal.ports import GenerationConfig, PropertyPrediction
 from molmetal.utils.device import get_device, verify_rocm_active
+from molmetal.molmetal_lam.sbdd_env.training_utils import (
+    apply_default_cuda_visible_devices,
+)
 from triton_kernels import fused_silu_mlp as _fused_silu_mlp
 from triton_kernels.config import triton_config
 import torch.nn.functional as F
@@ -854,6 +866,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--checkpoint-out", default=None)
     p.add_argument("--plot-out", default=None)
     p.add_argument("--report-out", default=None)
+    p.add_argument(
+        "--cuda-visible-devices", type=str, default="",
+        help=(
+            "Override CUDA_VISIBLE_DEVICES before device resolution.  "
+            "Empty '' → default '1' (RTX 5090 on kanzi, GPU 0 = VLM "
+            "venv)."
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -895,6 +915,10 @@ def main(argv: list[str] | None = None) -> int:
 
     # --- 2. Build velocity field + FM infrastructure -----------------------
     print("[pocket_fm] Initialising PocketConditionedVelocityField...")
+    # Wf-130 — default CUDA_VISIBLE_DEVICES=1 (RTX 5090 on kanzi)
+    apply_default_cuda_visible_devices(
+        override=getattr(args, "cuda_visible_devices", ""),
+    )
     device_info = verify_rocm_active()
     device = get_device()
     print(f"[pocket_fm]   device = {device}")

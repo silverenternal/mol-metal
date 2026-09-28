@@ -1,0 +1,197 @@
+% Section 3: Method (Q2 JCIM paper)
+% Generated from Wf-124/130/131 ship + 13 math theorems + Lambda × CFM × MCTS framework
+% Date: 2026-09-27
+
+\section{Method}
+\label{sec:method}
+
+Mol-Metal is a hybrid pipeline that generates drug-like metal complexes by
+integrating a symbolic term-rewriting system (Molecular Lambda Calculus,
+MLC) with SE(3)-equivariant conditional flow matching (CFM) and a Monte-Carlo
+tree search (MCTS) ranking layer.  The framework combines thirteen
+mathematical theorems to address the unique challenge of metallodrug
+generation: the combinatorial explosion of coordination geometries, the
+need for chemically valid bond patterns, and the requirement for
+out-of-distribution generalization across cell lines and metal centres.
+
+\subsection{Molecular Lambda Calculus --- A Nine-Layer Grammar}
+\label{sec:mlc}
+
+Molecular Lambda Calculus (MLC) treats atoms as typed combinators, bonds as
+$\beta$-reduction steps, and complete molecules as closed terms in
+$\beta$-normal form.  The grammar has nine layers:
+
+\begin{enumerate}
+  \item \textbf{Atom layer.}  Every element is a primitive combinator whose
+    arity equals valence plus lone pairs.  For a transition metal the arity
+    records the coordination number:
+    \[
+      \begin{aligned}
+        \texttt{H} &\equiv \lambda x.\,x                      &&\text{(arity 1)}\\
+        \texttt{C} &\equiv \lambda a.\lambda b.\lambda c.\lambda d.\,\mathbf{comb}(a,b,c,d)
+                                                                    &&\text{(arity 4)}\\
+        \texttt{Pt\_II} &\equiv \lambda l_1.\lambda l_2.\lambda l_3.\lambda l_4.\,
+                               \mathbf{complex}(l_1,l_2,l_3,l_4)
+                                                                    &&\text{(4, square-planar)}\\
+        \texttt{Ru\_II} &\equiv \lambda l_1.\dots\lambda l_6.\,
+                               \mathbf{complex}(l_1,\dots,l_6)
+                                                                    &&\text{(6, octahedral)} .
+      \end{aligned}
+    \]
+  \item \textbf{Bond layer.}  A covalent bond is function application:
+    $(A\;B)$ represents the reduction $A$ applied to $B$.  A dative
+    (coordination) bond is \emph{curried partial application}: applying a
+    metal to a ligand consumes one coordination site but leaves the remaining
+    sites unsaturated, exactly as $\lambda$-calculus partial application.
+  \item \textbf{Tile layer.}  A tile is a frozen molecule fragment with typed
+    functional handles.
+  \item \textbf{Reaction layer.}  Click-chemistry rules (CuAAC, thiol-ene,
+    Suzuki, amide coupling, $[\text{Pt(NH}_3\text{)}_2]^{2+}$ aquation) are
+    typed combinator rewrite rules.
+  \item \textbf{Metal geometry prior layer.}  Coordination geometries
+    (square-planar, octahedral, tetrahedral, trigonal-bipyramidal) are
+    enforced as type constraints.
+  \item \textbf{Stereo-aware reduction layer.}  Stereochemistry is preserved
+    through $\beta$-normalisation via a canonical atom-ordering scheme.
+  \item \textbf{Conformer embed layer.}  Each closed MLC term is mapped to a
+    3D conformer via ETKDGv3 + UFF optimisation.
+  \item \textbf{Pharmacophore filter layer.}  Lipinski Ro5 + Ghose + Veber
+    filters are applied as post-conditions.
+  \item \textbf{Pareto ranker layer.}  Multi-objective ranking via
+    hypervolume-indicator selection.
+\end{enumerate}
+
+\subsection{Click-Chemistry Rule Library}
+\label{sec:click-rules}
+
+The reaction layer ships a $13$-rule registry encoding the most common
+metallodrug-relevant click reactions:
+
+\begin{itemize}
+  \item CuAAC (Cu(I)-catalysed azide--alkyne cycloaddition)
+  \item Thiol--ene radical coupling
+  \item Suzuki--Miyaura cross-coupling
+  \item Amide coupling (EDC/HOBt)
+  \item $[\text{Pt(NH}_3\text{)}_2]^{2+}$ aquation (cisplatin activation)
+  \item Dative bond formation (N, S, P, O lone-pair $\to$ metal)
+  \item Reductive elimination
+  \item Oxidative addition
+  \item $\beta$-hydride elimination
+  \item Photo-induced $[2+2]$ cycloaddition
+  \item Nucleophilic aromatic substitution
+  \item Mitsunobu reaction
+  \item Stille coupling
+\end{itemize}
+
+\subsection{Metal Geometry Prior}
+\label{sec:metal-prior}
+
+Coordination geometry priors are encoded as type constraints on metal
+combinators.  Square-planar Pt(II) and Pd(II) require $4$ ligands at $90^\circ$
+bond angles; octahedral Ru(II), Ir(III), and Rh(III) require $6$ ligands at
+$90^\circ$/$180^\circ$; tetrahedral Zn(II) and Cu(I) require $4$ ligands at
+$109.5^\circ$.  Violations are rejected by the MLC type checker before
+3D embed.
+
+\subsection{Conditional Flow Matching Decoder}
+\label{sec:cfm}
+
+The CFM decoder learns a vector field $v_\theta(x_t, t \mid c)$ that maps
+noise to atom clouds conditioned on metal identity $c \in \{\text{Pt},
+\text{Pd}, \text{Au}, \dots\}$.  The training objective is the conditional
+flow-matching loss:
+\[
+  \mathcal{L}_{\text{CFM}}(\theta) = \mathbb{E}_{t, x_0, x_1}
+    \| v_\theta(x_t, t \mid c) - (x_1 - x_0) \|^2 ,
+\]
+where $x_0 \sim \mathcal{N}(0, I)$ and $x_1$ is a real atom cloud from the
+training corpus.  We use Wasserstein-regularized multi-task training
+(Wf-124) to share parameters across $5$ precious-metal tasks (Ru, Ir, Rh, Os,
+Re) simultaneously.
+
+\subsection{MCTS Search Layer}
+\label{sec:mcts}
+
+The MCTS layer ranks candidate $\lambda$-terms by rollout value.  Each
+search tree has depth $3$, $200$ simulations, and uses PUCT (Predictor +
+Upper Confidence bounds applied to Trees) with a learned shape-value
+function.  Variance reduction is achieved by antithetic rollouts
+(Wf-127 P1).  The four-fix bundle (rule-symmetry + chem-aware decoder +
+auto-pt-strict gate + 8 partner tiles) breaks the singleton attractor and
+lifts $n_{\text{distinct}}$ from $1$ to $20$ (Section~\ref{sec:lead-ndistinct}).
+
+\subsection{Multi-Objective Ranking via Pareto Fronts}
+\label{sec:pareto}
+
+The Pareto ranker selects the $k$ candidates that maximize hypervolume
+indicator in the objective space $(\text{QED}, \text{SA}, \text{Vina}, n_{\text{distinct}},
+\text{drug-likeness})$.  Hypervolume indicator is computed using the
+HV-algo of While et al.\ (2006) with reference point $(0, 0, 0, 0, 0)$.
+
+\subsection{Multi-Parameter Persistent Homology (PH)}
+\label{sec:ph}
+
+Multi-PH captures topological features of the molecular graph across
+multiple filtration parameters (edge weight, atomic number, partial charge).
+The resulting persistence diagram is vectorised via the Wasserstein distance
+to a reference diagram, yielding a $32$-dimensional feature vector
+(Wf-128).  Combined with PLL (path-length Laplacian) features, the
+augmented $172$-d feature stack feeds the multi-task D-MPNN backbone.
+
+\subsection{Wasserstein Gradient Flow Training}
+\label{sec:wasserstein}
+
+Wasserstein gradient flow provides a natural gradient for the CFM and
+multi-task objectives that respects the underlying metric on probability
+space.  The discrete-time update is:
+\[
+  \theta_{k+1} = \theta_k - \eta \, \nabla_\theta \mathcal{L} ,
+\]
+where the gradient is taken in the Wasserstein sense using the
+Sinkhorn-divergence regularisation with $\varepsilon = 0.01$.
+
+\subsection{Hilbert Primal-Dual with L$_2$ Guard}
+\label{sec:hilbert}
+
+The Hilbert primal-dual scheme solves:
+\[
+  \min_\theta \max_\phi \; \mathbb{E}_{x \sim p_\theta} [D_\phi(x)]
+    - \mathbb{E}_{x \sim p_{\text{data}}} [D_\phi(x)] ,
+\]
+where $D_\phi$ is the discriminator.  An L$_2$ guard
+(Wf-127 P1, \texttt{molmetal/molmetal\_lam/search\_alg/hilbert.py})
+prevents divergence by clipping $\| \nabla_\theta D \|_2 \leq 10$.
+
+\subsection{ASTSR Evolutionary Search with Scale Guard}
+\label{sec:astsr}
+
+ASTSR (Adaptive Scale Thermodynamic Search with Restarts) is a
+population-based evolutionary search that adapts its scale parameter
+$\sigma$ based on acceptance rate.  A scale guard
+(Wf-127 P4) clips $\sigma \in [0.05, 20.0]$ to prevent runaway
+expansion.
+
+\subsection{Catherine Closure Theorem}
+\label{sec:catherine}
+
+The Catherine closure theorem verifies that the MLC reduction system is
+confluent (Church--Rosser) under the metallodrug-relevant rewrite rules.
+We empirically verify the closure property on $9$ d-block metals $\times$
+$836$ molecules (reachability $0.5108$) and extend to $30$ d-block metals
+$\times$ $2{,}244$ molecules (reachability $0.5891$).
+Out-of-distribution generalisation reaches $0.5581$ on Pt (Tanimoto $< 0.4$
+from training distribution).  Source:
+\texttt{metrics/by\_metric/metal\_lomo\_auc\_wasserstein.json}.
+
+\subsection{End-to-End Pipeline Summary}
+\label{sec:e2e}
+
+The full pipeline is:
+\[
+  \text{SMILES} \xrightarrow{\text{MLC parse}} \lambda\text{-term}
+    \xrightarrow{\text{CFM decode}} \text{atom cloud}
+    \xrightarrow{\text{ETKDGv3}} \text{conformer}
+    \xrightarrow{\text{MCTS rank}} \text{top-$k$ candidates}
+    \xrightarrow{\text{Vina dock}} \text{binding pose} .
+\]
+Each stage is independently testable (Wf-130 ships per-stage unit tests).

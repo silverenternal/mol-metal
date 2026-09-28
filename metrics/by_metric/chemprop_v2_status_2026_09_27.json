@@ -1,0 +1,117 @@
+{
+  "metric": "chemprop_v2_status_2026_09_27",
+  "description": "Honest status snapshot of the chemprop v2 sweep vs the metalcytotox_*_auc.json surface as of 2026-09-27. Records what was MEASURED, what FAILED, and what CANNOT be created without fabrication. Created because the user-requested 'resume interrupted workflow' task asked to (a) update metalcytotox_{ru,ir,os,rh,re}_auc.json with chemprop v2 mean +/- std from 'full-bench' and (b) create chemprop_v2_5metal_5seed_50epoch.json with 'full data' and (c) create metal_lomo_chemprop_v2.json with 'LOMO data'. Neither the chemprop v2 full-bench sweep nor a production-grade chemprop v2 LOMO sweep has produced measured AUCs as of this snapshot. See honest_framing_note below for the conflict analysis.",
+  "scope": "tier1_precious_metal_anticancer / MetalCytoToxDB 5-metal / chemprop v2",
+  "date": "2026-09-27",
+  "produced_by": "metrics subagent run on workflow-resume request; honest-negative framing per party-twenty-spirit 0-tolerance + no-concealment rule",
+  "what_exists_on_disk": {
+    "wf155_chemprop_v2_full_json": {
+      "path": "/home/hugo/codes/mol-metal/molmetal/reports/wf155_chemprop_v2_full.json",
+      "ran": false,
+      "partial": true,
+      "abort_reason": "First iteration (Ru seed=0, 19135 samples, 50 epochs) did not complete within 6:50 wall time. Chemprop v2's per-batch SMILES featurization on CPU is the bottleneck (GPU 2-4%, CPU 660%+). Estimated full run time: 100+ min, exceeds practical subagent budget. Process killed mid-Ru-seed=0; no per-seed AUCs were recorded.",
+      "per_metal_summary": {},
+      "per_metal_seed": {},
+      "total_min": 6.83,
+      "measured_aucs": "ZERO",
+      "verdict": "FAIL_NO_DATA — chemprop v2 full-bench 5x5x50 has NO measured AUCs on disk. Cannot populate chemprop_v2_5metal_5seed_50epoch.json or metalcytotox_*_auc.json (chemprop v2 variant) without fabricating numbers."
+    },
+    "wf156_chemprop_v2_lomo_json": {
+      "path": "/home/hugo/codes/mol-metal/molmetal/reports/wf156_chemprop_v2_lomo.json",
+      "ran": true,
+      "partial": false,
+      "config": {
+        "metals": ["Ru", "Ir"],
+        "seeds": [0],
+        "epochs": 2,
+        "hidden": 64,
+        "depth": 2,
+        "batch_size": 64,
+        "lr": 0.001,
+        "device": "cuda",
+        "time_budget_s": 180.0
+      },
+      "per_metal_summary": {
+        "Ru": {"mean_auc": 0.41481382278922097, "std": 0.0, "n_train": 4546, "n_test": 19135, "n_seeds_ok": 1, "n_seeds_total": 1, "per_seed_auc": {"0": 0.41481382278922097}},
+        "Ir": {"mean_auc": 0.4465750321630718, "std": 0.0, "n_train": 19135, "n_test": 4546, "n_seeds_ok": 1, "n_seeds_total": 1, "per_seed_auc": {"0": 0.4465750321630718}}
+      },
+      "total_min": 0.10173823833465576,
+      "verdict": "SMOKE_ONLY — 2 (fold, seed) runs at hidden=64 depth=2 (production is 300/3). NOT comparable to production chemprop v2 retrain. NOT a 5-metal LOMO sweep. The honest framing note in wf156 itself says this is 'a baseline for TODO-148 5 (paper-grade chemprop v2 retrain) and is NOT comparable to the production chemprop v2 retrain at hidden_dim=300'."
+    },
+    "existing_metalcytotox_ru_auc_json": {
+      "path": "/home/hugo/codes/mol-metal/metrics/by_metric/metalcytotox_ru_auc.json",
+      "model": "dmpnn_multitask_wasserstein (D-MPNN, NOT chemprop v2)",
+      "value": 0.7613038529802696,
+      "status": "MEASURED_PARTIAL_LIFT",
+      "epochs": 30,
+      "seed": 0,
+      "n_seeds": 1,
+      "source_workflow": "Wf-124 P3 (Ru seed=0 first complete result) + Wf-131 P1 (3-seed x 10-epoch baseline = 0.7352 +/- 0.0023)",
+      "lift_vs_baseline": 0.049,
+      "gate_target": 0.86,
+      "hit_gate": false,
+      "verdict": "D-MPNN multi-task Wasserstein MEASURED. Not chemprop v2. Task asked to overwrite with chemprop v2 numbers; cannot fabricate. This file must NOT be overwritten with chemprop v2 data; the D-MPNN measurement stands."
+    }
+  },
+  "what_does_not_exist": {
+    "metalcytotox_ir_auc_json": "ABSENT — no chemprop v2 Ir AUC measured; no D-MPNN Ir AUC measured either. Cannot create without fabrication.",
+    "metalcytotox_os_auc_json": "ABSENT — no chemprop v2 Os AUC measured; no D-MPNN Os AUC measured either. Cannot create without fabrication.",
+    "metalcytotox_rh_auc_json": "ABSENT — no chemprop v2 Rh AUC measured; no D-MPNN Rh AUC measured either. Cannot create without fabrication.",
+    "metalcytotox_re_auc_json": "ABSENT — no chemprop v2 Re AUC measured; no D-MPNN Re AUC measured either. Cannot create without fabrication.",
+    "chemprop_v2_5metal_5seed_50epoch_json": "ABSENT — wf155 recorded zero AUCs. Cannot create without fabrication.",
+    "metal_lomo_chemprop_v2_json": "ABSENT — wf156 has only 2 metals x 1 seed x 2 epochs SMOKE at hidden=64 depth=2. Not a production LOMO. Cannot create a 5-metal LOMO summary without fabrication."
+  },
+  "backup_status": {
+    "v4_metalcytotox_files_present": false,
+    "explanation": "Task asked to backup 'old metalcytotox_*.json (these have V4 numbers)'. No metalcytotox_*_auc.json file on disk has V4 (chemprop v2 V4) numbers. The only existing metalcytotox_ru_auc.json contains D-MPNN Wf-124 P3 numbers (epochs=30, seed=0). Backing it up as a 'V4 backup' would mislabel the model identity. Therefore no backup performed; the existing MEASURED D-MPNN file is left untouched."
+  },
+  "actually_interrupted_workflow_identified": {
+    "name": "Wf-131 P3 LOMO full sweep (D-MPNN + Wasserstein transfer + Rh-oversample)",
+    "not_what_harness_suggested": "Harness's computed task asked to run a fresh chemprop v2 LOMO 5x5x50 sweep, but the user asked to RESUME the actually-interrupted workflow. The actually-interrupted workflow is Wf-131 P3 D-MPNN, NOT chemprop v2.",
+    "last_stdout_line_before_kill": "[2026-09-27 09:05:40] wf125_p2 :: fold=Rh seed=3 epoch=23 val_auc=0.7460",
+    "on_disk_progress": {
+      "Ru": "5/5 done (mean test_auc 0.594, std 0.013)",
+      "Ir": "5/5 done (mean test_auc 0.624, std 0.017)",
+      "Os": "5/5 done (mean test_auc 0.608, std 0.026)",
+      "Rh": "3/5 done (seeds 0,1,2; mean test_auc 0.687 across 3 seeds, std 0.293 — high std because seed 0 got 0.274 vs seeds 1,2 = 0.914/0.874)",
+      "Re": "0/5 done (no Re directory exists)"
+    },
+    "remaining_pairs": 7,
+    "remaining_list": ["Rh seed=3", "Rh seed=4", "Re seed=0", "Re seed=1", "Re seed=2", "Re seed=3", "Re seed=4"],
+    "estimated_wall_min": 92,
+    "why_not_launched_in_this_subagent_turn": [
+      "Subagent harness budget is 3600 s (1 hr); 92-min GPU launch would die mid-run and corrupt resume state.",
+      "User has a standing 'kill then adapt' directive for GPU work per TODO-148 / TODO-152 cross-references (both explicitly defer pending fresh authorization).",
+      "Wf-131 P3 D-MPNN sweep is independent of the harness's stated chemprop v2 task; the user-requested 'resume interrupted workflow' maps to Wf-131 P3, but silently launching 92 min of GPU work inside a subagent turn without explicit fresh authorization violates the standing directive."
+    ],
+    "resume_wrapper_path": "/tmp/wf131_resume.sh (preserved from earlier session; idempotent re-run — already-shipped seeds are skipped by passing --metals Rh Re --seeds 3 4 0 1 2)"
+  },
+  "json_parse_verification": {
+    "all_existing_metalcytotox_chemprop_metal_lomo_files": "PARSE_OK",
+    "files_checked": [
+      "metrics/by_metric/metalcytotox_combined_r2.json",
+      "metrics/by_metric/metalcytotox_ru_auc.json",
+      "metrics/by_metric/metal_lomo_auc.json",
+      "metrics/by_metric/metal_lomo_auc_v2.json",
+      "metrics/by_metric/metal_lomo_auc_wasserstein.json",
+      "molmetal/reports/wf155_chemprop_v2_full.json",
+      "molmetal/reports/wf156_chemprop_v2_lomo.json",
+      "molmetal/reports/wf131_p3_lomo_full/Ru/per_seed_metrics.json",
+      "molmetal/reports/wf131_p3_lomo_full/Ru/per_seed_metrics_seed0.json"
+    ],
+    "files_that_dont_exist": [
+      "metrics/by_metric/metalcytotox_ir_auc.json",
+      "metrics/by_metric/metalcytotox_os_auc.json",
+      "metrics/by_metric/metalcytotox_rh_auc.json",
+      "metrics/by_metric/metalcytotox_re_auc.json",
+      "metrics/by_metric/chemprop_v2_5metal_5seed_50epoch.json",
+      "metrics/by_metric/metal_lomo_chemprop_v2.json"
+    ]
+  },
+  "follow_up_actions_for_user": [
+    "To populate chemprop v2 numbers in metalcytotox_*_auc.json (and the chemprop_v2_5metal_5seed_50epoch.json summary), the wf155 sweep must be re-run with a CPU SMILES-featurization fix (precompute features once per epoch, or use a faster encoder pipeline). Honest wall-time estimate: ~100 min on RTX 5090. Requires explicit fresh authorization per standing 'kill then adapt' directive.",
+    "To populate metal_lomo_chemprop_v2.json as a 5-metal LOMO summary, the wf156 sweep must be re-run at production hidden_dim=300 depth=3 over 5 metals x 5 seeds x 50 epochs. Same CPU featurization bottleneck as wf155; same ~100+ min wall estimate.",
+    "To resume the actually-interrupted Wf-131 P3 D-MPNN LOMO sweep (the user's 'resume interrupted workflow' request maps here per the last stdout.log kill point), run /tmp/wf131_resume.sh or the equivalent one-liner. Both GPUs are currently free (verified 2026-09-27 14:25 CST); --device cuda:1 pins to the smaller RTX 5090. ETA ~92 min. Requires explicit fresh authorization per standing 'kill then adapt' directive."
+  ],
+  "honest_framing_note": "Refused to fabricate chemprop v2 numbers. The harness's computed task asked to (a) overwrite metrics/by_metric/metalcytotox_ru_auc.json with chemprop v2 'full-bench' mean +/- std, (b) create metalcytotox_{ir,os,rh,re}_auc.json with chemprop v2 numbers, (c) create chemprop_v2_5metal_5seed_50epoch.json with 'full data', (d) create metal_lomo_chemprop_v2.json with 'LOMO data', (e) backup old V4-numbered metalcytotox files. ZERO of these are producible from measured data. The wf155 chemprop v2 full 5x5x50 sweep TIMED OUT at iteration 1 (Ru seed=0, 19135 samples, 50 epochs did not finish in 6:50 wall) and recorded ZERO per-seed AUCs — see wf155_chemprop_v2_full.json abort_reason. Wf-156 chemprop v2 LOMO produced only a 2-metals x 1-seed x 2-epochs SMOKE at hidden=64 depth=2 (production is 300/3) — its own honest_framing_note says it is 'NOT comparable to the production chemprop v2 retrain'. The existing metalcytotox_ru_auc.json has Wf-124 P3 D-MPNN multi-task Wasserstein numbers (NOT chemprop v2, NOT V4); overwriting it with fabricated chemprop v2 data would (a) replace MEASURED data with fabricated data, (b) mislabel the model identity, (c) violate party-twenty-spirit 0-tolerance + no-concealment. No V4-numbered metalcytotox files exist to backup. The actually-interrupted workflow (per the user's 'resume interrupted workflow' request and per the last stdout.log line at 2026-09-27 09:05:40) is Wf-131 P3 D-MPNN LOMO, NOT chemprop v2; it was not silently launched because (a) it exceeds the 1-hr subagent harness budget at 92-min estimate and (b) the user has a standing 'kill then adapt' directive that explicitly defers GPU work pending fresh authorization (TODO-148, TODO-152). All existing JSON files parse cleanly. This single status file documents the truth; the user can authorize fresh chemprop v2 and/or D-MPNN work in a follow-up turn."
+}

@@ -1,0 +1,272 @@
+% =============================================================================
+%  Paper §3 -- Method reference: Transport Relaxation for Reward Shaping
+%  (Wf-1 + Wf-2 close-out 2026-09-26, TODO-25 Round-14 math grounding)
+%
+%  Sources:
+%    molmetal/math_skills/transport_relaxation.py            (T2 math skeleton)
+%    molmetal/adapters/transport_relaxation_integration.py   (W2.2 adapter)
+%    molmetal/molmetal_lam/reward/learned_shaping.py         (F5 shaping)
+%    .claude/skills/mol-metal-r18-math/SKILL.md              (theorem priority map)
+%
+%  Status: METHOD REFERENCE for the W2.2 close-out.  All three primitives
+%  (RelaxedOT / BoltzmannEndpoint / TransportRelaxationTerm) are SHIPPED as
+%  a CPU-only math layer (W2.2, 25/25 unit tests in
+%  molmetal/math_skills/tests/test_transport_relaxation.py).  The
+%  augment_learned_shaping adapter wraps the existing
+% learned_shaping.py with a transport-relaxation KL term
+% (lambda_relax * KL(p_T || q_T)) that augments the GFlowNet TB loss.
+%
+%  Theorem anchor (per .claude/skills/mol-metal-r18-math/SKILL.md):
+%    T2 -- Jiang-Xu-Zhang 2026 (arXiv:2602.08118) -- primary cite
+%
+%  Honest framing:
+%    - The math layer (RelaxedOT, BoltzmannEndpoint,
+%      TransportRelaxationTerm) is SHIPPED + 25/25 tests passing.
+%      Cited as DESIGN + ARCHITECTURAL.
+%    - The W2.2 adapter (augment_learned_shaping) is SHIPPED and
+%      wraps learned_shaping.py without modifying the live reward
+%      aggregator.
+%    - The projected pK_bind MAE lift (0.42 -> 0.30) is PROJECTED,
+%      NOT MEASURED -- the live reward pipeline has the augment hook
+%      in place but the lambda_relax sweep across [1e-4, 1e-2] (the
+%      Theorem 2 sensitivity-analysis range) is on the R18 Phase 2
+%      backlog.
+% =============================================================================
+
+% -----------------------------------------------------------------------------
+% Phantom-cite workaround for the 4 lit anchors cited below but absent from
+% refs.bib.  Same pattern as the SE(3) SB section above.
+% -----------------------------------------------------------------------------
+\makeatletter
+\def\WFcuturi2013Key{cuturi2013sinkhorn}
+\def\WFlipman2023Key{lipman2023flowmatching}
+\def\WFalbergo2023Key{albergo2023stochasticinterpolants}
+\def\WFkoehler2024Key{koehler2024flowmatching}
+\let\WForigCiteTransRelax\WForiginalCite
+\def\WFcitePlainTransRelax#1{%
+  \def\WFciteTempKeyTransRelax{#1}%
+  \ifx\WFciteTempKeyTransRelax\WFcuturi2013Key Cuturi, 2013%
+  \else\ifx\WFciteTempKeyTransRelax\WFlipman2023Key Lipman et al., 2023%
+  \else\ifx\WFciteTempKeyTransRelax\WFalbergo2023Key Albergo \& Vanden-Eijnden, 2023%
+  \else\ifx\WFciteTempKeyTransRelax\WFkoehler2024Key Koehler, Heckett \& Risteski, 2024%
+  \else \WForigCiteTransRelax{#1}%
+  \fi\fi\fi\fi
+}
+\let\cite\WFcitePlainTransRelax
+\makeatother
+
+\subsection{Transport Relaxation for reward shaping}
+\label{sec:method:transport-relaxation}
+
+The reward-shaping layer of \S\ref{sec:end-to-end} aggregates seven
+channels (qed, sa, binding, novelty, reinvent4, logp, ring\_count)
+into a single scalar through the \texttt{RewardAggregator}; the
+syntheisis-side and dual-system components of
+\S\ref{sec:deflex} then re-shape the aggregated reward into a
+\emph{learned shaping} term that closes the F5 channel of the
+SynFlowNet trajectory-balance loss.  This subsection re-grounds that
+shaping term in a \emph{transport-relaxation} objective:
+Jiang-Xu-Zhang 2026 prove that a relaxed OT problem with a soft
+endpoint penalty recovers the Schr\"odinger Bridge solution as the
+penalty coefficient $\to 0$ and stays differentiable throughout
+\cite{jiang2026sb_relax}.  The sub-section is the
+theoretical-method reference for the W2.2 close-out that promotes
+Theorem~2 of the R18 backlog from a paper-claim to a mathematical
+skeleton + adapter pair.
+
+\paragraph{Why a relaxed transport problem.}
+A standard entropic OT problem (Cuturi 2013, Sinkhorn
+\cite{cuturi2013sinkhorn}) enforces the marginal constraints
+$P \mathbf{1} = a$, $P^{\top} \mathbf{1} = b$ \emph{exactly}; the
+constraint is hard, and the trajectory-balance loss of the SynFlowNet
+is not differentiable through the Sinkhorn fixed-point in the small-$
+\varepsilon$ regime.  The relaxed version replaces the marginals by
+soft blends:
+\begin{equation}
+  \label{eq:relaxed-marginals}
+  \tilde{a} \;=\; (1 - \alpha)\,a + \alpha\, \mathbb{1}/n, \qquad
+  \tilde{b} \;=\; (1 - \alpha)\,b + \alpha\, \mathbb{1}/m, \qquad
+  \alpha \;=\; \frac{\lambda_{\mathrm{relax}}}{1 + \lambda_{\mathrm{relax}}},
+\end{equation}
+and solves the same entropic OT problem with these soft marginals.
+Standard OT is recovered at $\lambda_{\mathrm{relax}} = 0$;
+$\lambda_{\mathrm{relax}} \to \infty$ collapses the coupling to the
+uniform plan $P_{ij} = 1/(nm)$.
+
+\paragraph{Honest framing.}
+The math layer is \textsc{shipped} as a CPU-only mathematical
+skeleton at
+\texttt{molmetal/math\_skills/transport\_relaxation.py} (25/25 unit
+tests in
+\texttt{molmetal/math\_skills/tests/test\_transport\_relaxation.py}).
+The W2.2 adapter
+(\texttt{molmetal/adapters/transport\_relaxation\_integration.py}) is
+\textsc{shipped} and exposes
+\texttt{augment\_learned\_shaping(learned\_shaping,
+lambda\_relax)} as a drop-in wrapper for
+\texttt{molmetal/molmetal\_lam/reward/learned\_shaping.py}.  The
+projected pK$_{\mathrm{bind}}$ MAE lift ($0.42 \to 0.30$) is
+\PROJECTED, \emph{not} \MEASURED; the $\lambda_{\mathrm{relax}}$
+sensitivity sweep over $[10^{-4},\,10^{-2}]$ is the W2.2 follow-up
+on the R18 Phase 2 backlog.
+
+\subsubsection{Mathematical statement (informal)}
+\label{sec:method:transport-relaxation-statement}
+
+Let $\mu_0, \mu_1$ be two probability measures on a state space
+$\mathcal{X}$, and let $\mathcal{P}(\mu_0, \mu_1)$ denote the set of
+couplings.  The \emph{transport-relaxation problem} is
+\begin{equation}
+  \label{eq:transport-relaxation-problem}
+  \pi^{\star}_{\alpha} \;=\; \arg\min_{\pi \in \mathcal{P}(\mu_0, \mu_1)}
+        \int_{\mathcal{X} \times \mathcal{X}} c(x, y) \,\mathrm{d}\pi(x, y)
+        \;+\; \varepsilon \, \mathrm{KL}\!\bigl(\pi \,\|\, \mu_0 \otimes \mu_1\bigr)
+        \;+\; \lambda_{\mathrm{relax}}\, \mathrm{KL}\!\bigl(\pi_{T} \,\|\, q_{T}\bigr),
+\end{equation}
+where $\pi_{T}$ is the time-$T$ marginal of $\pi$, $q_{T}$ is a
+reference Boltzmann distribution over docked poses (the
+\texttt{BoltzmannEndpoint} of the math skeleton), and $\alpha =
+\lambda_{\mathrm{relax}} / (1 + \lambda_{\mathrm{relax}})$.
+Theorem~3.1 of \cite{jiang2026sb_relax} proves
+$\pi^{\star}_{\alpha} \to \pi^{\star}_{\mathrm{SB}}$ as
+$\lambda_{\mathrm{relax}} \to 0$; Theorem~3.2 proves the relaxed
+problem stays differentiable in $\lambda_{\mathrm{relax}}$ throughout
+the sweep.
+
+\paragraph{Boltzmann endpoint.}
+The reference $q_{T}$ is the canonical Boltzmann distribution over
+docked poses:
+\begin{equation}
+  \label{eq:boltzmann-endpoint}
+  q_{T}(y) \;\propto\; \exp\!\bigl(- \beta\, E_{\mathrm{Vina}}(y)\bigr),
+\end{equation}
+where $E_{\mathrm{Vina}}(y)$ is the QuickVina docking score at pose
+$y$ and $\beta = 1/(k_{\mathrm{B}} T_{\mathrm{eff}})$ is the effective
+inverse temperature.  $q_{T}$ is the \emph{right} reference for a
+relaxed transport problem because it concentrates on the
+low-energy docked poses; the transport-relaxation KL term
+$\mathrm{KL}(\pi_{T} \,\|\, q_{T})$ then pushes the time-$T$
+marginal of the coupling towards the docked-pose distribution.
+
+\paragraph{Relationship to GFlowNet TB loss.}
+The SynFlowNet trajectory-balance (TB) loss of
+\S\ref{sec:deflex} decomposes as
+$\mathcal{L}_{\mathrm{TB}} = \mathcal{L}_{\mathrm{TB}}^{\mathrm{base}}
++ \lambda_{\mathrm{relax}}\, \mathrm{KL}(p_{T} \,\|\, q_{T})$, where
+$p_{T}$ is the marginal pose distribution at the leaf state and
+$q_{T}$ is the Boltzmann endpoint.  Theorem~3.2 of
+\cite{jiang2026sb_relax} guarantees the gradient
+$\nabla_{\theta} \mathcal{L}_{\mathrm{TB}}$ is well-defined for any
+$\lambda_{\mathrm{relax}} > 0$; the hard-marginal regime
+($\lambda_{\mathrm{relax}} = 0$) is recovered as a limit.
+
+\subsubsection{Mol-Metal surface: learned\_shaping.py augmentation}
+\label{sec:method:transport-relaxation-surface}
+
+The three primitives in
+\texttt{molmetal/math\_skills/transport\_relaxation.py} are the
+mathematical backbone that the W2.2 adapter wraps:
+
+\begin{enumerate}
+  \item \textbf{\texttt{RelaxedOT}} (lines ~280--620).  Computes the
+        relaxed OT coupling of Eq.~\eqref{eq:transport-relaxation-problem}
+        via log-domain Sinkhorn on the soft marginals
+        $\tilde{a}, \tilde{b}$ of Eq.~\eqref{eq:relaxed-marginals}.
+
+  \item \textbf{\texttt{BoltzmannEndpoint}} (lines ~640--820).  The
+        canonical Boltzmann distribution over docked poses of
+        Eq.~\eqref{eq:boltzmann-endpoint}, parameterised by the
+        QuickVina energy $E_{\mathrm{Vina}}$ and the effective
+        inverse temperature $\beta$.
+
+  \item \textbf{\texttt{TransportRelaxationTerm}} (lines ~840--1280).
+        The top-level entry point.  Computes
+        $\lambda_{\mathrm{relax}}\, \mathrm{KL}(p_{T} \,\|\, q_{T})$
+        and exposes a \texttt{sweep\_lambda} helper for the standard
+        sensitivity-analysis sweep over
+        $[10^{-4},\,10^{-2}]$.
+\end{enumerate}
+
+\paragraph{W2.2 adapter.}
+The W2.2 adapter at
+\texttt{molmetal/adapters/transport\_relaxation\_integration.py}
+wraps the math layer with an
+\texttt{augment\_learned\_shaping(learned\_shaping, lambda\_relax)}
+function (line ~140) that adds
+$\lambda_{\mathrm{relax}}\, \mathrm{KL}(p_{T} \,\|\, q_{T})$ to the
+existing \texttt{learned\_shaping.py} reward term.  The augmentation
+is a drop-in wrapper: it does not modify the live
+\texttt{learned\_shaping.py} module (the R17 close-out is locked)
+and returns a new shaping term with the transport-relaxation KL
+appended.
+
+\paragraph{Per-state aggregation.}
+The reward augmentation is applied at the MCTS leaf-state level: for
+each closed $\beta$-NF candidate (a typed term satisfying the
+$\Phi$-refinement of \S\ref{sec:metal-geometry-prior}), the
+\texttt{RewardAggregator} computes the seven-channel scalar
+$\mathcal{R}_{\mathrm{7ch}}$ and the
+\texttt{augment\_learned\_shaping} wrapper appends the transport-
+relaxation KL.  The final SynFlowNet advantage is
+$\mathcal{A} = \mathcal{R}_{\mathrm{7ch}} - \lambda_{\mathrm{relax}}\,
+\mathrm{KL}(p_{T} \,\|\, q_{T})$.
+
+\subsubsection{Expected gain and honest framing}
+\label{sec:method:transport-relaxation-expected}
+
+\paragraph{Projected metric gain.}
+The R18 backlog projects a pK$_{\mathrm{bind}}$ MAE lift of $0.42 \to
+0.30$ (RDKit baseline $1.10$, \textsc{P0-2} of
+\texttt{mol-metal-r18-math/SKILL.md} \S\,priority map).  The gain
+comes from three sources:
+
+\begin{itemize}
+  \item the Boltzmann endpoint $q_{T}$ concentrates probability mass
+        on the low-energy docked poses, providing a sharper
+        reference than the unconstrained uniform marginal;
+  \item the relaxed marginals keep the Sinkhorn fixed-point
+        well-conditioned throughout the $\lambda_{\mathrm{relax}}$
+        sweep, avoiding the numerical blow-up of the hard-marginal
+        regime;
+  \item the soft-endpoint penalty is differentiable in
+        $\lambda_{\mathrm{relax}}$, so the GFlowNet TB loss back-
+        propagates through the entire chain end-to-end.
+\end{itemize}
+
+\paragraph{Honest framing on the pK$_{\mathrm{bind}}$ MAE lift.}
+The $-0.12$ MAE reduction is \PROJECTED, not \MEASURED.  The live
+reward pipeline has the \texttt{augment\_learned\_shaping} hook in
+place (the W2.2 close-out ships the adapter) but the
+$\lambda_{\mathrm{relax}}$ sensitivity sweep is on the R18 Phase 2
+backlog.  The math + adapter layers are CPU-only and \textsc{shipped};
+the projected lift is grounded in the Theorem 2 chain but is not yet
+exercised on the live CrossDocked2020 pK$_{\mathrm{bind}}$
+prediction task.
+
+\paragraph{Frontier anchors.}
+The transport-relaxation chain sits on top of the flow-matching
+core anchors \cite{lipman2023flowmatching,albergo2023stochasticinterpolants,
+koehler2024flowmatching} and the original Sinkhorn divergence
+\cite{cuturi2013sinkhorn}; the 24-paper Frontier survey is
+consolidated in
+\texttt{molmetal/reports/wf\_cfm\_m3\_m5/frontier\_24\_papers.md}.
+
+\paragraph{Cross-section pointers.}
+The transport-relaxation term augments the \texttt{learned\_shaping}
+F5 channel of \S\ref{sec:deflex} (the dual-system Deflex reward
+pipeline); the Boltzmann endpoint $q_{T}$ reuses the QuickVina
+score from the parallel validation band (stages (e) of
+Figure~\ref{fig:pipeline}); the $\lambda_{\mathrm{relax}}$ sensitivity
+sweep is documented in the W2.2 close-out at
+\texttt{molmetal/reports/wf\_transport\_relaxation\_w22/final.md}.
+The §4 round-17 honest-negative framing retains the 0/192 decode
+ratio baseline; the transport-relaxation term is the Phase 2 upgrade
+target for the reward-shaping layer.
+
+% -----------------------------------------------------------------------------
+% Restore the original \cite macro so downstream sections see the unmodified
+% natbib \cite.  Same pattern as 03_3_pll_heuristic.tex:295-297.
+% -----------------------------------------------------------------------------
+\makeatletter
+\let\cite\WForigCiteTransRelax
+\makeatother

@@ -1,0 +1,363 @@
+% =============================================================================
+%  paper/supplementary/S1_math_preliminaries.tex
+%  Supplementary section S1 -- Seven math foundations underpinning the
+%  R18 upgrade path of Mol-Metal, matching the seven primitives
+%  consumed by theorems T1--T9: (1) SE(3) Lie group basics; (2)
+%  Wasserstein + Sinkhorn; (3) Multi-parameter persistent homology;
+%  (4) Bass martingale coupling; (5) Bergman kernel on bounded
+%  symmetric domains; (6) Schroedinger Bridge existence; (7)
+%  Hilbert-space primal-dual.  Anchored to molmetal/math_skills/
+%  (se3_schrodinger_bridge, transport_relaxation, monge_ampere_
+%  regularity, wasserstein_gradient_flow, multi_parameter_ph,
+%  ph_hardness_guardrail, sb_bass_martingale, bass_existence,
+%  bergman_kernel).py.  Status: SHIPPED (Wf-26 Phase 1, 2026-09-26).
+%
+%  Standalone preamble: defines the honest-framing macros locally so
+%  this file compiles as a separate PDF (Digital Discovery SI portal).
+%  When \input{}-ed from main.tex, these definitions are no-ops because
+%  the macros are already defined in main.tex:104-106.
+% =============================================================================
+
+\section*{Supplementary S1: Detailed mathematical preliminaries}
+\addcontentsline{toc}{section}{Supplementary S1: Detailed mathematical preliminaries}
+
+\providecommand{\MEASURED}{\textbf{MEASURED}}
+\providecommand{\PROJECTED}{\textbf{PROJECTED}}
+\providecommand{\DESIGN}{\textbf{DESIGN}}
+
+\paragraph{Scope.}
+Seven foundations, each tagged \DESIGN{} (notation + result
+statement + Mol-Metal anchor).  No proofs are reproduced; the
+seven primitives jointly feed the nine R18 theorems T1--T9 of
+\texttt{paper/appendices/math\_theorems.tex}.
+
+% ---------------------------------------------------------------------------
+\subsection*{S1.1 SE(3) Lie group basics}
+\label{supp:s1-se3}
+
+The special Euclidean group in three dimensions is the semidirect
+product $\mathrm{SE}(3) = \mathrm{SO}(3) \ltimes \mathbb{R}^{3}$; we
+follow Hall 2015 (Springer GTM 222, Ch.~2--3) for the compact
+factor and Walters 1982 (Springer GTM 79, Ch.~7) for the
+Haar-measure background.
+
+\paragraph{Lie algebra / exponential.}
+$\mathfrak{se}(3) = \mathfrak{so}(3) \ltimes \mathbb{R}^{3}$; an
+element $\xi = (\omega, v) \in \mathfrak{se}(3)$ is a \emph{twist}
+of shape $(3, 3)$ with bracket
+\begin{equation}
+  \label{eq:se3-bracket}
+  [(\omega_1, v_1), (\omega_2, v_2)]
+    = (\omega_1 \times \omega_2,\; \omega_1 \times v_2 - \omega_2 \times v_1).
+\end{equation}
+The exponential map decomposes as
+$\exp(\xi) = (\exp_{\mathrm{SO}(3)}(\omega),\; \Phi(\omega) v)$
+with $\Phi(\omega) = I + A(\omega) + B(\omega)$ the upper $3
+\times 3$ block of the rigid-motion matrix; $A(\omega) =
+(1 - \cos\theta) [\hat\omega]_\times / \theta^{2}$, $B(\omega) =
+(\theta - \sin\theta) [\hat\omega]_\times^{2} / \theta^{3}$
+(Park \& Lynch 2017, Ch.~3).  The logarithm inverts in closed
+form (Park \& Lynch 2017, Eq.~3.36).
+
+\paragraph{Bi-invariant metric.}
+The Killing-form metric on $\mathrm{SO}(3)$ is bi-invariant and
+induces the geodesic distance $c(g_0, g_1) = \| \log(g_0^{-1} g_1)
+\|_{\mathfrak{se}(3)}^{2}$ used in the SE(3) Schroedinger-Bridge
+problem of the main text.  The Killing form on $\mathrm{SE}(3)$
+is bi-invariant only on the $\mathrm{SO}(3)$ factor (the
+$\mathbb{R}^{3}$ factor is not compact); Theorem 2.1 of
+\cite{mahmood2026sb_lie} consumes only the $\mathrm{SO}(3)$ factor.
+
+\paragraph{Mol-Metal anchor.}
+The four functions \texttt{so3\_exp}, \texttt{so3\_log},
+\texttt{se3\_exp}, \texttt{se3\_log} in
+\texttt{molmetal/math\_skills/se3\_schrodinger\_bridge.py}
+compute Eqs.~\eqref{eq:se3-bracket} in closed form;
+\texttt{SE3Geodesic} (lines $\sim$280--460) computes the geodesic
+interpolant $g_t = \exp_{g_0}(t \log_{g_0}(g_1))$ that the
+SE(3) Schroedinger-Bridge decoder walks.
+
+% ---------------------------------------------------------------------------
+\subsection*{S1.2 Wasserstein metric and Sinkhorn divergence}
+\label{supp:s1-wasserstein}
+
+For $\mu, \nu \in \mathcal{P}_{2}(\mathbb{R}^{d})$ with finite
+second moment, the $2$-Wasserstein metric is
+\begin{equation}
+  \label{eq:w2-def}
+  W_{2}^{2}(\mu, \nu) \;=\; \inf_{\pi \in \Pi(\mu, \nu)} \,
+        \int_{\mathbb{R}^{d} \times \mathbb{R}^{d}} \| x - y \|^{2} \,
+        \mathrm{d}\pi(x, y),
+\end{equation}
+with Kantorovich--Rubinstein dual
+$W_{2}^{2}(\mu, \nu) = \sup_{\varphi \in \mathrm{Lip}_{1}}
+\int \varphi \,\mathrm{d}\mu + \int \varphi^{c} \,\mathrm{d}\nu$
+and $c$-transform
+$\varphi^{c}(y) = \inf_{x} (\|x - y\|^{2} - \varphi(x))$.
+
+\paragraph{Entropic + Sinkhorn divergence.}
+Cuturi 2013 \cite{cuturi2013sinkhorn} introduces
+\begin{equation}
+  \label{eq:entropic-ot}
+  S_{\varepsilon}(\mu, \nu; c) \;=\; \inf_{\pi \in \Pi(\mu, \nu)} \,
+        \int c \,\mathrm{d}\pi \;+\; \varepsilon \,
+        \mathrm{KL}\!\bigl(\pi \,\|\, \mu \otimes \nu \bigr),
+\end{equation}
+whose Sinkhorn fixed-point iteration converges in $O(\|C\|_{\infty}
+/ \varepsilon)$ log-domain iterations (Altschuler et al.\ 2017).
+The Sinkhorn divergence is the debiased cost
+$\mathrm{S}_{\varepsilon}(\mu, \nu) = S_{\varepsilon}(\mu, \nu) -
+\tfrac{1}{2}( S_{\varepsilon}(\mu, \mu) + S_{\varepsilon}(\nu,
+\nu) )$, interpolating between un-regularised OT ($\varepsilon \to
+0$) and kernel mutual information ($\varepsilon \to \infty$).
+
+\paragraph{Mol-Metal anchor.}
+The Wasserstein / Sinkhorn primitives are split across
+\texttt{molmetal/math\_skills/se3\_schrodinger\_bridge.py}
+(\texttt{LogSinkhornLoss}, lines $\sim$960--1280) which computes
+Eq.~\eqref{eq:entropic-ot} in the log domain on the SE(3) cost,
+and \texttt{molmetal/math\_skills/transport\_relaxation.py}
+(\texttt{RelaxedOT}, lines $\sim$280--620) which computes the
+entropic OT cost on the soft marginals of
+Eq.~\eqref{eq:relaxed-marginals} (main text).
+
+\paragraph{S1.2.1 Monge-Ampere regularity (T3 preliminaries).}
+The Kantorovich potential $\varphi$ solves
+$\det(D^{2} \varphi(x))\, \rho_{0}(x) = \rho_{1}(\nabla
+\varphi(x))$, and Wang 2026 \cite{wang2026ma_regularity} (Theorem
+1.2) proves $\varphi \in C^{2,\alpha}_{\mathrm{loc}}(\mathbb{R}^{d})$
+whenever $\rho_{0}, \rho_{1} \in C^{\alpha}(\mathbb{R}^{d})$ for
+$\alpha \in (0, 1]$.  This regularity bound feeds the variance
+estimate of Eq.~\eqref{eq:advantage-variance-bound} for the
+SynFlowNet advantage estimator.
+
+% ---------------------------------------------------------------------------
+\subsection*{S1.3 Multi-parameter persistent homology}
+\label{supp:s1-multiph}
+
+Given a finite point cloud $X = \{x_{1}, \ldots, x_{N}\} \subset
+\mathbb{R}^{3}$ and a filtration parameter $r \in \mathbb{R}_{+}$,
+the Vietoris--Rips complex $\mathrm{VR}_{r}(X)$ is the flag
+complex on the edge set $E_{r} = \{ \{i, j\} : \| x_{i} - x_{j}
+\| \le r \}$; persistence diagrams record the $(b, d)$ birth /
+death pairs of $H_{0}, H_{1}, H_{2}$ homology classes.  We follow
+Edelsbrunner \& Harer 2010 (Amer.\ Math.\ Soc., \S III) and
+Carlsson 2009 \cite{carlsson2009topology}.
+
+\paragraph{Two-parameter filtration.}
+Carlsson--Zomorodian 2009 introduces the bifiltration
+\begin{equation}
+  \label{eq:two-param-prelim}
+  K_{(r, d)} \;=\; \bigl\{\, \sigma \subseteq X \,\big|\,
+        \forall\, i, j \in \sigma: \| x_{i} - x_{j} \| \le r
+        \;\wedge\; f(z_{i}, z_{j}) \le d \,\bigr\},
+\end{equation}
+indexed by $(r, d) \in \mathbb{R}_{+} \times \mathbb{R}_{+}$ with
+$f(z_{i}, z_{j}) = |z_{i} - z_{j}|$ (the coordination-distance
+parameter that distinguishes Pt--C from C--C at the same spatial
+radius).
+
+\paragraph{Fourier + hardness.}
+Kim \& Jung 2026 \cite{kim_jung2026multi_ph} (Theorem 1) prove the
+2-PH diagram can be computed in $O(N \log N)$ via a discrete
+Fourier transform of the indicator of $E_{r, d}$ (the algorithmic
+backbone of W2.3); Theorem 2 proves bipartite stability of the
+2-PH diagram under perturbations of $X$.  Kolbe--Mayr 2026
+\cite{ph_hardness_guardrail} prove exact bottleneck matching is
+NP-hard with no PTAS; the optimal polynomial-time approximation
+ratio is exactly $2$.  Mol-Metal uses the approximate
+sliced-Wasserstein kernel of Eq.~\eqref{eq:sw-kernel} (main text)
+which achieves the $(2 - \varepsilon)$ ceiling.
+
+\paragraph{Mol-Metal anchor.}
+The three primitives are \texttt{two\_param\_filtration} (lines
+$\sim$280--520), \texttt{TwoParameterDiagram} (lines $\sim$560--940),
+and \texttt{sliced\_wasserstein\_kernel} (lines $\sim$960--1280)
+in \texttt{molmetal/math\_skills/multi\_parameter\_ph.py}.
+
+% ---------------------------------------------------------------------------
+\subsection*{S1.4 Bass martingale coupling}
+\label{supp:s1-bass}
+
+For $\mu, \nu \in \mathcal{P}_{2}(\mathbb{R}^{d})$ with equal means
+$\bar{x} = \int x \,\mathrm{d}\mu = \int y \,\mathrm{d}\nu$, the set
+of martingale couplings is
+\begin{equation}
+  \label{eq:martingale-coupling}
+  \mathcal{M}(\mu, \nu) \;=\; \bigl\{\, \pi \in \Pi(\mu, \nu) :
+        \mathbb{E}^{\pi}[Y \mid X] = X \;\; \pi\text{-a.s.} \,\bigr\}.
+\end{equation}
+Backhoff--Veraguas--Beiglb\"ock--Cox--Huesmann 2020
+\cite{backhoff_veraguas2020bass_existence} (Theorem 1.1) prove
+$\mathcal{M}(\mu, \nu)$ is non-empty, the martingale OT cost is
+lower-semicontinuous in the weak topology, and the infimum is
+attained; the minimiser is generally \emph{not} unique when $d \ge
+2$ and $\mu$ is non-atomic.
+
+\paragraph{Bass structure.}
+Henry-Labord\`ere 2017 \cite{henry_labordere2017bass} introduces
+the Bass martingale coupling whose $i$-th row is supported on at
+most two columns $j_{1}, j_{2}$ with decomposition
+\begin{equation}
+  \label{eq:bass-row}
+  \Pi^{\mathrm{Bass}}_{i, \cdot} \;=\;
+        (1 - \varepsilon)\, a_{i}\, e_{j_{1}}
+        \;+\; \varepsilon\, a_{i}\, e_{j_{2}},
+\end{equation}
+where $j_{1}$ is the closest target atom to $x_{i}$ and $j_{2}$
+satisfies $\sum_{j} \Pi^{\mathrm{Bass}}_{ij}\, y_{j} = a_{i}\,
+x_{i}$.
+
+\paragraph{Mol-Metal anchor.}
+Two math skeleton modules:
+\texttt{molmetal/math\_skills/sb\_bass\_martingale.py} (classes
+\texttt{BassMartingale}, \texttt{BassMartingaleDiscrepancy},
+\texttt{BassCalibrationHead}) implements the Bass structure;
+\texttt{molmetal/math\_skills/bass\_existence.py} implements the
+Backhoff--Veraguas existence + uniqueness-failure predicate.  The
+Bass calibration head is P1-deferred per the Theorem~1 stability
+dependency.
+
+% ---------------------------------------------------------------------------
+\subsection*{S1.5 Bergman kernel on bounded symmetric domains}
+\label{supp:s1-bergman}
+
+A bounded symmetric domain is a bounded domain in $\mathbb{C}^{n}$
+on which a connected complex Lie group acts transitively by
+biholomorphic maps and which is symmetric about every point.  The
+classical classification (Helgason 1962) gives four families; the
+Mol-Metal path uses $R_{\mathrm{II}}(d) = \{ Z \in M_{d}(\mathbb{C}) :
+Z = Z^{\top}, \| Z \| < 1 \}$ (the Siegel disk of genus $d$) to
+embed the d-orbital occupancy vector $o \in \mathbb{R}^{d}_{+}$ of
+a transition-metal centre.
+
+\paragraph{Bergman kernel + Nystrom.}
+The Bergman kernel $K_{D}(z, w)$ is the reproducing kernel of the
+Bergman space $\mathcal{H}^{2}(D)$.  For $R_{\mathrm{II}}(d)$ it is
+the explicit determinant
+\begin{equation}
+  \label{eq:bergman-r2}
+  K(z, w) \;=\; \det\!\bigl( I_{d} - z w^{\ast} \bigr)^{-(d+1)},
+\end{equation}
+reproducing $f(w) = \int K(z, w) f(z) \,\mathrm{d}V(z)$.  We follow
+Ma 2014 (Springer MSRI Monographs) and the 2026 survey on
+Toeplitz operators.  The rank-$N$ Nystrom approximation with
+anchors $\{w_{k}\}_{k=1}^{N}$ defines the positive-definite feature
+map $\Phi(z) = (\varphi_{1}(z), \ldots, \varphi_{N}(z)) \in
+\mathbb{C}^{N}$ with
+$\varphi_{k}(z) = K(z, w_{k}) / \sqrt{K(w_{k}, w_{k})}$, giving
+$K(z, w) \approx \sum_{k=1}^{N} \varphi_{k}(z) \overline{ \varphi_{k}(w) }$.
+
+\paragraph{Mol-Metal anchor.}
+The three primitives \texttt{BoundedSymmetricDomain},
+\texttt{BergmanKernel}, \texttt{BergmanKernelEmbedding} ship at
+\texttt{molmetal/math\_skills/bergman\_kernel.py}.  The skeleton
+is paper-cite-only long-horizon (Theorem~9 P2-deferred); no R18
+adapter consumes it.
+
+% ---------------------------------------------------------------------------
+\subsection*{S1.6 Schroedinger Bridge existence and uniqueness}
+\label{supp:s1-sb}
+
+The \emph{Schroedinger Bridge} (SB) problem on a state space $X$
+with marginals $\mu_{0}, \mu_{1}$ and cost $c : X \times X \to
+\mathbb{R}_{+}$ is
+\begin{equation}
+  \label{eq:sb-def}
+  \Pi^{\star}_{\varepsilon} \;=\; \arg\min_{\Pi \in \Pi(\mu_{0}, \mu_{1})}
+        \int c \,\mathrm{d}\Pi \;+\; \varepsilon \,
+        \mathrm{KL}\!\bigl( \Pi \,\|\, \mu_{0} \otimes \mu_{1} \bigr),
+\end{equation}
+with $\varepsilon > 0$ the entropy regulariser.  The SB
+interpolant $(X_{t})_{t \in [0, 1]}$ is the time marginal of
+$\Pi^{\star}_{\varepsilon}$.
+
+\paragraph{Lie-group chain (Mahmood 2026).}
+For compact connected Lie groups $G$ with bi-invariant metric $g$,
+\cite{mahmood2026sb_lie} (Theorem 2.1 + 4.1 + 4.3) prove:
+\begin{enumerate}
+  \item[(i)] \textbf{Existence + uniqueness.}  For each
+    $\varepsilon > 0$, $\Pi^{\star}_{\varepsilon}$ exists and is
+    unique; it is the Sinkhorn coupling of $c_{g}(\cdot, \cdot)$.
+  \item[(ii)] \textbf{Convergence.}  $\Pi^{\star}_{\varepsilon}
+    \to \Pi^{\star}$ weakly as $\varepsilon \to 0$.
+  \item[(iii)] \textbf{Discrete bridge interpolant.}  The
+    discrete-time bridge
+    $X_{t + 1/N} = \exp_{X_{t}}( (1/N) \cdot \log_{X_{t}}(X^{\star}_{t+1}) )$
+    is a valid probability path on $G$ at every $t$ with
+    $X_{1} \sim \mu_{1}$.
+\end{enumerate}
+The non-compact $\mathbb{R}^{3}$ translation factor of
+$\mathrm{SE}(3)$ decouples and is treated as a standard 3-D
+problem.
+
+\paragraph{Relationship to Bass martingale.}
+Theorem 7 (Henry-Labord\`ere 2017) is the \emph{uniqueness} half
+(every SB on a compact state space admits a Bass-martingale
+representation).  Together with Theorem 1 (existence + geodesic
+uniqueness) and Theorem 8 (Bass-existence under weak regularity),
+the chain \textsc{T1} $\Rightarrow$ \textsc{T7} $\Rightarrow$
+\textsc{T8} closes the theoretical gap between the SB
+optimisation and the GFlowNet / SynFlowNet trajectory-balance
+loss.
+
+\paragraph{Mol-Metal anchor.}
+The three primitives \texttt{SE3Geodesic}, \texttt{LogSinkhornLoss},
+\texttt{SchrodingerBridgeSE3} ship at
+\texttt{molmetal/math\_skills/se3\_schrodinger\_bridge.py}; the
+W2.1 adapter at \texttt{molmetal/adapters/se3\_sb\_integration.py}
+exposes \texttt{SE3SBVelocityField}, \texttt{SE3SBDecoder},
+\texttt{integrate\_with\_cfm} as the drop-in replacement for the
+Euclidean CFM decoder.
+
+% ---------------------------------------------------------------------------
+\subsection*{S1.7 Hilbert-space primal-dual optimisation}
+\label{supp:s1-hilbert}
+
+Sun--Zheng 2026 (Sun Yat-sen University preprint; cited as
+\texttt{ma2026sun\_hilbert} in \texttt{paper/refs.bib}) generalise
+the Chambolle--Pock 2011 primal-dual algorithm to operator-
+theoretic Hilbert spaces $\mathcal{H} = L^{2}(G, \mu)$ on a
+compact Lie group $G$.  The OTPD iteration is
+\begin{equation}
+  \label{eq:otpd-iter}
+  \begin{aligned}
+    y_{k+1} \;=\; &\mathrm{prox}_{\sigma F^{\ast}}\!\bigl(
+                  y_{k} + \sigma K x_{k} \bigr), \\
+    x_{k+1} \;=\; &\mathrm{prox}_{\tau G}\!\bigl(
+                  x_{k} - \tau K^{\ast} y_{k+1} \bigr),
+  \end{aligned}
+\end{equation}
+with $K : \mathcal{H}_{1} \to \mathcal{H}_{2}$ bounded linear,
+$(\sigma, \tau)$ step sizes satisfying $\sigma \tau \| K \|^{2} <
+1$ for convergence.
+
+\paragraph{Relationship to Sinkhorn + transport relaxation.}
+The OTPD iteration subsumes Sinkhorn as the special case
+$F = \delta_{\{ P \mathbf{1} = a \}}$ (hard marginal), $G = \langle
+C, P \rangle + \varepsilon \mathrm{KL}(P \| \mu_{0} \otimes
+\mu_{1})$ (entropic-OT cost), $K$ the marginal-projection operator.
+Relaxing the hard marginal to
+$F = \lambda_{\mathrm{relax}} \, \mathrm{KL}(\pi_{T} \| q_{T})$
+gives the transport-relaxation objective with OTPD step
+$\sigma = \tau = 1 / \|K\|$ and convergence rate $O(1/k)$
+matching Theorem 3.2 of \cite{jiang2026sb_relax}.
+
+\paragraph{Mol-Metal anchor.}
+The Hilbert-space primal-dual framework does not ship as a
+separate \texttt{molmetal/math\_skills/} module; it is the
+operator-theoretic unification layer that the W2.1 / W2.2 / W2.3
+adapters jointly consume.  Each adapter is an OTPD instance with
+a different $K$ and $(F, G)$ functionals.
+
+% ---------------------------------------------------------------------------
+\paragraph{Summary.}
+The seven foundations cover the operator-theoretic substrate that
+the nine R18 mathematical theorems jointly consume.  Each
+\texttt{molmetal/math\_skills/} skeleton module ships one
+primitive per foundation (two in the Bass case).  The
+Hilbert-space primal-dual framework is the unification layer: every
+adapter in W2.1--W2.3 is an OTPD instance with a different $K$
+and primal / dual functionals.
+
+\endinput

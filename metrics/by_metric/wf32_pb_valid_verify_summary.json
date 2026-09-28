@@ -1,0 +1,23 @@
+{
+  "recipe": "wf32_pb_valid_verify_summary",
+  "n_evaluations": 1,
+  "pocket_id": "830c",
+  "candidate": "CCO",
+  "pb_mode": "mol",
+  "method": "se3sb",
+  "overall_pb_pass_rate": 1.0,
+  "aggregate": {
+    "830c|mol": {
+      "n": 1,
+      "mean_pass_rate": 1.0,
+      "std_pass_rate": 0.0,
+      "min_pass_rate": 1.0,
+      "max_pass_rate": 1.0,
+      "n_passed": 1,
+      "n_failed": 0,
+      "n_skipped": 0,
+      "n_error": 0,
+      "n_total": 1
+    }
+  }
+}

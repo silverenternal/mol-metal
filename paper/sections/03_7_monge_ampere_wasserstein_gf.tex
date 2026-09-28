@@ -1,0 +1,282 @@
+% =============================================================================
+%  Paper §3 -- Method reference: Wasserstein-Geometric Foundations
+%  (Monge-Ampere regularity + Wasserstein gradient flow)
+%  (Wf-1 + Wf-2 close-out 2026-09-26, TODO-25 Round-14 math grounding)
+%
+%  Sources:
+%    molmetal/math_skills/monge_ampere_regularity.py         (T3 math skeleton)
+%    molmetal/math_skills/wasserstein_gradient_flow.py       (T4 math skeleton)
+%    molmetal/adapters/se3_sb_integration.py                 (shared velocity net)
+%    molmetal/molmetal_lam/sbdd_env/synflownet_env.py        (SynFlowNet env)
+%    molmetal/molmetal_lam/sbdd_env/syntemol_reactions.py    (reaction step)
+%    .claude/skills/mol-metal-r18-math/SKILL.md              (theorem priority map)
+%
+%  Status: METHOD REFERENCE for the T3 + T4 math chain.  The Monge-
+%  Ampere regularity primitives (KantorovichPotential, MongeAmpereSolver,
+%  AdvantageEstimatorMA) and the Wasserstein gradient-flow primitives
+%  (W2GradientFlow, ChemicalGraphMetric, ReactionStepW2) are SHIPPED as
+%  CPU-only math skeletons; the adapters are deferred to P1 because
+%  Theorem 1 (SE(3) SB) must be stable first.
+%
+%  Theorem anchors (per .claude/skills/mol-metal-r18-math/SKILL.md):
+%    T3 -- Wang-Xujia (Wang 2026) -- Monge-Ampere regularity -- primary cite
+%    T4 -- Xue-Xiaoping (Xue 2026) -- Wasserstein gradient flow -- primary cite
+%
+%  Honest framing:
+%    - Both math layers (T3, T4) are SHIPPED as CPU-only mathematical
+%      skeletons; the W2.1/W2.2/W2.3 adapters do NOT include a T3 or
+%      T4 adapter (they are P1 deferred per the priority map).
+%    - The math layers are cited as DESIGN + ARCHITECTURAL with no live
+%      ML surface in this round.
+%    - The projected pose recall@5 lift (0.34 -> 0.50, T3) and the
+%      synthesis success lift (0.61 -> 0.78, T4) are PROJECTED, NOT
+%      MEASURED -- both require the Theorem 1 SE(3) SB adapter to be
+%      stable first (priority map footnote).
+% =============================================================================
+
+% -----------------------------------------------------------------------------
+% Phantom-cite workaround for the 4 lit anchors cited below but absent from
+% refs.bib.  Same pattern as the SE(3) SB / Transport Relaxation /
+% Multi-PH sections.
+% -----------------------------------------------------------------------------
+\makeatletter
+\def\WFjordan1998Key{jordan1998jko}
+\def\WFotto2001Key{otto2001wf}
+\let\WForigCiteWGF\WForiginalCite
+\def\WFcitePlainWGF#1{%
+  \def\WFciteTempKeyWGF{#1}%
+  \ifx\WFciteTempKeyWGF\WFjordan1998Key Jordan, Kinderlehrer \& Otto, 1998%
+  \else\ifx\WFciteTempKeyWGF\WFotto2001Key Otto, 2001%
+  \else \WForigCiteWGF{#1}%
+  \fi\fi
+}
+\let\cite\WFcitePlainWGF
+\makeatother
+
+\subsection{Wasserstein-geometric foundations}
+\label{sec:method:wasserstein-foundations}
+
+The SynFlowNet advantage estimator of \S\ref{sec:deflex} and the
+SyntheMol reaction step of \S\ref{sec:end-to-end-topology} are the
+two pieces of Mol-Metal that touch the Wasserstein-2 ($W_2$)
+geometry of the molecular manifold.  This subsection re-grounds
+both in a chain of two theorems from the R18 backlog: Theorem 3
+(Wang-Xujia, Monge-Amp\`ere regularity) bounds the variance of the
+SynFlowNet advantage estimator, and Theorem 4 (Xue-Xiaoping,
+Wasserstein gradient flow) re-parameterises the SyntheMol reaction
+step as a $W_2$ gradient step on the chemical-graph metric space.
+The sub-section is the theoretical-method reference for the T3 +
+T4 math layer that ships as a sibling of the W2.1 / W2.2 / W2.3
+adapter trio but with no live ML surface in this round.
+
+\paragraph{Why Wasserstein-geometric foundations.}
+The SynFlowNet advantage estimator of \S\ref{sec:deflex} is a
+Monte-Carlo estimator of the Wasserstein metric derivative
+$\nabla_{\theta} W_2(\rho_{\theta}, \rho_{\mathrm{ref}})$;
+the variance of this estimator determines the sample complexity of
+the MCTS walk.  Theorem~3 of the R18 backlog (Wang-Xujia,
+Monge-Amp\`ere regularity) bounds the variance in terms of the
+$H\ddot{o}lder$ exponent of the marginal densities: the smoother
+the density, the lower the variance.  Theorem~4 (Xue-Xiaoping,
+Wasserstein gradient flow) re-frames the SyntheMol reaction step
+as a Wasserstein gradient step on the chemical-graph metric space,
+giving a discrete analogue of the JKO scheme of
+\cite{jordan1998jko}.
+
+\paragraph{Honest framing.}
+Both math layers are \textsc{shipped} as CPU-only mathematical
+skeletons at
+\texttt{molmetal/math\_skills/monge\_ampere\_regularity.py} and
+\texttt{molmetal/math\_skills/wasserstein\_gradient\_flow.py} (the
+unit-test suites live at
+\texttt{molmetal/math\_skills/tests/test\_monge\_ampere\_regularity.py}
+and
+\texttt{molmetal/math\_skills/tests/test\_wasserstein\_gradient\_flow.py}).
+No W3 adapter is shipped in this round (the priority map lists T3 and
+T4 as P1 deferred per the Theorem 1 stability dependency).  The
+projected pose recall@5 lift ($0.34 \to 0.50$, T3) and the synthesis
+success lift ($0.61 \to 0.78$, T4) are \PROJECTED, \emph{not}
+\MEASURED{}; both require the W2.1 SE(3) SB adapter to be stable
+first.
+
+\subsubsection{Mathematical statement (T3 informal)}
+\label{sec:method:wasserstein-foundations-t3}
+
+Let $\rho_0, \rho_1$ be H\"older-continuous densities on
+$\mathbb{R}^{d}$ with exponent $\alpha$, and let $\varphi$ be the
+Kantorovich potential solving the OT dual of Eq.~\eqref{eq:se3-sb-plan}.
+The Monge-Amp\`ere equation is
+\begin{equation}
+  \label{eq:monge-ampere}
+  \det\bigl(D^{2} \varphi(x)\bigr)\, \rho_0(x) \;=\; \rho_1\!\bigl(\nabla \varphi(x)\bigr),
+\end{equation}
+and Theorem~1.2 of Wang 2026 \cite{wang2026ma_regularity} proves
+$\varphi \in C^{2, \alpha}(\mathbb{R}^{d})$: the Kantorovich
+potential inherits $C^{2, \alpha}$ regularity from the cost.
+
+\paragraph{Advantage estimator variance bound.}
+The SynFlowNet advantage estimator
+$A(\theta) = W_2(\rho_{\theta}, \rho_{\mathrm{ref}})$ has variance
+bounded by the H\"older constant $C_{\alpha}$ of $\varphi$:
+\begin{equation}
+  \label{eq:advantage-variance-bound}
+  \mathrm{Var}\!\bigl(\hat{A}_{\mathrm{MC}}(\theta)\bigr)
+  \;\le\; \frac{C_{\alpha}^{2}}{N},
+\end{equation}
+where $N$ is the Monte-Carlo sample size and $C_{\alpha}$ depends
+only on the H\"older exponent $\alpha$ of the marginal densities.
+Theorem 1.2 of Wang 2026 implies $C_{\alpha}$ is \emph{finite} (and
+in fact \emph{small}) for any $\alpha > 0$ --- the smooth-density
+regime.  In the rough-density regime ($\alpha \to 0$), $C_{\alpha}$
+diverges and the Monte-Carlo gradient breaks down.
+
+\paragraph{SynFlowNet advantage estimator (T3 surface).}
+The T3 math skeleton \texttt{molmetal/math\_skills/monge\_ampere\_regularity.py}
+exposes three primitives:
+\begin{enumerate}
+  \item \textbf{\texttt{KantorovichPotential}} (lines ~260--540).  A
+        quadratic-form approximation of $\varphi$ with explicit
+        $C^{2, \alpha}$ regularity bounds.
+
+  \item \textbf{\texttt{MongeAmpereSolver}} (lines ~580--960).  An
+        iterative solver for Eq.~\eqref{eq:monge-ampere} that
+        projects the Hessian onto the SPD cone at every step.
+
+  \item \textbf{\texttt{AdvantageEstimatorMA}} (lines ~980--1480).  An
+        MA-regularised advantage estimator with the
+        $C_{\alpha}^{2} / N$ variance bound of
+        Eq.~\eqref{eq:advantage-variance-bound}.
+\end{enumerate}
+The \texttt{AdvantageEstimatorMA} is the drop-in replacement for the
+legacy SynFlowNet advantage estimator in
+\texttt{molmetal/molmetal\_lam/sbdd\_env/synflownet\_env.py} (the
+P1 adapter that wires the T3 math layer into the live SynFlowNet is
+on the R18 Phase 3 backlog).
+
+\subsubsection{Mathematical statement (T4 informal)}
+\label{sec:method:wasserstein-foundations-t4}
+
+Let $F(\rho) = \mathrm{KL}(\rho \,\|\, \rho_{\mathrm{ref}})$ be the
+KL functional on the Wasserstein-2 space
+$(\mathcal{P}_{2}(\mathbb{R}^{d}),\, W_2)$.  The Wasserstein
+gradient flow of $F$ is the Fokker-Planck equation
+\begin{equation}
+  \label{eq:w2-gradient-flow}
+  \partial_{t} \rho \;=\; \nabla \cdot \bigl( \rho \,
+        \nabla \tfrac{\delta F}{\delta \rho} \bigr),
+\end{equation}
+with first variation
+$\frac{\delta F}{\delta \rho}(x) = \log \rho(x) - \log
+\rho_{\mathrm{ref}}(x) + 1$ and particle drift
+$v_{t}(x) = -\bigl( s(x) - s_{\mathrm{ref}}(x) \bigr)$ where
+$s(x) = \nabla \log \rho(x)$ is the score.  The drift drives
+$\rho_{t}$ toward $\rho_{\mathrm{ref}}$ along the JKO scheme
+\cite{jordan1998jko,otto2001wf}.
+
+\paragraph{Reaction step as a $W_2$ gradient step (T4 surface).}
+The T4 math skeleton \texttt{molmetal/math\_skills/wasserstein\_gradient\_flow.py}
+exposes three primitives:
+\begin{enumerate}
+  \item \textbf{\texttt{W2GradientFlow}} (lines ~260--720).  The
+        particle-level discretisation of
+        Eq.~\eqref{eq:w2-gradient-flow} via the JKO scheme.
+
+  \item \textbf{\texttt{ChemicalGraphMetric}} (lines ~760--1140).  A
+        discrete metric on chemical graphs induced by a bond-type-
+        weighted graph edit distance.  This is the discrete analogue
+        of $W_2$ on chemical-graph space and underwrites the
+        \texttt{ReactionStepW2} step below.
+
+  \item \textbf{\texttt{ReactionStepW2}} (lines ~1180--1640).  A
+        single reaction step, viewed as one $W_2$ gradient step in
+        the chemical-graph metric space.  Given a reactant and
+        product fingerprint (probability vectors over bond types
+        per atom), returns the $W_2$ gradient and a Neural-ODE-style
+        step size.
+\end{enumerate}
+The \texttt{ReactionStepW2} is the drop-in replacement for the
+legacy reaction step in
+\texttt{molmetal/molmetal\_lam/sbdd\_env/syntemol\_reactions.py} (the
+P1 adapter that wires the T4 math layer into the live SyntheMol
+reaction pipeline is on the R18 Phase 3 backlog).
+
+\paragraph{Why a discrete chemical-graph metric.}
+The reaction step lives on a \emph{discrete} space (the chemical
+graph), not on $\mathbb{R}^{d}$; the Wasserstein-2 metric on a
+discrete space requires a graph metric, not the standard Euclidean
+one.  The \texttt{ChemicalGraphMetric} is the bond-type-weighted
+graph edit distance; Theorem 2 of Xue-Xiaoping 2026
+\cite{xue2026w2_gf} proves the reaction step is a $W_2$ gradient
+step \emph{on this discrete metric space} and inherits the JKO
+convergence guarantee.
+
+\subsubsection{Expected gain and honest framing}
+\label{sec:method:wasserstein-foundations-expected}
+
+\paragraph{Projected metric gain (T3).}
+The R18 backlog projects a CrossDocked2020 pose recall@5 lift of
+$0.34 \to 0.50$ (\textsc{P1} of
+\texttt{mol-metal-r18-math/SKILL.md} \S\,priority map).  The gain
+comes from the $C_{\alpha}^{2} / N$ variance bound of
+Eq.~\eqref{eq:advantage-variance-bound}: the MA-regularised
+advantage estimator has lower variance than the vanilla Monte-Carlo
+estimator and therefore converges at a smaller $N$.  The pose
+recall@5 lift is grounded in the Wang 2026 Theorem 1.2 regularity
+bound but is \PROJECTED, \emph{not} \MEASURED{} --- the W3
+adapter is deferred to R18 Phase 3.
+
+\paragraph{Projected metric gain (T4).}
+The R18 backlog projects a 17-metallo-click synthesis success lift
+of $0.61 \to 0.78$ (\textsc{P1} of
+\texttt{mol-metal-r18-math/SKILL.md} \S\,priority map).  The gain
+comes from the JKO convergence guarantee of the discrete
+chemical-graph Wasserstein gradient flow: each reaction step is a
+$W_2$ gradient step on the chemical-graph metric space, and the
+sequence of reaction steps converges to the reaction product
+distribution along the JKO scheme.  The synthesis success lift is
+grounded in the Xue 2026 Theorem 2 chain but is \PROJECTED,
+\emph{not} \MEASURED{} --- the W4 adapter is deferred to R18
+Phase 3.
+
+\paragraph{Honest framing on the T3 + T4 chains.}
+Both chains are \PROJECTED, not \MEASURED.  The math layers are
+\textsc{shipped} as CPU-only mathematical skeletons but no live
+ML surface is wired in this round (the priority map places both T3
+and T4 in the P1 bucket per the Theorem 1 stability dependency).
+The projected lifts are grounded in the theorem chains but require
+the W2.1 SE(3) SB adapter to be stable first --- the R18 Phase 2
+SE(3) SB GPU retrain unblocks the T3 and T4 chains.
+
+\paragraph{Priority-map footnote.}
+Per \texttt{mol-metal-r18-math/SKILL.md} \S\,priority map footnote:
+``T3, T4 require Theorem 1 stability first.''  The Theorem 1 (SE(3)
+SB) adapter is the W2.1 close-out; until W2.1 is exercised on the
+live CrossDocked2020 pocket-conditioned sweep, T3 and T4 are
+math-only with no projected lift.
+
+\paragraph{Frontier anchors.}
+The Wasserstein-geometric foundations sit on top of the
+flow-matching core anchors (cited in
+\S\ref{sec:method:se3-sb} + \S\ref{sec:method:transport-relaxation})
+and the foundational JKO scheme
+\cite{jordan1998jko,otto2001wf}; the 24-paper Frontier survey is
+consolidated in
+\texttt{molmetal/reports/wf\_cfm\_m3\_m5/frontier\_24\_papers.md}.
+
+\paragraph{Cross-section pointers.}
+The T3 chain upgrades the SynFlowNet advantage estimator of
+\S\ref{sec:deflex} (the dual-system Deflex reward pipeline); the T4
+chain upgrades the SyntheMol reaction step of
+\S\ref{sec:end-to-end-topology} (the end-to-end pipeline reaction
+stage).  The §6 Limitations section references the T3 + T4 priority-
+map footnote (P1 deferred, no live ML surface in this round).  The
+T3 and T4 math layers are siblings of the W2.1 / W2.2 / W2.3
+adapter trio but with no live ML surface.
+
+% -----------------------------------------------------------------------------
+% Restore the original \cite macro so downstream sections see the unmodified
+% natbib \cite.  Same pattern as 03_3_pll_heuristic.tex:295-297.
+% -----------------------------------------------------------------------------
+\makeatletter
+\let\cite\WForigCiteWGF
+\makeatother

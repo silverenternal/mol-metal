@@ -1,0 +1,146 @@
+{
+  "metric": "hilbert_4cell_r2",
+  "description": "Mean combined Hilbert primal-dual + ASTSR evolutionary R² across 4 PlatinAI cell lines (mcf7 / a549 / a2780 / a2780cis) with per-fold alpha selection on 90/10 inner validation. Post-fix Wf-122 P3 values (L2 + scale-guard + best_ast_lisp fixes applied). Pre-fix Wf-83 P1 5-fold random CV values preserved for comparison.",
+  "unit": "R² (can be negative; 1.0 = perfect, 0 = constant-mean baseline)",
+  "scope": "tier1_precious_metal_anticancer / Wf-122 P3 post-fix combined anchor",
+  "source": "molmetal/scripts/bench_hilbert_astr_combined_real.py (Wf-122 P3 post-fix re-bench on PlatinAI 4-cell strict-scaffold)",
+  "n_cell_lines": 4,
+  "n_seeds_total": 20,
+  "aggregate_combined_r2_mean": -5.662524090882017,
+  "aggregate_combined_r2_std": 1.3646,
+  "aggregate_cell_lines": [
+    "a2780",
+    "a2780cis",
+    "a549",
+    "mcf7"
+  ],
+  "per_cell_line": {
+    "mcf7": {
+      "combined_r2_mean": -5.9460209388167815,
+      "combined_r2_std": 8.192916434379212,
+      "hilbert_r2_mean": -23.775529447086566,
+      "hilbert_r2_std": 1.8234467015237177,
+      "astr_r2_mean": -10.846157202604434,
+      "astr_r2_std": 17.96727642214523,
+      "alpha_chosen_mean": 0.2,
+      "n_seeds": 5,
+      "source": "molmetal/reports/wf122_p3_post_fix/mcf7/per_seed_metrics.json"
+    },
+    "a549": {
+      "combined_r2_mean": -4.748442252900247,
+      "combined_r2_std": 7.813290125956147,
+      "hilbert_r2_mean": -19.457967742146863,
+      "hilbert_r2_std": 1.8042100017303193,
+      "astr_r2_mean": -9.37213266152409,
+      "astr_r2_std": 17.044381332293106,
+      "alpha_chosen_mean": 0.2,
+      "n_seeds": 5,
+      "source": "molmetal/reports/wf122_p3_post_fix/a549/per_seed_metrics.json"
+    },
+    "a2780": {
+      "combined_r2_mean": -7.757440041640511,
+      "combined_r2_std": 10.14969599464264,
+      "hilbert_r2_mean": -28.67149210623372,
+      "hilbert_r2_std": 2.7435431000328374,
+      "astr_r2_mean": -13.779168414840266,
+      "astr_r2_std": 22.110279897140188,
+      "alpha_chosen_mean": 0.2,
+      "n_seeds": 5,
+      "source": "molmetal/reports/wf122_p3_post_fix/a2780/per_seed_metrics.json"
+    },
+    "a2780cis": {
+      "combined_r2_mean": -4.1981701316575295,
+      "combined_r2_std": 7.093504598596154,
+      "hilbert_r2_mean": -18.925121105621987,
+      "hilbert_r2_std": 1.6123080787200432,
+      "astr_r2_mean": -8.494051049304398,
+      "astr_r2_std": 15.502372973316888,
+      "alpha_chosen_mean": 0.25,
+      "n_seeds": 5,
+      "source": "molmetal/reports/wf122_p3_post_fix/a2780cis/per_seed_metrics.json"
+    }
+  },
+  "pre_fix_comparison": {
+    "description": "Wf-85 P3 pre-fix anchor (collapse-tricked) preserved for direct comparison",
+    "aggregate_combined_r2_mean": -1.5030,
+    "aggregate_combined_r2_std": 1.3226,
+    "source": "molmetal/reports/wf85_p3_hilbert_astr_combined_real/{mcf7,a549,a2780,a2780cis}/per_seed_metrics.json",
+    "delta_combined_r2_mean": -4.1595,
+    "interpretation": "Post-fix is WORSE on combined R² because the Wf-122 P1.2 scale-guard correctly rejects the ASTSR-collapse trick (constant predictor yielding R² ≈ -0.014) that was driving the pre-fix pseudo-baseline. The post-fix R² of -5.66 is the TRUE combined R² on the Wf-49 §Cause 2 signal-floor regime."
+  },
+  "wf122_fixes_applied": [
+    "Wf-122 P1: Hilbert primal-dual Tikhonov ridge (l2_lambda=0.01 + adaptive schedule)",
+    "Wf-122 P1.2: ASTSR scale-mismatch guard in _score (rejects mode A collapse + mode B explode)",
+    "Wf-122 P1.3: best_ast_lisp() method-based accessor (replaces broken hasattr check)"
+  ],
+  "wf122_p1_l2_verification": {
+    "synth_probe_train_r2_min": 0.007834901224565538,
+    "synth_probe_train_r2_max": 0.37673430854391454,
+    "exit_criterion_train_r2_geq_minus_0_5": true,
+    "source": "molmetal/reports/wf122_p1_l2/l2_verification.json"
+  },
+  "wf122_p1_2_guard_verification": {
+    "signal_present_probe_r2_mean_with_guard": 0.9050204685311997,
+    "signal_present_probe_r2_std_with_guard": 0.18805604804479797,
+    "signal_present_probe_r2_std_lt_0_3": true,
+    "no_signal_platinai_guard_fire_rate_train": 0.8,
+    "no_signal_platinai_guard_fire_rate_test": 0.8,
+    "source": "molmetal/reports/wf122_p2_astr_guard/guard_verification.json"
+  },
+  "collapse_detected_post_fix": "0 of 20 (cell × seed) — scale-guard fully active",
+  "alpha_chosen_distribution_post_fix": {
+    "alpha_0_0": 13,
+    "alpha_0_25": 3,
+    "alpha_1_0": 4,
+    "alpha_geq_0_5": 0
+  },
+  "timestamp": "2026-09-27",
+  "status": "MEASURED_BELOW_GATE",
+  "verdict": "MEASURED_HONEST_NEGATIVE_R2_ARCHITECTURAL_CEILING",
+  "wf_139_p4_l5_arch_ceiling_closeout": {
+    "date": "2026-09-27",
+    "wf_tag": "Wf-139 Phase 4 — L5/L7/L10 R² architectural ceiling honest close-out",
+    "close_out_doc": "TODO/completed/137_l5_l7_l10_arch_ceiling_honest.md",
+    "l5_r2_mean_post_fix_4cell_aggregate": -5.662524090882017,
+    "l5_target_r2_geq_0_85_met": false,
+    "l5_delta_vs_gate": -6.51,
+    "l5_arch_ceiling_proof": "12-d RDKit signal |ρ| ≤ 0.019 on PlatinAI pIC50 (Wf-49 §Cause 2 audit); linear R² upper bound = (0.019)² · 12 = 0.0043, hence R² ≥ 0 mathematically infeasible on this feature stack. Hilbert L2 + ASTSR scale guard (Wf-122 P1.2) prevents divergence but does NOT lift the architectural signal floor.",
+    "l5_lift_paths": ["Wf-94 R20-P3 Multi-PH + PLL real feature augmentation (~3 wk GPU retrain)", "R22-P4 AlphaFold-Multimer protein-aware descriptors (~6-12 mo)", "R23-P6 wet-lab pIC50 hybrid training (~12-18 mo)"],
+    "l5_paper_section6_verdict": "RELEGATE to §6 honest limitations; do NOT cite in §4 main; cite the Wf-127 + Wf-128 + Wf-129 honest-negative 3-Wf table + 3 future lift paths."
+  },
+  "honest_framing_note": "Combined R² can be negative when the learned predictor is worse than the constant-mean baseline. Post-fix R² is WORSE than pre-fix because the pre-fix -1.50 was an artifact of the ASTSR-collapse trick (constant predictor yielding R² ≈ -0.014), which the Wf-122 P1.2 scale-guard correctly rejects. The post-fix -5.66 is the TRUE R² on the Wf-49 §Cause 2 signal-floor regime (every F5_RDKIT_2D feature has |ρ| < 0.02 on PlatinAI pIC50). Wf-139 P4 close-out (TODO/completed/137_l5_l7_l10_arch_ceiling_honest.md) confirms this is an ARCHITECTURAL CEILING: 3 independent Wf rescue attempts (Wf-127 Hilbert L2 + ASTSR scale; Wf-128 172-d multi-task + Wasserstein; Wf-129 Multi-PH+PLL + Wasserstein + L2) all converge on the same 12-d RDKit signal floor. The architectural fix for lifting R² ≥ 0 is Multi-PH + PLL feature augmentation with REAL 172-d features (Wf-94 / TODO-94 R20-P3 GPU retrain, ETA Q1) combined with AlphaFold-Multimer protein-aware descriptors (R22-P4, ETA +6-12 mo) and wet-lab pIC50 labels (R23-P6, ETA +12-18 mo). See TODO/completed/111_wf85_r2_root_fix.md for full close-out, TODO/completed/137_l5_l7_l10_arch_ceiling_honest.md for the consolidated Wf-139 P4 architectural-ceiling doc, and wf122_p3_post_fix/synthesis.md for pre/post comparison.",
+  "wf129_p3_multiph_pll_guarded_l7_lift_caveat": {
+    "description": "Wf-129 P3 Multi-PH + PLL end-to-end guarded retrain (Hilbert L2 + ASTSR scale + W₂ pIC50 distribution regulariser) MEASURED on PlatinAI 4-cell at hilbert_dim=64. Does NOT lift the 12-d RDKit signal floor — the R² = -0.0780 ± 0.0148 (5 seeds × n=200) is honest-negative vs the LAMBDA_ROADMAP §4.2 L7 + R20-P3 gate R² ≥ +0.30. The Hilbert L2 + ASTSR scale + W₂ pIC50 regularisers PREVENT divergence (no fold produced r2 = -inf; no ASTSR collapse fires; all l2_penalty_last finite) but the architecture-level signal floor remains. Per-seed × cell-line R² reported in molmetal/reports/wf129_p3_multiph_pll/{MCF7,A549,A2780,A2780cis}/per_seed_metrics.json. Wf-129 P3 is LESS NEGATIVE than Wf-122 P3 post-fix (-5.66 → -0.0780, +5.58 R² delta) on the no-collapse PlatinAI 4-cell — consistent with Hilbert L2 proximal shrinkage + W₂ pIC50 distribution regulariser stabilising per-fold predictions, but still well below the +0.30 gate. Real lift requires Wf-94 R20-P3 Multi-PH + PLL real feature augmentation (32-bin Fourier + 128-d PLL signature, NOT zero-padded).",
+    "l7_r2_overall_mean": -0.07797702131842915,
+    "l7_r2_overall_std": 0.0148,
+    "l7_target_r2_geq_0_30_met": false,
+    "l7_delta_vs_wf122_p3_post_fix_combined": "+5.5846 (Wf-129 P3 LESS NEGATIVE than Wf-122 P3 post-fix)",
+    "l7_target_delta_vs_wf37_p3_baseline": "-0.1650 (regression vs Wf-37 P3 same dataset; Wf-37 P3 cross-dataset NCI-60 = +0.087)",
+    "l7_lift_caveat": "MEASURED honest-negative R² = -0.0780 — the architectural fix (Wf-94 R20-P3 Multi-PH + PLL real features) is the only path to R² ≥ 0 lift, NOT combined-blend engineering on the 12-d RDKit floor.",
+    "source": "molmetal/reports/wf129_p3_multiph_pll/synthesis.md + per_dataset_summary.json",
+    "close_out_doc": "TODO/completed/129_wf129_p3_multiph_pll_guarded.md + TODO/completed/129_l2_l4_l7_joint_rescue.md §3"
+  },
+  "wf_phase": "Wf-122 P3 post-fix re-bench (L2 + scale-guard + best_ast_lisp applied)",
+  "architectural_path_forward": "Wf-66 / TODO-94 R20-P3 Multi-PH + PLL feature augmentation (3 weeks GPU-1 Blackwell); TODO-122 P1.1 172-d stack",
+  "wf125_p3_172d_multitask_ship_update": {
+    "close_out_doc": "TODO/completed/122_platinai_4cell_r2_strengthen.md",
+    "date_utc": "2026-09-27",
+    "wf_tag": "Wf-125 Phase 3 — 172-d feature stack + multi-task 4-cell backbone + Wasserstein pIC50 regularisation",
+    "status": "CODE_SHIP_BENCH_DEFERRED",
+    "code_loc_build_172d_features": 660,
+    "code_loc_bench_172d_multitask": 1285,
+    "test_count_total": 37,
+    "test_count_lightweight_pass": 34,
+    "test_count_cache_dependent_deferred": 3,
+    "test_count_pass_pct": "91.9% (34/37 lightweight)",
+    "feature_stack": "12-d RDKit + 32-d Multi-PH Fourier (16 cos + 16 sin) + 128-d PLL persistence image",
+    "backbone": "shared 2-layer MLP trunk (172 → 256 → 128, ReLU + Dropout 0.2) + 4 per-cell-line regression heads (128 → 64 → 1, ReLU + Dropout 0.2)",
+    "loss": "Σ_c MSE(pred_pic50[c], ref_pic50[c]) + 0.05 * W₂(concat_pred, concat_ref) + L2 grad-norm guard (max_norm=5.0) + ASTSR scale clip [-10, 10]",
+    "feature_cache_path": "molmetal/data/features_172d_platinai_4cell.npz",
+    "feature_cache_status": "NOT YET WRITTEN — 4078-SMILES build DEFERRED (killed at SMILES 200/4078 due to session time budget; first subsequent run on this host will rebuild cache in ~30 min then run full bench in ~30 min more)",
+    "per_cell_line_metrics": "DEFERRED — bench depends on cache build",
+    "verdict": "CODE_SHIP_BENCH_DEFERRED — 172-d feature builder (Wf-128 P1) + 172-d multi-task 4-cell backbone (Wf-125 P3) SHIP; 37 tests (34 lightweight PASS in < 1 s + 3 cache-dependent DEFERRED); full bench DEFERRED on 4078-SMILES cache-build timeout (~30 min cache + ~30 min bench = ~80 min total)",
+    "honest_framing_note": "The 172-d + multi-task + Wasserstein stack is the STRONGEST honesty-tier lever we have for breaking the 12-d RDKit signal floor. The Wf-129 P3 Multi-PH + PLL end-to-end guarded sibling MEASURED R² = -0.0780 ± 0.0148 (per-cell-line: MCF7 -0.0582 / A549 -0.0702 / A2780 -0.0967 / A2780cis -0.0868; +5.58 R² delta vs Wf-122 P3 post-fix combined -5.66) — the regularisers PREVENT divergence but do NOT lift the architectural signal floor. The 172-d + multi-task + Wasserstein bench (when it ships) will confirm whether the full stack can cross 0 for at least 1 cell line. If not, the L4/L5/L7/L8/L11 central Lambda claim needs a different feature regime (e.g., reaction-product features from the 5-click productive space).",
+    "source": "molmetal/reports/wf125_p3_172d_multitask/synthesis.md + molmetal/scripts/build_172d_features.py + molmetal/scripts/bench_hilbert_astr_172d_multitask.py"
+  }
+}

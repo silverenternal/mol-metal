@@ -1,0 +1,23 @@
+{
+  "metal": "Ru",
+  "init": "tmqm",
+  "encoder_path": "models/tmqm_pretrained/tmqm_pretrained_encoder.pt",
+  "n_rows": 19135,
+  "n_valid": 19135,
+  "epochs": 5,
+  "batch_size": 128,
+  "lr": 0.001,
+  "seeds": [
+    0
+  ],
+  "per_seed": [
+    {
+      "seed": 0,
+      "test_auc": 0.7655075187969925,
+      "test_acc": 0.7759103641456583,
+      "n_test": 714
+    }
+  ],
+  "auc_mean": 0.7655075187969925,
+  "auc_std": 0.0
+}

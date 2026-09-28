@@ -1,0 +1,38 @@
+{
+  "figure_id": "fig19",
+  "title": "MLC (metal-ligand-compliance) ablation",
+  "description": "Effect of the metal-ligand-compliance (MLC) probe on Lambda MCTS output cohort. With MLC active + metal-seed, the cohort collapses to the seed SMILES itself (n_distinct=1, trivially compliant). Without MLC, the diversity lift (n_distinct=20) breaks compliance because Pt-acetylide roots are not strict-Pt_II compliant (EXPECTED_TRADE_OFF, not regression).",
+  "x_axis": {
+    "label": "Setting",
+    "categories": ["with MLC + metal-seed (cisplatin)", "with MLC + no seed (organic)", "without MLC + 4-fix bundle (Path A)"]
+  },
+  "y_axis": {
+    "label": "Fraction (0-1)",
+    "range": [0.0, 1.05]
+  },
+  "series": [
+    {
+      "name": "metal_compliance_rate",
+      "type": "bar",
+      "values": [1.0, 0.0, 0.0],
+      "note": "MLC is mechanically driven by seed selection. 1.0 trivially on cisplatin seed; 0.0 mechanically without seed; 0.0 with diversity lift (Pt-acetylide [Pt]C#C root ≠ Pt_II coord=4)."
+    },
+    {
+      "name": "n_distinct (metal-ligand pairs)",
+      "type": "bar",
+      "values": [1, 1, 20],
+      "note": "1 pre-fix (singleton collapse); 20 post-fix (Path A 4-fix bundle lifts diversity)."
+    }
+  ],
+  "legend": [
+    "metal_compliance_rate (mechanically driven by seed)",
+    "n_distinct metal-ligand pairs (diversity lift)"
+  ],
+  "summary": {
+    "open_question": "Can we recover compliance WITH diversity? Requires F2(a) MetalLigandExchange SMARTS rule (TODO-29) — structural fix needed, deferred to R17 follow-up.",
+    "verdict": "EXPECTED_TRADE_OFF — metal_compliance 1.0 → 0.0 is the cost of lifting n_distinct 1 → 20. Honest metric design; not a regression. Open: Pt_II-strict click-compatible Pt root.",
+    "singleton_collapse_warning": "Round-12 10×3 results: all 30 cells collapse to [NH2][Pt]([NH2])([Cl])[Cl] (n_distinct=1) when --metal-seed cisplatin + --click-rules all-5; metal_compliance=1.0 is HONEST but TRIVIAL."
+  },
+  "source": "metrics/by_metric/metal_compliance.json + metrics/by_metric/n_distinct.json (wf_round12_lambda_pilot 10×3 + wf_round12_lambda_patha_10x3)",
+  "render": "paper/figures/fig19_mlc_ablation.py"
+}

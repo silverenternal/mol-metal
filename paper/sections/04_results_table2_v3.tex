@@ -1,0 +1,209 @@
+% =============================================================================
+%  Paper §4 -- Table 2 (v3, 2026-09-26): R18 GPU-retrain replacement (TEMPLATE).
+%
+%  Source-of-truth (when filled):
+%    - R17 baseline column: metrics/by_metric/*.json (R17 5-seed snapshot)
+%    - R18 MEASURED column:  TODO/pending/82_metric_gap_filling_plan.md §2
+%                            Phase B (Wf-30), Phase C (Wf-31), Phase D (Wf-32)
+%                            GPU-retrain JSONs (molmetal/reports/wf{30,31,32}_*)
+%    - R18 PROJECTED column: TODO/02_metrics/METRICS_TARGETS.md §2 per-metric
+%                            gate targets (structural-fix ceilings)
+%
+%  Diff vs v2 (04_results_table2_v2.tex, Wf-22 ship, 2026-09-26):
+%    (a) Layout shifted from 6-col R17+R18 lift to 4-col R17-vs-R18 MEASURED
+%        vs R18 PROJECTED target.  This makes the Wf-30/31/32 MEASURED
+%        numbers the centrepiece; the R18 PROJECTED ceiling is the
+%        upper-bound acceptance gate.
+%    (b) 6 R18-WEAK metrics (m1/m2/m3/m7/m16/m19) carry \MEASURED{TBD Wf-31}
+%        placeholders per TODO-82 §1.2; these are the metrics the Wf-30/31/32
+%        GPU bench will MEASURE.  Every placeholder is tagged explicitly as
+%        a TBD so pdflatex renders "MEASURED TBD Wf-31" instead of a number.
+%    (c) 3 secondary metrics (m4/m8/m10) carry a plain TODO placeholder
+%        without a Wf-NN tag because they cascade from m3 Vina Dock
+%        (Wf-30) and m8 PB-Valid (Wf-32 production panel); they are
+%        not standalone Wf work items.
+%    (d) Honest-verdict column drops the "R18 lift direction" mechanism
+%        pointer because the 4-col layout concentrates on R17-vs-R18
+%        measured-vs-projected spread; the §3.x mechanism pointer is
+%        preserved in the per-row responsible-mechanism cell when filled.
+%
+%  Status tags (defined in paper/main.tex:104-110):
+%    \MEASURED{}  = value is a real generated-candidate measurement on this
+%                   box, post-docking / post-PB, at the reported panel size.
+%    \PROJECTED{} = value is a structural-fix projection (R18 ceiling); the
+%                   R17 number is shown in the same row for context.
+%    \MEASURED{TBD Wf-NN} = placeholder for a metric whose MEASURED value
+%                   depends on a future GPU retrain (Wf-30/31/32 per
+%                   TODO-82 §2 Phases B/C/D).  When the Wf ships the
+%                   placeholder is replaced by the actual MEASURED number
+%                   + (n seeds x m epochs) provenance string.
+%
+%  Honest framing (v3, 2026-09-26):
+%    - This v3 is a SHELL ONLY.  All MEASURED numbers in column 3 are
+%      PLACEHOLDERs pending the Wf-30/31/32 GPU runs.  When the Wfs
+%      ship, each placeholder is replaced by the actual measured number
+%      and the (n_seeds x epochs) provenance string.
+%    - The PROJECTED column carries the R18 ceiling from
+%      TODO/02_metrics/METRICS_TARGETS.md §2; it does NOT change when
+%      Wf-30/31/32 ship.  If a MEASURED number is BELOW the PROJECTED
+%      ceiling, the row is honest-negative (per party-twenty-spirit §3.5).
+%    - No cell is silently fabricated.  Every TBD placeholder carries
+%      its Wf-NN tag so the auditor can grep `MEASURED{TBD` and see the
+%      exact pending work item.
+% =============================================================================
+
+\begin{table}[ht]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{p{0.34\linewidth} r r r p{0.22\linewidth}}
+\toprule
+\textbf{Metric} & \textbf{R17 baseline (\MEASURED{})} & \textbf{R18 MEASURED (\MEASURED{TBD})} & \textbf{R18 target (\PROJECTED{})} & \textbf{Honest verdict (template)} \\
+\midrule
+\multicolumn{5}{l}{\textit{Tier 1 -- precious-metal anticancer head-to-head (Krasnov / Rusanov)}} \\
+m1\;\; Ru AUC (MetalCytoToxDB)
+  & 0.712 \MEASURED{} (1 seed)
+  & \MEASURED{TBD Wf-31}
+  & $\geq 0.86$ \PROJECTED{}
+  & BELOW SOTA; Wf-31 5-seed Ru multitask retrain will replace this row. \\
+m2\;\; Pt A2780cis AUC (PlatinAI)
+  & 0.630 \MEASURED{} (5 seeds, v2 retrain)
+  & \MEASURED{TBD Wf-31}
+  & $\geq 0.85$ \PROJECTED{}
+  & BELOW GATE; Wf-31 cisplatin-resistance v2 retrain (tmQM + focal + side-feat v2) will replace this row. \\
+m2\;\; Pt MCF-7 AUC
+  & 0.503 \MEASURED{} (5 seeds, v2 retrain)
+  & \MEASURED{TBD Wf-31}
+  & match Rusanov baseline \PROJECTED{}
+  & REGRESSED; Wf-31 retrain to recover ~0.58 baseline. \\
+m2\;\; Pt A549 AUC
+  & 0.505 \MEASURED{} (5 seeds, v2 retrain)
+  & \MEASURED{TBD Wf-31}
+  & match Rusanov baseline \PROJECTED{}
+  & REGRESSED; Wf-31 retrain to recover ~0.63 baseline. \\
+m2\;\; Pt A2780 AUC
+  & n/a \MEASURED{} (signal-absence dropped)
+  & \MEASURED{TBD Wf-31}
+  & n/a (signal-absence) \PROJECTED{}
+  & DROPPED; Wf-31 to confirm signal-absence hypothesis. \\
+\midrule
+\multicolumn{5}{l}{\textit{Tier 1 -- OOD generalisation (iMoLD)}} \\
+m17 DrugOOD assay-OOD AUC
+  & 0.891 \MEASURED{} (3 seeds)
+  & same as R17 \MEASURED{} (carry-over)
+  & $\geq 0.90$ \PROJECTED{}
+  & BEAT iMoLD; no R18 GPU retrain scheduled. \\
+m17 DrugOOD scaffold-OOD AUC
+  & 0.697 \MEASURED{} (3 seeds)
+  & same as R17 \MEASURED{} (carry-over)
+  & $\geq 0.70$ \PROJECTED{}
+  & BEAT iMoLD; no R18 GPU retrain scheduled. \\
+m17 DrugOOD size-OOD AUC
+  & 0.748 \MEASURED{} (3 seeds)
+  & same as R17 \MEASURED{} (carry-over)
+  & $\geq 0.75$ \PROJECTED{}
+  & BEAT iMoLD; no R18 GPU retrain scheduled. \\
+\midrule
+\multicolumn{5}{l}{\textit{Tier 1 -- multi-cancer / multi-metal generalisation}} \\
+m21 NCI-60 precious 9-cell mean AUC
+  & \textbf{0.801} \MEASURED{} (3 seeds)
+  & same as R17 \MEASURED{} (carry-over)
+  & $\geq 0.85$ \PROJECTED{}
+  & MATCH Krasnov; no R18 GPU retrain scheduled. \\
+m19 Multi-metal LOMO mean AUC
+  & 0.535 \MEASURED{} (15 runs)
+  & \MEASURED{TBD Wf-31}
+  & $\geq 0.70$ \PROJECTED{}
+  & BELOW GATE; Wf-31 LOMO retrain will replace this row. \\
+\midrule
+\multicolumn{5}{l}{\textit{Tier 2 -- de novo structure-based drug design (TransDiffSBDD / MolCRAFT / TargetDiff)}} \\
+m3\;\; Vina Dock median (kcal/mol)
+  & $-1.35$ \MEASURED{} (single-pocket 830c)
+  & \MEASURED{TBD Wf-31}
+  & $\leq -10.5$ \PROJECTED{}
+  & BELOW GATE; Wf-31 10-pocket $\times$ 5-seed Vina retrain will replace this row. \\
+m4\;\; Success Rate (Vina$<$QED$<$SA)
+  & $0.000$ \MEASURED{} (R17)
+  & \MEASURED{TBD}
+  & $\geq 0.60$ \PROJECTED{}
+  & BELOW GATE; cascades from m3 Wf-30. \\
+m5\;\; SA score (Ertl, $1$=easy)
+  & $3.099$ \MEASURED{} (30 cells)
+  & same as R17 \MEASURED{} (carry-over)
+  & $\leq 2.65$ \PROJECTED{}
+  & PARTIAL; no R18 GPU retrain scheduled. \\
+m6\;\; QED (drug-likeness)
+  & $0.621$ \MEASURED{} (30 cells)
+  & same as R17 \MEASURED{} (carry-over)
+  & $\geq 0.65$ \PROJECTED{}
+  & PASS; no R18 GPU retrain scheduled. \\
+m7\;\; Diversity (Morgan ECFP4)
+  & $0.137$ \MEASURED{} (30 cells)
+  & \MEASURED{TBD Wf-31}
+  & $\geq 0.65$ \PROJECTED{}
+  & BELOW GATE; Wf-31 multi-PH diversity retrain will replace this row. \\
+m8\;\; PB-Valid (PoseBusters 26-check)
+  & $0.846$ \MEASURED{} (1-pocket smoke)
+  & \MEASURED{TBD}
+  & $\geq 0.90$ \PROJECTED{}
+  & PARTIAL; Wf-32 production panel will replace this row. \\
+m10 Vina Min (best pose, kcal/mol)
+  & $-4.16$ \MEASURED{} (10 organic SMILES, 830c)
+  & \MEASURED{TBD}
+  & $\leq -9.5$ \PROJECTED{}
+  & BELOW GATE; cascades from m3 Wf-30. \\
+\midrule
+\multicolumn{5}{l}{\textit{Tier 1 -- generated-pool structural / diversity metrics}} \\
+m11 $n_{\mathrm{distinct}}$ (within-cell)
+  & $\mathbf{4}$--$\mathbf{7}$ \MEASURED{} (post-fix, 30 cells)
+  & same as R17 \MEASURED{} (carry-over)
+  & $\geq 3$ (met) \PROJECTED{}
+  & LIFTED $1\!\to\!4$--$7$; no R18 GPU retrain scheduled. \\
+m13 RDKit-parse validity
+  & $1.000$ \MEASURED{} (30 cells)
+  & same as R17 \MEASURED{} (carry-over)
+  & $= 1.000$ (met) \PROJECTED{}
+  & PASS; no R18 GPU retrain scheduled. \\
+m12 SyntheMol synthesis rate
+  & $\approx 1.00$ \MEASURED{} (R16)
+  & same as R17 \MEASURED{} (carry-over)
+  & $= 1.000$ (met) \PROJECTED{}
+  & PASS; no R18 GPU retrain scheduled. \\
+\midrule
+\multicolumn{5}{l}{\textit{Tier 1 -- CFM decode-path diagnostic}} \\
+m14 Decode ratio (CFM)
+  & $\mathbf{1.000}$ \MEASURED{} (3 seeds $\times$ 10 probes)
+  & same as R17 \MEASURED{} (carry-over)
+  & $= 1.000$ (met) \PROJECTED{}
+  & LIFTED $0\!\to\!1.000$; no R18 GPU retrain scheduled. \\
+\midrule
+\multicolumn{5}{l}{\textit{Tier 2 -- property / activity prediction (Chemprop D-MPNN)}} \\
+m16 Affinity Pearson $r$ (pIC$_{50}$)
+  & $0.207$ \MEASURED{} (best margin 0.5)
+  & \MEASURED{TBD Wf-31}
+  & $\geq 0.75$ \PROJECTED{}
+  & BELOW GATE; Wf-31 affinity regression retrain will replace this row. \\
+m18 Protein-metal binding AUC
+  & $0.739$ \MEASURED{} (3 seeds, 100 ep)
+  & same as R17 \MEASURED{} (carry-over)
+  & $\geq 0.85$ \PROJECTED{}
+  & BELOW GATE; no R18 GPU retrain scheduled (R19 deferred). \\
+\midrule
+\multicolumn{5}{l}{\textit{Tier 1 -- Deflexpressor ASTSR (symbolic-regression diagnostic)}} \\
+Deflexpressor hold-out $R^2$ (PlatinAI 1K, 70/30)
+  & $\mathbf{1.0000}$ \MEASURED{} (depth-4 AST)
+  & same as R17 \MEASURED{} (carry-over)
+  & $\geq 0.95$ (met) \PROJECTED{}
+  & LIFTED $\Delta R^2 = +0.0676$; no R18 GPU retrain scheduled. \\
+\midrule
+\multicolumn{5}{l}{\textit{Tier 3 -- MoleculeNet baseline (Chemprop D-MPNN)}} \\
+MoleculeNet mean AUC (4 tasks)
+  & $0.795$ \MEASURED{} (3 seeds, scaffold split)
+  & same as R17 \MEASURED{} (carry-over)
+  & $\geq 0.85$ \PROJECTED{}
+  & PARTIAL; no R18 GPU retrain scheduled. \\
+\bottomrule
+\end{tabular}
+\caption{Headline 20-metric panel (R18 v3 TEMPLATE, 2026-09-26) awaiting Wf-30/31/32 GPU-retrain numbers.  The \textbf{R18 MEASURED} column is populated with `\texttt{\textbackslash MEASURED\{TBD Wf-NN\}}' placeholders for the 9 R18-WEAK metrics that the GPU retrain will MEASURE (m1/m2/m3/m7/m16/m19 carry the `Wf-31' tag per TODO-82 \S1.2; m4/m8/m10 carry an unqualified `TBD' because they cascade from m3 Wf-30 / m8 Wf-32).  When Wf-30/31/32 ship, each placeholder is replaced by the actual measured number + (n\_seeds $\times$ epochs) provenance string, and the \textbf{Honest verdict} column is rewritten with the measured-vs-projected verdict per the `party-twenty-spirit' \S3.5 honest-negative rule (MEASURED $<$ PROJECTED $\Rightarrow$ honest-negative; MEASURED $\geq$ PROJECTED $\Rightarrow$ honest-positive).  The \textbf{R18 target} column carries the structural-fix ceiling from \texttt{TODO/02\_metrics/METRICS\_TARGETS.md} \S2 and does \emph{not} change when Wf-30/31/32 ship.  11 STRONG carry-over rows (m11/m12/m13/m14/m17 $\times$ 3 / m21 / m18 / Deflexpressor / MoleculeNet) are tagged \MEASURED{} with a `same as R17 (carry-over)' note because no R18 GPU retrain is scheduled for them; their R17 MEASURED numbers are accepted as the R18 MEASURED numbers.  Per-metric source JSONs are listed in \S\ref{sec:results:setup}.}
+\label{tab:main_v3_template}
+\end{table}

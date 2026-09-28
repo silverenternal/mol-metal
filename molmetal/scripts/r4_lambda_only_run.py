@@ -2007,6 +2007,8 @@ def build_lambda_only_aggregator(
     *,
     sa_weight: float = 0.0,
     platinai_weight: float = 0.0,
+    tanimoto_distance_weight: float = 0.0,
+    min_tanimoto_floor: float = 0.0,
     platinai_oracle: "Optional[Any]" = None,
     lambda_reward_weight: float = 0.0,
     pharmacophore_weight: float = 0.0,
@@ -2105,6 +2107,13 @@ def build_lambda_only_aggregator(
         r_sa=_sa_score,
         w_sa=float(sa_weight),
     )
+    # Wf-180 (m7 diversity lift) — opt-in continuous
+    # Morgan-ECFP4 Tanimoto-distance reward.  Defaults to 0.0 so the
+    # historical Lambda-only aggregator is bit-for-bit identical when
+    # the flag is not passed.
+    if float(tanimoto_distance_weight) > 0.0:
+        agg_kwargs["w_tanimoto_distance"] = float(tanimoto_distance_weight)
+        agg_kwargs["min_tanimoto_floor"] = float(min_tanimoto_floor)
     if platinai_oracle is not None and float(platinai_weight) > 0.0:
         # Phase 2 (Metallodrug ultracode) — wire the PlatinAI oracle
         # into the aggregator.  We expose it as a constructor arg via
@@ -2374,6 +2383,8 @@ def run_one_cell(
     metal_seed: Optional[str] = None,
     sa_weight: float = 0.0,
     platinai_weight: float = 0.0,
+    tanimoto_distance_weight: float = 0.0,
+    min_tanimoto_floor: float = 0.0,
     lambda_reward_weight: float = 0.0,
     pharmacophore_weight: float = 0.0,
     pharmacophore_strict: bool = False,
@@ -2891,6 +2902,8 @@ def run_one_cell(
             prior=None,
             sa_weight=float(sa_weight),
             platinai_weight=float(platinai_weight),
+            tanimoto_distance_weight=float(tanimoto_distance_weight),
+            min_tanimoto_floor=float(min_tanimoto_floor),
             platinai_oracle=globals().get("_R4_PLATINAI_ORACLE"),
             lambda_reward_weight=float(lambda_reward_weight),
             pharmacophore_weight=float(pharmacophore_weight),
@@ -3586,6 +3599,8 @@ def run_sweep(
     metal_seed: Optional[str] = None,
     sa_weight: float = 0.0,
     platinai_weight: float = 0.0,
+    tanimoto_distance_weight: float = 0.0,
+    min_tanimoto_floor: float = 0.0,
     lambda_reward_weight: float = 0.0,
     pharmacophore_weight: float = 0.0,
     pharmacophore_strict: bool = False,
@@ -3704,6 +3719,8 @@ def run_sweep(
                 metal_seed=metal_seed,
                 sa_weight=sa_weight,
                 platinai_weight=platinai_weight,
+                tanimoto_distance_weight=tanimoto_distance_weight,
+                min_tanimoto_floor=min_tanimoto_floor,
                 lambda_reward_weight=lambda_reward_weight,
                 pharmacophore_weight=pharmacophore_weight,
                 pharmacophore_strict=pharmacophore_strict,

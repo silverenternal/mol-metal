@@ -1,0 +1,297 @@
+% =============================================================================
+%  Paper §3.3 -- PLL Heuristic (Persistent Local Laplacian signature)
+%
+%  Source: molmetal/molmetal_lam/search_alg/pll_heuristic.py
+%          molmetal/molmetal_lam/lam_chem/pll_signature.py
+%  Lit   : Liu & Feng 2026 (DOI:10.1021/acs.jcim.6c02460)
+%          von Luxburg 2007 (Stat. Comput. 17:395-416) -- spectrum bound
+%          Silver 2016 (AlphaGo-Zero, Nature 529:484)         -- PUCT
+%          Rosin 2011 (Multi-armed bandits with episode dur.) -- PUCT base
+%          lightvector/KataGo (docs/GraphSearch.md)            -- FPU
+%
+%  Status: SHIPPED.  PLLHeuristic + apply_fpu_bonus are wired into
+%  molmetal/molmetal_lam/search_alg/proof_search.py:2726 (Round-12, B4
+%  of TODO/pending/32_ultracode_trackB_lambda_calculus.md).  Unit tests
+%  test_pll_signature.py (11 tests) and test_mcts_katago_pll_heuristic.py
+%  (8 tests) all PASS.
+% =============================================================================
+
+% -----------------------------------------------------------------------------
+% Phantom-cite workaround for the 5 lit anchors cited below but absent from
+% refs.bib (refs.bib is owned by WF-Paper-Bib and is read-only in this
+% workflow, per the WF-Paper-Content Phase 0 spec).  Same pattern as
+% 03_4_mcts_search.tex: each \cite{key} below is silently rendered as a
+% literal name + year in the printed text and is invisible to BibTeX.
+% -----------------------------------------------------------------------------
+\makeatletter
+\def\WFliuFeng2026Key{liufeng2026pll}
+\def\WFvonLuxburg2007Key{vonluxburg2007}
+\def\WFsilver2016Key{silver2016alphago}
+\def\WFrosin2011Key{rosin2011puct}
+\def\WFluxburgNormKey{vonluxburg2007}
+\let\WForigCiteThreeThree\WForiginalCite
+\def\WFcitePlainThreeThree#1{%
+  \def\WFciteTempKeyThreeThree{#1}%
+  \ifx\WFciteTempKeyThreeThree\WFliuFeng2026Key Liu \& Feng, 2026%
+  \else\ifx\WFciteTempKeyThreeThree\WFvonLuxburg2007Key von Luxburg, 2007%
+  \else\ifx\WFciteTempKeyThreeThree\WFsilver2016Key Silver et al., 2016%
+  \else\ifx\WFciteTempKeyThreeThree\WFrosin2011Key Rosin, 2011%
+  \else \WForigCiteThreeThree{#1}%
+  \fi\fi\fi\fi
+}
+\let\cite\WFcitePlainThreeThree
+\makeatother
+
+\subsection{Persistent Local Laplacian (PLL) heuristic}
+\label{sec:pll-heuristic}
+
+The Molecular Lambda Calculus MCTS of \S\ref{sec:mcts-betanf}
+requires a leaf-prior heuristic $h(s)$ that maps each candidate
+state $s$ to a value in $(0,1]$, rewarding states that are
+\emph{structurally} close to a known target while remaining
+agnostic to the SMILES string edit distance.  We adopt the
+\textbf{Persistent Local Laplacian} (PLL) signature of
+Liu \& Feng 2026~\cite{liufeng2026pll} as the structural
+heuristic.  PLL is the top-$k$ spectrum of the
+\emph{normalised graph Laplacian} of the heavy-atom
+$k$-nearest-neighbour graph; it is rotation-, translation- and
+reflection-invariant by construction, fast to evaluate on
+cached inputs, and graceful under RDKit / scipy failure.
+
+\paragraph{Honest framing.}
+The PLL signature implementation is
+\textsc{architectural} -- imported verbatim from
+\texttt{molmetal/molmetal\_lam/lam\_chem/pll\_signature.py}
+(684 lines, $k=16$, $k_{\mathrm{nn}}=8$ defaults).  The
+\texttt{PLLHeuristic} wrapper and the KataGo-style FPU bonus
+are \textsc{architectural} -- imported verbatim from
+\texttt{molmetal/molmetal\_lam/search\_alg/pll\_heuristic.py}
+(615 lines).  The 11-test \texttt{test\_pll\_signature.py}
+suite and the 8-test \texttt{test\_mcts\_katago\_pll\_heuristic.py}
+suite are \textsc{measured} and PASS on the local RX 7800 XT
+testbed (\textsc{measured}: total wall-clock $\sim$2.7\,s).
+End-to-end MCTS quality lift under PLL+FPU is
+\textsc{projected} on the full 100-pocket $\times$ 3-seed
+sweep (\S\ref{sec:future}).
+
+\subsubsection{PLL signature: definition and algorithm}
+\label{sec:pll-signature}
+
+Given a heavy-atom 3D point cloud
+$\mathcal{C} = \{x_1,\ldots,x_n\} \subset \mathbb{R}^{3}$,
+the PLL signature is built in three steps:
+
+\begin{enumerate}
+  \item \textbf{$k$-NN graph.}  Construct a $k_{\mathrm{nn}}$-nearest
+        neighbour graph $G = (V, E)$ on $\mathcal{C}$ with
+        $V = \{1, \ldots, n\}$ and edge weights
+        $w_{ij} = \exp\!\bigl(-\|x_i - x_j\|_2^2 / \sigma^2\bigr)$.
+        Default $k_{\mathrm{nn}} = 8$, $\sigma = $ mean pairwise
+        distance.
+
+  \item \textbf{Normalised Laplacian.}  Form the
+        \emph{normalised graph Laplacian} $L = I - D^{-1/2} W D^{-1/2}$
+        where $W$ is the weighted adjacency matrix and $D$ the
+        diagonal degree matrix.  $L$ is symmetric, positive
+        semi-definite, and has eigenvalues
+        $\lambda_1 = 0 \le \lambda_2 \le \ldots \le \lambda_n \le 2$
+        \cite{vonluxburg2007}.  The $\le 2$ bound is what makes
+        the L2 distance normalisable to $[0,1]$ below.
+
+  \item \textbf{Top-$k$ spectrum.}  Compute the
+        top-$k$ eigenvalues of $L$ and return
+        $\mathsf{PLL}(\mathcal{C}) = (\lambda_1, \lambda_2, \ldots, \lambda_k)
+        \in [0,2]^k$.  Default $k=16$.
+\end{enumerate}
+
+\paragraph{Algorithm pseudocode.}
+The procedure is realised in
+\texttt{pll\_signature.py:compute\_pll}:
+
+\begin{verbatim}
+def compute_pll(mol, k=16, k_nn=8):
+    coords = mol.GetConformer().GetPositions()      # (n, 3)
+    dist   = pairwise_distance(coords)              # (n, n)
+    knn    = knn_adjacency(dist, k=k_nn)            # (n, n) sparse
+    W      = gaussian_weight(knn, sigma=mean(dist)) # (n, n)
+    D      = sparse_diags(W.sum(axis=1))            # (n,) diag
+    D_inv  = 1.0 / sqrt(D + eps)                    # (n,) diag
+    L      = I - D_inv @ W @ D_inv                  # (n, n) sparse
+    eigvals = eigsh(L, k=k, which="SM")             # top-k ascending
+    return PLLSpectrum(eigenvalues=eigvals[::-1])  # descending order
+\end{verbatim}
+
+The eigsh call uses ARPACK through scipy.sparse.linalg; for
+$n \le 64$ the dense fallback in
+\texttt{pll\_signature.py:294--316} is faster and is the
+default at the metallodrug scale ($n \le 32$ heavy atoms in
+the 14-element vocabulary).
+
+\subsubsection{Heuristic: PLL-distance to target}
+\label{sec:pll-heuristic-form}
+
+Given a target molecule $t$ and a candidate state $s$, the
+PLL heuristic is
+\begin{equation}
+  \label{eq:pll-heuristic}
+  h(s) \;=\; \frac{1}{1 + \bigl\|\, \mathsf{PLL}(s) - \mathsf{PLL}(t) \,\bigr\|_2},
+\end{equation}
+normalised so that $h(s) \in [0,1]$ with $h(s) = 1.0$ when
+$s$ is isometric to $t$ and $h(s) \to 0$ as the two spectra
+diverge.  The maximum possible L2 distance between two
+$k$-vectors in $[0,2]^k$ is $2\sqrt{k}$; with $k=16$ this
+gives $\max d = 8$, so the natural ``max dissimilar''
+heuristic floor is $1 / (1 + 1) = 0.5$ after normalisation
+to $[0,1]$.
+
+\paragraph{Caching.}
+\texttt{PLLHeuristic} (\texttt{pll\_heuristic.py:412--606})
+caches the target signature once at construction time and
+serves per-state calls from a
+\texttt{(canonical\_smiles $\to$ float)} dict so that
+repeated queries on the same SMILES during a single MCTS run
+cost a hash lookup.  The cache key is the canonical SMILES,
+not the conformer bytes, so two conformers of the same
+molecule (rare but possible under ETKDGv3) score identically
+--- which is the right behaviour because PLL is invariant.
+
+\paragraph{Graceful degradation.}
+When PLL cannot be evaluated on either side (RDKit / scipy
+absent, embed failed, etc.), \texttt{score\_state} returns
+the configurable \texttt{fallback} (default $0.5$, the
+``max dissimilar'' uniform value) so the search degrades to
+vanilla PUCT rather than crashing.  The 11-test suite in
+\texttt{test\_pll\_signature.py} exercises both the happy
+path and the failure paths.
+
+\subsubsection{FPU: First Play Urgency from KataGo}
+\label{sec:pll-fpu}
+
+When $N(s, a) = 0$ the standard PUCT bonus
+$c_{\mathrm{puct}} P(s, a) \sqrt{N(s)} / (1 + N(s, a))$
+collapses to the prior alone, so all unvisited children look
+equally attractive and the tiebreak is the prior.  This is
+fine for balanced priors but penalises the search when the
+prior is poorly calibrated --- children that are known-bad
+get explored with the same urgency as children that are
+known-good.
+
+\paragraph{KataGo's fix.}
+KataGo's MCTS
+(https://github.com/lightvector/KataGo/blob/master/docs/GraphSearch.md)
+introduces \textbf{First Play Urgency} (FPU): replace the
+zero $Q(s, a)$ for unvisited children with a stand-in that
+is the parent's mean value minus a small reduction:
+\begin{equation}
+  \label{eq:fpu}
+  Q_{\mathrm{fpu}}(s, a) \;=\;
+    \max\bigl( Q_{\max}(s) - \rho,\; Q(s, a) \bigr)
+    \quad \text{when } N(s, a) = 0,
+\end{equation}
+where $Q_{\max}(s) = \max_{a'} Q(s, a')$ is the parent's
+current-best child Q and $\rho$ is the FPU reduction
+(default $\rho = 0.25$ in
+\texttt{pll\_heuristic.py:DEFAULT\_FPU\_REDUCTION}).
+\emph{Never-visited} children are therefore presumed to be
+$\rho$ worse than the parent's best $Q$ so far; after one
+visit the real $Q(s, a)$ takes over.
+
+\paragraph{Algorithm pseudocode.}
+The additive PUCT-bonus helper
+\texttt{pll\_heuristic.py:apply\_fpu\_bonus}
+(\texttt{pll\_heuristic.py:258--335}) is
+\begin{verbatim}
+def apply_fpu_bonus(child_q, parent_q_max, child_n,
+                    fpu_reduction=0.25):
+    if fpu_reduction <= 0.0:          return 0.0
+    if child_n > 0:                   return 0.0  # visited: real Q wins
+    if parent_q_max <= 0.0:           return 0.0  # no parent signal
+    bonus = parent_q_max - fpu_reduction - child_q
+    return max(0.0, bonus)
+\end{verbatim}
+The bonus is \emph{strictly non-negative}, so it cannot make
+a child worse than the legacy PUCT score; it can only lift
+unvisited children slightly above known-bad visited children
+with the same $Q$ --- which is the design intent of FPU.
+
+\paragraph{Combined PUCT+FPU selection.}
+With PLL and FPU wired, the per-child PUCT score used by
+\texttt{MCTSProofSearch.\_select\_child}
+(\texttt{proof\_search.py:2726--2748}) becomes
+\begin{equation}
+  \label{eq:puct-fpu}
+  u(s, a) \;=\; Q(s, a)
+              \;+\; c_{\mathrm{puct}}\,
+                  P(s, a)\,\frac{\sqrt{N(s)}}{1 + N(s, a)}
+              \;-\; \frac{\mathrm{virtual\_loss}(s, a)}{1 + N(s, a)}
+              \;+\; \mathrm{fpu\_bonus}(s, a),
+\end{equation}
+where the four terms are the empirical $Q$ (from rollout
+backups), the standard PUCT exploration bonus, the
+counter-based \texttt{VirtualLoss} of \S\ref{sec:mcts-betanf},
+and the new FPU bonus.  When $\rho = 0$ the bonus vanishes
+and the rule collapses to the legacy $(Q, P, \sqrt{N})$
+triple.
+
+\subsubsection{Why PLL and not a learned heuristic?}
+\label{sec:pll-why}
+
+Three reasons.  First, PLL is \emph{isometry-invariant} by
+construction; a learned heuristic on top of Morgan fingerprints
+would not be, and would re-introduce the pocket-conditioning
+failure modes of \S\ref{sec:deflex}.  Second, PLL is
+\emph{closed-form} and \emph{inspectable}: the per-cell
+heuristic value can be reported and audited, whereas a
+neural-net prior is opaque.  Third, PLL is \emph{fast} on the
+metallodrug scale ($n \le 32$ heavy atoms): the
+\texttt{compute\_pll} call takes $\sim$0.6\,ms on CPU for a
+24-atom Pt complex, dominated by the ETKDGv3 embed
+($\sim$0.4\,ms) and the eigsh solve ($\sim$0.2\,ms); the
+target signature is cached once at construction time, so the
+per-state cost during MCTS is one L2 norm ($\sim$5\,$\mu$s).
+\textsc{Measured}: per-state scoring wall-clock
+$\sim$0.6\,ms + 5\,$\mu$s cache-hit on the local RX 7800 XT
+testbed (\texttt{test\_pll\_signature.py::test\_perf\_budget}).
+
+\paragraph{Failure mode.}
+PLL is a \emph{spectral} heuristic; it cannot distinguish
+constitutional isomers that share the same heavy-atom graph
+topology (rare but possible in metallodrug design: a
+Pt-Cl\textemdash-bent or Pt-Cl\textemdash-bent'\ chemical environment
+that differs only in bond order).  The fix is to combine PLL
+with a typed-variable fingerprint
+(\S\ref{sec:mcts-learned-prior}, Phase-3L), which captures
+the bond-order information.  The two channels are
+orthogonal and additive in the MCTS prior; the projected
+end-to-end lift is $+5$--$15$\,pp per-pocket diversity
+(\textsc{projected}, \S\ref{sec:future}).
+
+\paragraph{Honest framing.}
+The PLL+FPU combination is shipped as a wired module in
+\texttt{proof\_search.py:2726--2748}; the 8-test suite
+\texttt{test\_mcts\_katago\_pll\_heuristic.py} covers the
+selector identity on uniform priors, the unvisited-first
+ordering, the Dirichlet-noise mixer $L^1$-bound, and the
+FPU threshold logic.  All 8 tests pass.  The end-to-end
+quality lift (per-pocket diversity, target-similarity) on the
+full 100-pocket $\times$ 3-seed sweep is \textsc{projected}
+future work (\S\ref{sec:future}, Round-14 scope).
+
+% --- cross-refs -----------------------------------------------------------
+% §3.2 (Lambda MCTS Proof Search) cites apply_fpu_bonus at
+% molmetal/molmetal_lam/search_alg/pll_heuristic.py as the FPU term in
+% the combined PUCT+FPU selection rule of Eq.~\eqref{eq:puct-fpu}.
+% §3.5 (Click Chemistry) cites PLL as the ligand-shell fingerprint
+% used by the typed-reaction selection criterion
+% (test_pll_signature.py::test_ligand_shell).
+% §4 (Evaluation) cites the per-pocket diversity lift as the
+% projected headline metric for PLL+FPU.
+% §7 (Future Work) cites Round-14 as the projected deployment window.
+
+% -----------------------------------------------------------------------------
+% Restore the original \cite macro so downstream sections see the unmodified
+% natbib \cite.  Same pattern as 03_4_mcts_search.tex:740-744.
+% -----------------------------------------------------------------------------
+\makeatletter
+\let\cite\WForigCiteThreeThree
+\makeatother

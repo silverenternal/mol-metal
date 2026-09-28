@@ -1,0 +1,15 @@
+#!/bin/sh
+# AutoDock Vina wrapper — delegates to the real Vina binary at:
+#   /home/hugo/.mamba/bin/vina  (Vina 1.2.7, "AutoDock Vina f458505-mod")
+#
+# Companion binary vina_split lives at:
+#   /home/hugo/.mamba/bin/vina_split
+#
+# If the real binary disappears the wrapper fails loudly (no silent stub).
+REAL_BIN="/home/hugo/.mamba/bin/vina"
+if [ ! -x "$REAL_BIN" ]; then
+    echo "ERROR: Vina wrapper points at missing/non-executable: $REAL_BIN" 1>&2
+    echo "Install via: micromamba install -n base -c conda-forge vina" 1>&2
+    exit 127
+fi
+exec "$REAL_BIN" "$@"

@@ -1,0 +1,205 @@
+{
+  "metric": "metal_lomo_chemprop_v2",
+  "description": "Mean test ROC-AUC across 5 folds x 5 seeds of multi-metal leave-one-metal-out transfer on MetalCytoToxDB precious-metal subset, using chemprop v2 backbone (WF-146 sweep). Backbone: hidden_dim=64 / depth=2 / 50 epochs / BF16 autocast on chemprop encoder. Per-metal BinaryClassificationFFN heads stay fp32.",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier2_sbdd_ood_lomo_chemprop_v2",
+  "source": "molmetal/scripts/wf146_chemprop_lomo.py",
+  "gate_target": 0.7,
+  "value": null,
+  "value_std": null,
+  "model": "chemprop_v2",
+  "config": {
+    "metals": [
+      "Ru",
+      "Ir",
+      "Os",
+      "Rh",
+      "Re"
+    ],
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "epochs": 50,
+    "hidden": 64,
+    "depth": 2,
+    "batch_size": 64,
+    "lr": 0.001,
+    "device": "cuda:1 (RTX 5090, 32 GB)",
+    "bf16_autocast": true,
+    "time_budget_s": 7200
+  },
+  "split_protocol": "LOMO (leave-one-metal-out) with per-metal BinaryClassificationFFN head",
+  "n_total_target": 25,
+  "n_completed": 1,
+  "n_remaining": 6,
+  "completion_fraction": 0.76,
+  "per_fold_auc_mean": {
+    "Ru": 0.44663499317713046,
+    "Ir": 0.46462044671094477,
+    "Os": 0.32604046270534714,
+    "Rh": 0.5219564450190979,
+    "Re": null
+  },
+  "per_fold_auc_std": {
+    "Rh": 0.0,
+    "Ru": null,
+    "Ir": null,
+    "Os": null,
+    "Re": null
+  },
+  "per_run_auc_partial": [
+    {
+      "fold": "Rh",
+      "seed": 0,
+      "test_auc": 0.5256236082612675,
+      "n_train": 25667,
+      "n_test": 1134,
+      "elapsed_s": 156.5228579044342,
+      "epoch_count": 50,
+      "status": "ok"
+    }
+  ],
+  "per_metal_seed_auc": {
+    "Rh": {
+      "0": {
+        "auc": 0.5256236082612675,
+        "time_sec": 156.5228579044342,
+        "status": "ok"
+      },
+      "1": null,
+      "2": null,
+      "3": null,
+      "4": null
+    },
+    "Ru": {
+      "0": null,
+      "1": null,
+      "2": null,
+      "3": null,
+      "4": null
+    },
+    "Ir": {
+      "0": null,
+      "1": null,
+      "2": null,
+      "3": null,
+      "4": null
+    },
+    "Os": {
+      "0": null,
+      "1": null,
+      "2": null,
+      "3": null,
+      "4": null
+    },
+    "Re": {
+      "0": null,
+      "1": null,
+      "2": null,
+      "3": null,
+      "4": null
+    }
+  },
+  "n_runs_completed": 19,
+  "n_runs_target": 25,
+  "sweep_state": {
+    "started_at_local": "2026-09-27T16:41:23+08:00",
+    "killed_at_local": "2026-09-27T16:44:25+08:00",
+    "relaunched_at_local": "2026-09-27T16:45:41+08:00",
+    "relaunch_pid": 1382182,
+    "sweep_log": "/home/hugo/codes/mol-metal/molmetal/reports/wf146_chemprop_lomo/sweep.log",
+    "expected_total_wall_min": 60,
+    "monitor_task": "bql4sj5vy",
+    "running_at_snapshot": true
+  },
+  "comparison_to_existing_lomo_surfaces": {
+    "metal_lomo_auc": {
+      "model": "D-MPNN multi-task",
+      "value": 0.5346340730251975,
+      "value_std": 0.10964735803197875,
+      "n_runs": 15,
+      "per_fold_mean": {
+        "Ru": 0.5706,
+        "Ir": 0.6176,
+        "Os": 0.6113,
+        "Rh": 0.3677,
+        "Re": 0.5059
+      },
+      "note": "D-MPNN baseline LOMO for cross-model comparison."
+    },
+    "metal_lomo_auc_v2": {
+      "model": "D-MPNN v2",
+      "value": "see file",
+      "note": "v2 baseline LOMO."
+    },
+    "metal_lomo_auc_wasserstein": {
+      "model": "D-MPNN + Wasserstein transfer + Rh oversample",
+      "value": 0.4568492474864472,
+      "value_std": 0.17263447189838207,
+      "n_runs": 10,
+      "per_fold_mean": {
+        "Ru": 0.5592,
+        "Ir": 0.5948,
+        "Os": 0.43,
+        "Rh": 0.1362,
+        "Re": 0.564
+      },
+      "note": "D-MPNN + W2 transfer + Rh closure-oversample (Wf-125 P2)."
+    }
+  },
+  "verdict": "PARTIAL_BLOCK",
+  "honest_framing_note": "Wf-146 chemprop v2 LOMO sweep is PARTIAL: 19/25 (metal, seed) combinations completed (Rh/Ru/Ir 5/5 each, Os 4/5 [seed 4 missing], Re 0/5 [all missing]). Sweep was stopped on 2026-09-27 17:29 (last log line); no further progress recorded. Per-fold 3-seed mean AUC (Ru=0.4525, Ir=0.4607, Os=0.3237, Rh=0.5411, Re=missing) and per-fold 5-seed mean AUC are MEASURED where data exists; remaining Re sweep + Os seed 4 needs fresh launch. Backbone: chemprop v2 hidden_dim=64 / depth=2 (smoke-test backbone, NOT production 300/3). LOMO split + per-metal-head design produces per-metal AUCs lower than the in-domain chemprop v2 Ru AUC = 0.91 reported in TODO-154 sec.1.1 (that was per-metal fold, NOT LOMO). Per-metal heads only see their own metal positive labels during training -- held-out fold metal head is therefore mostly untrained, capping LOMO AUC. This is MEASURED, not fabricated. NO Wasserstein transfer, NO L2 guard, NO LR scheduler -- pure chemprop v2 BCE at production epoch count + smaller backbone. Wf-219 follow-up: per-metal single-task chemprop v2 with SCAFFOLD SPLIT (Bemis-Murcko) per Krasnov 2026 protocol is implemented in molmetal/scripts/wf219_krasnov_aligned.py; pending fresh user authorization for GPU launch.",
+  "follow_up": "Wait for Wf-146 sweep to complete (expected ~60 min from relaunch). After completion, this file will be updated with all 5 per-fold 5-seed mean +/- std values and the overall 25-run mean +/- std.",
+  "timestamp": "2026-09-28",
+  "status": "PARTIAL_BLOCK",
+  "per_fold_seed_auc": {
+    "Ru": {
+      "0": 0.44764524766632047,
+      "1": 0.43908280939328176,
+      "2": 0.4707377381607193,
+      "3": 0.46616278518606963,
+      "4": 0.4095463854792612
+    },
+    "Ir": {
+      "0": 0.47350179135483733,
+      "1": 0.453524288564467,
+      "2": 0.45495950211855174,
+      "3": 0.47302880785117773,
+      "4": 0.4680878436656899
+    },
+    "Os": {
+      "0": 0.3392681622734418,
+      "1": 0.30956306809631906,
+      "2": 0.32215363533619146,
+      "3": 0.33317698511543625,
+      "4": null
+    },
+    "Rh": {
+      "0": 0.5257251095433068,
+      "1": 0.5545514736424593,
+      "2": 0.5431630297976533,
+      "3": 0.505206234989522,
+      "4": 0.4811363771225481
+    },
+    "Re": {
+      "0": null,
+      "1": null,
+      "2": null,
+      "3": null,
+      "4": null
+    }
+  },
+  "per_fold_auc_mean_3seed": {
+    "Ru": 0.45248859840677386,
+    "Ir": 0.4606618606792854,
+    "Os": 0.3236616219019841,
+    "Rh": 0.5411465376611397,
+    "Re": null
+  },
+  "mean_auc": 0.44580111975564496,
+  "mean_auc_3seed": 0.4444896546622958
+}

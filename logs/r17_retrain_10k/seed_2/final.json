@@ -1,0 +1,237 @@
+{
+  "config": {
+    "csv": "/home/hugo/codes/mol-metal/molmetal/data/metallo_drugs_500_train.csv",
+    "n_train_loaded": 449,
+    "n_train_embedded": 358,
+    "n_skipped": 91,
+    "steps_planned": 10000,
+    "steps_executed": 10000,
+    "batch_size": 4,
+    "lr": 0.0001,
+    "lr_warmup_steps": 200,
+    "hidden_dim": 128,
+    "n_layers": 3,
+    "joint_train": true,
+    "bond_head": "learned",
+    "vocab_size": 20,
+    "bond_head_in_dim": 265,
+    "device": "cuda",
+    "cuda_available": true,
+    "torch_version": "2.14.0+cu130",
+    "seed": 2
+  },
+  "wall_clock_s": 555.5117280483246,
+  "loss_curves_summary": {
+    "cfm": {
+      "n": 10000,
+      "first": 19.450136184692383,
+      "last": 13.878986358642578,
+      "min": 3.1310064792633057,
+      "max": 620.1611938476562,
+      "delta_first_to_last": -5.571149826049805
+    },
+    "atom": {
+      "n": 10000,
+      "first": 2.995732307434082,
+      "last": 1.1945253610610962,
+      "min": 0.8304498791694641,
+      "max": 44.24082946777344,
+      "delta_first_to_last": -1.8012069463729858
+    },
+    "bond": {
+      "n": 10000,
+      "first": 27.81342124938965,
+      "last": 1.0720338821411133,
+      "min": 0.9184232354164124,
+      "max": 29.867412567138672,
+      "delta_first_to_last": -26.741387367248535
+    },
+    "total": {
+      "n": 10000,
+      "first": 47.563133239746094,
+      "last": 15.070472717285156,
+      "min": 4.368435859680176,
+      "max": 622.9072875976562,
+      "delta_first_to_last": -32.49266052246094
+    }
+  },
+  "lr_curve_summary": {
+    "n": 10000,
+    "first": 5.000000000000001e-07,
+    "last": 0.0001,
+    "min": 5.000000000000001e-07,
+    "max": 0.0001,
+    "delta_first_to_last": 9.95e-05,
+    "target_lr": 0.0001,
+    "warmup_steps_requested": 200,
+    "lr_at_step_1": 5.000000000000001e-07,
+    "lr_at_end_of_warmup": 0.0001,
+    "lr_at_final_step": 0.0001
+  },
+  "decode_summary": {
+    "decode_ratio_at_200": null,
+    "decode_ratio_at_500": null,
+    "decode_ratio_at_1000": 1.0,
+    "max_decode_ratio": 1.0,
+    "first_decode_ratio_nonzero_step": 1000,
+    "all_probes": [
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 1.5087171494960785,
+        "step": 1000,
+        "wall_s": 1.7395532131195068
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 1.4446256756782532,
+        "step": 2000,
+        "wall_s": 0.5291528701782227
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 1.3490090370178223,
+        "step": 3000,
+        "wall_s": 0.32576823234558105
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 1.9781794250011444,
+        "step": 4000,
+        "wall_s": 0.5308852195739746
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 2.466900587081909,
+        "step": 5000,
+        "wall_s": 0.37230491638183594
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 2.592092454433441,
+        "step": 6000,
+        "wall_s": 0.2762417793273926
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 2.9828023314476013,
+        "step": 7000,
+        "wall_s": 0.18816900253295898
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 2.8049747943878174,
+        "step": 8000,
+        "wall_s": 0.5057008266448975
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 3.124593734741211,
+        "step": 9000,
+        "wall_s": 0.6111376285552979
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 3.7629018425941467,
+        "step": 10000,
+        "wall_s": 0.5637445449829102
+      }
+    ]
+  },
+  "p0_fixes_active": {
+    "F1_bond_aware_decoder_wired": true,
+    "F2_bond_head_in_dim_correct": true,
+    "F3_vocab_mask_in_loss": true,
+    "F4_hidden_dim_64_plus": true,
+    "F5_no_bonds_zeros_placeholder": true
+  },
+  "p1_fixes_active": {
+    "P1_1_hidden_dim_128": true,
+    "P1_2_learnable_vel_scale": true,
+    "P1_3_pcgrad_multi_task": false,
+    "P1_4_connectivity_aware_decoder": true
+  },
+  "lambda_reward_active": {
+    "lambda_reward_enabled": false,
+    "lambda_reward_samples_requested": 64,
+    "lambda_dataset_size": 0,
+    "lambda_dataset_after_zero_filter": 0,
+    "lambda_zero_weight_dropped": 0,
+    "lambda_mix_ratio": 0.25,
+    "lambda_reweight_alpha": 1.0,
+    "lambda_pocket_id": "metallo_drug_smoke",
+    "lambda_loss_is_weighted": false
+  },
+  "raw_log_tail": [
+    {
+      "step": 9991,
+      "loss": 7.286108493804932
+    },
+    {
+      "step": 9992,
+      "loss": 17.57798957824707
+    },
+    {
+      "step": 9993,
+      "loss": 15.863900184631348
+    },
+    {
+      "step": 9994,
+      "loss": 15.654640197753906
+    },
+    {
+      "step": 9995,
+      "loss": 10.127917289733887
+    },
+    {
+      "step": 9996,
+      "loss": 10.945172309875488
+    },
+    {
+      "step": 9997,
+      "loss": 13.329668998718262
+    },
+    {
+      "step": 9998,
+      "loss": 7.699035167694092
+    },
+    {
+      "step": 9999,
+      "loss": 13.852872848510742
+    },
+    {
+      "step": 10000,
+      "loss": 15.070472717285156
+    }
+  ],
+  "checkpoint_path": "logs/r17_retrain_10k/seed_2/ckpt.pt"
+}

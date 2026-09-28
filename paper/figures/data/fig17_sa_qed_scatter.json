@@ -1,0 +1,75 @@
+{
+  "figure_id": "fig17",
+  "title": "SA vs QED scatter (Lambda path cohort)",
+  "description": "Per-molecule Synthetic Accessibility (Ertl) vs drug-likeness (QED, RDKit) for the Lambda MCTS path cohort. Lower SA + higher QED = top-right corner. Reference MolChord/TransDiffSBDD anchors shown.",
+  "x_axis": {
+    "label": "SA (Ertl, 1=easy, 10=hard)",
+    "range": [1.0, 7.0]
+  },
+  "y_axis": {
+    "label": "QED (0-1, higher = more drug-like)",
+    "range": [0.0, 1.0]
+  },
+  "series": [
+    {
+      "name": "Lambda p4 sweep cohort (n=300 cells, sa_weight=0.0)",
+      "type": "scatter",
+      "n_samples": 300,
+      "sa_mean": 6.0028,
+      "sa_std": 0.0,
+      "qed_mean": 0.6210,
+      "qed_std": 0.0,
+      "note": "Per TODO-34: bit-exact singleton collapse — 300× [Cl][Pt][Cl], sa=6.003, qed=0.621. Single point cluster at the centroid."
+    },
+    {
+      "name": "Lambda EV3 sweep (sa_weight=0.3, n=30)",
+      "type": "scatter",
+      "sa_mean": 3.0988,
+      "qed_mean": 0.6210,
+      "note": "EV3 lift brings SA 6.00 → 3.10 (closer to TargetDiff range 2.65-2.86) while QED holds at 0.621."
+    },
+    {
+      "name": "TargetDiff (Guan 2023) anchor",
+      "type": "reference",
+      "sa": 2.65,
+      "qed": 0.48,
+      "note": "Tier-2 SOTA CrossDocked"
+    },
+    {
+      "name": "MolChord anchor",
+      "type": "reference",
+      "sa": 3.0,
+      "qed": 0.56,
+      "note": "Tier-2 SOTA"
+    },
+    {
+      "name": "TransDiffSBDD 2025 anchor",
+      "type": "reference",
+      "sa": 2.5,
+      "qed": 0.48,
+      "note": "Tier-2 SOTA CrossDocked"
+    },
+    {
+      "name": "Pocket2Mol anchor",
+      "type": "reference",
+      "sa": 3.5,
+      "qed": 0.51,
+      "note": "Tier-2 SOTA CrossDocked"
+    }
+  ],
+  "legend": [
+    "Lambda p4 sweep (sa_weight=0.0, n=300 cells, singleton cluster)",
+    "Lambda EV3 (sa_weight=0.3, n=30 cells, SA lift)",
+    "TargetDiff / MolChord / TransDiffSBDD / Pocket2Mol anchors"
+  ],
+  "summary": {
+    "our_sa_best": 3.0988,
+    "our_qed_best": 0.6210,
+    "gap_to_targetdiff_sa_low": 0.24,
+    "gap_to_targetdiff_sa_high": 0.45,
+    "gap_to_molchord_qed": -0.061,
+    "verdict": "PARTIAL_LIFT — sa_weight=0.3 lifts SA 6.00→3.10; QED already in Tier-2 range. Single-pocket smoke; full 100×3 cohort pending."
+  },
+  "source": "metrics/by_metric/sa_mean.json + lambda_p4_sweep/seed_0/report.json (qed_mean) + tier2_summary.json",
+  "render": "paper/figures/fig17_sa_qed_scatter.py"
+}

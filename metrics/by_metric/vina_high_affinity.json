@@ -34,7 +34,39 @@
     "High-affinity rate = 51/100 = 0.51 on 830c pocket.",
     "Not measured on 1h36 / test_001..test_019 because the staged receptors are missing in this snapshot."
   ],
+  "wf126_strengthen_per_pocket": {
+    "date": "2026-09-27",
+    "workflow": "wf126_p3_vina_per_pocket",
+    "cohort": "closure_bounded",
+    "engine_pocket_closure_bias": "pocket_closure_bias",
+    "engine_wasserstein": "wasserstein_reg",
+    "high_affinity_kcal_cutoff": -7.0,
+    "cohort_size_per_pocket": 20,
+    "seeds": [0],
+    "vina_binary": "/home/hugo/codes/mol-metal/molmetal/bin/vina",
+    "vina_version": "AutoDock Vina f458505-mod",
+    "n_stub_fallback_total": 0,
+    "per_pocket": {
+      "1h36": {"historical_baseline": 0.95, "wf126_measured": 0.529412, "pass_uniform_floor_0p30": true, "delta_vs_historical": -0.420588, "n_docked": 17, "n_high_affinity": 9, "score_min": -8.971, "score_mean": -6.2044, "wasserstein_loss": 0.1972},
+      "3eml": {"historical_baseline": 0.05, "wf126_measured": 0.000, "pass_uniform_floor_0p30": false, "delta_vs_historical": -0.05, "n_docked": 6, "n_high_affinity": 0, "score_min": -5.052, "score_mean": -3.9335, "wasserstein_loss": 0.2411},
+      "3ny8": {"historical_baseline": 0.35, "wf126_measured": 0.222222, "pass_uniform_floor_0p30": false, "delta_vs_historical": -0.127778, "n_docked": 18, "n_high_affinity": 4, "score_min": -7.466, "score_mean": -5.5416, "wasserstein_loss": 0.3031},
+      "4aaw": {"historical_baseline": 0.65, "wf126_measured": 0.000, "pass_uniform_floor_0p30": false, "delta_vs_historical": -0.65, "n_docked": 5, "n_high_affinity": 0, "score_min": -5.709, "score_mean": -3.9786, "wasserstein_loss": 0.2646},
+      "4rlu": {"historical_baseline": 0.45, "wf126_measured": 0.000, "pass_uniform_floor_0p30": false, "delta_vs_historical": -0.45, "n_docked": 14, "n_high_affinity": 0, "score_min": -3.796, "score_mean": -2.9645, "wasserstein_loss": 0.4210}
+    },
+    "primary_verdict": {
+      "pass_uniform_floor_all_pockets": false,
+      "pass_3eml_stretch_0p30": false,
+      "n_pockets_meeting_floor": 1,
+      "n_pockets_total": 5,
+      "min_high_affinity_rate": 0.0,
+      "max_high_affinity_rate": 0.529412
+    },
+    "verdict": "PARTIAL_LIFT — 1/5 pockets (1h36) meets 0.30 uniform floor on closure-bounded cohort at n=20 per pocket. 4/5 pockets (3eml, 3ny8, 4aaw, 4rlu) FAIL. Per-pocket Wasserstein finite (0.197-0.421), engine-tagged. Cohort-size reduction (mean n=12 closure-bounded vs n=20 unconstrained) dominates per-pocket Vina signal. Per-seed n=500 + per-pocket pharmacophore depth deferred to GPU run.",
+    "source_report": "molmetal/reports/wf126_p3_vina_per_pocket/per_pocket_summary.json + per_pocket_vina.csv",
+    "close_out": "TODO/completed/125_vina_per_pocket_strengthen.md"
+  },
   "n_samples": 100,
   "timestamp": "2026-09-18",
-  "status": "MEASURED"
+  "status": "MEASURED",
+  "honest_framing": "Data source: (1) Phase-1B 830c pocket, 100 docked molecules (legacy aggregate). (2) Wf-126 P3 per-pocket closure-bounded cohort, n=20 per pocket, ex=8 default + Wasserstein weight, 5 pockets (1h36, 3eml, 3ny8, 4aaw, 4rlu). (3) Wf-142 P1 ex=32 + n_poses=5 on Wf-140 closure-bounded cohort (n=13-18 per pocket, seed=0). Model: AutoDock Vina 1.2.7 (Python binding) + meeko 0.8.0 + rdkit. Protocol: high_affinity_rate = fraction with top_pose_kcal_mol < pocket-specific co-crystal reference redocked score (TargetDiff Table 1 'High Affinity' convention). TargetDiff 2023 lit cite-only; iMoLD cite-only. 1/5 pockets (1h36) PASSES 0.30 uniform floor at ex=32 + n_poses=5; 4/5 pockets (3eml, 3ny8, 4aaw, 4rlu) FAIL — cohort-bound, not search-bound. Cites TODO-125 (per-pocket strengthen), TODO-140 (m5 SA 5-pocket), TODO-141/142/143/144."
 }

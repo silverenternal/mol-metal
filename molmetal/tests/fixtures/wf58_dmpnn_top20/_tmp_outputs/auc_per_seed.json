@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "seeds": [
+      0
+    ],
+    "epochs": 2,
+    "auc_gate": 0.73,
+    "training_data": "/home/hugo/codes/mol-metal/molmetal/tests/fixtures/wf58_dmpnn_top20/platinai_4cell_min.csv"
+  },
+  "per_seed": [
+    {
+      "seed": 0,
+      "device": "cpu",
+      "elapsed_train_seconds": 1.0877470970153809,
+      "per_line_auc": {},
+      "per_line_ap": {},
+      "per_line_n": {},
+      "auc_mean": NaN,
+      "auc_a2780cis": NaN,
+      "n_test": 6
+    }
+  ]
+}

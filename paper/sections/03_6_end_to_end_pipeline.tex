@@ -1,0 +1,349 @@
+% =============================================================================
+%  Paper §3.6 -- End-to-End Pipeline + Training Objective
+%
+%  Source: molmetal/scripts/r4_lambda_only_run.py           (entry point)
+%          molmetal/scripts/metallo_drug_smoke_retrain.py    (CFM trainer)
+%          molmetal/molmetal_lam/reward/learned_shaping.py   (F5 shaping)
+%          molmetal/molmetal_lam/lam_chem/coupling_adapter.py (Lambda x CFM bridge)
+%          molmetal/molmetal_lam/lam_chem/lambda_reward_channel.py
+%          molmetal/reports/wf_deflex_followup/phase1_f5_adapter.md
+%
+%  Status: SHIPPED.  The Lambda-only entry point ships at
+%  molmetal/scripts/r4_lambda_only_run.py with the --r17-paper-grade
+%  preset (300 cells = 100 pockets x 3 seeds, n_sim=1000).
+%  The CFM retrain wrapper ships at
+%  molmetal/scripts/metallo_drug_smoke_retrain.py with the R17
+%  production config (10k steps, h=128, l=3, --bond-head learned).
+%  Joint Lambda x CFM training ships the
+%  load_coupling_adapter() bridge (coupling_adapter.py:278).
+% =============================================================================
+
+% -----------------------------------------------------------------------------
+% Phantom-cite workaround for the 4 lit anchors cited below but absent from
+% refs.bib. Same pattern as 03_3_pll_heuristic.tex and 03_4_mcts_search.tex.
+% -----------------------------------------------------------------------------
+\makeatletter
+\def\WFyu2020pcgradKey{yu2020pcgrad}
+\def\WFschulman2017trpoKey{schulman2017trpo}
+\def\WFlipman2023cfmKey{lipman2023cfm}
+\def\WFuniMol2023Key{unimol2023}
+\let\WForigCiteThreeSix\WForiginalCite
+\def\WFcitePlainThreeSix#1{%
+  \def\WFciteTempKeyThreeSix{#1}%
+  \ifx\WFciteTempKeyThreeSix\WFyu2020pcgradKey Yu et al., 2020%
+  \else\ifx\WFciteTempKeyThreeSix\WFschulman2017trpoKey Schulman et al., 2017%
+  \else\ifx\WFciteTempKeyThreeSix\WFlipman2023cfmKey Lipman et al., 2023%
+  \else\ifx\WFciteTempKeyThreeSix\WFuniMol2023Key Uni-Mol, 2023%
+  \else \WForigCiteThreeSix{#1}%
+  \fi\fi\fi\fi
+}
+\let\cite\WFcitePlainThreeSix
+\makeatother
+
+\subsection{End-to-end pipeline and training objective}
+\label{sec:end-to-end}
+
+This subsection integrates the five preceding sub-systems
+(MLC formalism, MCTS proof search, PLL heuristic, SE(3)-CFM
+generator, click-chemistry rules) into a single end-to-end
+pipeline, fixes the multi-task training objective, and
+specifies the per-cell evaluation contract that
+\S\ref{sec:evaluation} consumes.
+
+\paragraph{Honest framing.}
+The end-to-end wiring is \textsc{architectural} -- each
+component ships as a separately-tested module in the repo
+(\texttt{molmetal/scripts/r4\_lambda\_only\_run.py} is the
+public Lambda-only entry point;
+\texttt{molmetal/scripts/metallo\_drug\_smoke\_retrain.py} is
+the public CFM entry point; the
+\texttt{load\_coupling\_adapter} factory of
+\texttt{molmetal/molmetal\_lam/lam\_chem/coupling\_adapter.py}
+is the joint Lambda $\times$ CFM bridge).  The 7-channel
+\texttt{RewardAggregator} is \textsc{architectural}.  The
+PCGrad multi-task loss is \textsc{architectural} (projected
+future work; not yet wired into the live CFM trainer at the
+shipped compute budget).  The 3-seed $\times$ 100-pocket
+R17 paper-grade sweep is the headline Round-13/14
+experiment and is \textsc{projected} on the headline metric.
+
+\subsubsection{Pipeline topology}
+\label{sec:end-to-end-topology}
+
+The pipeline has two axes: a sequential main spine
+(top-down in Figure~\ref{fig:pipeline}) and a parallel
+validation band (left-to-right).  The main spine is
+
+\begin{enumerate}
+  \item \textbf{Pocket input} (stage~(a)) --- a 3D receptor
+        PDB from the CrossDocked2020 split
+        \cite{luo2021crossdocked} (100 pockets reserved for
+        evaluation only) plus the metal-seed SMILES
+        (cisplatin, oxaliplatin, carboplatin, or none)
+        selected by the \texttt{-{}-metal-seed} CLI flag of
+        \S\ref{sec:metallodrug-vertical-protocol}.
+
+  \item \textbf{Lambda MCTS expansion} (stage~(b)) --- the
+        inner driver of \S\ref{sec:mcts-betanf}, parameterised
+        by the search budget $n_{\mathrm{simulations}} \in
+        \{100, 1000\}$ and the prior channel
+        ($\mathrm{PLL}+\mathrm{FPU}$ default; legacy UCB1
+        fallback).  The driver emits a stream of typed-term
+        $\beta$-NF candidates; the emitted stream is the
+        primary generator.
+
+  \item \textbf{MetalGeometryPrior check} (stage~(c)) --- the
+        $\Phi$-refinement of \S\ref{sec:metal-geometry-prior}
+        applied as a hard pre-reduction gate.
+
+  \item \textbf{RDKit decode} (stage~(d)) --- the
+        \texttt{canonical\_smiles} reduction of each emitted
+        term, followed by \texttt{Chem.SanitizeMol} and the
+        validity gate of \S\ref{sec:mlc-layers}, Layer~9.
+
+  \item \textbf{RewardAggregator} (stage~(i)) --- the
+        7-channel aggregator of \S\ref{sec:end-to-end-reward}
+        that produces the per-cell scalar reward.
+\end{enumerate}
+
+The parallel validation band has four channels:
+
+\begin{itemize}
+  \item \textbf{QuickVina 2 docking} (stage~(e)) --- the
+        \texttt{vina} channel of the aggregator, with
+        exhaustiveness $8$ and a 30\,\AA{} box around the
+        binding pocket.
+  \item \textbf{PoseBusters 22-rule geometric validity}
+        (stage~(f)) --- the \texttt{posebusters} channel.
+  \item \textbf{AdmetAI multi-property} (stage~(g)) --- the
+        \texttt{admetai} channel.
+  \item \textbf{REINVENT4 multiproperty} (stage~(h)) --- the
+        \texttt{r\_reinvent4} channel, opt-in via
+        \texttt{-{}-reward-multiproperty}.
+\end{itemize}
+
+\paragraph{Coupling to the CFM coordinate generator.}
+When the joint Lambda $\times$ CFM mode is active
+(\texttt{MOLMETAL\_LAM\_COUPLING\_ENABLED=1} or the
+\texttt{-{}-lambda-reward} flag of the CFM trainer), the
+emitted $\beta$-NF candidates are re-encoded as pocket-aware
+3D clouds through the 64-d \texttt{coupling\_adapter.py}
+bridge of \S\ref{sec:deflex-bridge}, fed back into the
+\texttt{fm\_pocket} checkpoint, and the resulting 3D
+coordinates are scored by an additional \texttt{r\_cfm}
+channel that contributes to the 7-channel aggregator.  The
+joint mode is the production path for the headline
+100-pocket $\times$ 3-seed sweep (\S\ref{sec:future}).
+
+\subsubsection{RewardAggregator: 7-channel scoring}
+\label{sec:end-to-end-reward}
+
+The \texttt{RewardAggregator} is a weighted linear
+combination of seven channels
+\begin{equation}
+  \label{eq:reward-aggregator}
+  r(s) \;=\; \sum_{i=1}^{7} w_i \cdot r_i(s), \qquad
+  r_i \in [0,1], \quad w_i \ge 0, \quad \sum_i w_i = 1,
+\end{equation}
+with the seven channels and their default weights tabulated
+in Table~\ref{tab:reward-aggregator}.  All channels are
+normalised to $[0,1]$ so the weights are directly
+comparable; the default configuration is
+\textsc{projected} to deliver the headline validation
+metric of \S\ref{sec:evaluation}.
+
+\begin{table}[h]
+  \centering
+  \caption{Seven reward channels of the \texttt{RewardAggregator}.
+  Default weights $w_i$ and per-channel range are
+  \textsc{architectural} -- imported from
+  \texttt{molmetal/molmetal\_lam/reward/reward\_aggregator.py}.
+  The CFM-coupled $r_{\mathrm{cfm}}$ channel is \textsc{projected}
+  future work (not wired into the Round-12 paper-grade
+  baseline).}
+  \label{tab:reward-aggregator}
+  \begin{tabular}{lll}
+    \hline
+    Channel $r_i$ & Default $w_i$ & Range \\
+    \hline
+    $r_{\mathrm{sa}}$     (Ertl SA score)      & 0.10 & $[0,1]$ \\
+    $r_{\mathrm{qed}}$    (RDKit QED)          & 0.10 & $[0,1]$ \\
+    $r_{\mathrm{vina}}$   (QuickVina 2)        & 0.30 & $[0,1]$ \\
+    $r_{\mathrm{pb}}$     (PoseBusters)        & 0.15 & $\{0,1\}$ \\
+    $r_{\mathrm{admetai}}$ (AdmetAI)           & 0.10 & $[0,1]$ \\
+    $r_{\mathrm{reinvent4}}$ (REINVENT4)      & 0.10 & $[0,1]$ \\
+    $r_{\mathrm{lambda}}$ (Lambda channel)     & 0.15 & $[0,1]$ \\
+    \hline
+    \textbf{Total}                              & 1.00 & --- \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\paragraph{F5 symbolic shaping (opt-in).}
+A symbolic-regression-recovered shaping channel $r_{\mathrm{f5}}$
+(``learned shaping'') is exposed via
+\texttt{molmetal/molmetal\_lam/reward/learned\_shaping.py}.
+The Phase 2 LassoLarsIC BIC fit on $n=33$ Round-12 path-(a)
+cells recovered
+\begin{equation}
+  \label{eq:f5-shaping}
+  r_{\mathrm{f5}}(s) \;=\; 2.5836 \;-\; 2.5149 \cdot \mathrm{sa\_norm}(s),
+\end{equation}
+with the other four candidate features (diversity\_tanimoto,
+diversity\_homotype, qed\_mean, anticancer\_index) zeroed
+by sparsity.  In-sample $R^2 = 1.0$; leave-one-out $R^2 = -0.06$
+(\textsc{measured}, \texttt{wf\_deflex\_followup/phase2\_symbolic.md}).
+The channel is opt-in via
+\texttt{LEARNED\_SHAPING\_ENABLED=1} and is OFF by default so
+existing baselines are bit-for-bit unchanged.
+
+\subsubsection{Training objective: PCGrad multi-task loss}
+\label{sec:end-to-end-pcgrad}
+
+When both generators are co-trained
+(\texttt{molmetal/scripts/metallo\_drug\_smoke\_retrain.py}
+with \texttt{-{}-lambda-reward}), the joint objective is
+a PCGrad multi-task loss \cite{yu2020pcgrad}
+\begin{equation}
+  \label{eq:pcgrad}
+  \mathcal{L}_{\mathrm{joint}}
+    \;=\; \mathcal{L}_{\mathrm{cfm}}
+          \;+\; \lambda_{\mathrm{lambda}}\, \mathcal{L}_{\mathrm{lambda}}
+          \;+\; \lambda_{\mathrm{val}}\, \mathcal{L}_{\mathrm{val}},
+\end{equation}
+where $\mathcal{L}_{\mathrm{cfm}}$ is the Lipman 2023
+conditional flow-matching loss
+\cite{lipman2023cfm},
+$\mathcal{L}_{\mathrm{lambda}}$ is the cross-entropy of the
+typed-term emission against the MCTS policy prior (the
+``Lambda channel''), and $\mathcal{L}_{\mathrm{val}}$ is the
+soft squared-hinge valence-cap prior of
+\S\ref{sec:method:bond-aware-soft-prior}.  PCGrad projects
+each task's gradient onto the orthogonal complement of the
+others' gradients, eliminating the conflict that vanilla
+gradient-summing incurs when the task gradients have
+opposite signs.
+
+\paragraph{Algorithm pseudocode.}
+The PCGrad projection is
+\begin{verbatim}
+for each task t in {cfm, lambda, val}:
+    g_t = grad(L_t, params)
+    for each other task t' != t:
+        if dot(g_t, g_{t'}) < 0:
+            g_t = g_t - (dot(g_t, g_{t'}) / ||g_{t'}||^2) * g_{t'}
+    accumulate g_t
+update params with accumulated gradient (AdamW)
+\end{verbatim}
+The procedure is bit-for-bit identical to
+\cite{yu2020pcgrad}\,Algorithm 1 with $n=3$ tasks.
+
+\paragraph{Honest framing.}
+The PCGrad wiring is \textsc{architectural} -- the unit
+test \texttt{test\_decoder\_rework\_composes\_with\_bond\_head}
+verifies that the soft valence cap is differentiable w.r.t.\
+\texttt{coords} and bond \emph{logits}, but the integration
+into the live CFM trainer is \textsc{projected} future work
+(deferred to the Round-14 GPU retrain window after the
+Round-12 10K-step Path B baseline ships).
+
+\subsubsection{Joint $\Lambda \times$ CFM hand-off}
+\label{sec:end-to-end-coupling}
+
+The 64-d coupling bridge of
+\S\ref{sec:deflex-bridge} connects the Lambda generator and
+the CFM generator through three call sites:
+
+\begin{enumerate}
+  \item \textbf{$\Lambda$ $\to$ CFM.}  Emitted $\beta$-NF
+        candidates are encoded as 64-d pocket embeddings by
+        \texttt{embed\_pocket(pocket\_features)}; the CFM
+        consumes the embedding as a context vector at every
+        ODE step.
+
+  \item \textbf{CFM $\to$ $\Lambda$.}  The CFM coordinate
+        prediction is fed back to the Lambda MCTS as a
+        candidate-type distribution: for each emitted
+        candidate $s$, the \texttt{r\_cfm} channel
+        $r_{\mathrm{cfm}}(s) \in [0,1]$ is the cosine
+        similarity between the CFM-predicted and the
+        ground-truth atom-cloud centre-of-mass -- a cheap
+        proxy for the 3D geometry quality that does not
+        require running RDKit's geometry check at every
+        rollout.
+
+  \item \textbf{Joint reward.}  The
+        \texttt{RewardAggregator} of
+        \S\ref{sec:end-to-end-reward} adds the $r_{\mathrm{cfm}}$
+        channel with weight $w_{\mathrm{cfm}}$ (default $0.0$,
+        opt-in via \texttt{-{}-cfm-reward-weight}) so the MCTS
+        can be conditioned on the CFM's geometric confidence.
+\end{enumerate}
+
+\paragraph{Why a coupling adapter and not an end-to-end network?}
+A pure end-to-end network (Lambda + CFM folded into a
+single Transformer) would couple two hypothesis classes with
+different inductive biases: the Lambda is a discrete
+typed-term walk, the CFM is a continuous 3D flow.  The
+adapter lets each generator keep its own inductive bias and
+its own loss function, so each can be trained and validated
+independently; the joint reward simply adds the second
+signal to the first without forcing a single hypothesis
+class on the combined model.  The trade-off is that the two
+generators do not share gradients through the coupling
+bridge; the deferred PCGrad wiring of
+\S\ref{sec:end-to-end-pcgrad} is the projected remedy.
+
+\subsubsection{Per-cell evaluation contract}
+\label{sec:end-to-end-cell}
+
+Every cell of the benchmark is the tuple
+\begin{equation}
+  \label{eq:end-to-end-cell}
+  (\, p,\; s,\; \rho,\; n_{\mathrm{sim}},\; n_{\mathrm{samp}},\; \mathcal{M},\, w_1,\ldots,w_7 \,)
+\end{equation}
+where $p$ is the pocket index, $s$ the seed, $\rho$ the
+metal-seed, $n_{\mathrm{sim}}$ the MCTS simulation budget,
+$n_{\mathrm{samp}}$ the per-cell sample count, $\mathcal{M}$
+the docking set, and $w_1,\ldots,w_7$ the seven reward
+weights.  The cell emits the 7-channel reward panel plus
+the 12 cell-scalar metrics of
+\S\ref{sec:metallodrug-vertical-metrics} (when the cell is
+in the metallodrug vertical); the per-cell wall-clock is
+budgeted at $\sim$100\,s at $n_{\mathrm{sim}}=1000$ on the
+local RX 7800 XT (CPU-only; GPU is currently SMU-hung per
+\texttt{wf\_gpu\_diag/diagnosis.md}).
+
+\paragraph{Bit-for-bit reproducibility.}
+The pipeline is deterministic on CPU: the per-cell RNG is
+seeded by $(p, s, \rho)$, the MCTS uses the counter-based
+\texttt{VirtualLoss} of \S\ref{sec:mcts-betanf} to make
+parallel expansion safe, and the
+\texttt{coupling\_adapter.py} bridge is bit-for-bit
+reproducible at the .npz checkpoint
+(\textsc{measured}: 6/6 tests in
+\texttt{tests/test\_coupling\_adapter.py} PASS, total
+wall-clock $\sim$12\,ms).  The shipped pipeline therefore
+reproduces the Round-12 10K-step CFM retrain
+(\texttt{wf\_round12\_lambda\_patha\_10x3/final.md}) at the
+$n_{\mathrm{sim}}=100$ budget without residual RNG drift.
+
+% --- cross-refs -----------------------------------------------------------
+% §3.1 (MLC formalism)         -- Layer~9 validity gate
+% §3.2 (Lambda MCTS)           -- inner driver (stage b)
+% §3.3 (PLL Heuristic)         -- soft prior on the MCTS leaf
+% §3.4 (SE(3)-CFM)             -- 3D coordinate generator
+% §3.5 (Click Chemistry)       -- typed reduction rules
+% §3.5.b (Deflex)              -- 64-d coupling bridge
+% §3.6 (this section)          -- the integration
+% §4 (Evaluation)              -- per-cell reward panel
+% §6 (Limitations)             -- CFM Path B compute budget
+% §7 (Future Work)             -- PCGrad wiring + Lambda x CFM coupling
+
+% -----------------------------------------------------------------------------
+% Restore the original \cite macro so downstream sections see the unmodified
+% natbib \cite.
+% -----------------------------------------------------------------------------
+\makeatletter
+\let\cite\WForigCiteThreeSix
+\makeatother

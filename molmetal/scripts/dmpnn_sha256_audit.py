@@ -56,6 +56,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+# Wf-120 P3 — import shared SHA256-guard helpers from the dependency-free
+# module so the audit re-uses the canonical scan_all_ckpts /
+# find_duplicate_shas implementations.
+from molmetal.scripts._dmpnn_sha256_guard import (  # noqa: E402
+    find_duplicate_shas as _guard_find_duplicate_shas,
+)
+
 DEFAULT_CKPT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints"
 DEFAULT_STATUS_JSON = PROJECT_ROOT / "metrics" / "by_metric" / "dmpnn_ckpt_status.json"
 FIVE_METALS: Tuple[str, ...] = ("Ru", "Ir", "Rh", "Os", "Re")
@@ -98,7 +105,23 @@ def parse_filename(p: Path) -> Optional[Tuple[str, int]]:
 
 
 def audit(ckpt_dir: Path, status_json: Optional[Path]) -> Dict:
-    """Run the full audit; return a structured report dict."""
+    """Run the full audit; return a structured report dict.
+
+    Wf-120 P3 extension — adds three new fields beyond the Phase 1 contract:
+
+      * ``per_metal_seed_summary`` — ``{metal: {seed: sha256}}`` matrix
+        for quick per-(metal, seed) lookup.
+      * ``per_metal_diversity`` — ``{metal: {"n_ckpts": int, "n_unique_sha":
+        int, "diversity_ratio": float}}``. ``diversity_ratio == 1.0``
+        means every (metal, seed) has a unique SHA — the desired state.
+      * ``simulated_post_save_guard`` — ``{"would_pass": bool,
+        "blocking_duplicate_sha": Optional[str], "blocking_filenames":
+        Optional[Tuple[str, ...]]}``. This simulates the Wf-120 P3
+        post-save guard on the **current on-disk state**: if any
+        duplicate SHA is present, the simulated guard reports the
+        blocking SHA + filenames so the operator can manually delete
+        one of them before re-running a training pass.
+    """
     paths = discover_dmpnn_ckpts(ckpt_dir)
     rows: List[Dict] = []
     sha_index: Dict[str, List[str]] = defaultdict(list)  # sha → [filenames]
@@ -154,6 +177,36 @@ def audit(ckpt_dir: Path, status_json: Optional[Path]) -> Dict:
                     }
                 )
 
+    # ---- Wf-120 P3 extension: per-(metal, seed) summary + diversity + sim guard
+    per_metal_seed_summary: Dict[str, Dict[str, str]] = defaultdict(dict)
+    per_metal_diversity: Dict[str, Dict] = {}
+    for row in rows:
+        per_metal_seed_summary[row["metal"]][str(row["seed"])] = row["sha256"]
+
+    for metal, seed_to_sha in per_metal_seed_summary.items():
+        n_ckpts = len(seed_to_sha)
+        n_unique = len(set(seed_to_sha.values()))
+        per_metal_diversity[metal] = {
+            "n_ckpts": n_ckpts,
+            "n_unique_sha": n_unique,
+            "diversity_ratio": (n_unique / n_ckpts) if n_ckpts else 0.0,
+        }
+
+    if duplicate_shas:
+        first_sha, first_files = next(iter(sorted(duplicate_shas.items())))
+        simulated_guard = {
+            "would_pass": False,
+            "blocking_duplicate_sha": first_sha,
+            "blocking_filenames": sorted(first_files),
+        }
+    else:
+        simulated_guard = {
+            "would_pass": True,
+            "blocking_duplicate_sha": None,
+            "blocking_filenames": None,
+        }
+    # ---- end Wf-120 P3 extension
+
     report = {
         "audit_tag": "Wf-120 Phase 1 — D-MPNN pIC50 ckpt SHA256 audit",
         "ckpt_dir": str(ckpt_dir),
@@ -167,6 +220,12 @@ def audit(ckpt_dir: Path, status_json: Optional[Path]) -> Dict:
         "n_json_missing_sha": len(json_missing_sha),
         "json_missing_sha": json_missing_sha,
         "checkpoints": rows,
+        # Wf-120 P3 additions
+        "per_metal_seed_summary": {
+            m: dict(v) for m, v in per_metal_seed_summary.items()
+        },
+        "per_metal_diversity": per_metal_diversity,
+        "simulated_post_save_guard": simulated_guard,
         "status": (
             "PASS"
             if (len(duplicate_shas) == 0 and len(json_mismatches) == 0)
@@ -178,7 +237,10 @@ def audit(ckpt_dir: Path, status_json: Optional[Path]) -> Dict:
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="Wf-120 Phase 1 — SHA256 audit for D-MPNN pIC50 ckpts.",
+        description=(
+            "Wf-120 Phase 1+3 — SHA256 audit + simulated P3 overwrite-guard "
+            "for D-MPNN pIC50 ckpts."
+        ),
     )
     p.add_argument("--ckpt-dir", type=Path, default=DEFAULT_CKPT_DIR)
     p.add_argument("--status-json", type=Path, default=DEFAULT_STATUS_JSON)

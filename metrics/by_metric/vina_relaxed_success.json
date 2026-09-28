@@ -23,9 +23,202 @@
   "notes": [
     "Relaxed success rate = 0/100 = 0.00 on 830c pocket.",
     "This is an honest negative, not a measurement error: at exhaustiveness=8 against a hydroxamate pocket with pocket_radius=10.0 A and box_padding=8.0 A, drug-like triazoles without a Zn-chelator simply cannot score < -8.0 kcal/mol. To close this gap a follow-on pool would need hydroxamate / sulfonamide / carboxylic-acid Zn-chelators.",
-    "Not measured on 1h36 / test_001..test_019 because the staged receptors are missing in this snapshot."
+    "Not measured on 1h36 / test_001..test_019 because the staged receptors are missing in this snapshot.",
+    "Wf-144 ex=32 cross-pocket: pooled rate = 4/57 = 0.0702. 1/5 pockets hit -8.0. Best overall kcal/mol = -8.976, gap = -0.976. Closure-bounded fragments hit -8.0 only on pocket 1h36 (4/13 hits); other 4 pockets honest-negative. Industry -8.0 kcal/mol is STRICT and SA-optimized fragments are not designed for strong binding."
   ],
   "n_samples": 100,
-  "timestamp": "2026-09-18",
-  "status": "MEASURED"
+  "timestamp": "2026-09-26T22:19:41.168358+00:00",
+  "status": "MEASURED",
+  "measurements": [
+    {
+      "workflow": "Wf-144",
+      "phase": "P1",
+      "title": "Cross-pocket Vina relaxed success rate at ex=32 on Wf-140 closure-bounded cohort (industry threshold -8.0 kcal/mol)",
+      "scope": "5-pocket aggregate (1h36, 3eml, 3ny8, 4aaw, 4rlu)",
+      "threshold_kcal_mol": -8.0,
+      "n_pockets": 5,
+      "n_pockets_with_relaxed_success": 1,
+      "n_docked_ex32_total": 57,
+      "n_relaxed_success_ex32_total": 4,
+      "relaxed_success_rate_ex32_pooled": 0.0702,
+      "best_kcal_min_ex32_overall": -8.976,
+      "gap_to_threshold_kcal_mol_overall": -0.976,
+      "per_pocket": [
+        {
+          "pocket_id": "1h36",
+          "n_docked_ex32": 13,
+          "n_relaxed_success_ex32": 4,
+          "relaxed_success_rate_ex32": 0.3077,
+          "best_kcal_min_ex32": -8.976,
+          "gap_to_threshold_kcal_mol": -0.976
+        },
+        {
+          "pocket_id": "3eml",
+          "n_docked_ex32": 6,
+          "n_relaxed_success_ex32": 0,
+          "relaxed_success_rate_ex32": 0.0,
+          "best_kcal_min_ex32": -5.247,
+          "gap_to_threshold_kcal_mol": 2.753
+        },
+        {
+          "pocket_id": "3ny8",
+          "n_docked_ex32": 14,
+          "n_relaxed_success_ex32": 0,
+          "relaxed_success_rate_ex32": 0.0,
+          "best_kcal_min_ex32": -7.462,
+          "gap_to_threshold_kcal_mol": 0.538
+        },
+        {
+          "pocket_id": "4aaw",
+          "n_docked_ex32": 14,
+          "n_relaxed_success_ex32": 0,
+          "relaxed_success_rate_ex32": 0.0,
+          "best_kcal_min_ex32": -6.54,
+          "gap_to_threshold_kcal_mol": 1.46
+        },
+        {
+          "pocket_id": "4rlu",
+          "n_docked_ex32": 10,
+          "n_relaxed_success_ex32": 0,
+          "relaxed_success_rate_ex32": 0.0,
+          "best_kcal_min_ex32": -3.802,
+          "gap_to_threshold_kcal_mol": 4.198
+        }
+      ],
+      "cohort_source": "Wf-140 closure-bounded (small synth-friendly fragments)",
+      "status": "MEASURED",
+      "honest_framing": "Wf-140 closure-bounded fragments are SA-optimized for synth, not for strong pocket binding. Industry -8.0 threshold is STRICT. 4/5 pockets are honest-negative (closure-bounded fragments can't reach strong binder). 1h36 succeeds (4/13 hits) \u2014 single-pocket lift, not 5-pocket generalization. This metric is \u00a74.5 sub-metric, not \u00a74 main lead."
+    }
+  ],
+  "aggregate_ex32": {
+    "pooled_rate": 0.0702,
+    "n_pockets_with_relaxed_success": 1,
+    "n_pockets": 5,
+    "n_docked_total": 57,
+    "n_hits_total": 4,
+    "best_kcal_min_overall": -8.976,
+    "gap_to_threshold_overall": -0.976,
+    "per_pocket_rate": {
+      "1h36": 0.3077,
+      "3eml": 0.0,
+      "3ny8": 0.0,
+      "4aaw": 0.0,
+      "4rlu": 0.0
+    },
+    "per_pocket_n_hits": {
+      "1h36": 4,
+      "3eml": 0,
+      "3ny8": 0,
+      "4aaw": 0,
+      "4rlu": 0
+    },
+    "per_pocket_best": {
+      "1h36": -8.976,
+      "3eml": -5.247,
+      "3ny8": -7.462,
+      "4aaw": -6.54,
+      "4rlu": -3.802
+    }
+  },
+  "wf144_p1_per_pocket_relaxed_success": {
+    "date": "2026-09-27",
+    "workflow": "Wf-144",
+    "phase": "P1",
+    "title": "Per-pocket RELAXED SUCCESS rate on Wf-142 ex=32 cohort (industry threshold -8.0 kcal/mol)",
+    "threshold_kcal_mol": -8.0,
+    "criteria": "top_pose_kcal_mol < -8.0",
+    "cohort": "closure_bounded_wf140",
+    "engine": "vina 1.2.7 (Python binding) + meeko 0.8.0 + rdkit",
+    "exhaustiveness": 32,
+    "n_poses": 5,
+    "per_pocket": [
+      {
+        "pocket": "1h36",
+        "n_docked_ex32": 13,
+        "n_hits": 4,
+        "rate": 0.3076923076923077,
+        "delta": 0.07239819004524889,
+        "best": -8.976,
+        "gap": -0.9760000000000009
+      },
+      {
+        "pocket": "3eml",
+        "n_docked_ex32": 6,
+        "n_hits": 0,
+        "rate": 0.0,
+        "delta": 0.0,
+        "best": -5.247,
+        "gap": 2.753
+      },
+      {
+        "pocket": "3ny8",
+        "n_docked_ex32": 14,
+        "n_hits": 0,
+        "rate": 0.0,
+        "delta": 0.0,
+        "best": -7.462,
+        "gap": 0.5380000000000003
+      },
+      {
+        "pocket": "4aaw",
+        "n_docked_ex32": 14,
+        "n_hits": 0,
+        "rate": 0.0,
+        "delta": 0.0,
+        "best": -6.54,
+        "gap": 1.46
+      },
+      {
+        "pocket": "4rlu",
+        "n_docked_ex32": 10,
+        "n_hits": 0,
+        "rate": 0.0,
+        "delta": 0.0,
+        "best": -3.802,
+        "gap": 4.198
+      }
+    ],
+    "aggregate": {
+      "n_pockets_total": 5,
+      "n_pockets_pass": 1,
+      "n_pockets_honest_negative": 4,
+      "n_docked_total": 57,
+      "n_hits_total": 4,
+      "rate_pooled": 0.07017543859649122,
+      "best_overall_kcal_min": -8.976,
+      "best_overall_pocket": "1h36"
+    },
+    "honest_framing": "Wf-144 P1 5-pocket pooled: 4/57 docked = 0.0702 relaxed_success_rate at ex=32 + n_poses=5 (industry threshold -8.0). 1h36 lifts 4/13 (0.3077) \u2014 only pocket that breaks industry binding threshold. 3eml/3ny8/4aaw/4rlu remain honest-negative: closure-bounded cohort cannot reach -8.0 kcal/mol against co-crystal pockets. ex=32 + n_poses=5 search has converged; further pocket-level gains require chemotype redesign (e.g. Zn-chelators for hydroxamate pockets), not exhaustiveness / pose-count lifts.",
+    "anti_confusion_guards": [
+      "NOT high_affinity_rate (Wf-142 \u2014 pocket-specific co-crystal reference)",
+      "NOT vina_kcal_per_mol.json (cisplatin single molecule kcal/mol)",
+      "NOT Wf-141 v2 (cisplatin exhaustiveness lift)",
+      "NOT Wf-143 honest-negative commentary",
+      "industry threshold -8.0 is STRICT \u2014 many real drugs are -7 to -8 not -8+",
+      "this is \u00a74.5 sub-metric, NOT paper \u00a74 main lead",
+      "DO NOT extrapolate 1h36 success to other pockets"
+    ],
+    "source_per_pocket": [
+      "/home/hugo/codes/mol-metal/metrics/by_metric/vina_relaxed_success_1h36.json",
+      "/home/hugo/codes/mol-metal/metrics/by_metric/vina_relaxed_success_3eml.json",
+      "/home/hugo/codes/mol-metal/metrics/by_metric/vina_relaxed_success_3ny8.json",
+      "/home/hugo/codes/mol-metal/metrics/by_metric/vina_relaxed_success_4aaw.json",
+      "/home/hugo/codes/mol-metal/metrics/by_metric/vina_relaxed_success_4rlu.json"
+    ],
+    "source_wf142": [
+      "/home/hugo/codes/mol-metal/molmetal/reports/wf142_ex32_high_affinity/1h36/per_smiles_results.json",
+      "/home/hugo/codes/mol-metal/molmetal/reports/wf142_ex32_high_affinity/3eml/per_smiles_results.json",
+      "/home/hugo/codes/mol-metal/molmetal/reports/wf142_ex32_high_affinity/3ny8/per_smiles_results.json",
+      "/home/hugo/codes/mol-metal/molmetal/reports/wf142_ex32_high_affinity/4aaw/per_smiles_results.json",
+      "/home/hugo/codes/mol-metal/molmetal/reports/wf142_ex32_high_affinity/4rlu/per_smiles_results.json"
+    ],
+    "source_wf126_baseline": [
+      "/home/hugo/codes/mol-metal/molmetal/reports/wf126_p3_vina_per_pocket/1h36/vina_high_affinity.json",
+      "/home/hugo/codes/mol-metal/molmetal/reports/wf126_p3_vina_per_pocket/3eml/vina_high_affinity.json",
+      "/home/hugo/codes/mol-metal/molmetal/reports/wf126_p3_vina_per_pocket/3ny8/vina_high_affinity.json",
+      "/home/hugo/codes/mol-metal/molmetal/reports/wf126_p3_vina_per_pocket/4aaw/vina_high_affinity.json",
+      "/home/hugo/codes/mol-metal/molmetal/reports/wf126_p3_vina_per_pocket/4rlu/vina_high_affinity.json"
+    ]
+  },
+  "honest_framing": "Data source: Wf-140 closure-bounded cohort across 5 pockets (1h36, 3eml, 3ny8, 4aaw, 4rlu), 57 docked total at ex=32 + n_poses=5 (industry threshold -8.0 kcal/mol). Model: AutoDock Vina 1.2.7 (Python binding) + meeko 0.8.0 + rdkit. Protocol: relaxed_success_rate = fraction with top_pose_kcal_mol < -8.0 (TargetDiff Table 1 'Success' relaxed definition). TargetDiff 2023 lit cite-only; iMoLD cite-only. 1/5 pockets (1h36) PASSES with 4/13 hits (0.3077); 4/5 pockets (3eml, 3ny8, 4aaw, 4rlu) FAIL \u2014 Wf-140 closure-bounded cohort is SA-optimized for synth, not for strong pocket binding (cohort-bound, not search-bound). Industry -8.0 is STRICT (many real drugs are -7 to -8). Cites TODO-125, TODO-141 (exhaustiveness lift), TODO-142 (cross-domain), TODO-144 (Q2 paper roadmap)."
 }

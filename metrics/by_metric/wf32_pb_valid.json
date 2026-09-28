@@ -1,0 +1,122 @@
+{
+  "recipe": "wf32_pb_valid",
+  "n_pockets": 1,
+  "n_candidates": 1,
+  "n_pb_modes": 2,
+  "trajectory_method": "se3sb",
+  "n_evaluations": 2,
+  "n_target_evaluations": 2,
+  "pb_modes": [
+    "mol",
+    "dock"
+  ],
+  "pockets": [
+    "pdk1"
+  ],
+  "candidates": [
+    {
+      "name": "cisplatin",
+      "smiles": "[Pt](N)(N)(Cl)Cl"
+    }
+  ],
+  "n_pb_checks_mol": 14,
+  "n_pb_checks_dock": 26,
+  "n_pb_checks_total": 26,
+  "date_utc": "2026-09-26",
+  "per_evaluation": [
+    {
+      "pocket_id": "pdk1",
+      "candidate": "[Pt](N)(N)(Cl)Cl",
+      "candidate_name": "cisplatin",
+      "method": "mol",
+      "trajectory_method": "se3sb",
+      "status": "skipped",
+      "pb_valid": null,
+      "n_checks": 0,
+      "n_passed": 0,
+      "n_failed": 0,
+      "n_skipped": 0,
+      "pass_rate": 0.0,
+      "failed_checks": [],
+      "missing_checks": [],
+      "elapsed_s": 0.00013461901107802987,
+      "note": "posebusters not installed"
+    },
+    {
+      "pocket_id": "pdk1",
+      "candidate": "[Pt](N)(N)(Cl)Cl",
+      "candidate_name": "cisplatin",
+      "method": "dock",
+      "trajectory_method": "se3sb",
+      "status": "skipped",
+      "pb_valid": null,
+      "n_checks": 0,
+      "n_passed": 0,
+      "n_failed": 0,
+      "n_skipped": 0,
+      "pass_rate": 0.0,
+      "failed_checks": [],
+      "missing_checks": [],
+      "elapsed_s": 7.538602221757174e-05,
+      "note": "posebusters not installed"
+    }
+  ],
+  "per_pocket_per_method": {
+    "pdk1": {
+      "mol": {
+        "n": 1,
+        "mean_pass_rate": 0.0,
+        "std_pass_rate": 0.0,
+        "min_pass_rate": 0.0,
+        "max_pass_rate": 0.0,
+        "n_passed": 0,
+        "n_failed": 0,
+        "n_skipped": 1,
+        "n_error": 0,
+        "n_total": 1
+      },
+      "dock": {
+        "n": 1,
+        "mean_pass_rate": 0.0,
+        "std_pass_rate": 0.0,
+        "min_pass_rate": 0.0,
+        "max_pass_rate": 0.0,
+        "n_passed": 0,
+        "n_failed": 0,
+        "n_skipped": 1,
+        "n_error": 0,
+        "n_total": 1
+      }
+    }
+  },
+  "aggregate": {
+    "pdk1|mol": {
+      "n": 1,
+      "mean_pass_rate": 0.0,
+      "std_pass_rate": 0.0,
+      "min_pass_rate": 0.0,
+      "max_pass_rate": 0.0,
+      "n_passed": 0,
+      "n_failed": 0,
+      "n_skipped": 1,
+      "n_error": 0,
+      "n_total": 1
+    },
+    "pdk1|dock": {
+      "n": 1,
+      "mean_pass_rate": 0.0,
+      "std_pass_rate": 0.0,
+      "min_pass_rate": 0.0,
+      "max_pass_rate": 0.0,
+      "n_passed": 0,
+      "n_failed": 0,
+      "n_skipped": 1,
+      "n_error": 0,
+      "n_total": 1
+    }
+  },
+  "overall_pb_pass_rate": {
+    "mol": 0.0,
+    "dock": 0.0
+  }
+}

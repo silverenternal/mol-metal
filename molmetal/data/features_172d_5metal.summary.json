@@ -1,0 +1,14 @@
+{
+  "n_rows": 1000,
+  "n_fail_all": 0,
+  "fail_per_stream": {
+    "multiph": 1,
+    "pll": 1
+  },
+  "feature_dim": 172,
+  "rdkit_dim": 12,
+  "multiph_dim": 32,
+  "pll_dim": 128,
+  "n_X": 1000,
+  "n_features": 172
+}

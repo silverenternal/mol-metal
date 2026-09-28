@@ -1,0 +1,17 @@
+{
+  "seed": 0,
+  "task": "bbbp",
+  "n_rows": 2050,
+  "n_train": 1415,
+  "n_val": 245,
+  "n_test": 390,
+  "pos_rate_train": 0.794346272945404,
+  "pos_rate_test": 0.699999988079071,
+  "test_metrics": {
+    "roc_auc": 0.8823768823768824,
+    "pr_auc": 0.9419042285264163,
+    "hit_rate_top5pct": 1.0,
+    "n": 390
+  },
+  "epochs": 50
+}

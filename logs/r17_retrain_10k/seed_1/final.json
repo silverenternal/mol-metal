@@ -1,0 +1,237 @@
+{
+  "config": {
+    "csv": "/home/hugo/codes/mol-metal/molmetal/data/metallo_drugs_500_train.csv",
+    "n_train_loaded": 449,
+    "n_train_embedded": 358,
+    "n_skipped": 91,
+    "steps_planned": 10000,
+    "steps_executed": 10000,
+    "batch_size": 4,
+    "lr": 0.0001,
+    "lr_warmup_steps": 200,
+    "hidden_dim": 128,
+    "n_layers": 3,
+    "joint_train": true,
+    "bond_head": "learned",
+    "vocab_size": 20,
+    "bond_head_in_dim": 265,
+    "device": "cuda",
+    "cuda_available": true,
+    "torch_version": "2.14.0+cu130",
+    "seed": 1
+  },
+  "wall_clock_s": 558.3474967479706,
+  "loss_curves_summary": {
+    "cfm": {
+      "n": 10000,
+      "first": 21.406187057495117,
+      "last": 8.271453857421875,
+      "min": 3.3536195755004883,
+      "max": 4039.67626953125,
+      "delta_first_to_last": -13.134733200073242
+    },
+    "atom": {
+      "n": 10000,
+      "first": 2.995732307434082,
+      "last": 1.1494815349578857,
+      "min": 0.8682059049606323,
+      "max": 25.05377769470215,
+      "delta_first_to_last": -1.8462507724761963
+    },
+    "bond": {
+      "n": 10000,
+      "first": 25.434694290161133,
+      "last": 1.1195257902145386,
+      "min": 0.9395175576210022,
+      "max": 34.231651306152344,
+      "delta_first_to_last": -24.315168499946594
+    },
+    "total": {
+      "n": 10000,
+      "first": 47.14045715332031,
+      "last": 9.505928039550781,
+      "min": 4.682543754577637,
+      "max": 4041.643310546875,
+      "delta_first_to_last": -37.63452911376953
+    }
+  },
+  "lr_curve_summary": {
+    "n": 10000,
+    "first": 5.000000000000001e-07,
+    "last": 0.0001,
+    "min": 5.000000000000001e-07,
+    "max": 0.0001,
+    "delta_first_to_last": 9.95e-05,
+    "target_lr": 0.0001,
+    "warmup_steps_requested": 200,
+    "lr_at_step_1": 5.000000000000001e-07,
+    "lr_at_end_of_warmup": 0.0001,
+    "lr_at_final_step": 0.0001
+  },
+  "decode_summary": {
+    "decode_ratio_at_200": null,
+    "decode_ratio_at_500": null,
+    "decode_ratio_at_1000": 1.0,
+    "max_decode_ratio": 1.0,
+    "first_decode_ratio_nonzero_step": 1000,
+    "all_probes": [
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 1.233144223690033,
+        "step": 1000,
+        "wall_s": 2.058122158050537
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 1.3960685729980469,
+        "step": 2000,
+        "wall_s": 0.4424929618835449
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 1.5199472904205322,
+        "step": 3000,
+        "wall_s": 0.31629085540771484
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 1.6318918466567993,
+        "step": 4000,
+        "wall_s": 0.35160326957702637
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 1.9399625658988953,
+        "step": 5000,
+        "wall_s": 0.37038135528564453
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 2.9279576539993286,
+        "step": 6000,
+        "wall_s": 0.19636917114257812
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 3.023520588874817,
+        "step": 7000,
+        "wall_s": 0.21563267707824707
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 3.12476247549057,
+        "step": 8000,
+        "wall_s": 0.3837299346923828
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 3.045858144760132,
+        "step": 9000,
+        "wall_s": 0.650547981262207
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 3.0818731784820557,
+        "step": 10000,
+        "wall_s": 0.5820040702819824
+      }
+    ]
+  },
+  "p0_fixes_active": {
+    "F1_bond_aware_decoder_wired": true,
+    "F2_bond_head_in_dim_correct": true,
+    "F3_vocab_mask_in_loss": true,
+    "F4_hidden_dim_64_plus": true,
+    "F5_no_bonds_zeros_placeholder": true
+  },
+  "p1_fixes_active": {
+    "P1_1_hidden_dim_128": true,
+    "P1_2_learnable_vel_scale": true,
+    "P1_3_pcgrad_multi_task": false,
+    "P1_4_connectivity_aware_decoder": true
+  },
+  "lambda_reward_active": {
+    "lambda_reward_enabled": false,
+    "lambda_reward_samples_requested": 64,
+    "lambda_dataset_size": 0,
+    "lambda_dataset_after_zero_filter": 0,
+    "lambda_zero_weight_dropped": 0,
+    "lambda_mix_ratio": 0.25,
+    "lambda_reweight_alpha": 1.0,
+    "lambda_pocket_id": "metallo_drug_smoke",
+    "lambda_loss_is_weighted": false
+  },
+  "raw_log_tail": [
+    {
+      "step": 9991,
+      "loss": 20.240890502929688
+    },
+    {
+      "step": 9992,
+      "loss": 9.283136367797852
+    },
+    {
+      "step": 9993,
+      "loss": 8.341002464294434
+    },
+    {
+      "step": 9994,
+      "loss": 13.274558067321777
+    },
+    {
+      "step": 9995,
+      "loss": 9.746941566467285
+    },
+    {
+      "step": 9996,
+      "loss": 14.742218971252441
+    },
+    {
+      "step": 9997,
+      "loss": 9.216943740844727
+    },
+    {
+      "step": 9998,
+      "loss": 10.292553901672363
+    },
+    {
+      "step": 9999,
+      "loss": 15.965536117553711
+    },
+    {
+      "step": 10000,
+      "loss": 9.505928039550781
+    }
+  ],
+  "checkpoint_path": "logs/r17_retrain_10k/seed_1/ckpt.pt"
+}

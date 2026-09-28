@@ -1,0 +1,65 @@
+{
+  "metric": "cfm_decode_real",
+  "description": "Real (not synthetic) CFM decode_ratio on NCI-60 9-cell + DrugOOD native SMILES, RDKit-strict.",
+  "unit": "ratio (0-1)",
+  "scope": "Real CFM (cfm_yuelbond_wasserstein.pt) on real ligands",
+  "synthetic_baseline_decode_ratio": 1.0,
+  "checkpoint_path": "/home/hugo/codes/mol-metal/molmetal/checkpoints/cfm_yuelbond_wasserstein.pt",
+  "data_config": "nci60+drugood",
+  "nci60_path": "/home/hugo/codes/mol-metal/molmetal/data/nci60_precious_9cell.csv",
+  "drugood_path": "/home/hugo/codes/mol-metal/.data/molmetal/drugood/ic50/data/train.csv",
+  "n_nci60_loaded": 7823,
+  "n_drugood_loaded": 1000,
+  "n_total_platinai": 5000,
+  "n_pt_subset": 874,
+  "n_sampled": 5991,
+  "aggregate_n_ok": 5979,
+  "aggregate_n_total": 5991,
+  "value": 0.9979969954932398,
+  "gap_vs_synthetic": -0.0020030045067601643,
+  "wall_time_s": 281.0566475391388,
+  "device": "cuda:0",
+  "pocket_id": "1h36",
+  "jitter": 0.05,
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "date_utc": "2026-09-27",
+  "status": "MEASURED_PASS",
+  "per_seed": [
+    {
+      "seed": 0,
+      "n_samples": 1997,
+      "n_ok": 1993,
+      "decode_ratio": 0.9979969954932398,
+      "wall_time_s": 6.740062475204468,
+      "device": "cuda:0",
+      "closure_bounded": true,
+      "pocket_id": "1h36"
+    },
+    {
+      "seed": 1,
+      "n_samples": 1997,
+      "n_ok": 1993,
+      "decode_ratio": 0.9979969954932398,
+      "wall_time_s": 6.686625003814697,
+      "device": "cuda:0",
+      "closure_bounded": true,
+      "pocket_id": "1h36"
+    },
+    {
+      "seed": 2,
+      "n_samples": 1997,
+      "n_ok": 1993,
+      "decode_ratio": 0.9979969954932398,
+      "wall_time_s": 6.407189607620239,
+      "device": "cuda:0",
+      "closure_bounded": true,
+      "pocket_id": "1h36"
+    }
+  ],
+  "honest_framing": "PARTIAL: real 0.9980 < synthetic 1.000 (expected \u2014 synthetic is upper bound; real < synthetic is the honest framing per party-twenty-spirit \u00a73.5)",
+  "notes": "Synthetic baseline = 1.000 (Wf-124 ship on Pt-click clouds). Real CFM may be lower; this measurement is the honest gap."
+}

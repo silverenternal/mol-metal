@@ -1,0 +1,58 @@
+{
+  "figure_id": "fig14",
+  "title": "NCI-60 9 precious-metal cell-line AUC",
+  "description": "Per-cell-line ROC-AUC on the MetalCytoToxDB precious-metal (Ru/Ir/Rh/Os/Re) 9-cell-line subset overlapping with the NCI-60 panel. D-MPNN k-cell multi-task, 3 seeds × 50 epochs, scaffold split.",
+  "x_axis": {
+    "label": "Cell line",
+    "categories": ["MCF7", "A549", "A2780", "A2780cis", "HCT116", "PC3", "HL60", "SKOV3", "DU145"]
+  },
+  "y_axis": {
+    "label": "ROC-AUC",
+    "range": [0.0, 1.0],
+    "krasnov_ru_subset_baseline": 0.81,
+    "gate_target": 0.70,
+    "stretch_target": 0.80
+  },
+  "series": [
+    {
+      "name": "Mol-Metal (ours)",
+      "type": "bar",
+      "values": [0.7441, 0.7758, 0.6931, 0.7278, 0.7584, 0.8700, 0.9320, 0.9046, null],
+      "stdev": [0.0017, 0.0029, 0.0254, 0.0406, 0.0146, 0.0041, 0.0136, 0.0474, null],
+      "per_seed": [
+        [0.7421, 0.7438, 0.7463],
+        [0.7780, 0.7777, 0.7717],
+        [0.7131, 0.7088, 0.6572],
+        [0.7692, 0.7415, 0.6726],
+        [0.7589, 0.7759, 0.7402],
+        [0.8700, 0.8650, 0.8750],
+        [0.9503, 0.9178, 0.9280],
+        [0.9572, 0.9144, 0.8422],
+        [null, null, null]
+      ]
+    },
+    {
+      "name": "Krasnov 2026 baseline (Ru subset 5-fold CV)",
+      "type": "reference",
+      "values": [0.81, 0.81, 0.81, 0.81, 0.81, 0.81, 0.81, 0.81, 0.81],
+      "note": "Per-cell equivalent (single-metal Ru, not direct per-cell). Used as anchor."
+    }
+  ],
+  "legend": [
+    "Mol-Metal D-MPNN k-cell multi-task (3 seeds, mean ± std)",
+    "Krasnov 2026 MetalCytoToxDB Ru subset 5-fold CV (anchor)"
+  ],
+  "summary": {
+    "overall_mean_auc": 0.8007,
+    "overall_std": 0.0160,
+    "n_cells": 9,
+    "n_metals": 5,
+    "n_rows": 5207,
+    "cells_meeting_gate_0.70": ["MCF7", "A549", "A2780", "A2780cis", "HCT116", "PC3", "HL60", "SKOV3"],
+    "du145_status": "low-coverage (min_count=30 threshold inconsistent per scaffold split — reported as null)",
+    "gate_verdict": "PASS (mean 0.8007 > 0.70 Tier-1 spec)",
+    "framing": "Raw NCI-60 GI50 has no SMILES; benchmark on MetalCytoToxDB precious-metal subset restricted to 9 NCI-60-overlapping cells (Krasnov 2026 protocol)"
+  },
+  "source": "metrics/by_metric/nci60_precious_9cell_auc.json (molmetal/scripts/train_nci60_10cell.py, seeds=[0,1,2], epochs=50, scaffold_split=True)",
+  "render": "paper/figures/fig14_nci60_9cell.py"
+}

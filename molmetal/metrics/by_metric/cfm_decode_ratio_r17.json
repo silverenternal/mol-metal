@@ -1,0 +1,113 @@
+{
+  "phase": "R17_GPU_WRAPPER_v1",
+  "date": "2026-09-25T22:10:49+0800",
+  "gpu_probe": {
+    "probed_at": "2026-09-25T22:10:48+0800",
+    "nvidia_smi": {
+      "present": true,
+      "rc": 0,
+      "gpus": [
+        "GPU 0: NVIDIA RTX PRO 6000 Blackwell Workstation Edition (UUID: GPU-9421eb6c-1bc6-f610-a5b6-1d9f4dc4bf36)",
+        "GPU 1: NVIDIA GeForce RTX 5090 (UUID: GPU-f892839a-1afa-463e-ff88-6cc5ceeabddf)"
+      ],
+      "stderr": ""
+    },
+    "rocm_smi": {
+      "present": false,
+      "rc": 127,
+      "stderr": "FileNotFoundError: [Errno 2] No such file or directory: 'rocm-smi'"
+    },
+    "torch_cuda": {
+      "probed": true,
+      "cuda_available": true,
+      "device_count": 1,
+      "torch_version": "2.14.0+cu130"
+    },
+    "vendor": "nvidia",
+    "usable": true,
+    "decision": "NVIDIA_PATH",
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "0",
+      "MOLMETAL_CFM_AMP_DTYPE": "bfloat16",
+      "MOLMETAL_CFM_AMP": "1",
+      "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+    }
+  },
+  "config": {
+    "steps_per_seed": 10000,
+    "seeds": [
+      42
+    ],
+    "hidden_dim": 128,
+    "n_layers": 3,
+    "batch_size": 4,
+    "lr": 0.0001,
+    "lr_warmup_steps": 200,
+    "decode_smoke_every": 1000,
+    "decode_smoke_samples": 16,
+    "hang_timeout_s": 60.0,
+    "max_resume_attempts": 3
+  },
+  "wall_clock_s": 0.00021958351135253906,
+  "seed_summaries": [
+    {
+      "seed": 42,
+      "dry_run": true,
+      "cmd_path": "/tmp/pytest-of-hugo/pytest-108/test_dry_run_is_idempotent0/r17_logs/seed_42_cmd_attempt_1.txt",
+      "attempts": 1,
+      "decode_events": 0,
+      "max_step": 0
+    }
+  ],
+  "decode_summary": {
+    "n_events": 1,
+    "first_nonzero_step": null,
+    "max_decode_ratio": 0.0,
+    "all_probes": [
+      {
+        "kind": "decode",
+        "step": 0,
+        "decode_ratio": 0.0,
+        "n_decoded": 0,
+        "n_total": 16,
+        "mean_atoms": 0.0,
+        "disconnected": 16,
+        "probe_wall_s": 0.0,
+        "wall_s": 1790345449.8073926,
+        "_synthetic": true,
+        "cmd": [
+          "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python",
+          "-u",
+          "molmetal/scripts/metallo_drug_smoke_retrain.py",
+          "--csv",
+          "/home/hugo/codes/mol-metal/molmetal/data/metallo_drugs_500_train.csv",
+          "--steps",
+          "10000",
+          "--batch-size",
+          "4",
+          "--hidden-dim",
+          "128",
+          "--n-layers",
+          "3",
+          "--lr",
+          "0.0001",
+          "--lr-warmup-steps",
+          "200",
+          "--decode-smoke-every",
+          "1000",
+          "--decode-smoke-samples",
+          "16",
+          "--atom-vocab",
+          "20",
+          "--bond-head",
+          "learned",
+          "--seed",
+          "42",
+          "--out-dir",
+          "/tmp/pytest-of-hugo/pytest-108/test_dry_run_is_idempotent0/r17_logs/seed_42"
+        ]
+      }
+    ]
+  },
+  "verdict": "DRY_RUN_OK"
+}

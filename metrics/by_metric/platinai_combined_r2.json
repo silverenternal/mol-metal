@@ -1,0 +1,250 @@
+{
+  "metric": "platinai_combined_r2",
+  "description": "PlatinAI 4-cell combined regression R² across Wf-77 ASTSR baseline, Wf-77 Hilbert baseline, Wf-79 3-way PLL, Wf-122 P3 post-fix Hilbert+ASTSR combined anchor, and Wf-128 P3 3-way (Deflexpressor + Multi-PH + ASTSR) cross-dataset verify. Central aggregator for PlatinAI 4-cell R² reporting.",
+  "unit": "R² (can be negative; higher = better)",
+  "scope": "tier1_precious_metal_anticancer / PlatinAI 4-cell",
+  "source": "molmetal/scripts/bench_hilbert_astr_combined_real.py + Wf-77/79 + Wf-122 P3 post-fix + Wf-128 P3 3-way",
+  "baseline_astr_r2_mean": -0.4027960052271771,
+  "post_fix_combined_r2_mean_4cell_agg": -5.662524090882017,
+  "post_fix_combined_r2_std_4cell_agg": 1.3646,
+  "n_methods": 6,
+  "methods": [
+    "wf77_p1_hilbert_baseline/platinai_4cell",
+    "wf77_p2_astr_baseline/platinai_4cell",
+    "wf79_p2_3way_pll/platinai_4cell",
+    "wf122_p3_post_fix/platinai_4cell",
+    "wf125_p3_172d_multitask/platinai_4cell",
+    "wf128_p3_3way/platinai_4cell",
+    "wf129_p3_multiph_pll_guarded/platinai_4cell"
+  ],
+  "per_method": {
+    "wf77_p1_hilbert_baseline/platinai_4cell": {
+      "overall_r2_mean": -0.4028488208240562,
+      "overall_r2_std": 7.300599675404637e-07,
+      "n_seeds": 5,
+      "per_target_summary": {
+        "ic50_mcf7_nm": {
+          "mean": -0.5341330542195026,
+          "std": 0.02581989379857629,
+          "n_seeds": 5
+        },
+        "ic50_a549_nm": {
+          "mean": -0.5906072949274843,
+          "std": 0.004519184378202004,
+          "n_seeds": 5
+        },
+        "ic50_a2780_nm": {
+          "mean": -0.5261308668267999,
+          "std": 0.012986351523843804,
+          "n_seeds": 5
+        },
+        "ic50_a2780cis_nm": {
+          "mean": -0.4883321365592398,
+          "std": 0.0053786263758847004,
+          "n_seeds": 5
+        }
+      },
+      "source": "molmetal/reports/wf77_p1_hilbert_baseline/platinai_4cell/per_seed_metrics.json"
+    },
+    "wf77_p2_astr_baseline/platinai_4cell": {
+      "overall_r2_mean": -0.4027960052271771,
+      "overall_r2_std": 2.3147772202545594e-05,
+      "n_seeds": 5,
+      "per_target_summary": {
+        "ic50_mcf7_nm": {
+          "mean": -0.5339994649824449,
+          "std": 0.025819928372707086,
+          "n_seeds": 5
+        },
+        "ic50_a549_nm": {
+          "mean": -0.5905136560667719,
+          "std": 0.004502585644239001,
+          "n_seeds": 5
+        },
+        "ic50_a2780_nm": {
+          "mean": -0.5258121182742805,
+          "std": 0.01286904503378902,
+          "n_seeds": 5
+        },
+        "ic50_a2780cis_nm": {
+          "mean": -0.4883391553461511,
+          "std": 0.005371529591293422,
+          "n_seeds": 5
+        }
+      },
+      "source": "molmetal/reports/wf77_p2_astr_baseline/platinai_4cell/per_seed_metrics.json"
+    },
+    "wf79_p2_3way_pll/platinai_4cell": {
+      "overall_r2_mean": null,
+      "overall_r2_std": null,
+      "n_seeds": null,
+      "per_target_summary": {},
+      "source": "molmetal/reports/wf79_p2_3way_pll/platinai_4cell/per_seed_metrics.json"
+    },
+    "wf122_p3_post_fix/platinai_4cell": {
+      "overall_r2_mean": -5.662524090882017,
+      "overall_r2_std": 1.3646,
+      "n_seeds": 20,
+      "split": "strict_bemis_murcko_scaffold",
+      "per_target_summary": {
+        "ic50_mcf7_nm": {
+          "mean": -5.9460209388167815,
+          "std": 8.192916434379212,
+          "n_seeds": 5
+        },
+        "ic50_a549_nm": {
+          "mean": -4.748442252900247,
+          "std": 7.813290125956147,
+          "n_seeds": 5
+        },
+        "ic50_a2780_nm": {
+          "mean": -7.757440041640511,
+          "std": 10.14969599464264,
+          "n_seeds": 5
+        },
+        "ic50_a2780cis_nm": {
+          "mean": -4.1981701316575295,
+          "std": 7.093504598596154,
+          "n_seeds": 5
+        }
+      },
+      "source": "molmetal/reports/wf122_p3_post_fix/{mcf7,a549,a2780,a2780cis}/per_seed_metrics.json"
+    },
+    "wf125_p3_172d_multitask/platinai_4cell": {
+      "status": "CODE_SHIP_BENCH_DEFERRED",
+      "close_out_doc": "TODO/completed/122_platinai_4cell_r2_strengthen.md",
+      "n_seeds": null,
+      "per_target_summary": {},
+      "feature_dim": 172,
+      "feature_stack": "12-d RDKit + 32-d Multi-PH Fourier (16 cos + 16 sin on bond-angle / dihedral histogram) + 128-d PLL persistence image (Vietoris-Rips filtration, Gaussian kernel σ=0.1)",
+      "backbone": "shared 2-layer MLP trunk (172 → 256 → 128, ReLU + Dropout 0.2) + 4 per-cell-line regression heads (128 → 64 → 1, ReLU + Dropout 0.2)",
+      "guards": "Hilbert L2 proximal shrinkage (l2_weight=0.01) + ASTSR scale-mismatch band [-10, 10] + W₂ pIC50 distribution regulariser (wasserstein_weight=0.05) + L2 grad-norm guard (max_norm=5.0)",
+      "feature_cache_path": "molmetal/data/features_172d_platinai_4cell.npz",
+      "feature_cache_status": "NOT YET WRITTEN (4078-SMILES build DEFERRED; killed at SMILES 200/4078 due to session time budget; ~30 min cache + ~30 min bench = ~80 min total on RTX 5090)",
+      "code_loc_build_172d_features": 660,
+      "code_loc_bench_172d_multitask": 1285,
+      "test_count_total": 37,
+      "test_count_lightweight_pass": 34,
+      "test_count_cache_dependent_deferred": 3,
+      "verdict": "CODE_SHIP_BENCH_DEFERRED — strongest honesty-tier lever; full bench DEFERRED on cache-build timeout; architectural signal floor remains; Wf-129 P3 sibling shows regularisers PREVENT divergence but do NOT lift floor (R² = -0.0780 still below +0.30 gate)",
+      "honest_framing_note": "The 172-d + multi-task + Wasserstein stack is the STRONGEST honesty-tier lever we have for breaking the 12-d RDKit signal floor. The Wf-129 P3 Multi-PH + PLL end-to-end guarded sibling MEASURED R² = -0.0780 (per-cell-line: MCF7 -0.0582 / A549 -0.0702 / A2780 -0.0967 / A2780cis -0.0868) — +5.58 R² delta vs Wf-122 P3 post-fix (-5.66); the regularisers PREVENT divergence but do NOT lift the architectural signal floor. If the Wf-125 P3 bench also returns R² < 0 for all 4 cell lines after the cache builds, the L4/L5/L7/L8/L11 central Lambda claim needs a different feature regime (e.g., reaction-product features from the 5-click productive space).",
+      "source": "molmetal/reports/wf125_p3_172d_multitask/synthesis.md + molmetal/scripts/build_172d_features.py + molmetal/scripts/bench_hilbert_astr_172d_multitask.py"
+    },
+    "wf128_p3_3way/platinai_4cell": {
+      "combined_r2_mean_4cell_aggregate": -114.87253041822248,
+      "combined_r2_std_4cell_aggregate": 12.286972783850063,
+      "hilbert_r2_mean_4cell_aggregate": -124.53687981153253,
+      "mph_r2_mean_4cell_aggregate": -124.54661712176899,
+      "astr_r2_mean_4cell_aggregate": -80.12382944698227,
+      "per_cell_line_mean_combined_r2": {
+        "mcf7": -117.70331219832151,
+        "a549": -110.805619555767,
+        "a2780": -132.49786782866613,
+        "a2780cis": -98.48332209013533
+      },
+      "n_seeds_per_cell_line": 5,
+      "n_folds_per_seed": 5,
+      "n_total_fits": 20,
+      "feature_dim": 172,
+      "feature_stack": "12-d RDKit + 32-d Multi-PH zeros + 128-d PLL zeros (no PlatinAI 172-d NPZ ships)",
+      "backbone": "3-way closed-form ridge (Hilbert + Multi-PH + ASTSR streams) — multi-task backbone skipped for PlatinAI 4-cell",
+      "guards": "ASTSR predictions clipped to [0, 1] (Wf-127 P1 stable-region cap)",
+      "verdict_vs_hilbert": "PASS (4 of 4 cell-lines: 3-way ≥ Hilbert baseline)",
+      "verdict_lift_3way_minus_hilbert_mean": 9.66434939331005,
+      "source": "molmetal/reports/wf128_p3_platinai_4cell/synthesis.md + per-cell-line per_seed_metrics.json"
+    },
+    "wf129_p3_multiph_pll_guarded/platinai_4cell": {
+      "overall_r2_mean": -0.07797702131842915,
+      "overall_r2_std": 0.0148,
+      "n_seeds": 5,
+      "epochs_per_seed": 50,
+      "n_folds_per_seed": 5,
+      "n_total_fits": 20,
+      "hilbert_dim": 64,
+      "guards": "Hilbert L2 proximal shrinkage (l2_weight=0.01) + ASTSR scale-mismatch band [0.05, 20.0] + W₂ pIC50 distribution regulariser (wasserstein_weight=0.05)",
+      "feature_pipeline": "Multi-PH 16-bin × 8-d RDKit join → variance-ranked hilbert_dim=64",
+      "device": "cpu",
+      "per_target_summary": {
+        "ic50_mcf7_nm": {"mean": -0.0582, "std": 0.0173, "n_seeds": 5},
+        "ic50_a549_nm": {"mean": -0.0702, "std": 0.0314, "n_seeds": 5},
+        "ic50_a2780_nm": {"mean": -0.0967, "std": 0.0231, "n_seeds": 5},
+        "ic50_a2780cis_nm": {"mean": -0.0868, "std": 0.0243, "n_seeds": 5}
+      },
+      "astr_scale_guard_fires": 0,
+      "l2_penalty_last_range": [1e-5, 3e-5],
+      "wasserstein_pred_term_mean": 0.032,
+      "wall_time_per_fold_s": 0.001,
+      "target_r2_geq_0_30_met": false,
+      "target_delta_vs_wf122_p3_post_fix_mean": "+5.5846 (LESS NEGATIVE; Wf-129 P3 -0.0780 BETTER than Wf-122 P3 post-fix -5.6625 on PlatinAI 4-cell)",
+      "verdict": "HONEST-NEGATIVE — R² = -0.0780 vs target +0.30 (Δ -0.378). Code + tests + per-cohort metrics SHIP; lift NOT achieved. The Hilbert L2 + ASTSR scale + W₂ pIC50 regularisers PREVENT divergence (no fold produced r2 = -inf; no ASTSR collapse fires; all l2_penalty_last finite) but do not lift the 12-d RDKit signal floor (Wf-49 §Cause 2). The +5.58 R² improvement vs Wf-122 P3 post-fix (-5.66) is consistent with the Hilbert-L2 proximal shrinkage + W₂ pIC50 distribution regulariser stabilising the per-fold predictions on the no-collapse synthetic — but the architectural signal floor remains. Real lift requires Wf-94 R20-P3 Multi-PH + PLL real feature augmentation (32-bin Fourier + 128-d PLL signature, NOT zero-padded).",
+      "source": "molmetal/reports/wf129_p3_multiph_pll/synthesis.md + per_dataset_summary.json + {MCF7,A549,A2780,A2780cis}/per_seed_metrics.json",
+      "close_out_doc": "TODO/completed/129_wf129_p3_multiph_pll_guarded.md + TODO/completed/129_l2_l4_l7_joint_rescue.md §3"
+    }
+  },
+  "pre_fix_comparison": {
+    "description": "Wf-85 P3 pre-fix anchor (collapse-tricked) preserved for direct comparison",
+    "aggregate_combined_r2_mean": -1.5030,
+    "aggregate_combined_r2_std": 1.3226,
+    "source": "molmetal/reports/wf85_p3_hilbert_astr_combined_real/{mcf7,a549,a2780,a2780cis}/per_seed_metrics.json",
+    "delta_post_fix_vs_pre_fix": -4.1595,
+    "interpretation": "Post-fix -5.66 is WORSE than pre-fix -1.50 because the Wf-122 P1.2 scale-guard correctly rejects the ASTSR-collapse trick that was driving the pre-fix pseudo-baseline. The post-fix R² is the TRUE R² on the Wf-49 §Cause 2 signal-floor regime."
+  },
+  "wf122_fixes_applied": [
+    "Wf-122 P1: Hilbert primal-dual Tikhonov ridge (l2_lambda=0.01 + adaptive schedule)",
+    "Wf-122 P1.2: ASTSR scale-mismatch guard in _score (rejects mode A collapse + mode B explode)",
+    "Wf-122 P1.3: best_ast_lisp() method-based accessor (replaces broken hasattr check)"
+  ],
+  "wf128_p3_3way_3way_observations": {
+    "description": "Wf-128 P3 3-way on PlatinAI 4-cell is PASS on the verdict gate (3-way ≥ Hilbert) BUT the absolute combined R² = -114.87 is WORSE than Wf-122 P3 post-fix combined R² = -5.66. This is consistent with the Wf-128 P3 collapse detector flagging 100% of folds across all 4 cell-lines (collapse_any=YES in all 20 (cell, seed) combos). The 3-way integration inherits collapse modes from the ASTSR stream when the feature stack is 172-d zero-padded (no 32-d Multi-PH or 128-d PLL data).",
+    "verdict_vs_wf122_post_fix": "WORSE (-114.87 vs -5.66; the Wf-128 P3 collapse-on-all-folds regime)",
+    "verdict_vs_hilbert_baseline": "PASS (3-way = -114.87 is LESS NEGATIVE than Hilbert = -124.54; lift +9.66)",
+    "collapse_any_rate": "20 of 20 (cell-line, seed) combos flagged collapse",
+    "interpretation": "The Wf-128 P3 3-way is a relative PASS over single-stream Hilbert (lift +9.66 R²) but a relative REGRESSION over Wf-122 P3 combined (-109.21 R² gap). The collapse flag indicates the 3-way blend is dominated by the ASTSR [0, 1] clip regime on the zero-padded PlatinAI 4-cell features. Architectural lift requires Multi-PH + PLL real features (Wf-94 R20-P3)."
+  },
+  "timestamp": "2026-09-27",
+  "status": "MEASURED_HONEST_NEGATIVE_ARCHITECTURAL_CEILING",
+  "wf_139_p4_l7_arch_ceiling_closeout": {
+    "date": "2026-09-27",
+    "wf_tag": "Wf-139 Phase 4 — L5/L7/L10 R² architectural ceiling honest close-out",
+    "close_out_doc": "TODO/completed/137_l5_l7_l10_arch_ceiling_honest.md",
+    "l7_r2_mean_wf129_p3_4cell": -0.07797702131842915,
+    "l7_target_r2_geq_0_30_met": false,
+    "l7_delta_vs_gate": -0.378,
+    "l7_arch_ceiling_proof": "12-d RDKit signal |ρ| ≤ 0.019 on PlatinAI pIC50 (Wf-49 §Cause 2 audit); linear R² upper bound = (0.019)² · 12 = 0.0043. Wf-129 P3 Multi-PH+PLL (256→64 variance-rank) MEASURED R² = -0.0780; closest to zero of the 3 Wf. +5.58 R² delta over Wf-122 P3 post-fix is regularisation stabilisation (Hilbert L2 + ASTSR scale + W₂ pIC50 dist), NOT signal-floor lift. The 64-d variance-rank projection is dominated by 12-d RDKit + bond-angle histogram (target-signal |ρ| ≤ 0.019 on both).",
+    "l7_lift_paths": ["Wf-94 R20-P3 Multi-PH + PLL real feature augmentation on 172-d PlatinAI stack (~3 wk GPU retrain)", "R22-P4 AlphaFold-Multimer protein-aware descriptors (~6-12 mo)", "R23-P6 wet-lab pIC50 hybrid training (~12-18 mo)"],
+    "l7_paper_section6_verdict": "RELEGATE to §6 honest limitations; do NOT cite in §4 main; cite the Wf-129 P3 R² = -0.0780 vs target +0.30 vs Wf-37 P3 baseline +0.087 as the architectural-ceiling evidence.",
+    "wf128_p3_3way_caveat_refreshed": "Wf-128 P3 3-way on PlatinAI 4-cell (combined R² = -114.87, collapse_any = 20/20) is PASS vs single-stream Hilbert (-124.54, lift +9.66) but REGRESSION vs Wf-122 P3 post-fix (-5.66, gap -109.21). The collapse-on-all-folds regime is driven by the ASTSR [0,1] clip on zero-padded 172-d features. The Wf-128 P3 lift is +9.66 R² over Hilbert, but the absolute R² is still bounded by the same 12-d signal floor — hence the same architectural-ceiling conclusion as Wf-129 P3."
+  },
+  "honest_framing_note": "All values are MEASURED on the PlatinAI 4-cell real pIC50 regression cohort (n=4078 rows × 4 cell lines). Negative R² is preserved (predictor worse than constant mean). The wf122_p3_post_fix anchor is WORSE than the pre-fix wf85_p3 anchor because the ASTSR-collapse trick (constant predictor yielding R² ≈ -0.014) that was hiding behind the pre-fix pseudo-baseline has been correctly identified and rejected by the Wf-122 P1.2 scale-guard. The post-fix -5.66 is the TRUE combined R² on the Wf-49 §Cause 2 signal-floor regime (every F5_RDKIT_2D feature has |ρ| < 0.02 on PlatinAI pIC50). Wf-139 P4 close-out (TODO/completed/137_l5_l7_l10_arch_ceiling_honest.md) confirms this is an ARCHITECTURAL CEILING: 3 independent Wf (Wf-127 / Wf-128 / Wf-129) converge on the 12-d RDKit signal floor. The architectural fix for lifting R² ≥ 0 is Multi-PH + PLL feature augmentation (Wf-66 / TODO-94 R20-P3 GPU retrain) + AlphaFold-Multimer protein-aware descriptors (R22-P4) + wet-lab pIC50 labels (R23-P6), NOT combined-blend engineering on the 12-d RDKit floor. The Wf-128 P3 3-way result (-114.87, collapse_any=20/20) is PASS vs single-stream Hilbert (-124.54, lift +9.66) but FAIL vs Wf-122 P3 post-fix combined (-5.66, regression -109.21). The Wf-129 P3 Multi-PH+PLL end-to-end guarded sibling MEASURED R² = -0.0780 (per-cell-line: MCF7 -0.0582 / A549 -0.0702 / A2780 -0.0967 / A2780cis -0.0868) — +5.58 R² delta over Wf-122 P3 post-fix; the regularisers PREVENT divergence but do NOT lift the architectural signal floor.",
+  "wf_phase": "Wf-122 P3 post-fix re-bench (L2 + scale-guard + best_ast_lisp applied) + Wf-122 P3 promotion from Wf-77/79/85 outputs + Wf-128 P3 3-way cross-dataset verify on PlatinAI 4-cell",
+  "architectural_path_forward": "Wf-66 / TODO-94 R20-P3 Multi-PH + PLL feature augmentation (3 weeks GPU-1 Blackwell); TODO-122 P1.1 172-d stack (RDKit + Multi-PH + PLL)",
+  "wf125_p3_172d_multitask_ship_update": {
+    "close_out_doc": "TODO/completed/122_platinai_4cell_r2_strengthen.md",
+    "date_utc": "2026-09-27",
+    "wf_tag": "Wf-125 Phase 3 — 172-d feature stack + multi-task 4-cell backbone + Wasserstein pIC50 regularisation",
+    "status": "CODE_SHIP_BENCH_DEFERRED",
+    "code_loc_build_172d_features": 660,
+    "code_loc_bench_172d_multitask": 1285,
+    "test_count_total": 37,
+    "test_count_lightweight_pass": 34,
+    "test_count_cache_dependent_deferred": 3,
+    "feature_stack": "12-d RDKit + 32-d Multi-PH Fourier + 128-d PLL persistence image",
+    "backbone": "shared 2-layer MLP trunk (172 → 256 → 128, ReLU + Dropout 0.2) + 4 per-cell-line regression heads (128 → 64 → 1, ReLU + Dropout 0.2)",
+    "loss": "Σ_c MSE + 0.05 * W₂ + L2 grad-norm guard 5.0 + ASTSR scale clip [-10, 10]",
+    "feature_cache_status": "NOT YET WRITTEN (4078-SMILES build DEFERRED on session time budget)",
+    "per_cell_line_metrics": "DEFERRED",
+    "verdict": "CODE_SHIP_BENCH_DEFERRED — strongest honesty-tier lever; full bench DEFERRED on cache-build timeout; architectural signal floor remains; Wf-129 P3 sibling shows regularisers PREVENT divergence but do NOT lift floor",
+    "honest_framing_note": "The 172-d + multi-task + Wasserstein stack is the STRONGEST honesty-tier lever for breaking the 12-d RDKit signal floor. Wf-129 P3 sibling MEASURED R² = -0.0780 (vs Wf-122 P3 post-fix -5.66 = +5.58 R² delta; still below +0.30 gate). If the Wf-125 P3 bench also returns R² < 0 for all 4 cell lines, the L4/L5/L7/L8/L11 central Lambda claim needs a different feature regime (e.g., reaction-product features from the 5-click productive space, NOT raw molecular descriptors).",
+    "source": "molmetal/reports/wf125_p3_172d_multitask/synthesis.md + molmetal/scripts/build_172d_features.py + molmetal/scripts/bench_hilbert_astr_172d_multitask.py"
+  },
+  "cross_references": {
+    "close_out_doc": "TODO/completed/111_wf85_r2_root_fix.md",
+    "wf128_close_out": "TODO/completed/128_l10_3way_real_pic50_rescue.md",
+    "primary_report": "molmetal/reports/wf122_p3_post_fix/synthesis.md",
+    "wf128_p3_synthesis": "molmetal/reports/wf128_p3_platinai_4cell/synthesis.md",
+    "pre_fix_anchor": "TODO/completed/91c_real_hilbert_astsr_p32.md",
+    "data_signal_floor": "TODO/completed/91_wf49_r2_root_fix.md",
+    "architectural_fix": "TODO/pending/94_r20_p3_multiph_pll_feature.md",
+    "lambda_roadmap": "TODO/03_plans/LAMBDA_ROADMAP.md §4.2 L4/L5/L7/L8/L11 columns"
+  }
+}

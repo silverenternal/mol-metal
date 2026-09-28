@@ -1,0 +1,17 @@
+{
+  "seed": 0,
+  "task": "hiv",
+  "n_rows": 41127,
+  "n_train": 28753,
+  "n_val": 4078,
+  "n_test": 8296,
+  "pos_rate_train": 0.03314436599612236,
+  "pos_rate_test": 0.040139827877283096,
+  "test_metrics": {
+    "roc_auc": 0.752757026774357,
+    "pr_auc": 0.36804667834888405,
+    "hit_rate_top5pct": 0.3686746987951807,
+    "n": 8296
+  },
+  "epochs": 50
+}

@@ -1,0 +1,229 @@
+{
+  "schema_version": 1,
+  "tool": "logs/lambda_p4_sweep/aggregate.py",
+  "spec": {
+    "n_pockets": 100,
+    "seeds": [
+      42
+    ],
+    "n_simulations": 20,
+    "n_top_k": 5
+  },
+  "n_seeds": 3,
+  "seeds": {
+    "seed_0": {
+      "path": "/home/hugo/codes/mol-metal/logs/lambda_p4_sweep/seed_0/report.json",
+      "n_cells": 100,
+      "config": {
+        "click_rules": "all-5",
+        "manifest_path": "/home/hugo/codes/mol-metal/molmetal/data/crossdocked100_manifest.csv",
+        "metal_seed": null,
+        "n_pockets": 100,
+        "n_simulations": 20,
+        "n_top_k": 5,
+        "prior_enabled": true,
+        "sa_weight": 0.0,
+        "seeds": [
+          42
+        ]
+      },
+      "elapsed_s_total": 60.30618977546692
+    },
+    "seed_1": {
+      "path": "/home/hugo/codes/mol-metal/logs/lambda_p4_sweep/seed_1/report.json",
+      "n_cells": 100,
+      "config": {
+        "click_rules": "all-5",
+        "manifest_path": "/home/hugo/codes/mol-metal/molmetal/data/crossdocked100_manifest.csv",
+        "metal_seed": null,
+        "n_pockets": 100,
+        "n_simulations": 20,
+        "n_top_k": 5,
+        "prior_enabled": true,
+        "sa_weight": 0.0,
+        "seeds": [
+          0
+        ]
+      },
+      "elapsed_s_total": 119.83055686950684
+    },
+    "seed_2": {
+      "path": "/home/hugo/codes/mol-metal/logs/lambda_p4_sweep/seed_2/report.json",
+      "n_cells": 100,
+      "config": {
+        "click_rules": "all-5",
+        "manifest_path": "/home/hugo/codes/mol-metal/molmetal/data/crossdocked100_manifest.csv",
+        "metal_seed": null,
+        "n_pockets": 100,
+        "n_simulations": 20,
+        "n_top_k": 5,
+        "prior_enabled": true,
+        "sa_weight": 0.0,
+        "seeds": [
+          1234
+        ]
+      },
+      "elapsed_s_total": 127.52088236808777
+    }
+  },
+  "metrics": [
+    {
+      "metric": "n_distinct",
+      "target": 3,
+      "comparator": ">=",
+      "mean": 1.0,
+      "std": 0.0,
+      "n_seeds": 3,
+      "hit": "MISS",
+      "per_seed": {
+        "seed_0": 1.0,
+        "seed_1": 1.0,
+        "seed_2": 1.0
+      }
+    },
+    {
+      "metric": "sa_mean",
+      "target": 3.5,
+      "comparator": "<",
+      "mean": 6.002772423250367,
+      "std": 0.0,
+      "n_seeds": 3,
+      "hit": "MISS",
+      "per_seed": {
+        "seed_0": 6.002772423250368,
+        "seed_1": 6.002772423250368,
+        "seed_2": 6.002772423250368
+      }
+    },
+    {
+      "metric": "qed_mean",
+      "target": 0.55,
+      "comparator": ">=",
+      "mean": 0.6209670605795272,
+      "std": 0.0,
+      "n_seeds": 3,
+      "hit": "PASS",
+      "per_seed": {
+        "seed_0": 0.6209670605795272,
+        "seed_1": 0.6209670605795272,
+        "seed_2": 0.6209670605795272
+      }
+    },
+    {
+      "metric": "div_tanimoto",
+      "target": 0.6,
+      "comparator": ">=",
+      "mean": 0.0,
+      "std": 0.0,
+      "n_seeds": 3,
+      "hit": "MISS",
+      "per_seed": {
+        "seed_0": 0.0,
+        "seed_1": 0.0,
+        "seed_2": 0.0
+      }
+    },
+    {
+      "metric": "synth_rate",
+      "target": 0.95,
+      "comparator": ">=",
+      "mean": 1.0,
+      "std": 0.0,
+      "n_seeds": 3,
+      "hit": "PASS",
+      "per_seed": {
+        "seed_0": 1.0,
+        "seed_1": 1.0,
+        "seed_2": 1.0
+      }
+    },
+    {
+      "metric": "validity_rate",
+      "target": 1.0,
+      "comparator": "==",
+      "mean": 1.0,
+      "std": 0.0,
+      "n_seeds": 3,
+      "hit": "PASS",
+      "per_seed": {
+        "seed_0": 1.0,
+        "seed_1": 1.0,
+        "seed_2": 1.0
+      }
+    }
+  ],
+  "rows": [
+    {
+      "metric": "n_distinct",
+      "target": 3,
+      "comparator": ">=",
+      "mean": 1.0,
+      "std": 0.0,
+      "n_seeds": 3,
+      "hit": "MISS",
+      "seed_0": 1.0,
+      "seed_1": 1.0,
+      "seed_2": 1.0
+    },
+    {
+      "metric": "sa_mean",
+      "target": 3.5,
+      "comparator": "<",
+      "mean": 6.002772423250367,
+      "std": 0.0,
+      "n_seeds": 3,
+      "hit": "MISS",
+      "seed_0": 6.002772423250368,
+      "seed_1": 6.002772423250368,
+      "seed_2": 6.002772423250368
+    },
+    {
+      "metric": "qed_mean",
+      "target": 0.55,
+      "comparator": ">=",
+      "mean": 0.6209670605795272,
+      "std": 0.0,
+      "n_seeds": 3,
+      "hit": "PASS",
+      "seed_0": 0.6209670605795272,
+      "seed_1": 0.6209670605795272,
+      "seed_2": 0.6209670605795272
+    },
+    {
+      "metric": "div_tanimoto",
+      "target": 0.6,
+      "comparator": ">=",
+      "mean": 0.0,
+      "std": 0.0,
+      "n_seeds": 3,
+      "hit": "MISS",
+      "seed_0": 0.0,
+      "seed_1": 0.0,
+      "seed_2": 0.0
+    },
+    {
+      "metric": "synth_rate",
+      "target": 0.95,
+      "comparator": ">=",
+      "mean": 1.0,
+      "std": 0.0,
+      "n_seeds": 3,
+      "hit": "PASS",
+      "seed_0": 1.0,
+      "seed_1": 1.0,
+      "seed_2": 1.0
+    },
+    {
+      "metric": "validity_rate",
+      "target": 1.0,
+      "comparator": "==",
+      "mean": 1.0,
+      "std": 0.0,
+      "n_seeds": 3,
+      "hit": "PASS",
+      "seed_0": 1.0,
+      "seed_1": 1.0,
+      "seed_2": 1.0
+    }
+  ]
+}

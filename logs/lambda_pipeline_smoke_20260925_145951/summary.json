@@ -1,0 +1,31 @@
+{
+  "pocket_id": "test_001",
+  "n_requested": 100,
+  "n_returned_mcts": 1,
+  "n_unique_smi": 1,
+  "n_emitted": 100,
+  "n_valid_rdkit": 100,
+  "sa_mean": 6.551016796604216,
+  "sa_n": 100,
+  "qed_mean": 0.7048750918981009,
+  "qed_n": 100,
+  "n_reactions_total": 27,
+  "rules_used": [
+    "CuAAC",
+    "DielsAlder",
+    "SPAAC",
+    "SPC",
+    "ThiolEne"
+  ],
+  "fpu_reduction": 0.25,
+  "pll_k": 16,
+  "pll_knn": 8,
+  "pll_available": true,
+  "n_tiles": 240,
+  "n_simulations": 1000,
+  "max_depth": 3,
+  "top_k": 100,
+  "nfe": 1000,
+  "nfe_reductions": 1400,
+  "wallclock_s": 3.0405728816986084
+}

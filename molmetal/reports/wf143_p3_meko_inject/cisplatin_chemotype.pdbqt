@@ -1,0 +1,19 @@
+REMARK SMILES [NH2][Pt]([NH2])([Cl])[Cl]
+REMARK SMILES IDX 2 1 4 2 5 3 1 4 3 7
+REMARK H PARENT 1 5 1 6 3 8 3 9
+ROOT
+ATOM      1 Pt   UNL     1      -0.016   0.710   0.008  1.00  0.00    +0.000 Pt
+ATOM      2 Cl   UNL     1       0.076   2.060   2.229  1.00  0.00    +0.000 Cl
+ATOM      3 Cl   UNL     1      -0.435   2.329  -1.771  1.00  0.00    +0.000 Cl
+ENDROOT
+BRANCH   1   4
+ATOM      4  N   UNL     1      -1.795  -0.615   0.226  1.00  0.00    +0.000 NA
+ATOM      5  H   UNL     1      -1.904  -0.987  -0.743  1.00  0.00    +0.000 HD
+ATOM      6  H   UNL     1      -1.459  -1.350   0.869  1.00  0.00    +0.000 HD
+ENDBRANCH   1   4
+BRANCH   1   7
+ATOM      7  N   UNL     1       1.782  -0.337  -0.184  1.00  0.00    +0.000 NA
+ATOM      8  H   UNL     1       1.839  -1.121   0.496  1.00  0.00    +0.000 HD
+ATOM      9  H   UNL     1       1.912  -0.689  -1.131  1.00  0.00    +0.000 HD
+ENDBRANCH   1   7
+TORSDOF 2

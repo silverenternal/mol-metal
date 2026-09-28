@@ -558,6 +558,128 @@ class TestDecayCheckOnClosureCohortHistory:
 # ---------------------------------------------------------------------------
 
 
+# Pre-flight check for the cross-metal CSV integration smoke —
+# TODO-178 §3.2 hygiene: silent skip is not acceptable for ship-cohort
+# tests per party-twenty-spirit §3.5. We surface the pre-flight as a
+# test_securing fixture-style check so a missing CSV FAILS the suite
+# rather than skipping the integration seam.
+
+
+def _metalcytotox_preflight() -> Tuple[Path, Dict[str, int]]:
+    """Pre-flight gate for :func:`test_metalcytotox_csv_integration_smoke`.
+
+    Returns the CSV path and the per-metal row-count dict on success.
+    Raises :class:`AssertionError` (hard FAIL) if:
+
+    * the CSV is missing in the project tree (searches both `.data/molmetal/`
+      and `molmetal/data/`)
+    * the CSV has < 2 distinct metals in the `metal` column
+    * any metal cohort has < 32 rows (Wasserstein transfer loss is
+      degenerate below that threshold)
+    * total rows < 1500
+
+    Honest framing note (party-twenty-spirit §3.5): this used to silently
+    ``pytest.skip`` under all four failure conditions. We now raise
+    AssertionError instead, so a missing/stale CSV is a ship blocker
+    rather than a hidden hygiene gap.
+
+    Returns
+    -------
+    (path, per_metal_counts) where ``per_metal_counts`` is a dict from
+    metal symbol to row-count.
+    """
+    path = _metalcytotox_csv_path()
+    if path is None:
+        raise FileNotFoundError(
+            "metalcytotox CSV missing; per party-twenty-spirit §3.5 "
+            "silent skip is not measured.  Expected at "
+            "`.data/molmetal/metalcytotox_5metal_multitask.csv` "
+            "(or fallback `molmetal/data/metalcytotox_5metal_multitask.csv`). "
+            "See TODO/pending/178_wf123_p3_metalcytotox_csv_ondisk.md §3.1."
+        )
+    per_metal: Dict[str, int] = {}
+    total = 0
+    with open(path) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            metal = row.get("metal", "").strip()
+            if not metal:
+                continue
+            per_metal[metal] = per_metal.get(metal, 0) + 1
+            total += 1
+    assert len(per_metal) >= 2, (
+        f"TODO-178 §3.2 hygiene: metalcytotox CSV has < 2 metals "
+        f"({sorted(per_metal.keys())}). Cross-metal Wasserstein transfer "
+        "requires at least 2 distinct metals. Re-run the CytotoxFilter "
+        "pipeline (TODO-120)."
+    )
+    min_n = min(per_metal.values()) if per_metal else 0
+    assert min_n >= 32, (
+        f"TODO-178 §3.2 hygiene: metalcytotox CSV min per-metal cohort "
+        f"is {min_n} (need >= 32 for a non-degenerate W₂ transfer loss). "
+        f"Per-metal counts: {per_metal}"
+    )
+    assert total >= 1500, (
+        f"TODO-178 §3.2 hygiene: metalcytotox CSV has only {total} rows "
+        "(need >= 1500 total). Re-run the CytotoxFilter pipeline."
+    )
+    return path, per_metal
+
+
+def _write_metalcytotox_audit_sidecar(
+    path: Path,
+    per_metal_counts: Dict[str, int],
+    loss_value,
+) -> Path:
+    """Write the audit JSON sidecar per TODO-178 §3.3.
+
+    The audit lands at
+    ``molmetal/reports/wf123_p3_integration/metalcytotox_csv_audit.json``
+    and contains the schema/row-count check results plus a recorded
+    W₂ value (or ``null`` if the meta-test called it pre-flight only).
+    Returns the resolved sidecar path so the meta-test can assert the
+    write happened.
+    """
+    sidecar_dir = PROJECT_ROOT / "molmetal" / "reports" / "wf123_p3_integration"
+    sidecar_dir.mkdir(parents=True, exist_ok=True)
+    sidecar = sidecar_dir / "metalcytotox_csv_audit.json"
+
+    total_rows = sum(per_metal_counts.values())
+    # Required schema columns per TODO-178 §3.1 (smiles, metal, pic50,
+    # activity, cell_line, split, source). We confirm presence by reading
+    # the file once at audit time (cheap, idempotent).
+    schema_required = {"smiles", "metal", "pic50", "activity", "cell_line", "split", "source"}
+    schema_present: Dict[str, bool] = {}
+    try:
+        with open(path) as f:
+            header = next(csv.reader(f))
+        for col in schema_required:
+            schema_present[col] = col in header
+    except Exception as exc:
+        schema_present = {"__read_error__": True, "error": str(exc)}
+
+    payload = {
+        "csv_path": str(path),
+        "exists": True,
+        "schema_valid": all(schema_present.values()) if schema_present else False,
+        "schema_column_presence": schema_present,
+        "row_counts_per_metal": per_metal_counts,
+        "total_rows": total_rows,
+        "smoke_test_outcome": "PASS" if loss_value is not None else "PREFLIGHT_PASS",
+        "smoke_w2_loss_value": (
+            float(loss_value.detach().cpu().item())
+            if loss_value is not None
+            else None
+        ),
+        "audit_date": time.strftime("%Y-%m-%d"),
+        "owner": "Hugo Lee + ultracode agent",
+        "hygiene_fix": "TODO-178 §3.2 — silent pytest.skip replaced with hard FAIL",
+    }
+    with open(sidecar, "w") as f:
+        json.dump(payload, f, indent=2, sort_keys=True)
+    return sidecar
+
+
 class TestCrossMetalTransfer:
     """M1 transfer loss (used by TODO-121 m19 LOMO) + M2 closure
     oversample thin wrapper integration smoke."""
@@ -587,13 +709,22 @@ class TestCrossMetalTransfer:
             assert bool(torch.isfinite(emb.grad).all()), m
 
     def test_metalcytotox_csv_integration_smoke(self):
-        """If the metalcytotox 5-metal CSV is available, sanity-check
-        that we can build per-metal pIC50 cohorts and run the
-        Wasserstein transfer loss on the real data — this is the
-        integration seam used by TODO-121 (m19 LOMO)."""
-        path = _metalcytotox_csv_path()
-        if path is None:
-            pytest.skip("metalcytotox 5-metal CSV not found in project tree")
+        """Sanity-check that we can build per-metal pIC50 cohorts and
+        run the Wasserstein transfer loss on the real metalcytotox
+        5-metal CSV — this is the integration seam used by TODO-121
+        (m19 LOMO).
+
+        TODO-178 §3.2 hygiene: this used to silently ``pytest.skip``
+        under 3 failure conditions (CSV absent / < 2 metals / min_n <
+        32). The pre-flight now raises AssertionError (hard FAIL) via
+        :func:`_metalcytotox_preflight`, so a missing or stale CSV is a
+        ship blocker rather than a silent skip. The assertion errors
+        surface in the test report with full diagnostic context (CSV
+        path, per-metal counts, total).
+        """
+        # Pre-flight (hard-FAIL, not silent skip): the CSV must exist
+        # with ≥ 2 metals, ≥ 32 rows per metal, and ≥ 1500 total.
+        path, audit_counts = _metalcytotox_preflight()
 
         # The metalcytotox_5metal_multitask.csv has a binary "activity"
         # column (0/1) — we treat it as a 1-DOF signal and verify the
@@ -610,20 +741,9 @@ class TestCrossMetalTransfer:
                 except ValueError:
                     continue
                 per_metal.setdefault(metal, []).append(activity)
-        if len(per_metal) < 2:
-            pytest.skip(
-                f"metalcytotox CSV has < 2 metals ({len(per_metal)}); "
-                "skipping transfer-loss integration test"
-            )
-
         # Build per-metal tensors — cap at the smallest cohort size for
-        # pairwise alignment, and require ≥ 32 samples per metal.
+        # pairwise alignment. Pre-flight already enforced min_n >= 32.
         min_n = min(len(v) for v in per_metal.values())
-        if min_n < 32:
-            pytest.skip(
-                f"metalcytotox CSV has small per-metal cohorts "
-                f"(min={min_n}); skipping"
-            )
         per_metal_t = {
             m: torch.tensor(v[:min_n], dtype=torch.float32)
             for m, v in per_metal.items()
@@ -636,6 +756,64 @@ class TestCrossMetalTransfer:
         loss = wasserstein_transfer_loss(per_metal_2d, n_mc=32)
         assert loss.dim() == 0
         assert bool(torch.isfinite(loss))
+        # Stash the audit sidecar so the Wf-123 §7 honest-framing report
+        # has an on-disk artifact (TODO-178 §3.3 deliverable).
+        _write_metalcytotox_audit_sidecar(path, audit_counts, loss)
+
+    def test_metalcytotox_csv_integration_smoke_is_active_not_skipped(self):
+        """TODO-178 §3.2 acceptance: this is the meta-test that proves
+        :func:`test_metalcytotox_csv_integration_smoke` actually RAN
+        rather than silently skipping. We re-run the pre-flight here
+        (which now raises AssertionError instead of skipping) and
+        assert the audit sidecar exists. If the suite ever reports
+        ``SKIPPED`` for the smoke test, this meta-test will fail with
+        a clear hygiene-violation message.
+
+        Honest framing note (party-twenty-spirit §3.5): silent skip
+        is not acceptable for ship-cohort tests. This meta-test is the
+        audit loop that catches a regression where someone re-introduces
+        a silent-skip path.
+        """
+        # Mirror the pre-flight logic — this MUST pass; if it fails,
+        # the suite is now visibly broken rather than silently skipping.
+        path, audit_counts = _metalcytotox_preflight()
+
+        # Confirm we have a CSV path that actually exists on disk.
+        assert path.exists(), (
+            f"meta-test: pre-flight resolved {path} but the file is "
+            "missing on disk — _metalcytotox_csv_path() is lying. "
+            "Check the candidate enumeration."
+        )
+
+        # Confirm the per-metal counts the smoke test would see are
+        # consistent with the audit sidecar we'll write below.
+        for metal, count in audit_counts.items():
+            assert count >= 32, (
+                f"meta-test: metal {metal!r} has only {count} rows; "
+                "the smoke test would silently skip per the old "
+                "behaviour — but with the fix it now hard-FAILs."
+            )
+
+        # Write the audit sidecar and confirm it lands on disk.
+        sidecar = _write_metalcytotox_audit_sidecar(
+            path, audit_counts, loss_value=None
+        )
+        assert sidecar.exists(), (
+            f"meta-test: audit sidecar was not written at {sidecar}"
+        )
+        # Re-read the audit JSON to confirm it has the expected keys
+        # (defence-in-depth against silent I/O failures).
+        with open(sidecar) as f:
+            payload = json.load(f)
+        for key in (
+            "csv_path", "exists", "schema_valid",
+            "row_counts_per_metal", "total_rows",
+            "smoke_test_outcome", "audit_date", "owner",
+        ):
+            assert key in payload, (
+                f"meta-test: audit sidecar missing required key {key!r}; "
+                f"got keys: {sorted(payload.keys())}"
+            )
 
 
 # ---------------------------------------------------------------------------

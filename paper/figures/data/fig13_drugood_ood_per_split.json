@@ -1,0 +1,58 @@
+{
+  "figure_id": "fig13",
+  "title": "DrugOOD OOD AUC per split vs iMoLD vs ERM",
+  "description": "Out-of-distribution generalization on DrugOOD (3 splits: assay / scaffold / size). Mol-Metal (v4_morgan_mlp, 3 seeds × 30 epochs) vs iMoLD 2024 (Tier-2 SOTA) vs ERM (baseline).",
+  "x_axis": {
+    "label": "OOD split",
+    "categories": ["assay", "scaffold", "size"]
+  },
+  "y_axis": {
+    "label": "OOD ROC-AUC",
+    "range": [0.6, 1.0],
+    "gate_target": "iMoLD - 0.02"
+  },
+  "series": [
+    {
+      "name": "Mol-Metal (ours)",
+      "type": "bar",
+      "values": [0.8914, 0.6973, 0.7479],
+      "stdev": [0.0019, 0.0271, 0.0055],
+      "per_seed": [
+        [0.8888, 0.8924, 0.8929],
+        [0.7223, 0.7101, 0.6597],
+        [0.7405, 0.7497, 0.7536]
+      ]
+    },
+    {
+      "name": "iMoLD 2024 (Tier-2 SOTA)",
+      "type": "reference",
+      "values": [0.7211, 0.6884, 0.6792]
+    },
+    {
+      "name": "ERM baseline",
+      "type": "reference",
+      "values": [0.7163, 0.6879, 0.6750]
+    }
+  ],
+  "legend": [
+    "Mol-Metal v4_morgan_mlp (3 seeds, mean ± std, OOD AUC)",
+    "iMoLD 2024 (Tier-2 SOTA)",
+    "ERM baseline"
+  ],
+  "summary": {
+    "id_auc_per_split": {
+      "assay": 0.9743,
+      "scaffold": 0.9567,
+      "size": 0.9363
+    },
+    "gate_pass": {
+      "assay": true,
+      "scaffold": true,
+      "size": true
+    },
+    "overall_pass": true,
+    "verdict": "PASS — all 3 OOD splits ≥ iMoLD - 0.02; assay lift is significant (+0.17 over iMoLD)"
+  },
+  "source": "metrics/by_metric/drugood_ood_auc.json (3 seeds × 30 epochs, v4_morgan_mlp, metacytotox_fallback)",
+  "render": "paper/figures/fig13_drugood_ood_per_split.py"
+}

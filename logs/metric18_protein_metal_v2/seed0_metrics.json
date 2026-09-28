@@ -1,0 +1,10 @@
+{
+  "best_val_auc": 0.773603306552733,
+  "test_auc": 0.7262896193085167,
+  "test_pr_auc": 0.546235147364804,
+  "n_train": 3681,
+  "n_val": 536,
+  "n_test": 1040,
+  "n_cell_lines": 209,
+  "n_metals": 5
+}

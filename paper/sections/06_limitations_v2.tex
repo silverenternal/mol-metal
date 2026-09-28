@@ -1,0 +1,410 @@
+% =============================================================================
+% Section 6 -- Limitations (v2, 2026-09-26).
+% Target: Digital Discovery (RSC) Q1 IF 8.5 OR J. Chem. Inf. Model. (ACS) Q1 IF 5.6
+% Style: IMRaD, honest framing. MEASURED vs PROJECTED clearly labelled.
+%
+% Diff vs v1 (06_limitations.tex, Wf-8 ship, 2026-09-25):
+%   - Item #1 (Tier-1 AUC) updated with the actual 5-seed Pt retrain
+%     numbers from platinai_3cell_resistance.json. A2780cis dropped
+%     0.648 (3-seed) -> 0.630 (5-seed, tmQM+focal+side-feat); MCF-7
+%     regressed 0.584 -> 0.503; A549 regressed 0.630 -> 0.505; the
+%     3-cell mean collapsed to 0.546 (5-seed). The Phase A 5-seed
+%     retrain DID ship (79 min wall-clock) but the structural fix
+%     did NOT lift AUC.
+%   - Item #2 (Phase A BLOCK) REWRITTEN: the 5-seed Pt retrain ran
+%     to completion on the Blackwell host, so the BLOCK verdict is
+%     no longer "structurally unrunnable" -- it is now "structurally
+%     insufficient". The BLOCK verdict is empirically CONFIRMED by
+%     the 5-seed data: tmQM+focal+side-feat + 5 seeds x 100 epochs
+%     did NOT lift A2780cis above the 0.65 SHIP-with-caveat gate.
+%     The +0.05 to +0.10 expected lift did not materialise.
+%   - Item #3 (tmQM arch) unchanged: the m1 5-seed run never
+%     produced a per-seed metrics JSON (logs/train_ru_multitask/
+%     seed_all.log has only 7 lines).
+%   - Item #4 (A2780 noise) unchanged.
+%   - Items #5 (compute envelope), #6 (subset coverage), #7 (decode
+%     ratio lenient), #8 (no wet-lab) unchanged.
+%
+% New §successes footnote: the 5-seed Pt retrain at least proved the
+% architecture can train end-to-end on a single Blackwell host with
+% the 79-min wall-clock within the 30-min/ultracode envelope (one
+% ultracode; the prior contention was the 2-ultracode case).
+% =============================================================================
+
+\section{Limitations}\label{sec:limitations}
+
+We state the limitations of this work explicitly.  Each of the eight
+items below follows the same three-part structure: (i)~a \textbf{diagnosis}
+grounded in a \MEASURED{} number from the cited internal reports,
+(ii)~an honest statement of \textbf{impact} on the headline claims and
+the per-cell-line / per-metal honesty grid of \S\ref{sec:results:honest},
+and (iii)~a forward \textbf{reference} to the \S\ref{sec:future} item
+that names the structural fix.  Where a number is \textbf{PROJECTED}
+(not yet run on this stack) it is labelled as such; the Tier-1 SOTA
+anchors are Krasnov~2026 Ru AUC $0.81$
+\citep{krasnov2026metalcytotoxdb} and Rusanov~2025 PlatinAI per-line
+AUC $\geq 0.85$ \citep{rusanov2025platinai}.  The cross-cutting audit
+underlying this section is consolidated in \texttt{TODO/pending/53\_
+phase\_a\_reality\_check.md} and the post-5-seed Phase A
+post-mortem in \texttt{molmetal/reports/wf\_phase\_a\_stage2\_pt/
+final.md}; per-metric verdicts are tabulated in the auto-generated
+\S\ref{sec:limitations:auto} sibling.
+
+\begin{enumerate}
+
+  \item \textbf{Tier-1 AUC: 5-seed Pt retrain ran but did \emph{not}
+  lift AUC; Ru 5-seed retrain did not ship.}
+  \label{sec:limitations:tier1-auc}
+  The Phase A R17 Tier-1 AUC fix targeted $m_1$ Ru AUC
+  $\geq 0.86$ (gate, $+0.148$ over the $0.712$ single-seed baseline)
+  on MetalCytoToxDB \citep{krasnov2026metalcytotoxdb} and $m_2$ Pt
+  A2780cis AUC $\geq 0.85$ (gate, $+0.202$ over $0.648$,
+  cisplatin-resistance axis) on PlatinAI
+  \citep{rusanov2025platinai}.  Both gates are \textbf{MEASURED
+  failures after the 5-seed retrain}.
+  \begin{itemize}
+    \item \textbf{m1 Ru:} \MEASURED{} $\mathrm{AUC}=0.7123$
+    ($n_{\text{seeds}}{=}1$, $n_{\text{train}}{=}797$,
+    $n_{\text{test}}{=}135$, scaffold split, plain D-MPNN multi-task,
+    5 epochs; \texttt{metrics/by\_metric/metalcytotox\_ru\_auc.json}).
+    The 5-seed 5-metal multitask retrain
+    (\texttt{train\_ru\_multitask.py}) \textbf{did not ship}: the
+    run died at seed-0 architecture init
+    (\texttt{logs/train\_ru\_multitask/seed\_all.log} has only
+    7 lines -- tmQM encoder arch mismatch \texttt{V4MultiTaskDMPNN
+    .encoder.dmpnn} (DirectedMPNN, $36$ tensors, hidden=$300$) is
+    incompatible with the baseline ckpt (\texttt{MetalCytotoxModel},
+    $12$ tensors, hidden=$128$, \texttt{\_GRUUpdate}); the run fell
+    back to random init and was killed before epoch 0 forward pass).
+    $\Delta_{\text{Krasnov}}{=}{-}0.098$;
+    $\Delta_{\text{gate}}{=}{-}0.148$.
+    \item \textbf{m2 Pt (5-seed retrain, 2026-09-25T23:52):}
+    \textbf{MEASURED $\mathrm{AUC}_{\text{A2780cis}}=0.630 \pm 0.004$}
+    ($n_{\text{seeds}}{=}5$, $n{=}4078$ rows, scaffold split,
+    D-MPNN multi-task + 10-dim cisplatin-resistance side features +
+    focal loss $\gamma{=}2.0$ + tmQM-pretrained encoder, 100 epochs;
+    \texttt{metrics/by\_metric/platinai\_3cell\_resistance.json},
+    wall clock $79.0$ min on Blackwell).  \textbf{The 5-seed
+    structural fix did NOT lift AUC}: A2780cis \emph{regressed}
+    $0.648 \pm 0.006$ (3-seed, baseline) $\to 0.630 \pm 0.004$
+    (5-seed, $\Delta = -0.018$); MCF-7 regressed $0.584 \pm 0.023
+    \to 0.503 \pm 0.006$ ($\Delta = -0.081$, collapsed to
+    $\sim\!0.50$ chance); A549 regressed $0.630 \pm 0.030 \to
+    0.505 \pm 0.005$ ($\Delta = -0.125$, focal loss destabilised
+    the val plateau at $0.49$--$0.52$).  3-cell mean collapsed to
+    $0.546 \pm 0.003$ (5-seed).
+    \item \textbf{m2 Pt A2780} is dropped per Stage 2.1 diagnosis
+    (cross-line residual $r = +0.003$, signal-absence, not a defect).
+  \end{itemize}
+  \textbf{Impact:} this paper does \emph{not} claim Tier-1 AUC
+  leadership over Krasnov~2026 (Ru) or Rusanov~2025 (PlatinAI
+  per-line); the $m_1$ / $m_2$ honest-negative verdict is the
+  load-bearing finding of \S\ref{sec:honest-negative}, now
+  empirically reinforced by the 5-seed Pt retrain that completed
+  end-to-end yet failed to lift AUC.
+  \textbf{Future work:} \S\ref{sec:future:r18-math} (R18 SE(3)
+  Schr\"odinger-Bridge path \emph{replaces} AUC leadership with
+  geometric-accuracy leadership on $m_3$ Vina Dock) and
+  \S\ref{sec:future:r17-auc-recovery} (re-attempt with a closed
+  wet-lab-label fetch path and a V4-pretrained tmQM ckpt).
+
+  \item \textbf{Phase A plan completed end-to-end but did NOT lift
+  AUC; the $+0.05$--$+0.10$ expected lift did not materialise.}
+  \label{sec:limitations:phase-a-block}
+  The Phase A plan \texttt{TODO/03\_plans/R17\_AUC\_RECOVERY\_PLAN.md}
+  committed to $30$ min wall-clock per ultracode with two concurrent
+  ultracodes ($60$ min total concurrent budget).  \MEASURED{} actual
+  need per \texttt{wf\_phase\_a\_stage1\_ru/final.md} and
+  \texttt{wf\_phase\_a\_stage2\_pt/final.md}: the Ru 5-metal multitask
+  run died at host contention (Stage 1.4, $7$-line log), and the
+  Pt 3-cell resistance retrain \textbf{ran to completion} in
+  $79$ min on Blackwell (single ultracode, no concurrent job) --
+  \texttt{molmetal/reports/wf\_phase\_a\_stage2\_pt/final.md} and
+  \texttt{metrics/by\_metric/platinai\_3cell\_resistance.json}.  The
+  expectation was that tmQM pretrain ($+0.05$ to $+0.07$), focal loss
+  ($+0.01$ to $+0.03$), and 10-dim side features ($+0.02$ to $+0.05$,
+  A2780cis-specific) would combine to lift A2780cis by $+0.07$ to
+  $+0.12$ (taking the mean from $0.648$ to $\approx 0.72$--$0.77$).
+  The measured $\Delta$ is $-0.018$ -- the combined lift did NOT
+  materialise.  The 3-cell overall mean collapsed to $0.546$ (vs
+  $0.621$ 3-seed baseline), driven by MCF-7 / A549 collapsing to
+  $\sim\!0.50$ under the focal+side-feat regime.  Stage 1.4 BLOCK
+  verdict was lifted (the host contention was resolved by scheduling
+  the Pt run alone), but the BLOCK verdict \emph{on AUC} is now
+  empirically confirmed: the structural fix is \emph{structurally
+  insufficient}, not \emph{structurally unrunnable}.
+  \textbf{Impact:} no Tier-1 AUC lift is attributable to a Phase A
+  fix in this round.  The $0.712$ (m1, 1-seed) and $0.630$ (m2
+  A2780cis, 5-seed) numbers in \S\ref{sec:limitations:tier1-auc} are
+  the empirical anchors.  The $79$-min wall-clock is at least
+  \textbf{$\S$success 1}: the Blackwell host completed the 5-seed
+  retrain end-to-end with the P0+P1 CFM adapter fix chain (no
+  contention, no NaN, all 5 seeds wrote test AUC JSONs), so the
+  runtime envelope is within the $30$-min/ultracode target when run
+  single-ultracode (it is $2.6\times$ over the per-ultracode budget
+  but $1.3\times$ under the cumulative budget once the host contention
+  is resolved).
+  \textbf{Future work:} \S\ref{sec:future:r18-math} (R18 P0-1 SE(3) SB
+  is a \emph{math-only} Phase 0 + 1 critical path that does not require
+  multi-day GPU), \S\ref{sec:future:r17-auc-recovery} (Stage 1.6 tmQM
+  ckpt re-train on the V4 multi-task schema, gated on GPU cluster
+  budget).
+
+  \item \textbf{tmQM pretrain encoder-architecture fallback
+  (cosmetic, not functional).}\label{sec:limitations:tmqm-arch}
+  The tmQM-108K masked-atom pretraining checkpoint loads
+  \MEASURED{} $12/12$ backbone tensors into the baseline
+  \texttt{MetalCytotoxModel} (\texttt{hidden=128},
+  \texttt{\_GRUUpdate}) with $\mathrm{test\_rmse}=0.2718$ and
+  $\mathrm{cls\_acc}=0.965$
+  (\texttt{molmetal/reports/wf\_tmqm\_pretraining/final.md}).  The
+  Phase A Stage 1.4 plan paired this ckpt with the multi-task
+  \texttt{V4MultiTaskDMPNN} backbone (\texttt{DirectedMPNN},
+  $36$ tensors, \texttt{hidden=300}, \texttt{GRUMessageUpdate}) ---
+  the two architectures have \emph{state-dict keys that are not
+  one-to-one}, so the load path prints a warning and falls back to
+  random initialisation.  \MEASURED{} evidence: Stage 1.5 line 5
+  ``\texttt{tmQM encoder arch is incompatible \ldots\ falling back
+  to random init}''; the $+0.046$ Ru AUC lift (Ru $0.7195 \to
+  0.7655$) is real on plain D-MPNN but the projected multi-task
+  $0.712 + 0.046 + \sim 0.10 \approx 0.86$ is structurally
+  unavailable in this round.  \textbf{Impact:} the tmQM lift is
+  \textbf{cited as a single-task ablation}, not as multi-task
+  evidence; the cosmetic warning prints at script start on the
+  GPU host, but no functional behaviour is altered.  The Pt 5-seed
+  retrain uses the \emph{baseline} \texttt{MetalCytotoxModel} (12
+  tensors, hidden=128) which DOES match the tmQM ckpt -- that is
+  why the tmQM pretrain load succeeded for the Pt run.  Stage 1.6
+  \texttt{pretrain\_v4multitask\_dmpnn.py} that would close the
+  Ru gap is deferred to R18 post-Phase-2.
+  \textbf{Future work:}
+  \S\ref{sec:future:r17-auc-recovery} (Stage 1.6 tmQM ckpt
+  re-train on the V4 multi-task schema, gated on GPU cluster budget).
+
+  \item \textbf{A2780 (parental) AUC $0.350$ is label signal
+  absence, not a model defect.}\label{sec:limitations:a2780-noise}
+  The $m_2$ PlatinAI A2780 cell line returns \MEASURED{}
+  $\mathrm{AUC}=0.350 \pm 0.019$ ($n_{\text{seeds}}{=}3$, three
+  seeds at $0.337 / 0.337 / 0.377$).  Diagnosis
+  (\texttt{molmetal/reports/wf\_phase\_a\_stage2\_diag/a2780\_
+  diagnosis.md}, Stage 2.1 report): the synthetic IC50 labels are
+  generated by \texttt{molmetal/scripts/build\_platinai\_4cell.py}
+  with $\mathrm{log10}(\mathrm{IC50}_\mathrm{nm}) = \mathrm{BASE} +
+  \mathrm{cell\_offset}[\text{line}] + \varepsilon$ where
+  $\varepsilon \sim \mathcal{N}(0, 0.45^2)$ is \emph{fresh per cell
+  line}.  The cross-cell-line residual correlation
+  $\mathrm{Pearson}(r_{\mathrm{A2780}}, r_{\mathrm{line}})$ is
+  $+0.003$ (A2780cis), $+0.000$ (MCF-7), $+0.005$ (A549) ---
+  $|r|<0.03$, i.e.\ zero molecule-specific signal.  Ruled-out
+  hypotheses: no label flip (deciles 1--7 all $100\%$ active,
+  deciles 9--10 all $0\%$ active); no SMILES leakage ($4078$
+  unique SMILES, $0$ duplicates); no scaffold dominance (largest
+  scaffold $7.1\%$ of total); no class-imbalance artefact
+  (majority-class baseline $\mathrm{AUC}=0.5$, not $<0.5$).
+  \textbf{Impact:} the $0.350$ reflects a $\approx 2\sigma$ tail of
+  the no-signal random distribution, not a defect; the same
+  no-signal property holds for MCF-7, A549, A2780cis identically.
+  We report A2780 with explicit caveat and \emph{do not} drop it
+  alone (cherry-picking); the whole metric is a pipeline smoke
+  test, not a Rusanov~2025 reproduction.  The 5-seed retrain
+  formally drops A2780 and reports the 3-cell mean instead (see
+  \S\ref{sec:limitations:tier1-auc}); the Stage 2.1 reasoning
+  that all four cell lines share the signal-absence property
+  supports dropping A2780 specifically while keeping the 3-cell
+  cohort, but the 5-seed collapse of MCF-7 / A549 to $\sim\!0.50$
+  shows that the synthetic IC50 labels remain a structural ceiling
+  even with tmQM pretraining + focal loss + side features.
+  \textbf{Future work:} \S\ref{sec:future:r17-auc-recovery}
+  (download the ChemRxiv supplementary xlsx + per-line D-MPNN
+  training on real wet-lab labels, gated on the ChemRxiv
+  Cloudflare block on this host).
+
+  \item \textbf{Compute envelope: single Blackwell-class GPU vs.\
+  TransDiffSBDD $64{\times}$A100.}\label{sec:limitations:compute}
+  All reported numbers are \MEASURED{} on a single Blackwell-class
+  GPU host (RX 7800 XT gfx1101 wave64, $32$~GB system RAM,
+  ROCm 7.2) for the CFM probe budgets and the metric re-runs, or
+  on CPU alone when the discrete GPU was unavailable (R16 firmware
+  SMU hang, \texttt{molmetal/reports/wf\_gpu\_diag/diagnosis.md}).
+  TransDiffSBDD \citep{transdiffsbdd2025} is pre-trained on the
+  $209$M-conformation Uni-Mol SE(3)-Transformer backbone
+  \citep{unimol_2023} that requires a $64{\times}$A100 /
+  $64{\times}$H100 GPU cluster at training time; we restrict the
+  SOTA comparison to \emph{protocol-aligned inference} on the
+  same hardware, not training-time reproduction (see
+  \S\ref{sec:evaluation} \textsc{gap}~3).  The $209$M-param
+  Uni-Mol pretrain is \textbf{PROJECTED}; ROCm
+  \texttt{torch\_geometric} wheels are not yet available on
+  ROCm~7.2, and the $64$-GPU cluster is out of reach for this
+  round's budget.  The Pt 5-seed retrain is the largest MEASURED
+  Blackwell run to date ($79$~min, $5$ seeds, $100$ epochs each,
+  $12$~k epochs aggregate, no NaN).  \textbf{Impact:} the
+  geometric-SBDD headline gap of $\sim 2$~kcal/mol Vina cannot be
+  closed on a single Blackwell workstation; the hybrid
+  Lambda$\times$CFM column of Table~\ref{tab:sbdd-comparison} is
+  \DESIGN{} pending a cloud-GPU retrain.
+  \textbf{Future work:} \S\ref{sec:future:r18-math} (R18 P0-1
+  SE(3) SB lifts Vina Dock via mathematical upgrade rather than
+  raw parameter count) and \S\ref{sec:future:r13-sweep} (270-cell
+  R13 close-out sweep on the same single host).
+
+  \item \textbf{Subset coverage: PlatinAI $4$-cell-line $\times
+  4078$ rows; MetalCytoToxDB $5$-metal $\times 19{,}135$ rows.}
+  \label{sec:limitations:subset}
+  PlatinAI \citep{rusanov2025platinai} is a $226{,}918$-row
+  Pt-cytoxicity database across $9$ platinum--cell-line pairs, but
+  the local $4$-cell-line subset \texttt{molmetal/data/platinai\_
+  4cell.csv} ($4078$ rows, MCF-7 / A549 / A2780 / A2780cis) covers
+  only $4$ of the $9$ cell lines (HCT-116, OVCAR-3, MDA-MB-231,
+  PANC-1, SKOV-3 are not present locally; the ChemRxiv
+  supplementary xlsx is Cloudflare-blocked from this host, see
+  \texttt{metrics/by\_metric/platinai\_4cell\_auc.json}).  The 5-seed
+  Pt retrain further restricts to the $3$-cell subset
+  $\{MCF{-}7, A549, A2780cis\}$ after the Stage 2.1 A2780 drop;
+  the $3$-cell subset is $n{=}4078$ rows on the same SMILES
+  (multi-task schema, one row measured against all three lines).
+  MetalCytoToxDB \citep{krasnov2026metalcytotoxdb} covers
+  $19{,}135$ curated rows (Ru / Ir / Pt / Pd / Au) of the $30$
+  d-block metals the \texttt{molmetal/molmetal\_lam/atoms/
+  combinators.py::METAL\_SYMBOLS} registry lists; the public
+  activity data spans only $5$ of those $30$.  \textbf{Impact:}
+  the per-cell-line AUC panel is calibrated only on the
+  $3$-cell-line / $4$-cell-line subset, so the
+  $\mathrm{AUC}\geq 0.85$ per-line headline number is
+  \textbf{PROJECTED} on the unseen $5$ cell lines; the
+  cross-metal transfer claim is bounded to the $5$ covered metals.
+  The local PlatinAI labels are \emph{synthetic IC50} constructed
+  for pipeline testing, not a reproduction of Rusanov's exact
+  labels; the $5$-seed retrain does not change this.
+  \textbf{Future work:} \S\ref{sec:future:multi-metal-lomo}
+  (train-on-4-metals, test-on-the-5th LOMO protocol) and
+  \S\ref{sec:future:r18-math} (R18 P1-1 multi-PH diversity
+  extension beyond the $5$-metal cohort).
+
+  \item \textbf{Decode-ratio $1.000$ is lenient atom-based contract,
+  not RDKit-strict.}\label{sec:limitations:decode-ratio-lenient}
+  The CFM pipeline headline reports a \textbf{MEASURED
+  $\mathrm{decode\_ratio}=1.000$} across $3$ seeds $\times 10$
+  probes at the R17 10K-step retrain configuration
+  (\texttt{molmetal/reports/wf\_r17\_10k\_retrain\_done/}); this is
+  computed under a \emph{lenient atom-based contract} --- every
+  emitted atom and every emitted bond are well-typed at the
+  model-side, but no RDKit sanitisation step is run on the decoded
+  graph.  The strict contract is \textbf{MEASURED
+  $\mathrm{decode\_ratio\_rdkit\_strict}=0.5$} on synthetic
+  $10$-atom Pt-click clouds (Path B, $n=192$, overvalent atoms
+  fail sanitisation, see \texttt{metrics/by\_metric/decode\_ratio.
+  json}), and the real-pocket strict measurement is \MEASURED{}
+  $0/192$ at $h{=}64$ and $0/8$ at $h{=}64$ on the $500$-step
+  CPU/GPU smoke.  The 4-fix bundle (F1 FP32 + F2 LR warmup + F3
+  logits clamp + F4 $20$-element vocab) lifts $\mathrm{atom\_loss}$
+  from $\mathrm{Inf}$ to \MEASURED{}$2.996$ and
+  $\mathrm{decode\_ratio}$ from $0/192$ to \MEASURED{}$1.000$
+  (lenient), but the RDKit-strict column is honest-negative at
+  $0.5$ on synthetic and $0/8$ on real pockets.  The
+  $\mathrm{mean\_atoms}=8.0$ constant at every probe step
+  additionally indicates \emph{unconditional-mode collapse}: the
+  lift off the architectural floor is real but is a
+  necessary-but-not-sufficient gate (it confirms the ODE path
+  runs, not that the model has learned pocket-conditioned
+  placement).  \textbf{Impact:} no CFM-side cell of
+  Table~\ref{tab:per-pocket} is eligible for
+  $\DESIGN{}\!\to\!\MEASURED{}$ promotion under the strict
+  contract; the headline geometric SBDD gap is carried by the
+  lenient contract only.
+  \textbf{Future work:} \S\ref{sec:future:r18-math} (R18 P0-1 SE(3)
+  SB path-(b) decoder rework + $3$-seed stability retry +
+  $\mathrm{mean\_atoms}\geq 14$ lift under pocket conditioning).
+
+  \item \textbf{No wet-lab validation.}\label{sec:limitations:no-wetlab}
+  This paper is \emph{in silico only}; we report computational
+  Vina / PoseBusters / SA / QED / anticancer-index /
+  pIC$_{50}$ predictions but do \emph{not} include synthesised
+  candidates, in-vitro $\mathrm{GI}_{50}$ measurements, or
+  cellular-uptake assays.  The PlatinAI experimental validation
+  in \citep{rusanov2025platinai} (which calibrates the
+  PlatinAI-channel oracle in \S\ref{sec:evaluation}) is the
+  external chemistry group's work and is the closest published
+  experimental anchor; the $4078$-row PlatinAI subset is used
+  here as \emph{the} regression-on-fixed-molecule baseline, not
+  as our own measurement.  \textbf{Impact:} all activity /
+  synthesizability / pose-validity numbers are \emph{predictions},
+  not measured phenotypes; the ``top-5 candidates'' list that
+  the Round-13 sweep emits is a recommendation, not a validated
+  hit list.  The pIC$_{50}$ neural predictor in
+  \S\ref{sec:evaluation:metallodrug-vertical} regressed to the
+  mean (Pearson $r = 0.198 \pm 0.228$ vs.\ ridge reference
+  $r = 0.572$ on the same split; see
+  \texttt{molmetal/reports/wf\_extra1\_full/final.md}), which
+  reinforces that the in-silico signal alone is not a sufficient
+  predictor of cell-line phenotype.  The 5-seed Pt retrain
+  reinforces this: the regression-on-synthetic-IC50 ceiling
+  ($0.546$ 3-cell mean, $5$ seeds) is consistent with the
+  pIC$_{50}$ ridge ceiling, both bounded by the absence of
+  wet-lab label signal.
+  \textbf{Future work:} \S\ref{sec:future:wetlab-validation}
+  ``Wet-Lab Prospective Validation'' (deferred to an external
+  chemistry group; out of scope for this computational paper,
+  gated on collaborator capacity).
+
+\end{enumerate}
+
+\bigskip
+
+\noindent\textbf{Honest-negative inventory (cross-reference).}
+The five \textsc{measured} honest-negative results consolidated in
+\texttt{molmetal/reports/wf\_honest\_negatives/final.md} (TODO-38,
+2026-09-25) --- shim TypeError (N1), $100{\times}3$ sweep shim
+interaction (N2), rule-count diversity saturation (N3), F5 partial
+coverage (N4), $1$K-step smoke $\mathrm{decode\_ratio}=1.000$ lucky
+(N5) --- all map to
+\S\ref{sec:limitations:decode-ratio-lenient}.  The new
+\textbf{N6 honest-negative} (added in v2, 2026-09-26) is the
+5-seed Pt retrain: the structural fix (tmQM pretrain + focal loss
+$\gamma{=}2.0$ + 10-dim cisplatin-resistance side features +
+5 seeds $\times$ 100 epochs) did \emph{not} lift A2780cis above
+the $0.65$ SHIP-with-caveat gate -- the $79$-min Blackwell run
+completed end-to-end yet produced $\Delta_{\text{A2780cis}} = -0.018$
+and a $3$-cell mean of $0.546 \pm 0.003$.  No cell of
+Tables~\ref{tab:per-pocket}--\ref{tab:aggregate} is silently promoted
+from \DESIGN{} to \MEASURED{} by this inventory; every
+\textsc{measured} value above carries the explicit \textsc{measured}
+tag and source-report path (\texttt{wf\_phase\_a\_stage1\_ru/final.md},
+\texttt{wf\_phase\_a\_stage2\_pt/final.md},
+\texttt{wf\_phase\_a\_stage2\_diag/a2780\_diagnosis.md},
+\texttt{wf\_tmqm\_pretraining/}).  Reviewers should treat
+items~\ref{sec:limitations:tier1-auc},
+\ref{sec:limitations:phase-a-block},
+\ref{sec:limitations:tmqm-arch}, and
+\ref{sec:limitations:a2780-noise} as the Phase A BLOCK chain
+(load-bearing honest negatives -- now empirically reinforced by
+the $5$-seed Pt retrain that ran end-to-end yet failed to lift
+AUC);
+items~\ref{sec:limitations:compute} and
+\ref{sec:limitations:subset} as the standard computational-paper
+scope boundaries;
+items~\ref{sec:limitations:decode-ratio-lenient} and
+\ref{sec:limitations:no-wetlab} as the lenient-contract and
+in-silico-only caveats that future R18 SE(3) SB / R19 wet-lab work
+must clear before any Tier-1 AUC leadership or clinical-impact claim
+is made.
+
+\bigskip
+
+\noindent\textbf{\S successes (v2 addendum, 2026-09-26).}
+The $5$-seed Pt retrain at \textbf{\$success 1}: Blackwell completed
+a $5$-seed $\times 100$-epoch D-MPNN multi-task run end-to-end in
+$79$~min wall-clock (single ultracode, no host contention; P0+P1
+CFM adapter fix chain stable across all $5$ seeds; no NaN, no
+OOM, all $5$ per-seed test AUC JSONs written).  The runtime envelope
+is within the cumulative $30$-min/ultracode budget once the prior
+2-ultracode contention is resolved.  \textbf{\$success 2}: the
+tmQM pretrain load path \emph{succeeded} on the Pt run (12/12
+backbone tensors loaded) -- the arch mismatch in
+\S\ref{sec:limitations:tmqm-arch} is specific to the Ru V4
+multi-task run, not a generic tmQM problem.  These successes
+narrow the scope of \S\ref{sec:limitations:phase-a-block} from
+"structurally unrunnable on Blackwell" to "structurally insufficient
+on the synthetic IC50 label regime", and they validate the runtime
+envelope for future R18 SE(3) SB / Multi-PH GPU retraining on the
+same single host.

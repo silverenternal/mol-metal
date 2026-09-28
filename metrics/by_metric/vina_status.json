@@ -1,0 +1,23 @@
+{
+  "metric": "vina_status",
+  "description": "Vina docking engine availability + last measured kcal/mol across Wf-30/47 real-Vina + stub-floor paths. Read-only snapshot for paper-gate reporting.",
+  "unit": "n_measurements + kcal/mol",
+  "scope": "docking_engine_health",
+  "source": "filesystem scan + subprocess probe + measurements roll-up",
+  "meeko_installed": true,
+  "vina_binary_available": true,
+  "last_real_vina_value_kcal_per_mol": -3.103,
+  "stub_floor_artifact": "stub-floor artifact; legacy only (REFRAMED 2026-09-27)",
+  "stub_floor_reframed_2026_09_27": true,
+  "n_measurements": 4,
+  "vina_min_score_value": {
+    "mean": -4.1579,
+    "std": 0.7622302728761755,
+    "n_docked": 10,
+    "n_total": 10
+  },
+  "timestamp": "2026-09-27",
+  "status": "MEASURED",
+  "honest_framing_note": "Real Vina path active via Wf-121 P3 cisplatin × 10 pockets × 3 seeds; -9.6574 was legacy stub-floor artifact, REFRAMED 2026-09-27 per TODO-113 honest reframe",
+  "wf_phase": "Wf-87 Phase 2 — Vina health snapshot"
+}

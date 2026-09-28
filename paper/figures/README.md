@@ -1,0 +1,216 @@
+# Paper Figures — Source, Regeneration, and Conventions
+
+This directory hosts every figure that ships in the Mol-Metal paper
+(`paper/main.tex` → `\graphicspath{{figures/}{./}}`). Every figure is
+reproducible: a single self-contained Python file plus a paired caption
+markdown plus the rendered artefacts (PNG + SVG). There are **no hidden
+state dependencies** — running a `figN_*.py` re-creates the matching
+PNG/SVG from canonical data only.
+
+> If you add a figure, **also** add a row to the index table in
+> `paper/figures/INDEX.md` and a `figN_caption.md` next to the source.
+> The paper `main.tex` resolves figure paths through `\graphicspath`,
+> so a new figure is auto-discovered once it is dropped here.
+
+---
+
+## 1. Figure inventory (shipped + stub)
+
+The `figN_*` numbering scheme is **paper-stable**: once a figure number
+is referenced in the LaTeX, it must not be re-used or shifted between
+sections. Figures 5 and 6 were retired; numbering jumps from
+`fig4` (last shipped architecture/scatter figure) to `fig7` (the
+first Tier-1 panel figure).
+
+### 1.1 Shipped figures (paper-grade PNG + SVG, captions signed off)
+
+| ID  | Files                                                                | Status     | Data source                                                       |
+|-----|----------------------------------------------------------------------|------------|-------------------------------------------------------------------|
+| 1   | `fig1_mlc_architecture.{png,svg,py}` + `fig1_caption.md`             | SHIPPED    | `molmetal/reports/lambda_layer_metrics.md` (metric catalogue, R3) |
+| 2   | `fig2_pipeline.{png,svg,py}` + `fig2_caption.md`                     | SHIPPED    | `molmetal/scripts/r4_c_full_sweep.py` + `proof_search.py`        |
+| 3   | `fig3_click_reactions.{png,svg,py}` + `fig3_caption.md`              | SHIPPED    | `molmetal/molmetal_lam/lam_chem/rules.py`                         |
+| 4   | `fig4_homotype_vs_tanimoto.{png,svg,py}` + `fig4_caption.md`         | SHIPPED    | `molmetal/reports/wf_lambda2e_compare/pairs.csv`                  |
+
+### 1.2 Stub figures (Tier-1 panel hooks; pending data fill-in)
+
+These figures are **referenced by `molmetal/reports/wf_tier1_table2/final.md`
+§ 4 (Paper figure hook)** as the visual backbone of paper §4 Results, but
+the `.py` generators are not yet checked in. Their data JSON contracts
+already live in `paper/figures/data/`. They are paper-grade priorities
+for the next round.
+
+| ID  | Generator stub (planned path)                       | Data JSON (live)                                  | Hook source                                                |
+|-----|-----------------------------------------------------|---------------------------------------------------|------------------------------------------------------------|
+| 7   | `paper/figures/fig7_cell_line_bar.py`               | `paper/figures/data/fig7_cell_line.json`          | Metric 2 (PlatinAI) per-cell-line AUC                      |
+| 8   | `paper/figures/fig8_drugood_ood_bar.py`             | `paper/figures/data/fig8_ood_radar.json`          | Metric 17 (DrugOOD) 3-split OOD AUC                        |
+| 9   | `paper/figures/fig9_tier1_scorecard.py`             | `paper/figures/data/fig9_tier1_scorecard.json`    | Aggregate Tier-1 panel (Metric 1 + 2 + 17)                 |
+
+> **Status caveat.** The stub JSONs are **machine-readable data
+> anchors** for the Tier-1 panel; the Python generators must read them
+> verbatim — do **not** recompute AUCs inside the plot script.
+
+---
+
+## 2. Per-figure regeneration commands
+
+All generators are headless, matplotlib-only (`matplotlib.use("Agg")`),
+and read canonical inputs from the repo. They are invoked from the
+project root with `uv run`.
+
+```bash
+# Shipped architecture / pipeline / click / scatter figures
+uv run paper/figures/fig1_mlc_architecture.py
+uv run paper/figures/fig2_pipeline.py
+uv run paper/figures/fig3_click_reactions.py
+uv run paper/figures/fig4_homotype_vs_tanimoto.py
+
+# Stub generators (when checked in)
+uv run paper/figures/fig7_cell_line_bar.py     # Metric 2 bar
+uv run paper/figures/fig8_drugood_ood_bar.py    # Metric 17 OOD radar/bar
+uv run paper/figures/fig9_tier1_scorecard.py   # Tier-1 scorecard
+```
+
+Each generator writes its pair of artefacts next to itself
+(`figN_*.png` + `figN_*.svg`). No external state, no random colour
+injection — `RNG` seeds are fixed where any noise is introduced.
+
+---
+
+## 3. Conventions
+
+### 3.1 Output formats and DPI
+
+| Format | Purpose                        | Settings                                                |
+|--------|--------------------------------|---------------------------------------------------------|
+| PNG    | LaTeX `\includegraphics`       | `dpi=600`, `bbox_inches="tight"`, `facecolor="white"`   |
+| SVG    | Web / supplementary vector     | `plt.savefig(..., format="svg")`, no rasterisation       |
+
+Both formats are regenerated by the same `figN_*.py` script.
+
+### 3.2 Colour palette (4-phase band — paper-stable)
+
+This is the **canonical palette** used by fig1, fig2, fig4. New figures
+should reuse it whenever a phase / stage distinction is being made.
+Hex pairs are `(light_fill, dark_edge)`:
+
+| Phase band   | Fill    | Edge    | Used for                                |
+|--------------|---------|---------|-----------------------------------------|
+| parsing      | `#cfe2ff` | `#1f4e79` | Input / lexing / parsing stages       |
+| chemistry    | `#d4edda` | `#1e6b3a` | Chemistry stages (rules, tiles)        |
+| search       | `#ffe5b4` | `#a3560b` | MCTS / search stages                  |
+| output       | `#f8d7da` | `#8b1a1a` | Output gates / reward / validity     |
+
+Figure 3 (click reactions) uses a **5-rule palette** (`CuAAC`,
+`SPAAC`, `Thiol-ene`, `Suzuki-Miyaura`, `Amide coupling`) — see
+`fig3_click_reactions.py:PHASE_STYLE`. Stub fig9 (scorecard) should use
+a traffic-light palette (`#1e6b3a` / `#a3560b` / `#8b1a1a`) for the
+PASS / PARTIAL / FAIL markers.
+
+### 3.3 Typography and layout
+
+| Element             | Setting                                         |
+|---------------------|-------------------------------------------------|
+| Default font        | DejaVu Sans (matplotlib default, never overridden) |
+| Title font size     | 14 pt bold                                      |
+| Axis / tick labels  | 11 pt                                           |
+| Caption footnotes   | 9 pt                                            |
+| Box / stage labels  | 10 pt, dark-edge colour                         |
+| Figure aspect ratio | `figsize=(W, H)` declared at top of each file   |
+
+### 3.4 File layout
+
+Each figure directory entry follows this layout (example for `fig1`):
+
+```
+paper/figures/
+├── fig1_caption.md                  # paper-grade caption + honest-framing
+├── fig1_mlc_architecture.py         # self-contained generator
+├── fig1_mlc_architecture.png        # 600 dpi raster
+└── fig1_mlc_architecture.svg        # scalable vector
+```
+
+New generators **must** follow this 4-file convention.
+
+### 3.5 Data JSON contracts (stub figures)
+
+For fig7 / fig8 / fig9, the generator must:
+
+1. Read the JSON in `paper/figures/data/figN_*.json` (verbatim).
+2. Cross-link the rendered values to the source metric JSON under
+   `metrics/by_metric/` (e.g. `metalcytotox_ru_auc.json`,
+   `platinai_4cell_auc.json`, `drugood_ood_auc.json`).
+3. Cite `molmetal/reports/wf_tier1_table2/final.md` § 4 in the caption
+   honest-framing block.
+
+---
+
+## 4. Common pitfalls
+
+| Pitfall                                                              | Symptom                                              | Fix                                                              |
+|----------------------------------------------------------------------|------------------------------------------------------|------------------------------------------------------------------|
+| Outdated data file (e.g. older `tier1_summary.json`)                 | Caption numbers disagree with §4 table               | Re-run `wf_tier1_table2`; never hand-edit plot scripts           |
+| Missing metric JSON (`metrics/by_metric/*.json`)                     | Generator crashes with `FileNotFoundError`            | Run the relevant metric workflow (`wf_tier1_metric1_…` etc.)     |
+| Plot script pulls from a hard-coded `try_triton_on_rocm` path        | Plot breaks on fresh checkout                         | Replace absolute path with `Path(__file__).resolve().parents[2]` |
+| Generator imports pandas when stdlib `csv` suffices                  | Breaks the lean-render guarantee                      | Use `csv` / `json` from stdlib                                    |
+| Forgetting `matplotlib.use("Agg")`                                  | Crashes in headless CI                               | First matplotlib import must set `Agg` backend                    |
+| Recomputing AUC inside the plot script                               | Caption and table diverge                             | Read the metric JSON verbatim; treat the plot as a *renderer*    |
+| Re-numbering a figure mid-paper                                      | `\ref{fig:N}` labels shift silently                   | Never re-use or renumber; `figN_*` is paper-stable               |
+
+---
+
+## 5. Regenerating all figures (end-to-end)
+
+```bash
+# From project root
+cd /home/hugo/codes/mol-metal
+
+# (Optional) Refresh the Tier-1 panel before regenerating stub figures
+#   (only needed when metric JSONs have changed)
+uv run molmetal/reports/wf_tier1_table2/final.md      # if a runner exists
+
+# Regenerate all shipped figures
+uv run paper/figures/fig1_mlc_architecture.py
+uv run paper/figures/fig2_pipeline.py
+uv run paper/figures/fig3_click_reactions.py
+uv run paper/figures/fig4_homotype_vs_tanimoto.py
+
+# Regenerate stub figures (when checked in)
+uv run paper/figures/fig7_cell_line_bar.py
+uv run paper/figures/fig8_drugood_ood_bar.py
+uv run paper/figures/fig9_tier1_scorecard.py
+
+# Verify file integrity
+ls -la paper/figures/fig*.png paper/figures/fig*.svg
+
+# Rebuild the paper (will pick up the freshly rendered PNG/SVG)
+cd paper && latexmk -pdf main.tex && cd ..
+```
+
+Wall-clock budget (CPU-only, RTX optional): all four shipped figures
+render in < 10 s combined. Stub figures should remain in the same
+budget — they read JSON only, no model re-training.
+
+---
+
+## 6. Cross-links
+
+- **Tier-1 panel figure hooks**: see
+  `molmetal/reports/wf_tier1_table2/final.md` § 4 (Paper figure hook)
+  — that file specifies the data source and visual intent for fig7
+  (per-cell-line AUC bar), fig8 (DrugOOD OOD radar/bar) and fig9
+  (Tier-1 scorecard).
+- **Aggregate JSON**: `metrics/by_metric/tier1_summary.json`
+  (machine-readable verdict, per-metric caveats, paper-figure-hook
+  pointers).
+- **Source metric JSONs**:
+  - `metrics/by_metric/metalcytotox_ru_auc.json` (Metric 1)
+  - `metrics/by_metric/platinai_4cell_auc.json` (Metric 2)
+  - `metrics/by_metric/drugood_ood_auc.json` (Metric 17)
+- **Per-metric reports** (audit trail):
+  - `molmetal/reports/wf_tier1_metric1_metalcytotox/final.md`
+  - `molmetal/reports/wf_tier1_metric2_platinai/final.md`
+  - `molmetal/reports/wf_tier1_metric17_drugood/final.md`
+- **Index of all paper figures** (the 4-row table): `paper/figures/INDEX.md`
+- **LaTeX discovery**: `paper/main.tex` declares
+  `\graphicspath{{figures/}{./}}`, so any PNG/SVG dropped into this
+  directory is auto-resolved by `\includegraphics`.

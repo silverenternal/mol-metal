@@ -1,0 +1,26 @@
+{
+  "title": "OOD radar",
+  "description": "DrugOOD 3-split OOD AUC vs iMoLD (SOTA) vs ERM (baseline)",
+  "axes": [
+    "assay",
+    "scaffold",
+    "size"
+  ],
+  "ours": {
+    "assay": 0.8913735757440715,
+    "scaffold": 0.697338145917519,
+    "size": 0.747946313380067
+  },
+  "imold_reference": {
+    "assay": 0.7211,
+    "scaffold": 0.6884,
+    "size": 0.6792
+  },
+  "erm_baseline": {
+    "assay": 0.7163,
+    "scaffold": 0.6879,
+    "size": 0.675
+  },
+  "gate_target": "\u2265 iMoLD \u2212 0.02",
+  "render": "paper/figures/fig8_ood_radar.py"
+}

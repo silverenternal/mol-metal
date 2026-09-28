@@ -31,8 +31,10 @@ expose the helper as ``triton_config.should_use_fused(tensor, op=...)``.
 Environment variables
 ---------------------
 
-- ``TRITON_USE_FUSED``: ``"1"`` (default for training), ``"0"`` to
-  force-disable globally.  Override at import-time only.
+- ``TRITON_USE_FUSED``: ``"0"`` (default — PyTorch is preferred on
+  Blackwell because the gfx1101-tuned autotune is 3-11x slower than
+  PyTorch on RTX PRO 6000).  Set ``"1"`` to force-enable fused kernels
+  for training.  Override at import-time only.
 - ``TRITON_USE_FUSED_EVAL``: ``"1"`` to enable fused kernels during
   ``model.eval()`` (default off — eval passes typically operate on
   small batches where autotune cost outweighs the fused speedup).
@@ -102,7 +104,8 @@ class TritonConfig:
         # override via ``monkeypatch.setenv`` *before* the singleton is
         # created.  ``None`` means "ask the env".
         if enabled is None:
-            enabled = _env_flag("TRITON_USE_FUSED", "1")
+            # Default changed 2026-09-27: Triton kernels tuned for gfx1101 are 3-11x slower than PyTorch on Blackwell; PyTorch is now the default
+            enabled = _env_flag("TRITON_USE_FUSED", "0")
         if enabled_eval is None:
             enabled_eval = _env_flag("TRITON_USE_FUSED_EVAL", "0")
         self._enabled = bool(enabled)

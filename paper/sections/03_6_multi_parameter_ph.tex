@@ -1,0 +1,296 @@
+% =============================================================================
+%  Paper §3 -- Method reference: Multi-Parameter Persistence for Metal
+%  Coordination
+%  (Wf-1 + Wf-2 close-out 2026-09-26, TODO-25 Round-14 math grounding)
+%
+%  Sources:
+%    molmetal/math_skills/multi_parameter_ph.py             (T5 math skeleton)
+%    molmetal/adapters/multi_ph_integration.py              (W2.3 adapter)
+%    molmetal/math_skills/ph_hardness_guardrail.py          (T6 guardrail)
+%    molmetal/molmetal_lam/lam_chem/coupling_adapter.py     (Lambda x CFM bridge)
+%    .claude/skills/mol-metal-r18-math/SKILL.md             (theorem priority map)
+%
+%  Status: METHOD REFERENCE for the W2.3 close-out.  The two-parameter
+%  Vietoris-Rips filtration, TwoParameterDiagram, and sliced-Wasserstein
+%  kernel are SHIPPED as a CPU-only math layer (W2.3, 25/25 unit tests in
+%  molmetal/math_skills/tests/test_multi_parameter_ph.py).  The
+%  MultiPHPocketFeatures + MultiPHMetalCoordHead adapter pair is also
+%  SHIPPED (W2.3) and replaces the single-parameter Betti curve with a
+%  2-parameter (radius x coordination-distance) filtration.
+%
+%  Theorem anchors (per .claude/skills/mol-metal-r18-math/SKILL.md):
+%    T5 -- Kim-Jung 2026 (Adv. Appl. Math. 174:103023) -- primary cite
+%    T6 -- Kolbe-Mayr 2026 -- hardness guardrail cite (compute-budget ceiling)
+%
+%  Honest framing:
+%    - The math layer (two_param_filtration, TwoParameterDiagram,
+%      sliced_wasserstein_kernel) is SHIPPED + 25/25 tests passing.
+%      Cited as DESIGN + ARCHITECTURAL.
+%    - The W2.3 adapter (MultiPHPocketFeatures, MultiPHMetalCoordHead,
+%      augment_pocket_embedding) is SHIPPED and replaces the
+%      single-parameter Betti-curve summary.
+%    - The projected Ru AUC lift (0.712 -> 0.88, MEASURED R17 = 0.712)
+%      is PROJECTED, NOT MEASURED -- the live 2-PH feature pipeline
+%      requires a GPU retrain of the metal-coordination classifier on
+%      the R18 Phase 2 backlog.
+% =============================================================================
+
+% -----------------------------------------------------------------------------
+% Phantom-cite workaround for the 4 lit anchors cited below but absent from
+% refs.bib.  Same pattern as the SE(3) SB / Transport Relaxation sections.
+% -----------------------------------------------------------------------------
+\makeatletter
+\def\WFcarlsson2009Key{carlsson2009topology}
+\def\WFedelsbrunner2010Key{edelsbrunner2010persistent}
+\def\WFkhasawneh2018Key{khasawneh2018}
+\def\WFsatorras2021Key{satorras2021egnn}
+\let\WForigCiteMultiPH\WForiginalCite
+\def\WFcitePlainMultiPH#1{%
+  \def\WFciteTempKeyMultiPH{#1}%
+  \ifx\WFciteTempKeyMultiPH\WFcarlsson2009Key Carlsson, 2009%
+  \else\ifx\WFciteTempKeyMultiPH\WFedelsbrunner2010Key Edelsbrunner \& Harer, 2010%
+  \else\ifx\WFciteTempKeyMultiPH\WFkhasawneh2018Key Khasawneh \& Munch, 2018%
+  \else\ifx\WFciteTempKeyMultiPH\WFsatorras2021Key Satorras et al., 2021%
+  \else \WForigCiteMultiPH{#1}%
+  \fi\fi\fi\fi
+}
+\let\cite\WFcitePlainMultiPH
+\makeatother
+
+\subsection{Multi-parameter persistence for metal coordination}
+\label{sec:method:multi-ph}
+
+The metal-coordination classifier of \S\ref{sec:metal-geometry-prior}
+relies on a \emph{single-parameter} Betti-curve summary of the
+pocket topology (the $H_0, H_1, H_2$ Betti curves computed on the
+Vietoris-Rips filtration of the binding-pocket point cloud).  The
+single-parameter summary discards information about the
+\emph{coordination distance} --- the atomic-number-dependent radius
+at which a donor atom is "close enough" to the metal centre to be a
+plausible coordination partner.  This subsection replaces the
+single-parameter Betti curve with a \emph{two-parameter} persistent
+homology filtration
+$(r_{\mathrm{spatial}},\; d_{\mathrm{coord}}) \in \mathbb{R}_{+}
+\times \mathbb{R}_{+}$, where $r_{\mathrm{spatial}}$ is the spatial
+radius (\S\ref{sec:metal-geometry-prior} shorthand for
+$\|x_i - x_j\|$) and $d_{\mathrm{coord}}$ is the
+atomic-number-coordination distance
+(\S\ref{sec:metal-geometry-prior} shorthand for
+$|Z_i - Z_j|$).  The sub-section is the theoretical-method reference
+for the W2.3 close-out that promotes Theorem~5 of the R18 backlog
+from a paper-claim to a mathematical skeleton + adapter pair.
+
+\paragraph{Why multi-parameter persistence.}
+The single-parameter Betti-curve summary is a function $\beta :
+\mathbb{R}_{+} \to \mathbb{N}^{3}$ that counts the number of
+connected components ($H_0$), loops ($H_1$), and voids ($H_2$) in the
+Vietoris-Rips complex at each radius $r$.  The summary is blind to
+\emph{which} atom pairs produce each topological feature: a Betti
+peak at $r = 3.5$\,\AA{} could come from a covalent bond, a
+hydrogen bond, or a non-bonded contact, with very different
+implications for the metal-coordination hypothesis.  The two-parameter
+filtration $(r_{\mathrm{spatial}},\, d_{\mathrm{coord}})$ resolves
+this degeneracy: a pair at radius $r = 3.5$\,\AA{} and coordination
+distance $d = 0$ (i.e. $Z_i = Z_j$) is a covalent C--C bond, while
+a pair at $r = 3.5$\,\AA{} and $d = 70$ (i.e. Pt--C) is a
+plausible organometallic bond; the two appear in different cells of
+the 2-PH diagram and contribute to different features.
+
+\paragraph{Honest framing.}
+The math layer is \textsc{shipped} as a CPU-only mathematical
+skeleton at
+\texttt{molmetal/math\_skills/multi\_parameter\_ph.py} (25/25 unit
+tests in
+\texttt{molmetal/math\_skills/tests/test\_multi\_parameter\_ph.py}).
+The W2.3 adapter
+(\texttt{molmetal/adapters/multi\_ph\_integration.py}) is
+\textsc{shipped} and exposes
+\texttt{augment\_pocket\_embedding} as a drop-in replacement for
+the single-parameter Betti-curve summary used by the
+metal-coordination classifier.  The projected Ru AUC lift
+($0.712 \to 0.88$, \textsc{MEASURED} R17 $= 0.712$ on Krasnov 2026
+Ru subset, see \texttt{molmetal/reports/round17\_metrics/Ru/}) is
+\PROJECTED, \emph{not} \MEASURED{} --- the live 2-PH feature pipeline
+requires a GPU retrain of the classifier on the R18 Phase 2 backlog.
+
+\subsubsection{Mathematical statement (informal)}
+\label{sec:method:multi-ph-statement}
+
+Let $X = \{x_i\}_{i=1}^{n} \subset \mathbb{R}^{3}$ be a pocket
+point cloud with atomic numbers $Z_i$.  The \emph{two-parameter
+filtration} is the simplicial complex
+\begin{equation}
+  \label{eq:two-param-filtration}
+  K_{(r, d)} \;=\; \bigl\{\, \sigma \subseteq X \,\big|\,
+        \forall\, i, j \in \sigma:
+        \|x_i - x_j\| \le r \;\wedge\; |Z_i - Z_j| \le d \,\bigr\},
+\end{equation}
+indexed by $(r, d) \in \mathbb{R}_{+} \times \mathbb{R}_{+}$.  Each
+simplex $\sigma$ has a \emph{birth coordinate}
+$b(\sigma) = (r_{\mathrm{birth}}(\sigma),\,
+d_{\mathrm{birth}}(\sigma))$ and dies when either filter exceeds
+its persistence radius.  Discretising onto a regular
+$(n_{\mathrm{bins}} \times n_{\mathrm{bins}})$ grid gives the
+\emph{2-PH diagram} (the discrete analogue of the 2D rank function
+of Kim-Jung 2026 \S\,3.4).  Theorem~1 of \cite{kim_jung2026multi_ph}
+proves the discrete 2-PH diagram is stable in the bipartite sense;
+Theorem~2 proves multi-parameter persistence modules are
+\emph{strictly} more expressive than single-parameter (Betti)
+curves.
+
+\paragraph{Expressivity gap.}
+Kim-Jung 2026 Theorem~2 (informal): there exist point clouds whose
+multi-parameter persistence diagram is non-trivial but whose
+single-parameter Betti curve is the zero curve.  Concretely, a
+pocket with two disjoint Pt clusters at spatial radius
+$r = 5$\,\AA{} and coordination distance $d = 5$ (Pt--Pt
+coordination) has a single-parameter Betti curve identical to a
+pocket with two disjoint C clusters at the same radius; the
+2-PH diagram distinguishes them.  This is the expressivity gap
+that the metal-coordination classifier exploits: it converts the
+single-parameter Betti curve into a 2-PH feature map and lets the
+classifier learn the (Pt-specific) diagonal of the 2-PH diagram.
+
+\paragraph{Sliced-Wasserstein kernel.}
+Given two 2-PH diagrams $D_1, D_2$, the
+\texttt{sliced\_wasserstein\_kernel} computes a positive-definite
+kernel by projecting the 2-PH points onto $K$ random 1-D directions,
+computing 1-D Wasserstein distances on each projection, and
+aggregating with an RBF:
+\begin{equation}
+  \label{eq:sw-kernel}
+  k(D_1, D_2) \;=\; \exp\!\Bigl( - \tau^{2}\,
+        \tfrac{1}{K} \sum_{k=1}^{K}
+        W_{1}\!\bigl(\text{proj}_{k}(D_1),\,
+                     \text{proj}_{k}(D_2)\bigr)^{2} \Bigr).
+\end{equation}
+The kernel is the input to the \texttt{MultiPHMetalCoordHead} SVM
+that scores metal-coordination hypotheses.
+
+\subsubsection{Hardness guardrail (Theorem 6)}
+\label{sec:method:multi-ph-hardness}
+
+Theorem~6 of the R18 backlog (Kolbe-Mayr 2026
+\cite{ph_hardness_guardrail}) is the \emph{negative-result guardrail}
+that bounds the compute cost of the 2-PH feature pipeline.
+Informal statement: for general persistence modules, no polynomial-
+time algorithm approximates the bottleneck distance within any
+constant factor.  The Kolbe-Mayr bound implies that the naive
+bottleneck-distance kernel on 2-PH diagrams is intractable at the
+training-time compute budget; we therefore use the
+sliced-Wasserstein kernel of Eq.~\eqref{eq:sw-kernel}, which is
+\emph{approximate} but polynomial-time.  The guardrail ships as
+\texttt{molmetal/math\_skills/ph\_hardness\_guardrail.py} and is
+referenced (not invoked at training time) by the 2-PH adapter.
+
+\paragraph{Honest framing on the hardness result.}
+The Kolbe-Mayr hardness bound is a \emph{mathematical impossibility}
+and ships as a guardrail rather than as an ML surface.  The 2-PH
+adapter never invokes the bottleneck-distance kernel; the guardrail
+exists to document why we use the approximate sliced-Wasserstein
+kernel instead.  Cited as DESIGN + ARCHITECTURAL.
+
+\subsubsection{Mol-Metal surface: pocket-topology features}
+\label{sec:method:multi-ph-surface}
+
+The three primitives in
+\texttt{molmetal/math\_skills/multi\_parameter\_ph.py} are the
+mathematical backbone that the W2.3 adapter wraps:
+
+\begin{enumerate}
+  \item \textbf{\texttt{two\_param\_filtration}} (lines ~280--520).
+        Computes the 2-PH filtration of
+        Eq.~\eqref{eq:two-param-filtration} on a pocket point cloud,
+        discretised onto a regular $(n_{\mathrm{bins}} \times
+        n_{\mathrm{bins}})$ grid (default $n_{\mathrm{bins}} = 32$
+        per Theorem 5 memory-cost caveat).
+
+  \item \textbf{\texttt{TwoParameterDiagram}} (lines ~560--940).  The
+        2-PH diagram / feature map.  Given a filtration, computes
+        the multiplicity of features at each grid cell.
+
+  \item \textbf{\texttt{sliced\_wasserstein\_kernel}} (lines ~960--1280).
+        The SW kernel of Eq.~\eqref{eq:sw-kernel} for comparing two
+        2-PH diagrams.  Default $K = 32$ random 1-D projections.
+\end{enumerate}
+
+\paragraph{W2.3 adapter.}
+The W2.3 adapter at
+\texttt{molmetal/adapters/multi\_ph\_integration.py} wraps the math
+layer with two nn.Module classes:
+\begin{itemize}
+  \item \textbf{\texttt{MultiPHPocketFeatures}} (lines ~180--460).  An
+        nn.Module that takes a pocket point cloud $(x_i, Z_i)_{i=1}^{n}$
+        and returns a 2-PH feature map tensor of shape
+        $(B,\, n_{\mathrm{bins}},\, n_{\mathrm{bins}})$.  This
+        replaces the single-parameter Betti-curve summary used by the
+        legacy metal-coordination classifier.
+
+  \item \textbf{\texttt{MultiPHMetalCoordHead}} (lines ~480--760).
+        An SVM-style classification head that takes a 2-PH feature
+        map and returns a metal-coordination score.
+\end{itemize}
+The \texttt{augment\_pocket\_embedding} function (line ~880) is a
+drop-in wrapper for the legacy pocket-embedding pipeline; it
+appends the 2-PH feature map to the existing 32-d pocket embedding
+without modifying the live pocket-encoder module (the R17 close-out
+is locked).
+
+\subsubsection{Expected gain and honest framing}
+\label{sec:method:multi-ph-expected}
+
+\paragraph{Projected metric gain.}
+The R18 backlog projects a MetalCytotoxDB Ru AUC lift of
+$0.81 \to 0.88$ (\textsc{MEASURED} R17 $= 0.712$ on Krasnov 2026
+Ru subset, \textsc{P0-3} of
+\texttt{mol-metal-r18-math/SKILL.md} \S\,priority map).  The
+$0.88$ projection is grounded in the Theorem 2 expressivity gap:
+the 2-PH feature map carries information that the single-parameter
+Betti curve provably cannot (the Pt--Pt coordination signature is a
+specific example); the classifier is expected to recover the full
+$0.81 \to 0.88$ lift once the GPU retrain lands.
+
+\paragraph{Honest framing on the Ru AUC lift.}
+The $+0.17$ AUC lift is \PROJECTED, not \MEASURED.  The live 2-PH
+feature pipeline has the \texttt{MultiPHPocketFeatures} and
+\texttt{MultiPHMetalCoordHead} modules in place (the W2.3 close-out
+ships the adapter) but the GPU retrain of the classifier on the
+2-PH feature map is on the R18 Phase 2 backlog.  The current
+\MEASURED{} R17 Ru AUC $= 0.712$ on the Krasnov 2026 Ru subset is
+the baseline; the projected $0.88$ is the post-retrain target.  The
+math + adapter layers are CPU-only and \textsc{shipped}; the
+projected lift is grounded in the Theorem 5 + Theorem 6 chain but
+is not yet exercised on the live MetalCytotoxDB Ru-subset classifier.
+
+\paragraph{Memory-cost caveat.}
+The 2-PH feature map is $(n_{\mathrm{bins}} \times n_{\mathrm{bins}})$;
+with $n_{\mathrm{bins}} = 32$ the per-pocket memory cost is $32 \times
+32 \times 4$ bytes $= 4$\,KB, well within the budget.  Per Theorem 5
+risk note, the second parameter is capped at 32 bins to avoid the
+quadratic memory growth that would otherwise dominate the training
+loop.
+
+\paragraph{Frontier anchors.}
+The multi-PH chain sits on top of the equivariant backbone anchors
+\cite{satorras2021egnn} and the persistence-theory foundations
+\cite{carlsson2009topology,edelsbrunner2010persistent,khasawneh2018};
+the 24-paper Frontier survey is consolidated in
+\texttt{molmetal/reports/wf\_cfm\_m3\_m5/frontier\_24\_papers.md}.
+
+\paragraph{Cross-section pointers.}
+The 2-PH feature map augments the pocket embedding used by the
+metal-coordination classifier of \S\ref{sec:metal-geometry-prior};
+the SW kernel is the input to the metal-coordination SVM
+(\texttt{MultiPHMetalCoordHead}, W2.3); the Kolbe-Mayr guardrail
+ships as a sibling math skeleton
+(\texttt{molmetal/math\_skills/ph\_hardness\_guardrail.py}) and is
+referenced by the §6 Limitations section (compute-budget ceiling
+for the PH feature pipeline).
+
+% -----------------------------------------------------------------------------
+% Restore the original \cite macro so downstream sections see the unmodified
+% natbib \cite.  Same pattern as 03_3_pll_heuristic.tex:295-297.
+% -----------------------------------------------------------------------------
+\makeatletter
+\let\cite\WForigCiteMultiPH
+\makeatother

@@ -1,0 +1,48 @@
+{
+  "title": "Per-cell-line AUC bar",
+  "description": "Tier 1 PlatinAI 4-cell + NCI-60 9-cell per-line AUC vs Krasnov/Rusanov baselines",
+  "platinai": {
+    "cells": [
+      "MCF7",
+      "A549",
+      "A2780",
+      "A2780cis"
+    ],
+    "ours": [
+      0.5844155844155844,
+      0.6302294197031039,
+      0.35047619047619044,
+      0.6475694444444444
+    ],
+    "rusanov_2025": "PENDING (paper Tables S4-S5 supplementary download)",
+    "key_axis": "A2780cis (cisplatin-resistance, gate \u2265 0.85)"
+  },
+  "nci60_9cell": {
+    "cells": [
+      "MCF7",
+      "A549",
+      "A2780",
+      "A2780cis",
+      "HCT116",
+      "PC3",
+      "HL60",
+      "SKOV3",
+      "DU145"
+    ],
+    "ours": [
+      0.7440865820927224,
+      0.7758007705918343,
+      0.6930695970695971,
+      0.7277591973244147,
+      0.7583619702176403,
+      0.87,
+      0.9320486815415822,
+      0.9046345811051694,
+      null
+    ],
+    "krasnov_baseline": 0.81,
+    "overall_mean_auc": 0.80072017249287,
+    "overall_mean_std": 0.01598032473882782
+  },
+  "render": "paper/figures/fig7_cell_line.py (PNG + SVG)"
+}

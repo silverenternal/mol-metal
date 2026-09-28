@@ -1,0 +1,105 @@
+{
+  "data_source": "drugood_native",
+  "n_rows": 10000,
+  "n_subsample_target": 10000,
+  "epochs": 5,
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "splits": [
+    "assay",
+    "scaffold",
+    "size"
+  ],
+  "results": {
+    "assay": {
+      "ood_auc_mean": 0.5625,
+      "ood_auc_std": 0.05103103630798288,
+      "per_seed": [
+        {
+          "split": "assay",
+          "seed": 0,
+          "ood_test_auc": 0.5,
+          "id_test_auc": 0.6673403178760642,
+          "train_time_s": 0.7904667854309082
+        },
+        {
+          "split": "assay",
+          "seed": 1,
+          "ood_test_auc": 0.625,
+          "id_test_auc": 0.6575574627376686,
+          "train_time_s": 0.760615348815918
+        },
+        {
+          "split": "assay",
+          "seed": 2,
+          "ood_test_auc": 0.5625,
+          "id_test_auc": 0.6466775303277205,
+          "train_time_s": 0.7265207767486572
+        }
+      ],
+      "imold_reference": 0.7211,
+      "delta_vs_imold": -0.15859999999999996
+    },
+    "scaffold": {
+      "ood_auc_mean": 0.5999031587342277,
+      "ood_auc_std": 0.0,
+      "per_seed": [
+        {
+          "split": "scaffold",
+          "seed": 0,
+          "ood_test_auc": 0.5999031587342277,
+          "id_test_auc": 0.6719814484854838,
+          "train_time_s": 0.6511671543121338
+        },
+        {
+          "split": "scaffold",
+          "seed": 1,
+          "ood_test_auc": 0.5999031587342277,
+          "id_test_auc": 0.6719814484854838,
+          "train_time_s": 0.7039153575897217
+        },
+        {
+          "split": "scaffold",
+          "seed": 2,
+          "ood_test_auc": 0.5999031587342277,
+          "id_test_auc": 0.6719814484854838,
+          "train_time_s": 0.6486480236053467
+        }
+      ],
+      "imold_reference": 0.6884,
+      "delta_vs_imold": -0.08849684126577229
+    },
+    "size": {
+      "ood_auc_mean": 0.5812793216637107,
+      "ood_auc_std": 0.0,
+      "per_seed": [
+        {
+          "split": "size",
+          "seed": 0,
+          "ood_test_auc": 0.5812793216637107,
+          "id_test_auc": 0.495199692780338,
+          "train_time_s": 0.5822758674621582
+        },
+        {
+          "split": "size",
+          "seed": 1,
+          "ood_test_auc": 0.5812793216637107,
+          "id_test_auc": 0.495199692780338,
+          "train_time_s": 0.577094554901123
+        },
+        {
+          "split": "size",
+          "seed": 2,
+          "ood_test_auc": 0.5812793216637107,
+          "id_test_auc": 0.495199692780338,
+          "train_time_s": 0.6403548717498779
+        }
+      ],
+      "imold_reference": 0.6792,
+      "delta_vs_imold": -0.09792067833628937
+    }
+  }
+}

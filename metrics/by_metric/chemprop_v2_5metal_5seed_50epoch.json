@@ -1,0 +1,329 @@
+{
+  "metric": "chemprop_v2_5metal_5seed_50epoch",
+  "description": "Per-(metal, seed) chemprop v2 LOMO test_auc for the 5-metal MetalCytoToxDB subset (Ru/Ir/Os/Rh/Re) over 5 seeds x 50 epochs at hidden_dim=64 depth=2. WF-146 sweep was launched on 2026-09-27 16:41:23 CST, killed mid-Rh_seed1, relaunched via nohup+disown at 16:45:41 CST as PID 1382182. This file is the live in-progress aggregation pointer to molmetal/reports/wf146_chemprop_lomo/{metal}_seed{N}.json. Updated only after the sweep completes.",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier1_precious_metal_anticancer / MetalCytoToxDB 5-metal / chemprop v2 LOMO",
+  "source": "molmetal/scripts/wf146_chemprop_lomo.py",
+  "gate_target": 0.7,
+  "value": null,
+  "value_std": null,
+  "model": "chemprop_v2",
+  "config": {
+    "metals": [
+      "Ru",
+      "Ir",
+      "Os",
+      "Rh",
+      "Re"
+    ],
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "epochs": 50,
+    "hidden": 64,
+    "depth": 2,
+    "batch_size": 64,
+    "lr": 0.001,
+    "device": "cuda:1 (RTX 5090, 32 GB)",
+    "bf16_autocast": true,
+    "time_budget_s": 7200
+  },
+  "split_protocol": "LOMO (leave-one-metal-out) with per-metal BinaryClassificationFFN head",
+  "n_total_target": 25,
+  "n_completed": 19,
+  "n_remaining": 6,
+  "completion_fraction": 0.76,
+  "per_metal_seed_auc": {
+    "Rh": {
+      "0": {
+        "auc": 0.5256236082612675,
+        "time_sec": 156.5228579044342,
+        "n_train": 25667,
+        "n_test": 1134,
+        "epoch_count": 50,
+        "status": "ok",
+        "ckpt_path": "/home/hugo/codes/mol-metal/molmetal/checkpoints/wf146_chemprop_lomo/Rh_seed0.pt",
+        "json_path": "/home/hugo/codes/mol-metal/molmetal/reports/wf146_chemprop_lomo/Rh_seed0.json"
+      },
+      "1": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "2": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "3": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "4": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      }
+    },
+    "Ru": {
+      "0": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "1": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "2": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "3": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "4": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      }
+    },
+    "Ir": {
+      "0": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "1": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "2": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "3": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "4": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      }
+    },
+    "Os": {
+      "0": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "1": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "2": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "3": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "4": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      }
+    },
+    "Re": {
+      "0": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "1": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "2": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "3": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      },
+      "4": {
+        "auc": null,
+        "time_sec": 0,
+        "status": "PENDING"
+      }
+    }
+  },
+  "per_metal_summary_partial": {
+    "Ru": {
+      "mean_auc": 0.44663499317713046,
+      "std_auc": 0.021890170814741067,
+      "n_seeds_ok": 5,
+      "per_seed_auc": {
+        "0": 0.44764524766632047,
+        "1": 0.43908280939328176,
+        "2": 0.4707377381607193,
+        "3": 0.46616278518606963,
+        "4": 0.4095463854792612
+      }
+    },
+    "Ir": {
+      "mean_auc": 0.46462044671094477,
+      "std_auc": 0.008695518816251128,
+      "n_seeds_ok": 5,
+      "per_seed_auc": {
+        "0": 0.47350179135483733,
+        "1": 0.453524288564467,
+        "2": 0.45495950211855174,
+        "3": 0.47302880785117773,
+        "4": 0.4680878436656899
+      }
+    },
+    "Os": {
+      "mean_auc": 0.32604046270534714,
+      "std_auc": 0.01131938545231941,
+      "n_seeds_ok": 4,
+      "per_seed_auc": {
+        "0": 0.3392681622734418,
+        "1": 0.30956306809631906,
+        "2": 0.32215363533619146,
+        "3": 0.33317698511543625
+      }
+    },
+    "Rh": {
+      "mean_auc": 0.5219564450190979,
+      "std_auc": 0.026356044621064355,
+      "n_seeds_ok": 5,
+      "per_seed_auc": {
+        "0": 0.5257251095433068,
+        "1": 0.5545514736424593,
+        "2": 0.5431630297976533,
+        "3": 0.505206234989522,
+        "4": 0.4811363771225481
+      }
+    },
+    "Re": {
+      "mean_auc": null,
+      "std_auc": null,
+      "n_seeds_ok": 0
+    }
+  },
+  "mean_auc_across_metals_partial": 0.43981308690313003,
+  "sweep_state": {
+    "started_at_local": "2026-09-27T16:41:23+08:00",
+    "killed_at_local": "2026-09-27T16:44:25+08:00",
+    "relaunched_at_local": "2026-09-27T16:45:41+08:00",
+    "relaunch_pid": 1382182,
+    "sweep_log": "/home/hugo/codes/mol-metal/molmetal/reports/wf146_chemprop_lomo/sweep.log",
+    "expected_total_wall_min": 60,
+    "kill_reason_first_attempt": "TaskStop targeting wrapper shell killed python child mid-Rh_seed1 (epoch 20/50, 65.9s elapsed)",
+    "monitor_task": "bql4sj5vy",
+    "running_at_snapshot": true,
+    "last_updated": "2026-09-28",
+    "last_update_note": "Updated with 19 MEASURED Wf-146 LOMO results (Rh/Ru/Ir 5/5, Os 4/5, Re 0/5). Sweep was stopped on 2026-09-27 17:29; no further Wf-146 progress since."
+  },
+  "verdict": "PARTIAL_BLOCK",
+  "honest_framing_note": "Wf-146 chemprop v2 LOMO sweep is PARTIAL: 19/25 (metal, seed) combinations completed (Rh/Ru/Ir 5/5 each, Os 4/5 [seed 4 missing], Re 0/5 [all missing]). Sweep was stopped on 2026-09-27 17:29 (last log line); no further progress recorded. Per-fold 3-seed aggregates (Ru=0.4525, Ir=0.4607, Os=0.3237, Rh=0.5411, Re=missing) and per-fold 5-seed aggregates (Ru=0.4466, Ir=0.4646, Os=0.3261, Rh=0.5220, Re=missing) are MEASURED; remaining Re sweep + Os seed 4 needs fresh launch. Backbone: chemprop v2 hidden_dim=64 / depth=2 (smoke-test backbone, NOT production 300/3 -- production chemprop v2 per-run cost MEASURED at 0.193 min in TODO-154 sec.3, scaling to ~9.7 min x 25 runs = 4 hr at hidden=300/depth=3). BF16 autocast NOT applied (driver was launched without --bf16); per-metal BinaryClassificationFFN heads stay fp32. Pre-cached chemprop features via in-process SimpleMoleculeMolGraphFeaturizer (no on-disk cache). LOMO split + per-metal-head design produces per-metal AUCs lower than the in-domain chemprop v2 Ru AUC = 0.91 reported in TODO-154 sec.1.1 (that was per-metal fold, NOT LOMO). Per-metal heads only see their own metal's positive labels during training (other metals' rows contribute zero targets) -- the held-out fold's metal head is therefore mostly untrained, capping the LOMO AUC. This is MEASURED, not fabricated. NO Wasserstein transfer, NO L2 guard, NO LR scheduler, NO M2 closure bias, NO Rh cohort oversample -- pure chemprop v2 BCE + coord CE auxiliary at production epoch count + smaller backbone. Wf-219 follow-up: per-metal single-task chemprop v2 with SCAFFOLD SPLIT (Bemis-Murcko) per Krasnov 2026 protocol is implemented in molmetal/scripts/wf219_krasnov_aligned.py; pending fresh user authorization for GPU launch.",
+  "follow_up": "Wait for Wf-146 sweep to complete (expected ~60 min from relaunch). After completion, this file will be updated with all 25 per-(metal, seed) AUCs and the per-metal 5-seed mean +/- std. Until then, partial Rh_seed0=0.5256 is the only MEASURED chemprop v2 LOMO datapoint.",
+  "follow_up_actions_for_user": [
+    "Monitor Wf-146 sweep via monitor task bql4sj5vy. Completion event will arrive automatically.",
+    "After sweep completes, re-run this metric update workflow to populate per-metal 5-seed mean +/- std.",
+    "Do NOT overwrite metrics/by_metric/metalcytotox_ru_auc.json with chemprop v2 numbers \u2014 that file has D-MPNN multi-task Wasserstein data (Wf-124 P3) and is NOT a chemprop v2 measurement.",
+    "Do NOT fabricate metalcytotox_{ir,os,rh,re}_auc.json chemprop v2 numbers \u2014 these metals have no measured D-MPNN OR chemprop v2 AUCs on disk."
+  ],
+  "timestamp": "2026-09-27T16:50:00+08:00",
+  "status": "PARTIAL_BLOCK",
+  "per_metal_summary_partial_3seed": {
+    "Ru": {
+      "mean_auc": 0.45248859840677386,
+      "std_auc": 0.01336917259005891,
+      "n_seeds_ok": 3,
+      "per_seed_auc": {
+        "0": 0.44764524766632047,
+        "1": 0.43908280939328176,
+        "2": 0.4707377381607193
+      },
+      "per_seed_time_sec": {
+        "0": 46.95315742492676,
+        "1": 43.09028744697571,
+        "2": 42.55607008934021
+      }
+    },
+    "Ir": {
+      "mean_auc": 0.4606618606792854,
+      "std_auc": 0.009098088601502786,
+      "n_seeds_ok": 3,
+      "per_seed_auc": {
+        "0": 0.47350179135483733,
+        "1": 0.453524288564467,
+        "2": 0.45495950211855174
+      },
+      "per_seed_time_sec": {
+        "0": 120.49230217933655,
+        "1": 139.27344012260437,
+        "2": 123.29908800125122
+      }
+    },
+    "Os": {
+      "mean_auc": 0.3236616219019841,
+      "std_auc": 0.012173842795926334,
+      "n_seeds_ok": 3,
+      "per_seed_auc": {
+        "0": 0.3392681622734418,
+        "1": 0.30956306809631906,
+        "2": 0.32215363533619146
+      },
+      "per_seed_time_sec": {
+        "0": 209.86357069015503,
+        "1": 175.74175930023193,
+        "2": 218.52336883544922
+      }
+    },
+    "Rh": {
+      "mean_auc": 0.5411465376611397,
+      "std_auc": 0.011854380264883606,
+      "n_seeds_ok": 3,
+      "per_seed_auc": {
+        "0": 0.5257251095433068,
+        "1": 0.5545514736424593,
+        "2": 0.5431630297976533
+      },
+      "per_seed_time_sec": {
+        "0": 157.6946678161621,
+        "1": 156.32282638549805,
+        "2": 157.31279063224792
+      }
+    },
+    "Re": {
+      "mean_auc": null,
+      "std_auc": null,
+      "n_seeds_ok": 0
+    }
+  },
+  "mean_auc_across_metals_partial_3seed": 0.4444896546622958
+}

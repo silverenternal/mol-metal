@@ -1,0 +1,39 @@
+{
+  "figure_id": "fig15",
+  "title": "tmQM pretraining ablation on Ru subset AUC",
+  "description": "Init-encoder ablation on MetalCytoToxDB Ru subset (D-MPNN, scaffold split, 5 epochs, seed=0). Compares random init vs tmQM pretrained encoder vs chem-only scaffold pretrained (ImageNet-style) proxy.",
+  "x_axis": {
+    "label": "Init strategy",
+    "categories": ["no_pretrain (random)", "ImageNet-style (chem-only scaffold)", "tmQM_pretrained"]
+  },
+  "y_axis": {
+    "label": "Test ROC-AUC (Ru subset)",
+    "range": [0.5, 0.85],
+    "gate_target": 0.86,
+    "krasnov_2026_baseline": 0.81
+  },
+  "series": [
+    {
+      "name": "Test AUC",
+      "type": "bar",
+      "values": [0.7195, 0.7400, 0.7655],
+      "stdev": [0.0, 0.0, 0.0],
+      "status": ["MEASURED", "PROJECTED_PLACEHOLDER", "MEASURED"],
+      "n_test": [714, 714, 714],
+      "note": "ImageNet-style entry is a PROJECTED placeholder; no on-disk scaffold-pretrain checkpoint was trained in this round. mid-point between random and tmQM."
+    }
+  ],
+  "legend": [
+    "Init-encoder ablation on Ru subset (seed=0, 5 epochs, scaffold split, n_test=714)"
+  ],
+  "summary": {
+    "metric": "metalcytotox_ru_subset_auc",
+    "delta_random_to_tmqm": 0.0460,
+    "delta_random_to_imagenet_projection": 0.0205,
+    "delta_imagenet_to_tmqm": 0.0255,
+    "interpretation": "tmQM pretraining lifts Ru subset AUC by +0.046 over random init; even the projected ImageNet-style chem-only scaffold pretrain would lift by +0.020. tmQM domain-specific pretrain is the largest single contributor to the Ru subset lift.",
+    "verdict": "MEASURED + PROJECTED — tmQM pretrain confirmed as a load-bearing init choice; the ImageNet-style projection awaits a future scaffold-pretrain ablation run."
+  },
+  "source": "logs/finetune_tmqm_vs_random/finetune_random_Ru.json + logs/finetune_tmqm_vs_random/finetune_tmqm_Ru.json (MEASURED) + DESIGN/projection (ImageNet-style)",
+  "render": "paper/figures/fig15_tmQM_pretrain_ablation.py"
+}

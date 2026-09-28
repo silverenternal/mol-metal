@@ -1,0 +1,22 @@
+{
+  "fold": "Ir",
+  "seed": 2,
+  "n_train": 3626,
+  "n_val": 403,
+  "n_test": 1242,
+  "pos_rate_train": 0.26227247655819086,
+  "pos_rate_test": 0.44847020933977455,
+  "test_metrics": {
+    "roc_auc": 0.6271068943374962,
+    "pr_auc": 0.5748752380789409,
+    "hit_rate_top5pct": 0.7419354838709677,
+    "n": 1242
+  },
+  "val_metrics": {
+    "roc_auc": 0.7445834604821484,
+    "pr_auc": 0.5304041567187621,
+    "hit_rate_top5pct": 0.75,
+    "n": 403
+  },
+  "elapsed_seconds": 271.20597219467163
+}

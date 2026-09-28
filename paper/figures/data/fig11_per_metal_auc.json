@@ -1,0 +1,44 @@
+{
+  "figure_id": "fig11",
+  "title": "MetalCytoToxDB per-metal LOMO AUC",
+  "description": "Per-metal leave-one-metal-out (LOMO) AUC across the 5 precious metals in MetalCytoToxDB. Krasnov 2026 reports a single Ru subset 5-fold CV AUC = 0.81 (not per-metal LOMO); our per_fold_auc values below are LOMO with that metal held out.",
+  "x_axis": {
+    "label": "Metal",
+    "categories": ["Ru", "Ir", "Os", "Rh", "Re"]
+  },
+  "y_axis": {
+    "label": "ROC-AUC (LOMO)",
+    "range": [0.0, 1.0],
+    "gate_target": 0.70,
+    "krasnov_ru_subset_baseline": 0.81
+  },
+  "series": [
+    {
+      "name": "Mol-Metal (LOMO, ours)",
+      "type": "bar",
+      "values": [0.5894, 0.6395, 0.4889, 0.4327, 0.4063],
+      "framing": "LOMO per-metal: model trained on 4 metals, tested on held-out 5th metal. Honest gap to Krasnov 2026's single-metal Ru subset 5-fold CV."
+    },
+    {
+      "name": "Krasnov 2026 (MetalCytoToxDB)",
+      "type": "reference",
+      "values": [0.81, null, null, null, null],
+      "note": "Ru subset only; not per-metal LOMO protocol. Direct comparison apples-to-oranges, included as Tier-1 anchor."
+    }
+  ],
+  "legend": [
+    "Mol-Metal LOMO per-metal (1 seed × 5 folds, n_train_avg=797)",
+    "Krasnov 2026 Ru subset 5-fold CV (Tier-1 same-domain anchor)"
+  ],
+  "summary": {
+    "overall_lomo_mean": 0.5114,
+    "overall_std": 0.0897,
+    "n_folds": 5,
+    "n_seeds": 1,
+    "gate_verdict": "BELOW_GATE (gap -0.189 vs 0.70)",
+    "best_metal": "Ir (0.6395)",
+    "weakest_metal": "Re (0.4063)"
+  },
+  "source": "metrics/by_metric/metal_lomo_auc.json (per_fold_auc field); molmetal/scripts/train_metal_cytotox.py",
+  "render": "paper/figures/fig11_per_metal_auc.py"
+}

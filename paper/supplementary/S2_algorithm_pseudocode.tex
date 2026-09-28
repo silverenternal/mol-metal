@@ -1,0 +1,399 @@
+% =============================================================================
+%  paper/supplementary/S2_algorithm_pseudocode.tex
+%  Supplementary section S2 -- Pseudocode for six shipped R18
+%  algorithms: M22 SE(3) SB solver (W2.1); M23 Transport Relaxation
+%  (W2.2); M24 Multi-PH filtration (W2.3); M25 Hilbert primal-dual
+%  (unifies W2.1-W2.3); M26 Score-Repellent MC (Wf-9); M28
+%  Variance-Controlled PUCT MCTS (Wf-11 / TODO-30).  Each block
+%  lists shipped module path, input/output shape contract, per-step
+%  cost, and integration point.  Status: SHIPPED (Wf-26 Phase 1,
+%  2026-09-26).
+%
+%  Standalone preamble: defines the honest-framing macros locally so
+%  this file compiles as a separate PDF (Digital Discovery SI portal).
+% =============================================================================
+
+\section*{Supplementary S2: Algorithm pseudocode}
+\addcontentsline{toc}{section}{Supplementary S2: Algorithm pseudocode}
+
+\providecommand{\MEASURED}{\textbf{MEASURED}}
+\providecommand{\PROJECTED}{\textbf{PROJECTED}}
+\providecommand{\DESIGN}{\textbf{DESIGN}}
+
+\paragraph{Scope.}
+Six algorithm blocks in order M22 -- M28.  Each is tagged
+\DESIGN{} (algorithm specification shipped as a Python module);
+empirical runtimes are \DESIGN{}-with-\MEASURED-unit-tests; the
+live training-loop measurements (where available) are
+\PROJECTED{}.
+
+% ===========================================================================
+\subsection*{M22 -- SE(3) Schroedinger-Bridge solver}
+\label{supp:s2-m22}
+
+\paragraph{Source.}
+\texttt{molmetal/math\_skills/se3\_schrodinger\_bridge.py},
+classes \texttt{SE3Geodesic} / \texttt{LogSinkhornLoss} /
+\texttt{SchrodingerBridgeSE3}; adapter at
+\texttt{molmetal/adapters/se3\_sb\_integration.py}.
+
+\paragraph{Input.}
+Two empirical distributions $\mu_{0}, \mu_{1}$ on $\mathrm{SE}(3)$
+as point-clouds $\{g_{0}^{(i)}\}_{i=1}^{N} \subset \mathrm{SE}(3)^{N}$
+and $\{g_{1}^{(j)}\}_{j=1}^{M}$; entropy $\varepsilon > 0$;
+Sinkhorn iters $T$; geodesic samples
+$\{t_{k}\}_{k=0}^{K} \subset [0, 1]$.
+
+\paragraph{Output.}
+SB coupling $\Pi^{\star} \in \mathbb{R}^{N \times M}_{+}$; per-pair
+geodesic interpolants $\{g^{(i,j)}_{t_{k}}\}_{i, j, k}$.
+
+\begin{algorithmic}[1]
+  \STATE \textbf{Input:} source $\{g_{0}^{(i)}\}_{i=1}^{N}$, target
+         $\{g_{1}^{(j)}\}_{j=1}^{M}$, $\varepsilon > 0$, $T$, $K$.
+  \STATE \textbf{Output:} $\Pi^{\star} \in \mathbb{R}^{N \times M}_{+}$,
+         $\{g^{(i,j)}_{t_{k}}\}$.
+  \STATE // -- Build the cost matrix on $\mathrm{SE}(3)$ --
+  \FOR{$i = 1, \ldots, N$}
+    \FOR{$j = 1, \ldots, M$}
+      \STATE $\xi \gets \log\!\bigl( (g_{0}^{(i)})^{-1} g_{1}^{(j)} \bigr) \in \mathfrak{se}(3)$
+      \STATE $C_{ij} \gets \| \xi \|_{\mathfrak{se}(3)}^{2}$
+             \COMMENT{bi-invariant Killing-form norm}
+    \ENDFOR
+  \ENDFOR
+  \STATE // -- Log-domain Sinkhorn fixed-point --
+  \STATE $u \gets \mathbf{0} \in \mathbb{R}^{N}$,
+         $v \gets \mathbf{0} \in \mathbb{R}^{M}$,
+         $K \gets \exp(-C / \varepsilon)$ elementwise
+  \FOR{$\tau = 1, \ldots, T$}
+    \STATE $u \gets \log a - \mathrm{logsumexp}_{j}
+                  \!\bigl( \log K + v^{\top} \bigr)$
+    \STATE $v \gets \log b - \mathrm{logsumexp}_{i}
+                  \!\bigl( \log K + u \bigr)$
+  \ENDFOR
+  \STATE $\Pi^{\star} \gets \mathrm{diag}(e^{u}) \, K \, \mathrm{diag}(e^{v})$
+  \STATE // -- Walk the SE(3) geodesics --
+  \FOR{$i, j$}
+    \STATE $\xi_{ij} \gets \log\!\bigl( (g_{0}^{(i)})^{-1} g_{1}^{(j)} \bigr)$
+    \FOR{$k = 0, \ldots, K$}
+      \STATE $g^{(i,j)}_{t_{k}} \gets \exp\!\bigl( g_{0}^{(i)}, t_{k}\, \xi_{ij} \bigr)$
+    \ENDFOR
+  \ENDFOR
+  \STATE \textbf{return} $\Pi^{\star}$, $\{g^{(i,j)}_{t_{k}}\}$
+\end{algorithmic}
+
+\paragraph{Complexity.}
+Cost-matrix build $O(NM)$; log-domain Sinkhorn $O(T \cdot NM)$
+with $T \approx \|C\|_{\infty} / \varepsilon$ (Altschuler 2017);
+geodesic walk $O(NMK)$.  Per Theorem 1 (Mahmood 2026),
+$\Pi^{\star}_{\varepsilon} \to \Pi^{\star}$ weakly as
+$\varepsilon \to 0$.
+
+\paragraph{Integration point.}
+\texttt{integrate\_with\_cfm} (W2.1 adapter) consumes the
+geodesics as a drop-in replacement for the Euclidean CFM
+interpolant $X_{t} = (1 - t) X_{0} + t X_{1}$; shape contract is
+$(B, K, 4, 4)$ for $(B \cdot N \cdot M)$ rigid-motion matrices at
+$K$ time steps, matching
+\texttt{flow\_matching.solver.ode\_solver.ODESolver}.
+
+% ===========================================================================
+\subsection*{M23 -- Transport Relaxation for reward shaping}
+\label{supp:s2-m23}
+
+\paragraph{Source.}
+\texttt{molmetal/math\_skills/transport\_relaxation.py}, classes
+\texttt{RelaxedOT} / \texttt{BoltzmannEndpoint} /
+\texttt{TransportRelaxationTerm}; adapter at
+\texttt{molmetal/adapters/transport\_relaxation\_integration.py}.
+
+\paragraph{Input.}
+Marginals $a \in \Delta_{N}$, $b \in \Delta_{M}$; cost
+$C \in \mathbb{R}^{N \times M}_{+}$; $\lambda_{\mathrm{relax}} \ge 0$;
+reference Boltzmann $q_{T}$; Sinkhorn iters $T$.
+
+\paragraph{Output.}
+Relaxed coupling $\tilde{\Pi}^{\star}_{\varepsilon}$; transport-
+relaxation loss term
+$\lambda_{\mathrm{relax}}\, \mathrm{KL}(p_{T} \| q_{T})$.
+
+\begin{algorithmic}[1]
+  \STATE \textbf{Input:} $a$, $b$, $C$, $\lambda_{\mathrm{relax}}$,
+         $\varepsilon$, $q_{T}$, $T$.
+  \STATE \textbf{Output:} $\tilde{\Pi}^{\star}_{\varepsilon}$,
+         $\mathrm{loss} = \lambda_{\mathrm{relax}}\, \mathrm{KL}(p_{T} \| q_{T})$.
+  \STATE // -- Build soft marginals --
+  \STATE $\alpha \gets \lambda_{\mathrm{relax}} / (1 + \lambda_{\mathrm{relax}})$
+  \STATE $\tilde{a} \gets (1 - \alpha)\, a + \alpha\, \mathbb{1}_{N} / N$
+  \STATE $\tilde{b} \gets (1 - \alpha)\, b + \alpha\, \mathbb{1}_{M} / M$
+  \STATE // -- Log-domain Sinkhorn on soft marginals --
+  \STATE $u \gets \log \tilde{a}$, $v \gets \log \tilde{b}$, $K \gets \exp(-C / \varepsilon)$
+  \FOR{$\tau = 1, \ldots, T$}
+    \STATE $u \gets \log \tilde{a} - \mathrm{logsumexp}_{j}(\log K + v^{\top})$
+    \STATE $v \gets \log \tilde{b} - \mathrm{logsumexp}_{i}(\log K + u)$
+  \ENDFOR
+  \STATE $\tilde{\Pi}^{\star}_{\varepsilon} \gets \mathrm{diag}(e^{u}) K \mathrm{diag}(e^{v})$
+  \STATE // -- Transport-relaxation KL term --
+  \STATE $p_{T} \gets \tilde{\Pi}^{\star}_{\varepsilon} \mathbf{1}_{M}$
+  \STATE $\mathrm{loss} \gets \lambda_{\mathrm{relax}}\, \mathrm{KL}(p_{T} \| q_{T})$
+  \STATE \textbf{return} $\tilde{\Pi}^{\star}_{\varepsilon}$, $\mathrm{loss}$
+\end{algorithmic}
+
+\paragraph{Complexity.}
+Cost-matrix build $O(NM)$; Sinkhorn $O(T \cdot NM)$; total wall-
+clock $O(T \cdot NM)$.  Per Theorem 2 (Jiang-Xu-Zhang 2026),
+$|S_{\varepsilon}(\tilde{a}, \tilde{b}; C) - S_{\varepsilon}(a, b;
+C)| \le C_{\mathrm{Lip}}\, \lambda_{\mathrm{relax}}\, \varepsilon
+\, \|C\|_{\infty}$.
+
+\paragraph{Integration point.}
+\texttt{augment\_learned\_shaping} (line $\sim$140 of
+\texttt{molmetal/adapters/transport\_relaxation\_integration.py})
+appends $\mathrm{loss}$ to the
+\texttt{molmetal/molmetal\_lam/reward/learned\_shaping.py} shaping
+term.  The wrapper does not modify the live
+\texttt{learned\_shaping.py} (R17 close-out is locked).
+
+% ===========================================================================
+\subsection*{M24 -- Multi-PH filtration for metal coordination}
+\label{supp:s2-m24}
+
+\paragraph{Source.}
+\texttt{molmetal/math\_skills/multi\_parameter\_ph.py}, functions
+\texttt{two\_param\_filtration} / \texttt{TwoParameterDiagram} /
+\texttt{sliced\_wasserstein\_kernel}; adapter at
+\texttt{molmetal/adapters/multi\_ph\_integration.py}; guardrail
+at \texttt{molmetal/math\_skills/ph\_hardness\_guardrail.py}.
+
+\paragraph{Input.}
+Pocket point cloud $\{(x_{i}, z_{i})\}_{i=1}^{N}$; grid
+$n_{\mathrm{bins}}$; SW projections $K$.
+
+\paragraph{Output.}
+2-PH feature map $F \in \mathbb{R}^{n_{\mathrm{bins}} \times
+n_{\mathrm{bins}}}$; SW-kernel $k \in \mathbb{R}^{B \times B}_{+}$.
+
+\begin{algorithmic}[1]
+  \STATE \textbf{Input:} pocket $\{(x_{i}, z_{i})\}$, $n_{\mathrm{bins}}$, $K$.
+  \STATE \textbf{Output:} $F \in \mathbb{R}^{n_{\mathrm{bins}}^{2}}$, $k \in \mathbb{R}^{B \times B}$.
+  \STATE // -- Build the (r, d) edge set --
+  \STATE $\mathcal{E} \gets \{ (i, j) : \| x_{i} - x_{j} \| \le r_{\max}
+                              \;\wedge\; |z_{i} - z_{j}| \le d_{\max} \}$
+  \STATE // -- Fourier-accelerated edge-count (Theorem 1 Kim-Jung 2026) --
+  \STATE $E(r, d) \gets \mathrm{FFT}^{-1}\!\bigl(
+                \mathrm{FFT}(I_{r}) \cdot \mathrm{FFT}(I_{d}) \bigr)$
+         \COMMENT{$O(N \log N)$}
+  \STATE // -- Discretise onto the grid --
+  \FOR{$\rho, \delta = 1, \ldots, n_{\mathrm{bins}}$}
+    \STATE $r \gets r_{\min} + (\rho - 1)\, \Delta r$, $d \gets d_{\min} + (\delta - 1)\, \Delta d$
+    \STATE $\mathcal{K}_{r, d} \gets \mathrm{VR}_{\mathcal{E}}(r, d)$
+    \STATE $F_{\rho, \delta} \gets |H_{0}(\mathcal{K}_{r, d})| +
+                                    |H_{1}(\mathcal{K}_{r, d})|$
+  \ENDFOR
+  \STATE // -- Sliced-Wasserstein kernel --
+  \FOR{$b, b' = 1, \ldots, B$}
+    \STATE $\mathrm{sw}_{b, b'} \gets 0$
+    \FOR{$k = 1, \ldots, K$}
+      \STATE $\theta_{k} \gets 2\pi\, k / K$
+      \STATE $\mathrm{sw}_{b, b'} \gets \mathrm{sw}_{b, b'} +
+                  W_{1}(\mathrm{proj}_{k}(F_{b}),
+                       \mathrm{proj}_{k}(F_{b'}))^{2}$
+    \ENDFOR
+    \STATE $k_{b, b'} \gets \exp(-\tau^{2}\, \mathrm{sw}_{b, b'} / K)$
+  \ENDFOR
+  \STATE \textbf{return} $F$, $k$
+\end{algorithmic}
+
+\paragraph{Complexity.}
+Fourier-accelerated edge-count $O(N \log N)$; grid discretisation
+$O(n_{\mathrm{bins}}^{2}\, N)$ dominated by the Vietoris--Rips
+filtration per cell; SW-kernel $O(K B^{2}\, n_{\mathrm{bins}}^{2})$.
+The Kolbe--Mayr 2026 guardrail caps the per-cell Vietoris--Rips
+compute at $200$ off-diagonal pairs and switches to the
+$O(n \log n)$ \texttt{approximate\_bottleneck} matcher beyond that.
+
+\paragraph{Integration point.}
+The W2.3 adapter \texttt{MultiPHPocketFeatures} (line $\sim$180 of
+\texttt{molmetal/adapters/multi\_ph\_integration.py}) consumes $F$
+as a $(B, n_{\mathrm{bins}}, n_{\mathrm{bins}})$ tensor and feeds
+it to \texttt{MultiPHMetalCoordHead}; \texttt{augment\_pocket\_embedding}
+(line $\sim$880) is the drop-in replacement for the
+single-parameter Betti-curve summary.
+
+% ===========================================================================
+\subsection*{M25 -- Hilbert-space primal-dual adapter}
+\label{supp:s2-m25}
+
+\paragraph{Source.}
+Unifying operator-theoretic frame of \S\ref{supp:s1-hilbert},
+instantiated as the W2.1 / W2.2 / W2.3 adapters jointly.  The
+pseudocode below is the \emph{generic} OTPD instance; the three
+W2 adapters differ only in the choice of $K$, $F$, $G$.
+
+\paragraph{Input.}
+$K : \mathcal{H}_{1} \to \mathcal{H}_{2}$; $G : \mathcal{H}_{1} \to
+\mathbb{R} \cup \{+\infty\}$; $F^{\ast} : \mathcal{H}_{2} \to
+\mathbb{R} \cup \{+\infty\}$; step sizes $\sigma, \tau > 0$
+satisfying $\sigma \tau \| K \|^{2} < 1$; max iters $T_{\max}$.
+
+\paragraph{Output.}
+Saddle point $(x^{\star}, y^{\star})$ of
+$\min_{x} G(x) + \langle Kx, y \rangle - F^{\ast}(y)$.
+
+\begin{algorithmic}[1]
+  \STATE \textbf{Input:} $K$, $G$, $F^{\ast}$, $\sigma$, $\tau$, $T_{\max}$.
+  \STATE \textbf{Output:} $(x^{\star}, y^{\star})$.
+  \STATE $x_{0} \gets \mathbf{0} \in \mathcal{H}_{1}$, $y_{0} \gets \mathbf{0} \in \mathcal{H}_{2}$
+  \FOR{$k = 1, \ldots, T_{\max}$}
+    \STATE $y_{k} \gets \mathrm{prox}_{\sigma F^{\ast}}(y_{k-1} + \sigma K x_{k-1})$
+    \STATE $x_{k} \gets \mathrm{prox}_{\tau G}(x_{k-1} - \tau K^{\ast} y_{k})$
+    \STATE $\bar{x}_{k} \gets \tfrac{1}{k} \sum_{i=1}^{k} x_{i}$,
+           $\bar{y}_{k} \gets \tfrac{1}{k} \sum_{i=1}^{k} y_{i}$
+  \ENDFOR
+  \STATE \textbf{return} $\bar{x}_{T_{\max}}$, $\bar{y}_{T_{\max}}$
+\end{algorithmic}
+
+\paragraph{Complexity.}
+Per iteration: one $\mathrm{prox}$ evaluation per functional plus
+one $K$, $K^{\ast}$ application; ergodic average $O(1)$ per step.
+Convergence rate $O(1/k)$ on the primal-dual gap under
+$\sigma \tau \|K\|^{2} < 1$ (Chambolle--Pock 2011; Sun--Zheng 2026
+Theorem 3.1).
+
+\paragraph{Instantiation table.}
+\begin{itemize}
+  \item \textbf{W2.1 (M22):}  $K$ = SE(3) marginal-projection;
+        $G = \langle C, P \rangle + \varepsilon
+        \mathrm{KL}(P \| \mu_{0} \otimes \mu_{1})$;
+        $F^{\ast} = \delta_{\{ P \mathbf{1} = a \}}$.
+  \item \textbf{W2.2 (M23):}  $K$ = relaxed-marginal projection;
+        $G$ as above; $F^{\ast} = \lambda_{\mathrm{relax}}\,
+        \mathrm{KL}(\pi_{T} \| q_{T})$.
+  \item \textbf{W2.3 (M24):}  $K$ = 2-PH feature-map extraction;
+        $G$ = SW-kernel cost; $F^{\ast}$ = SW-kernel positivity
+        cone indicator.
+\end{itemize}
+
+% ===========================================================================
+\subsection*{M26 -- Score-Repellent Monte Carlo}
+\label{supp:s2-m26}
+
+\paragraph{Source.}
+\texttt{molmetal/molmetal\_lam/sbdd\_env/score\_repellent\_mc.py}
+(Wf-9 ship).
+
+\paragraph{Input.}
+Score function $s_{\theta} : \mathbb{R}^{d} \to \mathbb{R}^{d}$;
+step size $\eta > 0$; repulsive scale $L > 0$; mixing weight
+$\alpha \in [0, 1]$; chain length $T$.
+
+\paragraph{Output.}
+Markov chain $(x_{0}, x_{1}, \ldots, x_{T})$ targeting
+$\rho \propto \exp(-U)$ with $U$ a learned potential.
+
+\begin{algorithmic}[1]
+  \STATE \textbf{Input:} $s_{\theta}$, $\eta$, $L$, $\alpha$, $T$.
+  \STATE \textbf{Output:} chain $(x_{0}, \ldots, x_{T})$.
+  \STATE $x_{0} \sim \rho_{0}$
+  \FOR{$t = 1, \ldots, T$}
+    \STATE // Langevin step
+    \STATE $\xi_{t} \sim \mathcal{N}(0, 2 \eta I)$
+    \STATE $x_{t}^{\mathrm{L}} \gets x_{t-1} + \eta\, s_{\theta}(x_{t-1}) + \xi_{t}$
+    \STATE // Repulsive correction (Burch--Bardsley 2022)
+    \STATE $g \gets s_{\theta}(x_{t}^{\mathrm{L}}) - s_{\theta}(x_{t-1})$
+    \STATE $x_{t}^{\mathrm{R}} \gets x_{t}^{\mathrm{L}} + \alpha\, L\, (g / \|g\|)$
+    \STATE // MH acceptance
+    \STATE $\log \rho_{t} \gets \log \rho_{\theta}(x_{t}^{\mathrm{R}}) -
+                            \log \rho_{\theta}(x_{t-1})$
+    \STATE $u \sim \mathrm{Uniform}(0, 1)$
+    \IF{$\log u < \log \rho_{t}$}
+      \STATE $x_{t} \gets x_{t}^{\mathrm{R}}$
+    \ELSE
+      \STATE $x_{t} \gets x_{t-1}$
+    \ENDIF
+  \ENDFOR
+  \STATE \textbf{return} $(x_{0}, \ldots, x_{T})$
+\end{algorithmic}
+
+\paragraph{Complexity.}
+Each step is one EGNN forward pass plus one MH correction; per
+Burch--Bardsley 2022 \S 4.4 and R18 \S 6.2,
+$\mathrm{Var}(\mathrm{score\_repellent}) \approx (1 - \alpha)\,
+\mathrm{Var}(\mathrm{Dirichlet})$ for $\alpha \approx 0.2$ in the
+canonical $\eta = 0.1$, $L = 1.0$ regime.
+
+\paragraph{Integration point.}
+Score-Repellent MC is the inner-loop sampler of the R18 MCTS
+rollout: each leaf is sampled by a $T$-step walk, scored by the
+seven-channel \texttt{RewardAggregator}, and fed to the SynFlowNet
+advantage estimator.  The A/B harness
+\texttt{compare\_variance\_vs\_dirichlet\_mcts} (line $\sim$240 of
+\texttt{variance\_mcts\_integration.py}) reports the variance
+ratio.
+
+% ===========================================================================
+\subsection*{M28 -- Variance-Controlled PUCT MCTS}
+\label{supp:s2-m28}
+
+\paragraph{Source.}
+\texttt{molmetal/molmetal\_lam/search\_alg/
+variance\_puct\_integration.py} (Wf-11 ship) +
+\texttt{molmetal/molmetal\_lam/search\_alg/
+variance\_mcts\_integration.py} (TODO-30 P5.2 ship).
+
+\paragraph{Input.}
+PUCT node $s$ with prior $P(\cdot \mid s)$; per-arm statistics
+$\{(Q(s, a), N(s, a), \sigma(s, a))\}$; $c_{\mathrm{puct}}$;
+$c_{\mathrm{var}}$; $n_{\mathrm{min}}^{\mathrm{visits}}$.
+
+\paragraph{Output.}
+$a^{\star} \in \arg\max_{a} \mathrm{PUCT}_{\mathrm{var}}(s, a)$.
+
+\begin{algorithmic}[1]
+  \STATE \textbf{Input:} $s$, $P(\cdot \mid s)$, per-arm stats,
+         $c_{\mathrm{puct}}$, $c_{\mathrm{var}}$, $n_{\mathrm{min}}^{\mathrm{visits}}$.
+  \STATE \textbf{Output:} $a^{\star} \in \mathcal{A}(s)$.
+  \STATE $N(s) \gets \sum_{a} N(s, a)$
+  \FOR{$a \in \mathcal{A}(s)$}
+    \IF{$N(s, a) \ge n_{\mathrm{min}}^{\mathrm{visits}}$}
+      \STATE $\mathrm{bonus}(a) \gets c_{\mathrm{puct}}\, P(a \mid s)\,
+                              \sqrt{N(s)} / (1 + N(s, a))$
+      \STATE $\mathrm{bonus}_{\mathrm{var}}(a) \gets
+                  -c_{\mathrm{var}}\, \sigma(s, a) / (1 + N(s, a))$
+      \STATE $\mathrm{score}(a) \gets Q(s, a) + \mathrm{bonus}(a) +
+                                    \mathrm{bonus}_{\mathrm{var}}(a)$
+    \ELSE
+      \STATE $\mathrm{score}(a) \gets Q(s, a) + c_{\mathrm{puct}}\,
+                                    P(a \mid s)\,
+                                    \sqrt{N(s)}$
+    \ENDIF
+  \ENDFOR
+  \STATE $a^{\star} \gets \arg\max_{a} \mathrm{score}(a)$
+  \STATE \textbf{return} $a^{\star}$
+\end{algorithmic}
+
+\paragraph{Complexity.}
+Per-node selection $O(|\mathcal{A}(s)|)$ dominated by score
+evaluation; variance penalty adds one division / comparison per
+arm and is amortised $O(1)$.  When $\sigma(s, a) = 0$ the
+variance term vanishes exactly and the canonical PUCT rule
+(Silver 2016 + Rosin 2011) is recovered.
+
+\paragraph{Integration point.}
+Wf-11 \texttt{VarianceControlledPUCT} wraps
+\texttt{MCTSProofSearch} (R17 ship) with a node-centric selector;
+TODO-30 P5.2 \texttt{VarianceMCTSWrapper} exposes
+\texttt{search} / \texttt{tree\_statistics} so callers can attach
+variance control to the R17 MCTS without patching its internals
+(read-mostly on the underlying MCTS).
+
+% ===========================================================================
+\paragraph{Summary.}
+Six algorithms M22, M23, M24, M25, M26, M28.  M22--M24 are the
+three R18 math adapters (W2.1, W2.2, W2.3); M25 is the unifying
+OTPD frame; M26, M28 are the Score-Repellent MC and Variance-PUCT
+MCTS primitives consumed by the SynFlowNet inner loop.  Each is
+CPU-only on the math layer and ships with a W2.x adapter for the
+live pipeline.
+
+\endinput

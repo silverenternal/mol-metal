@@ -1,0 +1,17 @@
+{
+  "seed": 0,
+  "task": "bace",
+  "n_rows": 1513,
+  "n_train": 1061,
+  "n_val": 150,
+  "n_test": 302,
+  "pos_rate_train": 0.4486333727836609,
+  "pos_rate_test": 0.47350993752479553,
+  "test_metrics": {
+    "roc_auc": 0.8382812156397061,
+    "pr_auc": 0.8123413533404802,
+    "hit_rate_top5pct": 0.9333333333333333,
+    "n": 302
+  },
+  "epochs": 50
+}

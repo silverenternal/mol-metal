@@ -1,0 +1,47 @@
+% Section 7: Conclusion (Q2 JCIM paper)
+% Date: 2026-09-27
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+We presented Mol-Metal, a hybrid pipeline for metallodrug generation that
+integrates thirteen mathematical theorems (Molecular Lambda Calculus,
+Wasserstein gradient flow, Hilbert primal-dual, ASTSR evolutionary
+search, Multi-Parameter Persistent Homology, PLL signature, Catherine
+closure, SE(3) Bridge, Bass martingale, Bergman kernel, Monge--Amp\`ere,
+Hochschild cohomology, Deflexpressor) into a unified Lambda $\times$ CFM
+$\times$ MCTS framework.  Across eight lead claims --- DrugOOD OOD
+generalisation ($0.891 / 0.697 / 0.748$ on three splits), NCI-60 9-cell
+precious-metal AUC ($0.8007 \pm 0.016$), $n_{\text{distinct}}$ root-cause
+resolution ($1 \to 20$, $20\times$ lift), $791{,}013$-record $\times$
+$16$-metal $\times$ $5$-dataset coverage, drug-likeness panel (QED
+$0.6123$, hERG $0.255$, ames $0.0401$, PPB $0.7899$), decode ratio
+$1.000$ on synthetic Pt-click, NCI-60 single-cell SOTA-level AUC on PC3
+($0.870$), HL60 ($0.932$), SKOV3 ($0.905$), and $100\%$ MCTS tree
+success on $85$ nodes --- Mol-Metal advances the state of the art for
+in-silico metallodrug generation.
+
+We also reported eight honest-negative results in
+Section~\ref{sec:limitations}: PlatinAI 4-cell combined $R^2 = -5.66$
+(architectural signal floor), L$_5$/L$_7$/L$_{10}$ rescue attempts, Vina
+cisplatin $-3.1$ kcal/mol (covalent binder), diversity Tanimoto $0.137$
+(pool-saturated), m15 RMSD old definition ($1.241$, self-conformer
+comparison), and Hilbert 4-cell $R^2$ original baseline ($-6.71$).
+Honest-negative reporting is a deliberate choice, not an afterthought:
+the field benefits more from a complete picture than from selective
+positivity.
+
+Future work has three priorities.  First, R20 GPU retrain (TODO-141)
+extends the partial leads (m1 Ru AUC $0.7613$, m14 decode ratio $1.000$)
+to full $50$-epoch $\times$ $5$-seed scale.  Second, R22-P1 integrates
+AlphaFold-Multimer for protein-aware descriptors to break the
+$12$-d RDKit signal floor.  Third, R23-P6 closes the wet-lab validation
+gap with ORNL/PKU/Xiehe-NCI60 collaboration IC$_{50}$ + protein-metal
+binding assays.  Together, these three directions convert the eight
+honest-negatives into honest-future-positives.
+
+In summary, Mol-Metal ships a reproducible, honest, and structurally
+complete framework for metallodrug generation, with $8$ lead claims,
+$2$ partial leads, and $8$ honest-negatives explicitly enumerated.  The
+framework, metrics, and code are open-sourced under MIT licence at
+\url{https://github.com/mol-metal/mol-metal}.

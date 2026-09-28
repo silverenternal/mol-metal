@@ -1,0 +1,69 @@
+{
+  "figure_id": "fig20",
+  "title": "18-rule click+SyntheMol β-reduction empirical success",
+  "description": "Per-rule empirical success on the canonical-curated reactant fixtures. 18 rules = 5 click (CuAAC, SPAAC, SPC, DielsAlder, ThiolEne) + 13 SyntheMol REAL reactions. Tests: 38/40 pass, 2 skipped (1 multi-reactant hantzsch canonical-curating skip + 1 design margin smoke).",
+  "x_axis": {
+    "label": "Rule",
+    "categories": [
+      "CuAAC (click)",
+      "SPAAC (click)",
+      "SPC (click)",
+      "DielsAlder (click)",
+      "ThiolEne (click)",
+      "amide_coupling",
+      "ester_hydrolysis",
+      "boc_cleavage",
+      "sulfonamide_formation",
+      "reductive_amination",
+      "sn2_alkylation",
+      "urea_formation",
+      "bromination",
+      "hydroxylation",
+      "thioether_formation",
+      "amide_bond_formation_aromatic",
+      "phenol_esterification",
+      "nucleophilic_substitution"
+    ]
+  },
+  "y_axis": {
+    "label": "Empirical success rate",
+    "range": [0.0, 1.05]
+  },
+  "series": [
+    {
+      "name": "per-rule empirical success",
+      "type": "bar",
+      "values": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+      "per_rule_test_status": "all 18 PASS on apply+can_apply (test_synthemol_reactions.py); 1 rule (hantzsch_pyridine_synthesis) was scoped-out per design and replaced by amide_bond_formation_aromatic",
+      "supports_backward": [true, true, true, true, false, true, true, true, true, true, true, true, true, true, true, true, true, true],
+      "note": "17/18 support reverse_can_apply (ThiolEne is mass-balance-correct irreversible)"
+    },
+    {
+      "name": "aggregate test count",
+      "type": "reference",
+      "tests_total": 40,
+      "tests_pass": 38,
+      "tests_skip": 2,
+      "tests_fail": 0
+    }
+  ],
+  "legend": [
+    "per-rule empirical success on canonical reactant fixtures",
+    "aggregate test count for the 18-rule registry"
+  ],
+  "summary": {
+    "n_rules": 18,
+    "rules_breakdown": "5 click + 13 SyntheMol REAL",
+    "tests_total": 40,
+    "tests_pass": 38,
+    "tests_skip": 2,
+    "tests_fail": 0,
+    "branching_factor_per_pocket": 3672,
+    "branching_factor_delta": "3.6x vs round-3 1020 branches/pocket (5 rules × 204 tiles)",
+    "supports_backward_total": 17,
+    "no_backward": "ThiolEne (mass-balance-correct irreversible)",
+    "verdict": "18-rule registry fully wired; 38/40 tests pass. Phase 4 (100-pocket × 18-rule × n_sim=20) gate FAILS on diversity/SA/Vina because n_sim=20 is a structural floor that prevents the 3.6× registry expansion from compounding. QED passes alone."
+  },
+  "source": "molmetal/reports/lambda_round4_sota_integration.md + TODO/completed/34_lambda_phase4_sweep.md",
+  "render": "paper/figures/fig20_click_rule_success.py"
+}

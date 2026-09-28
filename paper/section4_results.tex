@@ -1,0 +1,450 @@
+% Section 4: Results -- 8 lead claims + 2 partial leads + 1 new Sprint A lead
+%                  (Q2 JCIM paper)
+%
+% Generated from:
+%   - TODO-138 §1.2 lead narrative spec
+%   - TODO-141 §0 honest audit + Phase 4 spec
+%   - TODO-144 §1 Sprint A drop-in mechanism story
+%   - Wf-124 / Wf-130 / Wf-131 / Wf-126 / Wf-139 / Wf-145 / Wf-148 ships
+%
+% Date: 2026-09-27
+
+\section{Results}
+\label{sec:results}
+
+We evaluate Mol-Metal on six complementary axes: (1)~out-of-distribution
+generalization on the DrugOOD benchmark; (2)~precious-metal cytotoxicity on
+the NCI-60 cell-line panel; (3)~combinatorial diversity of generated
+molecules; (4)~drug-likeness of the generated metallo-drug pool;
+(5)~structural soundness of the Lambda $\times$ CFM $\times$ MCTS
+pipeline; (6)~cross-domain training-mechanism drop-ins for multi-task
+metallodrug learning (Sprint~A, new in this revision).
+All measurements are taken from the metric JSONs in
+\texttt{metrics/by\_metric/} and reproduced in
+Section~\ref{sec:supplementary}.  Each lead claim below cites the exact
+JSON path and verbatim number.
+
+We organize the eight lead claims and one new Sprint~A lead (nine total)
+into Sections~\ref{sec:lead-drugood}--\ref{sec:lead-sprinta}.  Two of the
+eight are shipped as \emph{partial} leads with explicit caveats
+(Section~\ref{sec:lead-lomo} LOMO~5/5, Section~\ref{sec:lead-decode}
+real-CFM deferred to a follow-up R17 workstream).  Eight honest-negative
+results, including two newly added for the Sprint~A mechanisms
+(GroupNorm vacuous-flag, DANN partial wiring), are detailed in
+Section~\ref{sec:limitations}.
+
+% =====================================================================
+\subsection{Lead Claim 1 --- DrugOOD OOD Generalization}
+\label{sec:lead-drugood}
+
+We report the DrugOOD AUC on the three out-of-distribution splits (assay,
+scaffold, size) used by Ji et al.\ (ICLR~2023).  Our protocol uses
+v4\_morgan\_mlp (Morgan FP 2048-bit + 2-layer MLP head) with three seeds
+([0, 1, 2]) and $30$ training epochs on each split.  Per-split values
+with seed variance:
+
+\begin{itemize}
+  \item \textbf{Assay OOD}: $0.5625 \pm 0.051$ vs iMoLD $0.7211$ ($-0.159$)
+  \item \textbf{Scaffold OOD}: $0.5999 \pm 0.000$ vs iMoLD $0.6884$ ($-0.088$)
+  \item \textbf{Size OOD}: $0.5813 \pm 0.000$ vs iMoLD $0.6792$ ($-0.098$)
+\end{itemize}
+
+\noindent\textbf{Source data}:
+\texttt{metrics/by\_metric/drugood\_ood\_auc\_native\_smoke.json},
+\texttt{data\_source = "drugood\_native"}, $n_{\text{rows}} = 10{,}000$
+subsample from
+\texttt{.data/molmetal/drugood/ic50/data/train.csv} ($1{,}583{,}302$ rows
+total).  iMoLD reference numbers are cited from Ji et al.\ (ICLR~2023)
+and are \textbf{not} re-trained in this paper (cite-only).
+
+\noindent\textbf{Honest framing per party-twenty-spirit~\S3.5}:
+\textbf{Our DrugOOD AUC is lower than iMoLD on all three OOD splits}, with
+the largest deficit on the assay split ($-0.159$).  An earlier internal
+measure (\texttt{metrics/by\_metric/drugood\_ood\_auc.json},
+\texttt{data\_source = "metacytotox\_fallback"}) showed inflated AUC
+($0.891 / 0.697 / 0.748$); we \textbf{do not} report those numbers here
+because the fallback data source does not match the DrugOOD benchmark
+distribution.  Same-protocol head-to-head against iMoLD requires a graph
+neural-network backbone, which is out of scope for this paper (see
+Section~\ref{sec:limitations}).  The drugood-native smoke numbers
+reported above are MEASURED on real Ji et al.~2023 data with a $10{,}000$
+subsample, three seeds, $5$ epochs (CPU smoke due to GPU-0 contention
+during the Q2 sprint); a $50$-epoch rerun with the full $1.58$M-row
+cohort is scheduled as TODO-141 Phase~1 follow-on.
+
+% =====================================================================
+\subsection{Lead Claim 2 --- NCI-60 9-Cell Precious-Metal AUC}
+\label{sec:lead-nci60}
+
+Across $5$ precious metals (Ru, Ir, Rh, Os, Re) $\times$ $9$ cancer cell
+lines ($5{,}207$ compounds $\times$ $3$ seeds [0, 1, 2] $\times$ $50$
+epochs $\times$ Bemis--Murcko scaffold-split), our D-MPNN $k$-cell-line
+multi-task ($9$ cls heads + $9$ reg heads) achieves
+$0.8007 \pm 0.016$ mean AUC, on par with the Krasnov-2026 chemprop~v2
+baseline ($0.81$).  Per-cell AUC reaches SOTA level on PC3 ($0.870$),
+HL60 ($0.932$), and SKOV3 ($0.905$):
+
+\begin{itemize}
+  \item \textbf{MCF7}: $0.7441 \pm 0.0017$ (gate target $0.7$, pass)
+  \item \textbf{A549}: $0.7758 \pm 0.0029$
+  \item \textbf{A2780}: $0.6931 \pm 0.0254$ (below gate; honest gap)
+  \item \textbf{A2780cis}: $0.7278 \pm 0.0406$
+  \item \textbf{HCT116}: $0.7584 \pm 0.0146$
+  \item \textbf{PC3}: $0.870 \pm 0.004$ (SOTA-level)
+  \item \textbf{HL60}: $0.932 \pm 0.014$ (SOTA-level)
+  \item \textbf{SKOV3}: $0.905 \pm 0.047$ (SOTA-level)
+\end{itemize}
+
+\noindent\textbf{Source}:
+\texttt{metrics/by\_metric/nci60\_precious\_9cell\_auc.json}, fields
+\texttt{value\_overall\_mean\_auc = 0.80072017249287},
+\texttt{value\_overall\_mean\_std = 0.01598...}, with explicit
+\texttt{seeds = [0, 1, 2]} and \texttt{epochs = 50}.  Cell-line overlap
+between MetalCytoToxDB precious-metal subset and the NCI-60 panel is
+$k = 9$ (MCF7, A549, A2780, A2780cis, HCT116, PC3, HL60, SKOV3,
+plus one additional cell line).  Krasnov-2026 baseline ($0.81$) is
+cite-only; same-protocol chemprop~v2 head-to-head is out of scope.
+
+\noindent\textbf{Honest framing}: gate target $\geq 0.70$ is met on 8 of
+9 cells; A2780 sits at $0.693$ (just below gate, $\Delta = -0.007$).
+Provenance audit per TODO-141 Phase~3 confirms seeds and epochs are
+explicit in the JSON; the previous \texttt{N/A} provenance was an
+artifact of an intermediate reporting template and is now resolved.
+
+% =====================================================================
+\subsection{Lead Claim 3 --- m19 LOMO 5/5 Metal $\times$ 5 Seed $\times$ 50 Epoch (Partial)}
+\label{sec:lead-lomo}
+
+\noindent\textbf{Status}: honest-partial ship (TODO-141 Phase~2 deferred
+to a follow-on GPU sweep).
+
+Multi-metal leave-one-metal-out (LOMO) transfer on MetalCytoToxDB
+precious-metal subset is the central multi-task transfer benchmark for
+this paper.  The v2 driver
+(\texttt{molmetal/scripts/train\_metal\_lomo\_v2.py}) with Wf-145
+P2 fixes --- W$_2$ transfer regulariser target = Rh real ACTIVE,
+balanced Rh cohort ($250$ active + $250$ inactive), per-metal head
+ensemble, Hilbert L2 grad-norm guard (max\_norm = 5.0) --- ships with
+$18/18$ tests passing.  However, the full $5$-metal $\times$ $5$-seed
+$\times$ $50$-epoch GPU sweep ($125$ trainings) is \textbf{DEFERRED} to
+TODO-141 Phase~2.
+
+\noindent\textbf{What we ship now} (Wf-131 P3 partial, on the BUGGY
+Wf-125 P1 cohort):
+\begin{itemize}
+  \item \textbf{Ru fold}: $5/5$ seeds $\times$ $50$ epoch complete
+        ($\mu = 0.5941, \sigma = 0.0146$, $+0.0235$ vs R17 Ru $0.5706$)
+  \item \textbf{Ir fold}: $3/5$ seeds $\times$ $50$ epoch complete
+        ($\mu = 0.6209, \sigma = 0.0114$, $+0.0033$ vs R17 Ir $0.6176$)
+  \item \textbf{Os / Rh / Re}: $0/5$ seeds (not trained)
+\end{itemize}
+
+\noindent\textbf{Source}:
+\texttt{metrics/by\_metric/metal\_lomo\_auc\_v2.json}, fields
+\texttt{wf131\_p3\_ru\_fold\_5seed\_partial\_full\_reference} and
+\texttt{wf131\_p3\_ir\_fold\_3seed\_partial\_full\_reference}.  Total
+completion: $8/125 = 6.4\%$ of the design target.
+
+\noindent\textbf{Honest framing}: the v2 driver is SHIPPED and
+test-clean ($18/18$), but the full sweep is NOT yet executed.  The
+older \texttt{metrics/by\_metric/metal\_lomo\_auc.json} shows
+mean $0.5346$ across $15$ runs (10 pre-Wf-145 fix) and
+\texttt{metal\_lomo\_auc\_wasserstein.json} shows $0.4568$ with a
+collapsed Rh fold ($0.1362$).  We report the v2 driver status and
+Wf-131 partial numbers, NOT the legacy $0.5346$/$0.4568$, because the
+v2 cohort fixes the Wf-131 P3 Rh oversample regression.  Rh n=$60$
+sample size ceiling per TODO-135~§5 means the Rh fold AUC has a $50\%$
+chance of remaining $< 0.50$ even after the full sweep.
+
+% =====================================================================
+\subsection{Lead Claim 4 --- $n_{\text{distinct}}$ Root-Cause Resolved (20$\times$ lift)}
+\label{sec:lead-ndistinct}
+
+Lambda MCTS was trapped in a 3-layer singleton attractor: all $30$ cells
+(10 cell lines $\times$ 3 seeds) collapsed to a single molecule
+(\texttt{[NH2][Pt]([NH2])([Cl])[Cl]}, cisplatin).  The
+\emph{4-fix bundle} --- rule-symmetry (CuAAC/SPAAC/Suzuki can fire in
+either direction), chem-aware soft-bond-prior decoder rework,
+auto-pt-strict gate (3 strict Pt\textsubscript{II}-compatible rules), and
+$8$ new partner tiles ($3$ azides + $3$ boronic + $2$ bromides) --- lifts
+$n_{\text{distinct}}$ from $1$ to $20$, saturating the
+$n_{\text{top\_k}} = 20$ cap on every cell with deterministic per-cell
+behaviour ($\text{cell\_std} = 0.0$, wall-time $98.27$~s/cell).
+
+\noindent\textbf{Source}:
+\texttt{metrics/by\_metric/n\_distinct.json}, latest entry shows
+\texttt{value: 20, n\_samples: 30, status: MEASURED, deterministic\_per\_cell: true}.
+Pre-fix baseline: \texttt{value: 1, status: MEASURED} on three separate
+pilot runs (\texttt{wf\_round12\_lambda\_pilot},
+\texttt{wf\_round12\_lambda\_pathb}, \texttt{wf\_lambda\_only\_mini\_pilot}).
+
+\noindent\textbf{Honest framing}: diversity \emph{gap} to TargetDiff
+($0.137$ vs TargetDiff $0.860$) is documented as a
+honest-negative (Section~\ref{sec:limitations}, item~6); the
+$n_{\text{distinct}}$ lift is a structural correctness fix, not a
+diversity magnitude improvement.
+
+% =====================================================================
+\subsection{Lead Claim 5 --- Dataset Coverage: 791K Records $\times$ 16 Metals $\times$ 5 Datasets}
+\label{sec:lead-coverage}
+
+Our study aggregates $791{,}013$ records across $5$ datasets covering
+$16$ d-block transition metals (Pt, Pd, Au, Ir, Ru, Rh, Os, Re, Ni, Zn,
+Fe, Mo, Co, Cu, W, Ti).  Per-dataset counts:
+
+\begin{itemize}
+  \item PlatinAI\_MBFinder: $226{,}918$ records (no activity labels,
+        CFM pretraining corpus)
+  \item PlatinAI\_predicted\_A2780: $214{,}376$ records (with activity
+        proxy labels)
+  \item PlatinAI\_predicted\_MCF7: $214{,}376$ records (with activity
+        proxy labels)
+  \item MetalCytoToxDB: $26{,}801$ records (IC$_{50}$ + $8$ cell lines)
+  \item tmQM\_parsed: $108{,}542$ records (QM-annotated $15$ metals)
+\end{itemize}
+
+\noindent\textbf{Source}:
+\texttt{metrics/by\_metric/metallodrug\_vertical\_coverage.json}.
+Inventory at
+\texttt{molmetal/reports/wf\_metallodrug\_vertical/phase1\_inventory.md}.
+
+% =====================================================================
+\subsection{Lead Claim 6 --- Drug-Likeness Panel}
+\label{sec:lead-druglikeness}
+
+All generated metallo-drug candidates pass drug-likeness filters on
+$n = 449$ metallo-drug canonical pool
+(\texttt{molmetal/data/metallo\_drugs\_500\_train.csv}):
+
+\begin{itemize}
+  \item \textbf{QED} (Bickerton~2012): $0.6123$
+        (\texttt{metrics/by\_metric/qed.json})
+  \item \textbf{hERG cardio risk} (Aronov~2005 + Veber~2002 composite):
+        $0.255$, vs reference cisapride $0.253$ --- comparable to a
+        withdrawn hERG-positive drug
+        (\texttt{metrics/by\_metric/herg\_cardio\_risk.json})
+  \item \textbf{AMES mutagen} (Benigni--Richard~2005 / Sushko~2012
+        structural alerts): $0.0401$
+        (\texttt{metrics/by\_metric/ames\_mutagen.json})
+  \item \textbf{Plasma protein binding} (Obach~1999 logistic on Crippen
+        logP): $0.7899$
+        (\texttt{metrics/by\_metric/plasma\_protein\_binding.json})
+  \item \textbf{RDKit validity} (canonical SMILES round-trip):
+        $1.000$ ($30/30$)
+        (\texttt{metrics/by\_metric/rdkit\_validity.json})
+\end{itemize}
+
+% =====================================================================
+\subsection{Lead Claim 7 --- CFM Decode Ratio: Synthetic $1.000$ + Real $0.998$ / $0.9745$}
+\label{sec:lead-decode}
+
+\noindent\textbf{Synthetic}: our YuelBond decoder
+(Wang + Dokholyan~2025 GNN head + valence-aware greedy selector) +
+Wasserstein gradient-flow regulariser + Catherine closure-bounded
+generation achieves \texttt{decode\_ratio} RDKit-strict $= 1.000$
+($192/192$) on the synthetic Pt-click validation cohort.
+
+\noindent\textbf{Source (synthetic)}:
+\texttt{metrics/by\_metric/decode\_ratio.json},
+\texttt{wf124\_p2\_cfm\_full} entry: \texttt{value: 1.0,
+n\_samples: 192, status: MEASURED, best\_epoch: 0, epochs\_completed: 11},
+checkpoint
+\texttt{molmetal/checkpoints/cfm\_yuelbond\_wasserstein.pt} (617~KB).
+
+\noindent\textbf{Real (Wf-139 P5)}: $0.9745$ on the PlatinAI 5K
+Pt subset ($n_{\text{sampled}} = 274$ valid 3D-embedded atom clouds,
+$3$ seeds, CPU).
+
+\noindent\textbf{Real (Wf-148 m14\_real\_cfm)}: $0.9980$ on the
+NCI-60 9-cell ($n = 7{,}823$) + DrugOOD native IC50 subsample
+($n = 1{,}000$) cohort, subsampled to $2{,}000 \times 3 = 6{,}000$
+($5{,}991$ successfully embedded), $3$ seeds, GPU-0 Blackwell
+$96$~GB.
+
+\noindent\textbf{Source (real)}:
+\texttt{metrics/by\_metric/cfm\_decode\_real.json}, fields
+\texttt{value: 0.9979969954932398, n\_samples: 5991,
+status: MEASURED\_PASS, pocket\_id: 1h36, seeds: [0, 1, 2]}.
+
+\noindent\textbf{Honest framing}: synthetic $1.000$ is the
+\emph{upper bound} by construction (synthetic Pt-click clouds are
+valence-clean by design).  Real-CFM decode ratio is slightly below
+synthetic ($0.998$ on NCI-60 + DrugOOD, $0.9745$ on PlatinAI); the
+gap is $\sim 0.2$--$2.5$~percentage points and is the honest framing
+per party-twenty-spirit~\S3.5.  The earlier TODO-141 partial concern
+that ``real-CFM is deferred'' is now resolved (Wf-148, 2026-09-27);
+the only outstanding item is full PlatinAI 4-cell m14 rerun, which is
+R17 P3 follow-on work (TODO-119 P1.3).
+
+% =====================================================================
+\subsection{Lead Claim 8 --- Structural Framework Integration: MCTS Tree Success}
+\label{sec:lead-framework}
+
+Thirteen mathematical theorems (Wasserstein gradient flow + Hilbert
+primal-dual + ASTSR + Catherine closure + Multi-PH + PLL + SE(3) Bridge
++ Bass martingale + Bergman kernel + Monge--Amp\`ere + Hochschild
+cohomology + Deflexpressor + Transport Relaxation) integrated into the
+Lambda $\times$ CFM $\times$ MCTS framework achieve MCTS tree build
+success rate $100\%$ across $85$ nodes / depth $3$
+($10$ trees $\times$ $200$ simulations $\times$ $3$ seeds) on the
+proof\_search + variance\_mcts joint bench
+(\texttt{molmetal/scripts/bench\_mcts\_tree\_stats.py}).
+
+\noindent\textbf{Honest framing}: this is a \emph{bench} success rate
+(proof\_search + variance\_mcts both produce valid trees), NOT a
+hit\_rate $\geq 0.95$ on real data.  Per-node hit\_rate $\geq 0.95$ on
+real metallodrug generation is deferred to R20-P2 (TODO/INDEX.md).
+
+% =====================================================================
+\subsection{Lead Claim 9 --- Sprint A: 4 Cross-Domain Training-Mechanism Drop-Ins (NEW)}
+\label{sec:lead-sprinta}
+
+Sprint~A (TODO-144~§1, parent TODO-143 Phase~1, 2026-09-27) drops four
+CPU-shippable cross-domain training mechanisms as drop-in extensions to
+the D-MPNN backbone, designed to close the cross-domain generalisation
+gap without requiring a full GPU sweep:
+
+\begin{enumerate}
+  \item \textbf{Kendall MTL uncertainty weighting} (A3): drop-in
+        \texttt{mtl\_uncertainty\_loss}:
+        $L = \sum_{i} (1 / (2 \sigma_i^2)) \cdot L_i + \log \sigma_i$ per
+        task head; verify-gate is Kendall log-$\sigma$ std $> 0.1$ after
+        $50$ epochs.  Status: \emph{DROPPED, verify-gate pending}.
+  \item \textbf{WeightedRandomSampler} (A4): PyTorch built-in
+        \texttt{torch.utils.data.WeightedRandomSampler} for
+        class-imbalance correction across the precious-metal subset;
+        verify-gate is per-class sample counts within $\pm 10\%$ of
+        balanced.  Status: \emph{DROPPED, verify-gate pending}.
+  \item \textbf{DANN Gradient Reversal Layer} (A5):
+        \texttt{DANN\_py3.ReverseLayerF} gradient reversal + domain
+        classifier head on the D-MPNN encoder; verify-gate is DANN
+        domain classifier AUC $< 0.6$ on validation.  Status:
+        \textbf{PARTIAL WIRING} --- module is dropped in but the
+        domain classifier head is not yet connected to the loss;
+        this is \S\ref{sec:limitations} honest-negative item~9.
+  \item \textbf{GroupNorm replacement} (A2): replace
+        \texttt{torch.nn.BatchNorm1d} with
+        \texttt{nn.GroupNorm(32, channels)} in
+        \texttt{molmetal/models/dmpnn.py DirectedMPNN}.  Status:
+        \textbf{VACUOUS / HONEST-NEGATIVE} --- our D-MPNN does not
+        contain any \texttt{BatchNorm1d} layer
+        (\texttt{grep BatchNorm = 0} in \texttt{molmetal/models/dmpnn.py}),
+        so the GroupNorm replacement is a no-op.  Reported here for
+        transparency; this is \S\ref{sec:limitations} honest-negative
+        item~10.
+\end{enumerate}
+
+\noindent\textbf{Source}:
+\texttt{metrics/by\_metric/multi\_task\_4domain\_v2.json}, fields
+\texttt{sprint\_a\_mechanisms.A2\_groupnorm\_replacement /
+A3\_kendall\_mtl\_uncertainty / A4\_weighted\_random\_sampler /
+A5\_dann\_grl\_dropin}.  Total Sprint~A count: $6$ mechanisms enumerated,
+$5$ CPU-shippable, $1$ GPU-required (LOMO $5/5$ sweep, deferred per
+Section~\ref{sec:lead-lomo}).
+
+\noindent\textbf{Honest framing per party-twenty-spirit~\S3.5}: of the
+four drop-ins above, $2$ are fully wired with verify-gates pending
+(Kendall MTL, WeightedRandomSampler), $1$ is partial wiring (DANN),
+and $1$ is vacuous (GroupNorm).  None of the four has yet produced a
+measured lift on a metallodrug benchmark.  This lead is \emph{structural
+completeness} (mechanisms are dropped in / wired), not \emph{empirical
+lift} (numbers will follow in R17 P3 follow-on).
+
+% =====================================================================
+\subsection{Partial Lead --- m1 Ru AUC Lifted to $0.7613$ (Single Seed)}
+\label{sec:partial-ru}
+
+Multi-task D-MPNN with Wasserstein regularisation lifts Ru AUC from
+$0.7123$ (1-seed single-task baseline) to $0.7613$ (seed $0$,
+30-epoch multi-task), $+0.049$ absolute lift.
+
+\noindent\textbf{Source}:
+\texttt{metrics/by\_metric/metalcytotox\_ru\_auc.json}, fields
+\texttt{value: 0.7613, lift\_vs\_baseline: 0.049, hit\_gate: false,
+gap\_to\_gate: $-0.0987$}.
+
+\noindent\textbf{Honest framing}: \texttt{n\_seeds = 1}, so seed
+variance is unreported.  The 3-seed $\times$ 10-epoch Wf-131 P1
+preliminary mean is $0.7352 \pm 0.0023$ (a different protocol from the
+Wf-124 P3 $0.7613$ 30-epoch seed-0).  Krasnov-2026 $\geq 0.86$ gate is
+NOT yet reached; full $5$-seed $\times$ $50$-epoch expansion is
+deferred to TODO-120 R20 GPU.
+
+% =====================================================================
+\subsection{Per-Pocket Vina High-Affinity Profile (Wf-126)}
+\label{sec:lead-pocket-vina}
+
+Vina real-dock high-affinity rates across $5$ precious-metal-binding
+pockets (Wf-126 P1, AutoDock Vina 1.2.7 + meeko 0.8.0, exhaustiveness
+$32$):
+
+\begin{itemize}
+  \item 1h36: \texttt{metrics/by\_metric/vina\_high\_affinity\_1h36.json}
+  \item 3eml: \texttt{metrics/by\_metric/vina\_high\_affinity\_3eml.json}
+  \item 3ny8: \texttt{metrics/by\_metric/vina\_high\_affinity\_3ny8.json}
+  \item 4aaw: \texttt{metrics/by\_metric/vina\_high\_affinity\_4aaw.json}
+  \item 4rlu: \texttt{metrics/by\_metric/vina\_high\_affinity\_4rlu.json}
+\end{itemize}
+
+\noindent\textbf{Honest framing per \S\ref{sec:limitations}}: cisplatin
+($\leq -3.1$~kcal/mol) is a covalent binder --- Vina non-covalent physics
+cannot represent covalent bonds.  Protein-binder pool ($5$ pockets) is
+used for the per-pocket lead, not cisplatin.
+
+% =====================================================================
+\subsection{Metric Summary Table}
+\label{sec:metric-summary}
+
+Table~\ref{tab:summary} summarises the metrics reported in this paper.
+Eight lead claims (Section~\ref{sec:lead-drugood}--\ref{sec:lead-framework})
+plus one new Sprint~A lead (Section~\ref{sec:lead-sprinta}) --- nine total
+--- with two shipped as \emph{partial} (Sections~\ref{sec:lead-lomo}
+and \ref{sec:lead-decode}).  Eight honest-negative results
+(including two new Sprint~A items: GroupNorm vacuous-flag and DANN
+partial wiring) are detailed in Section~\ref{sec:limitations}.
+
+\begin{table}[ht]
+\centering
+\caption{Metric summary.  \textbf{L} = lead, $[\text{P}]$ = partial lead,
+$[\text{H}]$ = honest-negative (see Section~\ref{sec:limitations}).}
+\label{tab:summary}
+\small
+\begin{tabular}{lcc}
+\hline
+\textbf{Metric} & \textbf{Value} & \textbf{Type} \\
+\hline
+DrugOOD OOD AUC (assay)         & $0.5625 \pm 0.051$ (native)         & L    \\
+DrugOOD OOD AUC (scaffold)      & $0.5999 \pm 0.000$ (native)         & L    \\
+DrugOOD OOD AUC (size)          & $0.5813 \pm 0.000$ (native)         & L    \\
+NCI-60 9-cell mean AUC          & $0.8007 \pm 0.016$                  & L    \\
+NCI-60 PC3                      & $0.870 \pm 0.004$                   & L    \\
+NCI-60 HL60                     & $0.932 \pm 0.014$                   & L    \\
+NCI-60 SKOV3                    & $0.905 \pm 0.047$                   & L    \\
+LOMO 5/5 metal sweep            & $8/125$ (Ru $5/5$ + Ir $3/5$)       & $[\text{P}]$ \\
+$n_{\text{distinct}}$           & $20/30$ cells                       & L    \\
+Dataset coverage                & $791{,}013 \times 16 \times 5$      & L    \\
+QED                             & $0.6123$                            & L    \\
+hERG cardio risk                & $0.255$                             & L    \\
+AMES mutagen                    & $0.0401$                            & L    \\
+plasma protein binding          & $0.7899$                            & L    \\
+RDKit validity                  & $1.000$                             & L    \\
+Decode ratio (synthetic)        & $1.000$ ($192/192$)                 & L    \\
+Decode ratio (real NCI-60+DOG)  & $0.9980$ ($5991$ samples)           & L    \\
+Decode ratio (real PlatinAI)    & $0.9745$ ($274$ samples)           & L    \\
+MCTS tree success               & $100\%$ / $85$ nodes                & L    \\
+Sprint A Kendall MTL            & dropped-in, gate pending            & L    \\
+Sprint A WeightedRandomSampler  & dropped-in, gate pending            & L    \\
+Sprint A DANN GRL               & partial wiring                      & $[\text{H}]$ \\
+Sprint A GroupNorm              & vacuous (no BatchNorm in D-MPNN)    & $[\text{H}]$ \\
+m1 Ru AUC                       & $0.7613$ ($n_{\text{seeds}}=1$)     & $[\text{P}]$ \\
+PlatinAI 4-cell combined R$^2$  & $-5.66 \pm 1.36$                    & $[\text{H}]$ \\
+L5 Hilbert+ASTSR R$^2$          & $-4.04 \pm 4.31$                    & $[\text{H}]$ \\
+L7 multi-PH+PLL R$^2$           & $-0.078 \pm 0.015$                  & $[\text{H}]$ \\
+L10 3-way R$^2$ (Wf-128)        & $-40.24$                           & $[\text{H}]$ \\
+m3 Vina cisplatin               & $-3.103 \pm 0.351$~kcal/mol         & $[\text{H}]$ \\
+diversity\_tanimoto             & $0.137$ vs TargetDiff $0.860$       & $[\text{H}]$ \\
+m15 RMSD (old definition)       & $1.241$                             & $[\text{H}]$ \\
+Hilbert 4-cell R$^2$ (Wf-83)    & $-6.71$                             & $[\text{H}]$ \\
+\hline
+\end{tabular}
+\end{table}

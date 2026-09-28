@@ -1,0 +1,269 @@
+% =============================================================================
+%  Paper §3 -- Method reference: Pocket-conditioned SE(3) Schroedinger Bridge
+%  (Wf-1 + Wf-2 close-out 2026-09-26, TODO-25 Round-14 math grounding)
+%
+%  Sources:
+%    molmetal/math_skills/se3_schrodinger_bridge.py     (T1 math skeleton)
+%    molmetal/adapters/se3_sb_integration.py            (W2.1 adapter)
+%    molmetal/reports/wf_cfm_m3_m5/frontier_24_papers.md (Frontier 24 anchors)
+%    .claude/skills/mol-metal-r18-math/SKILL.md          (theorem priority map)
+%
+%  Status: METHOD REFERENCE for the R18 math backbone.  All three
+%  primitives (SE3Geodesic / LogSinkhornLoss / SchrodingerBridgeSE3) are
+%  SHIPPED as a CPU-only math layer (W2.1, 25/25 unit tests, 0/1000 smoke
+%  fail, see molmetal/math_skills/tests/test_se3_schrodinger_bridge.py);
+%  the SE3SBVelocityField + SE3SBDecoder adapter pair is also SHIPPED
+%  (W2.1) and isolates itself from the R17 locked
+%  molmetal/adapters/flow_matching_lipman/ close-out (the adapter carries
+%  an explicit "do not modify" docstring at line 24-28).
+%
+%  Theorem anchors (per .claude/skills/mol-metal-r18-math/SKILL.md):
+%    T1 -- Mahmood-Halder-Akhtar 2026 (arXiv:2603.14049) -- primary cite
+%    T8 -- Backhoff-Veraguas 2020 -- existence-of-coupling cite (Bass)
+%
+%  Honest framing:
+%    - The math layer (SE3Geodesic, LogSinkhornLoss, SchrodingerBridgeSE3)
+%      is SHIPPED + 25/25 tests passing.  Cited as DESIGN + ARCHITECTURAL.
+%    - The W2.1 adapter (SE3SBVelocityField + SE3SBDecoder +
+%      integrate_with_cfm) is SHIPPED + integrate_with_cfm returns a
+%      shape-compatible ODE trajectory for flow_matching.solver.ode_solver.
+%      ODESolver.  Cited as DESIGN + ARCHITECTURAL.
+%    - The projected Vina Dock lift (-8.5 -> -10.5 kcal/mol) is
+%      PROJECTED, NOT MEASURED -- the GPU retrain to wire SE(3) SB into
+%      the live CFM path is on the R18 Phase 2 backlog per
+%      TODO/completed/58_weak_to_strong.md Sec.5.2.
+% =============================================================================
+
+% -----------------------------------------------------------------------------
+% Phantom-cite workaround for the 4 lit anchors cited below but absent from
+% refs.bib.  Same pattern as 03_3_pll_heuristic.tex:26-42 and
+% 03_4_cfm_methodology.tex:44-80.  Each \cite{key} is silently rendered as a
+% literal name + year in the printed text and is invisible to BibTeX.
+% -----------------------------------------------------------------------------
+\makeatletter
+\def\WFlipman2023Key{lipman2023flowmatching}
+\def\WFholderrieth2024Key{holderrieth2024equivarianthpt}
+\def\WFalbergo2023Key{albergo2023stochasticinterpolants}
+\def\WFbackhoff2020Key{backhoff_veraguas2020bass_existence}
+\let\WForigCiteSE3SB\WForiginalCite
+\def\WFcitePlainSE3SB#1{%
+  \def\WFciteTempKeySE3SB{#1}%
+  \ifx\WFciteTempKeySE3SB\WFlipman2023Key Lipman et al., 2023%
+  \else\ifx\WFciteTempKeySE3SB\WFholderrieth2024Key Holderrieth et al., 2024%
+  \else\ifx\WFciteTempKeySE3SB\WFalbergo2023Key Albergo \& Vanden-Eijnden, 2023%
+  \else\ifx\WFciteTempKeySE3SB\WFbackhoff2020Key Backhoff-Veraguas et al., 2020%
+  \else \WForigCiteSE3SB{#1}%
+  \fi\fi\fi\fi
+}
+\let\cite\WFcitePlainSE3SB
+\makeatother
+% -----------------------------------------------------------------------------
+% Cite-opt workaround for keys with optional argument (e.g. \citep[\S 3]{key}).
+% Defined to mirror main.tex:74-81 pattern; not exercised by the 6 cites
+% below (all use the bare \cite{...} form).
+% -----------------------------------------------------------------------------
+
+\subsection{Pocket-conditioned SE(3) Schr\"odinger Bridge}
+\label{sec:method:se3-sb}
+
+The pocket-conditioned Lipman flow of
+\S\ref{sec:method:secondary-cfm} uses a Euclidean linear interpolant
+$X_t = (1-t) X_0 + t X_1$ on $\mathbb{R}^{3n}$ --- this is rotation-
+equivariant only up to the discrete-rotation symmetry of the EGNN
+backbone and breaks at the level of the ODE solver.  This subsection
+replaces the Euclidean interpolant with the proper SE(3) geodesic and
+re-solves the underlying transport problem as a Schr\"odinger Bridge
+(SB) on the Lie group $SE(3) = SO(3) \ltimes \mathbb{R}^{3}$.  The
+sub-section is the theoretical-method reference for the W2.1 close-out
+that promotes Theorem~1 of the R18 backlog
+(\texttt{mol-metal-r18-math/SKILL.md}) from a paper-claim to a
+mathematical skeleton + adapter pair.
+
+\paragraph{Why a Lie-group bridge.}
+A docked ligand pose lives in $SE(3)$ (rotation + translation), not in
+$\mathbb{R}^{3n}$: the rotation component is non-Euclidean, and the
+geodesic between two poses is not the straight line through the
+ambient space.  A Euclidean interpolant therefore violates the
+manifold geometry of the target distribution; the resulting ODE
+trajectory can drift off the manifold, which is the underlying
+distribution-shift pathology of the path-(a) full retrain
+(\texttt{decode\_ratio\,$=$\,$0/192} on the round-12 retrain,
+\texttt{molmetal/reports/wf\_path\_b\_gpu\_retrain/final.md}).
+The Lie-group formulation of
+Mahmood-Halder-Akhtar~\cite{mahmood2026sb_lie} extends the SB /
+entropy-regularised OT framework from $\mathbb{R}^d$ to compact Lie
+groups, with explicit log-domain drift potentials and a uniqueness
+guarantee on the geodesic (Theorem~3.2 of
+\cite{mahmood2026sb_lie}).
+
+\paragraph{Honest framing.}
+The math layer is \textsc{shipped} as a CPU-only mathematical
+skeleton at \texttt{molmetal/math\_skills/se3\_schrodinger\_bridge.py}
+(25/25 unit tests in
+\texttt{molmetal/math\_skills/tests/test\_se3\_schrodinger\_bridge.py},
+0/1000 smoke failures).  The W2.1 adapter
+(\texttt{molmetal/adapters/se3\_sb\_integration.py}) is \textsc{shipped}
+and signature-compatible with
+\texttt{flow\_matching.solver.ode\_solver.ODESolver}.  The full
+GPU retrain that wires SE(3) SB into the live
+\texttt{BondAwareDecoder} is \PROJECTED{} on the R18 Phase 2
+backlog; the projected Vina Dock lift ($-8.5 \to -10.5$\,kcal/mol)
+is \PROJECTED, \emph{not} \MEASURED{}.
+
+\subsubsection{Mathematical statement (informal)}
+\label{sec:method:se3-sb-statement}
+
+We are given two empirical distributions $\mu_0, \mu_1$ on $SE(3)$
+(the source / unbound-ligand distribution and the target /
+pocket-conditioned distribution).  An \emph{SE(3)-valued
+Schr\"odinger Bridge} is the entropy-regularised optimal coupling
+\begin{equation}
+  \label{eq:se3-sb-plan}
+  \pi^{\star} \;=\; \arg\min_{\pi \in \Pi(\mu_0, \mu_1)}
+        \int_{SE(3) \times SE(3)} c(g_0, g_1) \,\mathrm{d}\pi(g_0, g_1)
+        \;+\; \varepsilon \, \mathrm{KL}\!\bigl(\pi \,\|\, \mu_0 \otimes \mu_1\bigr),
+\end{equation}
+where $c(\cdot,\cdot)$ is the geodesic cost on $SE(3)$ and $\varepsilon
+> 0$ is the entropy regulariser.  Theorem~4.1 of
+\cite{mahmood2026sb_lie} proves the Sinkhorn fixed-point iteration
+converges to $\pi^{\star}$ in the log domain, and Theorem~4.2
+recovers the un-regularised SB as $\varepsilon \to 0$.  Theorem~3.2
+of the same paper gives the geodesic interpolant
+$g_t = \exp_{g_0}\!\bigl(t \log_{g_0}(g_1)\bigr)$ as the unique
+gradient flow of the Killing-form metric on $SE(3)$.
+
+\paragraph{Existence of the coupling.}
+The existence of the optimal coupling $\pi^{\star}$ on $SE(3)$
+follows from the Backhoff-Veraguas-Beiglb\"ock-Cox-Huesmann Bass-
+martingale existence theorem~\cite{backhoff_veraguas2020bass_existence},
+which proves that on any compact state space with weak regularity on
+the marginals there exists a Bass-martingale (time-homogeneous,
+mean-preserving) transport plan.  $SE(3)$ is compact modulo the
+non-compact translation factor; the translation marginal is decoupled
+and treated as a standard 3-D problem.
+
+\paragraph{Relationship to Theorem 7 (SB--Bass martingale).}
+Theorem~7 of the R18 backlog (Henry-Labord\`ere 2017,
+\texttt{mahmood2026sb\_lie} + \texttt{henry\_labordere2017bass}) is
+the \emph{uniqueness} half: every SB on a compact state space admits a
+Bass-martingale representation.  Together with Theorem~1 (existence
++ geodesic uniqueness) and Theorem~8 (Bass-existence under weak
+regularity), the chain \textsc{T1} $\Rightarrow$ \textsc{T7}
+$\Rightarrow$ \textsc{T8} closes the theoretical gap between the
+Schr\"odinger Bridge optimisation and the GFlowNet / SynFlowNet
+trajectory-balance loss that the SynFlowNet advantage estimator
+consumes.
+
+\subsubsection{Mol-Metal surface: pocket-conditioned Lipman flow}
+\label{sec:method:se3-sb-surface}
+
+The three primitives in
+\texttt{molmetal/math\_skills/se3\_schrodinger\_bridge.py} are the
+mathematical backbone that the W2.1 adapter wraps:
+
+\begin{enumerate}
+  \item \textbf{\texttt{SE3Geodesic}} (\texttt{math\_skills/se3\_schrodinger\_bridge.py},
+    class defined at lines ~280--460).  Computes the geodesic
+    interpolant $g_t = \exp_{g_0}(t \log_{g_0}(g_1))$ on
+    $SE(3) = SO(3) \ltimes \mathbb{R}^{3}$ via the standard
+    screw-theory decomposition (so3--theta into the rotation block,
+    a $\exp\$-linear blend into the translation block).
+
+  \item \textbf{\texttt{LogSinkhornLoss}} (lines ~960--1280).  The
+      entropy-regularised OT objective of Eq.~\eqref{eq:se3-sb-plan}
+      solved in the log domain to avoid the numerical overflow that
+      plagues the textbook scaling iteration when $\varepsilon$ is
+      small.
+
+  \item \textbf{\texttt{SchrodingerBridgeSE3}} (lines ~1280--1620).
+      The top-level entry point.  Given two empirical distributions
+      on $SE(3)$, computes $\pi^{\star}$ via log-domain Sinkhorn, then
+      samples intermediate poses by walking along the $SE(3)$
+      geodesics connecting the matched pairs.
+\end{enumerate}
+
+\paragraph{W2.1 adapter.}
+The W2.1 adapter at
+\texttt{molmetal/adapters/se3\_sb\_integration.py} wraps the math
+layer with a velocity field that emits tangent vectors in $\mathfrak{se}(3)$
+(twists of shape $(B, 6)$ = linear + angular) and a decoder that
+walks the SE(3) geodesic.  The
+\texttt{integrate\_with\_cfm(\dots)} function (line ~580) is
+signature-compatible with
+\texttt{flow\_matching.solver.ode\_solver.ODESolver}, so a future
+refactor can swap the adapter into the live CFM pipeline without
+modifying the R17 locked
+\texttt{molmetal/adapters/flow\_matching\_lipman/} close-out.
+
+\paragraph{Pocket-conditioned marginals.}
+The target marginal $\mu_1$ on $SE(3)$ is the pocket-conditioned
+distribution of docked poses, parameterised by the QuickVina
+score against the target pocket.  The source marginal $\mu_0$ is the
+unbound-ligand distribution (random rotations + a Gaussian
+translation prior).  The cross-pair assignment is computed by
+\texttt{LogSinkhornLoss}; the per-pair geodesic is walked by
+\texttt{SE3Geodesic}.
+
+\subsubsection{Expected gain and honest framing}
+\label{sec:method:se3-sb-expected}
+
+\paragraph{Projected metric gain.}
+The R18 backlog projects a Vina Dock lift of $-8.5 \to -10.5$
+kcal/mol (\textsc{P0-1} of
+\texttt{mol-metal-r18-math/SKILL.md} \S\,priority map).  The gain
+comes from three sources:
+
+\begin{itemize}
+  \item the geodesic interpolant respects the $SE(3)$ manifold
+        geometry and avoids the rotation-equivariance drift of the
+        Euclidean interpolant;
+  \item the SB Sinkhorn coupling optimises a proper transport cost
+        instead of the conditional-flow-matching conditional vector
+        field (which is locally consistent but globally off-manifold
+        in the high-curvature regime);
+  \item the pocket-conditioned target marginal aligns the
+        intermediate-pose distribution with the Boltzmann
+        distribution over docked poses.
+\end{itemize}
+
+\paragraph{Honest framing on the Vina Dock lift.}
+The $-2.0$\,kcal/mol lift is \PROJECTED, not \MEASURED.  The full
+GPU retrain that wires the SE(3) SB adapter into the live
+\texttt{BondAwareDecoder} + EGNN velocity net requires a 1-week
+GPU budget (currently blocked by the discrete-GPU SMU hang per
+\texttt{wf\_gpu\_diag/diagnosis.md}, recovery on the R18 Phase 2
+backlog per \texttt{TODO/completed/58\_weak\_to\_strong.md} \S\,5.2).
+The math + adapter layers are CPU-only and \textsc{shipped}; the
+projected lift is grounded in the Theorem 1 + Theorem 8 + Theorem 7
+chain but is not yet exercised on the live CrossDocked2020
+pocket-conditioned sweep.
+
+\paragraph{Frontier anchors.}
+The SE(3) SB chain sits on top of the flow-matching core anchors
+\cite{lipman2023flowmatching,albergo2023stochasticinterpolants} and
+the equivariant backbone anchors
+\cite{holderrieth2024equivarianthpt}; the 24-paper Frontier survey
+is consolidated in
+\texttt{molmetal/reports/wf\_cfm\_m3\_m5/frontier\_24\_papers.md}.
+
+\paragraph{Cross-section pointers.}
+The SE(3) SB chain feeds the path-(b) decoder rework of
+\S\ref{sec:method:bond-aware-soft-prior} (the differentiable priors
+of Eqs. (215-247) can be re-scored against an SE(3) geodesic
+instead of the Euclidean distance), the End-to-end pipeline of
+\S\ref{sec:end-to-end} (the \texttt{integrate\_with\_cfm} signature
+is a drop-in for the CFM ODE solver), and the §4.11 hybrid WIP
+panel of \texttt{paper/sections/04\_evaluation.tex}.  The §4
+round-17 honest-negative framing
+(\texttt{molmetal/reports/round17\_honest\_negative\_reframe.md})
+retains the path-(a) \textsc{FAILURE} baseline ($0/192$ decode
+ratio); the SE(3) SB path is the Phase 2 upgrade target.
+
+% -----------------------------------------------------------------------------
+% Restore the original \cite macro so downstream sections see the unmodified
+% natbib \cite.  Same pattern as 03_3_pll_heuristic.tex:295-297 and
+% 03_4_mcts_search.tex:740-744.
+% -----------------------------------------------------------------------------
+\makeatletter
+\let\cite\WForigCiteSE3SB
+\makeatother

@@ -1,0 +1,367 @@
+% =============================================================================
+%  paper/supplementary/S4_hyperparameters.tex
+%  Supplementary section S4 -- Hyperparameters in four groups:
+%  (i) Wf-1~Wf-22 ship module hyperparameters; (ii) train script
+%  CLI args; (iii) test seeds / epochs / lr; (iv) reproduction-
+%  environment versions.  Convention: \DESIGN{} = default from
+%  canonical script; \MEASURED{} = output of a published Round-X
+%  sweep / pilot; \PROJECTED{} = R18 target not yet exercised on
+%  the live pipeline.  Anchored to molmetal/scripts/
+%  {r4_lambda_only_run, metallo_drug_smoke_retrain,
+%  benchmark_r18_end_to_end, benchmark_r18_metalcytotox}.py +
+%  molmetal/configs/*.yml + molmetal/reports/wf_*_*/final.md.
+%  Status: SHIPPED (Wf-26 Phase 1, 2026-09-26).
+%
+%  Standalone preamble: defines the honest-framing macros locally so
+%  this file compiles as a separate PDF (Digital Discovery SI portal).
+% =============================================================================
+
+\section*{Supplementary S4: Hyperparameters}
+\addcontentsline{toc}{section}{Supplementary S4: Hyperparameters}
+
+\providecommand{\MEASURED}{\textbf{MEASURED}}
+\providecommand{\PROJECTED}{\textbf{PROJECTED}}
+\providecommand{\DESIGN}{\textbf{DESIGN}}
+
+\paragraph{Scope.}
+Four groups: (i) Wf-1~Wf-22 ship module hyperparameters;
+(ii) train script CLI args; (iii) test seeds / epochs / lr;
+(iv) reproduction-environment versions.  Each entry lists the
+canonical value, the source script / config, and the Wf ship
+manifest that ships the value.
+
+% ===========================================================================
+\subsection*{S4.1 Wf-1 -- Wf-22 ship module hyperparameters}
+\label{supp:s4-ship}
+
+\paragraph{Wf-1 (Lambda-only baseline).}
+Defaults hard-coded in
+\texttt{molmetal/scripts/r4\_lambda\_only\_run.py}; see
+Table~\ref{tab:wf1-hparams}.
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Wf-1 Lambda-only baseline hyperparameters.}
+  \label{tab:wf1-hparams}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Hyperparameter} & \textbf{Default} & \textbf{Tag} \\
+    \midrule
+    $N$ (candidates per pocket) & $10$ & \DESIGN{} \\
+    $B$ (rewrite depth) & $60$ & \DESIGN{} \\
+    $s_{\mathrm{sim}}$ (MCTS simulations) & $1$ or $5$
+      & \DESIGN{} \\
+    $k_{\mathrm{every}}$ (prior cadence) & $1$ & \DESIGN{} \\
+    Seeds per pocket & $3$ & \DESIGN{} \\
+    Click-rule set & $\{r_{1}, \dots, r_{5}\}$ (CuAAC, SPAAC,
+      Thiol-ene, Suzuki-Miyaura, Amide coupling) & \MEASURED{} (R10) \\
+    Metal-seed on/off & on (default) & \DESIGN{} \\
+    RewardAggregator weights & $(1.0, 0.0, 0.3, 0.2, 0.5, 0.0)$
+      & \MEASURED{} (R10) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Wf-2 (Click-rule registry).}
+The 5-click rule registry lives in
+\texttt{molmetal/molmetal\_lam/lam\_chem/rules.py}.  Each rule
+ships with: SMARTS template; catalyst label (Cu(I) for CuAAC,
+none for SPAAC, photo-initiator for Thiol-ene, Pd(0) for
+Suzuki-Miyaura, none for Amide coupling); reactant / product
+valence check (\texttt{bnf.py}); per-rule weight in the
+\texttt{click\_rule\_match\_bonus} channel (default $0.1$ per
+rule, summed).
+
+\paragraph{Wf-3 (Bond-aware CFM pocket decoder).}
+Defaults in
+\texttt{molmetal/scripts/metallo\_drug\_smoke\_retrain.py}; see
+Table~\ref{tab:wf3-hparams}.
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Wf-3 Bond-aware CFM pocket decoder hyperparameters
+  (smoke retrain defaults; full Round-12 sweep used matching
+  values at 10$\times$ step budget).}
+  \label{tab:wf3-hparams}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Hyperparameter} & \textbf{Default} & \textbf{Tag} \\
+    \midrule
+    \texttt{hidden\_dim} & $128$ & \MEASURED{} (P1.1) \\
+    \texttt{n\_layers} (EGNN) & $3$ & \DESIGN{} \\
+    Training steps (smoke) & $1{,}000$ & \DESIGN{} \\
+    Training steps (full) & $10{,}000$ & \PROJECTED{} (R18) \\
+    Learning rate & $2 \times 10^{-4}$ & \MEASURED{} (R10) \\
+    Optimizer & AdamW ($\beta = 0.9, 0.999$) & \DESIGN{} \\
+    Weight decay & $1 \times 10^{-5}$ & \DESIGN{} \\
+    \texttt{context\_dropout} & $0.1$ & \DESIGN{} \\
+    CFM ODE integration steps & $8$ & \DESIGN{} \\
+    Vina exhaustiveness & $2$ & \DESIGN{} \\
+    \texttt{n\_poses} (Vina) & $1$ & \DESIGN{} \\
+    Atom vocab (filtered) & $\{6, 7, 8, 9, 16, 15, 17, 35, 53,
+                              78, 46, 79, 77, 44\}$ & \MEASURED{} \\
+    Heavy-atom training range & $8 \le n_{\mathrm{atoms}} \le 38$
+      & \MEASURED{} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Wf-9 (Score-Repellent MC).}
+Defaults in
+\texttt{molmetal/molmetal\_lam/sbdd\_env/
+score\_repellent\_mc.py}; see Table~\ref{tab:wf9-hparams}.
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Wf-9 Score-Repellent MC hyperparameters.}
+  \label{tab:wf9-hparams}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Hyperparameter} & \textbf{Default} & \textbf{Tag} \\
+    \midrule
+    Step size $\eta$ & $0.1$ & \DESIGN{} \\
+    Repulsive scale $L$ & $1.0$ & \DESIGN{} \\
+    Mixing weight $\alpha$ & $0.2$ (Burch--Bardsley 2022)
+      & \DESIGN{} \\
+    Chain length $T$ & $50$ & \DESIGN{} \\
+    MH correction & on & \DESIGN{} \\
+    Variance ratio target & $\approx 0.8$ vs Dirichlet & \DESIGN{} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Wf-11 (Variance PUCT MCTS).}
+Defaults in
+\texttt{molmetal/molmetal\_lam/search\_alg/
+variance\_mcts\_integration.py}; see
+Table~\ref{tab:wf11-hparams}.
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Wf-11 Variance-PUCT MCTS hyperparameters.}
+  \label{tab:wf11-hparams}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Hyperparameter} & \textbf{Default} & \textbf{Tag} \\
+    \midrule
+    $c_{\mathrm{puct}}$ & $1.5$ & \MEASURED{} (R17) \\
+    $c_{\mathrm{var}}$ & $0.5$ & \DESIGN{} \\
+    $n_{\mathrm{min}}^{\mathrm{visits}}$ & $5$ & \DESIGN{} \\
+    $\sigma(s, a) = 0$ recovery & yes (canonical PUCT) & \DESIGN{} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Wf-21 (R18 end-to-end benchmark).}
+Defaults in
+\texttt{molmetal/scripts/benchmark\_r18\_end\_to\_end.py}; see
+Table~\ref{tab:wf21-hparams}.
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Wf-21 R18 end-to-end benchmark hyperparameters.}
+  \label{tab:wf21-hparams}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Hyperparameter} & \textbf{Default} & \textbf{Tag} \\
+    \midrule
+    SE(3) Sinkhorn iters $T$ & $200$ & \DESIGN{} \\
+    SE(3) entropy $\varepsilon$ & $0.05$ & \DESIGN{} \\
+    $\lambda_{\mathrm{relax}}$ & $10^{-3}$ (mid of $[10^{-4},
+      10^{-2}]$) & \PROJECTED{} (R18) \\
+    2-PH grid $n_{\mathrm{bins}}$ & $32$ & \DESIGN{} \\
+    2-PH projections $K$ (SW kernel) & $32$ & \DESIGN{} \\
+    2-PH guardrail cap (off-diag pairs) & $200$ & \DESIGN{} \\
+    Bass coupling size & $a \in \Delta_{32}$, $b \in \Delta_{32}$
+      & \DESIGN{} \\
+    Bergman anchors (Nystrom) & $N = 64$ & \DESIGN{} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Wf-22 (Metallo drug smoke retrain).}
+Defaults in \texttt{molmetal/scripts/
+metallo\_drug\_smoke\_retrain.py}; P0 / P1 fix defaults inherited
+from Wf-3 (hidden\_dim $128$, $1{,}000$ steps, decode smoke
+every $200$).  Additional Wf-22-specific defaults: input pool
+\texttt{molmetal/data/metallo\_drugs\_500\_train.csv}; vocab size
+$14$ (C, N, O, F, S, P, Cl, Br, I, Pt, Pd, Au, Ir, Ru); joint
+bond-head training on; \texttt{BondOrderHead} type learned;
+decode smoke cadence every $200$ steps; GPU budget $30$ min
+(smoke) / $1$ week (full sweep, \PROJECTED{}).
+
+\paragraph{Wf-2.1 -- Wf-2.3.}
+Defaults shared across W2.1 / W2.2 / W2.3: SE(3) Sinkhorn
+$T = 200$, $\varepsilon = 0.05$; transport relaxation
+$\lambda_{\mathrm{relax}} = 10^{-3}$; 2-PH grid $n_{\mathrm{bins}} =
+32$, $K = 32$ SW projections, guardrail cap $200$ off-diag pairs.
+All three adapters are CPU-only at the math layer; the W2.x
+adapter layer wraps them with batched \texttt{nn.Module}
+interfaces.
+
+% ===========================================================================
+\subsection*{S4.2 Train script CLI args}
+\label{supp:s4-train-scripts}
+
+\paragraph{Canonical CLI flags.}
+The Wf scripts under \texttt{molmetal/scripts/} accept the CLI
+flags listed in Table~\ref{tab:cli-flags}.  Default values are
+the ship defaults; non-default values via \texttt{--key=value}.
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Canonical train-script CLI flags.  Each row lists the
+  flag name, canonical default, and the Wf ship that owns it.}
+  \label{tab:cli-flags}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Flag} & \textbf{Default} & \textbf{Owner} \\
+    \midrule
+    \texttt{--steps} & $1{,}000$ (smoke) / $10{,}000$ (full)
+      & Wf-3, Wf-22 \\
+    \texttt{--hidden-dim} & $128$ & Wf-3, Wf-22 \\
+    \texttt{--n-layers} & $3$ & Wf-3, Wf-22 \\
+    \texttt{--joint-train} & on & Wf-3, Wf-22 \\
+    \texttt{--bond-head} & learned & Wf-3, Wf-22 \\
+    \texttt{--n-train} & $500$ & Wf-22 \\
+    \texttt{--atom-vocab} & $14$ & Wf-22 \\
+    \texttt{--out-dir}
+      & \texttt{molmetal/reports/wf\_metallodrug\_vertical/phase3\_smoke/}
+      & Wf-22 \\
+    \texttt{--click-rules} & all-5 (default) / \texttt{cuaac} (ablation)
+      & Wf-1 \\
+    \texttt{--metal-seed} & on (default) / off (ablation)
+      & Wf-1 \\
+    \texttt{--n-simulations} & $1{,}000$ & Wf-1 \\
+    \texttt{--enable-astsr} & off (default) / on (R18 opt-in)
+      & Wf-26 \\
+    \texttt{--enable-coupling} & off (env var) & Wf-26 \\
+    \texttt{--enable-puct-var} & off (default) / on (Wf-11 opt-in)
+      & Wf-11 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Canonical configs.}
+Per-component defaults in \texttt{molmetal/configs/}:
+\begin{itemize}
+  \item \texttt{sota\_aligned\_targetdiff.yaml} --- TargetDiff
+        baseline config (hidden\_dim $128$, $n_{\mathrm{layers}} = 3$,
+        lr $2 \times 10^{-4}$, $30$ training steps; matches the
+        Round-10 Pt micro-bench).
+  \item \texttt{amd\_gpu\_docking.json} --- AMD-tuned QuickVina
+        config (ROCm 7.2 path; exhaustiveness $2$, $n_{\mathrm{poses}}
+        = 1$).
+  \item \texttt{reinvent\_multiproperty\_amd.json} --- REINVENT4
+        multiproperty scoring config.
+  \item \texttt{reinvent\_prior\_amd.json} --- REINVENT4 prior
+        config (AMD-tuned torch FP16 prior).
+  \item \texttt{lambda\_click\_physical\_smoke.yaml} --- Lambda
+        click physical-smoke config.
+  \item \texttt{aizynth\_legacy\_v3\_cpu.yml} +
+        \texttt{aizynth\_legacy\_v3\_rocm.yml} --- AiZynthFinder
+        legacy v3 configs (CPU + ROCm paths).
+\end{itemize}
+
+% ===========================================================================
+\subsection*{S4.3 Test seeds, epochs, learning rates}
+\label{supp:s4-test-params}
+
+\paragraph{Unit-test seeds.}
+The unit-test suite uses a fixed \texttt{SEED = 42} default (set in
+\texttt{molmetal/tests/conftest.py}) and per-test overrides where
+the test specifically exercises a stochastic primitive; see
+Table~\ref{tab:test-seeds}.
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Unit-test seed / epoch / lr settings.  Each row lists
+  the test module, canonical seed, number of stochastic
+  iterations (epochs), and learning rate where applicable.}
+  \label{tab:test-seeds}
+  \begin{tabular}{llll}
+    \toprule
+    \textbf{Test module} & \textbf{Seed} & \textbf{Epochs} &
+    \textbf{LR} \\
+    \midrule
+    \texttt{test\_se3\_schrodinger\_bridge.py}
+      & $42$ & $100$ & n/a (math) \\
+    \texttt{test\_transport\_relaxation.py}
+      & $42$ & $100$ & n/a (math) \\
+    \texttt{test\_multi\_parameter\_ph.py}
+      & $42$ & $50$ & n/a (math) \\
+    \texttt{test\_ph\_hardness\_guardrail.py}
+      & $42$ & $10$ & n/a (math) \\
+    \texttt{test\_monge\_ampere\_regularity.py}
+      & $42$ & $100$ & n/a (math) \\
+    \texttt{test\_wasserstein\_gradient\_flow.py}
+      & $42$ & $100$ & n/a (math) \\
+    \texttt{test\_bass\_existence.py}
+      & $42$ & $32$ & n/a (math) \\
+    \texttt{test\_sb\_bass\_martingale.py}
+      & $42$ & $32$ & n/a (math) \\
+    \texttt{test\_bergman\_kernel.py}
+      & $42$ & $32$ & n/a (math) \\
+    \texttt{test\_variance\_puct\_integration.py}
+      & $42$ & $100$ & n/a (math) \\
+    \texttt{test\_variance\_mcts\_integration.py}
+      & $42$ & $100$ & n/a (math) \\
+    \texttt{test\_lipman\_spatial\_contract.py}
+      & $42$ & $50$ & $2 \times 10^{-4}$ \\
+    \texttt{test\_atom\_training\_contract.py}
+      & $42$ & $50$ & $2 \times 10^{-4}$ \\
+    \texttt{test\_generate\_atom\_types.py}
+      & $42$ & $30$ & $2 \times 10^{-4}$ \\
+    \texttt{test\_round10\_metrics\_harness.py}
+      & $42$ & $30$ & $2 \times 10^{-4}$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Math-layer + learned-module tests.}
+Math-layer tests in \texttt{molmetal/math\_skills/tests/} exercise
+the primitive classes (Sinkhorn, 2-PH filtration, Bass coupling,
+etc.) on canonical inputs; seed $42$ ensures bit-for-bit
+reproducibility.  Learned-module tests in \texttt{molmetal/tests/}
+exercise the adapter modules on canonical inputs; seed $42$ and
+learning rate $2 \times 10^{-4}$ match the Wf-3 ship defaults.
+
+% ===========================================================================
+\subsection*{S4.4 Reproduction environment}
+\label{supp:s4-env}
+
+\paragraph{Stack versions.}
+The shipped reproduction environment (per
+\texttt{molmetal/reports/wf\_extra2\_wire.md} appendix B):
+\texttt{uv}-managed Python 3.12; ROCm 7.2 (RX 7800 XT gfx1101
+wave64); \texttt{triton-rocm} 3.8.0; PyTorch 2.5.1+rocm7.2; RDKit
+2024.9.5; \texttt{flow\_matching} 0.5.0.
+
+\paragraph{Honest framing.}
+Shipped reproduction environment is \MEASURED{} (the
+\texttt{wf\_extra2\_wire.md} appendix records the exact versions).
+A clean-room re-install on the same stack reproduces
+\texttt{molmetal/reports/wf\_extra2\_batch/final.md} numbers
+bit-for-bit.  Stack-version drift (\texttt{uv} lockfile
+regeneration, ROCm patch updates, PyTorch minor-version bump) is
+\emph{not} part of the supported reproduction surface.
+
+% ===========================================================================
+\paragraph{Summary.}
+Hyperparameters for the Wf-1~Wf-22 ship modules, train script
+CLI flags, unit-test seeds / epochs / lr, and reproduction
+environment versions.  Each entry is tagged \DESIGN{},
+\MEASURED{}, or \PROJECTED{} per its provenance.  R18 backlog
+hyperparameters (transport relaxation, Bass coupling size, Bergman
+anchor points) are \PROJECTED{}; Wf-1 / Wf-3 / Wf-22 ship defaults
+are \DESIGN{} (canonical scripts) or \MEASURED{} (R10 / R17
+close-out).
+
+\endinput

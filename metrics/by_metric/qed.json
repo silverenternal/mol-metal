@@ -1,0 +1,14 @@
+{
+  "metric": "qed",
+  "description": "Bickerton 2012 quantitative estimate of drug-likeness (RDKit Chem.QED.qed). Mean over n=449 metallo-drug SMILES from metallo_drugs_500_train.csv.",
+  "unit": "ratio (0-1, higher = more drug-like)",
+  "scope": "drug-likeness panel (metrics_v2 Phase-3B)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:qed (RDKit Bickerton 2012)",
+  "value": 0.6123,
+  "n_samples": 449,
+  "data_source": "metallo_drugs_500_train.csv",
+  "timestamp": "2026-09-26",
+  "status": "MEASURED",
+  "wf61_closeout_ref": "TODO/completed/87l_undefined_metrics_definition.md §1.1",
+  "wf87_audit_note": "JSON file shipped per Wf-61 close-out; on-disk audit confirms MEASURED status. RDKit not installed on host so no live re-computation executed; value preserved from Wf-61 ship record."
+}

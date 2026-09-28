@@ -1,0 +1,22 @@
+{
+  "fold": "Os",
+  "seed": 0,
+  "n_train": 4665,
+  "n_val": 519,
+  "n_test": 87,
+  "pos_rate_train": 0.3048231511254019,
+  "pos_rate_test": 0.4367816091954023,
+  "test_metrics": {
+    "roc_auc": 0.644468313641246,
+    "pr_auc": 0.6255398822722528,
+    "hit_rate_top5pct": 0.75,
+    "n": 87
+  },
+  "val_metrics": {
+    "roc_auc": 0.7528279954196884,
+    "pr_auc": 0.5974651531286358,
+    "hit_rate_top5pct": 0.7692307692307693,
+    "n": 519
+  },
+  "elapsed_seconds": 414.63248682022095
+}

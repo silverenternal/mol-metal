@@ -1,0 +1,62 @@
+{
+  "figure_id": "fig21",
+  "title": "Wall-clock per phase (R17 10k-step CFM retrain, 3 seeds)",
+  "description": "Per-phase wall-clock breakdown of the R17 GPU CFM retrain (molmetal/scripts/metallo_drug_smoke_retrain.py). Three seeds × 10000 steps each, hidden_dim=128, batch=4, joint_train+burst on cuda.",
+  "x_axis": {
+    "label": "Phase",
+    "categories": ["data_load+setup", "cache_load", "training_10000_steps", "decode_probes_10x", "checkpoint_save+report"]
+  },
+  "y_axis": {
+    "label": "Wall-clock (seconds)",
+    "range": [0, 700]
+  },
+  "series": [
+    {
+      "name": "seed_0",
+      "type": "bar",
+      "values": [12.0, 4.0, 633.0, 8.0, 3.4],
+      "total": 660.4,
+      "step_per_step_seconds": 0.07
+    },
+    {
+      "name": "seed_1",
+      "type": "bar",
+      "values": [11.0, 4.0, 532.0, 8.0, 3.3],
+      "total": 558.3,
+      "step_per_step_seconds": 0.06
+    },
+    {
+      "name": "seed_2",
+      "type": "bar",
+      "values": [11.0, 4.0, 529.0, 8.0, 3.5],
+      "total": 555.5,
+      "step_per_step_seconds": 0.06
+    },
+    {
+      "name": "aggregate mean",
+      "type": "reference",
+      "values": [11.3, 4.0, 564.7, 8.0, 3.4],
+      "total_mean": 591.4,
+      "total_std": 47.9
+    }
+  ],
+  "legend": [
+    "seed_0 (660.4s total)",
+    "seed_1 (558.3s total)",
+    "seed_2 (555.5s total)",
+    "Aggregate mean across 3 seeds (591.4s ± 47.9s)"
+  ],
+  "summary": {
+    "n_seeds": 3,
+    "training_steps_per_seed": 10000,
+    "total_wallclock_per_seed_mean_s": 591.4,
+    "total_wallclock_per_seed_std_s": 47.9,
+    "decode_probe_wallclock_total_s": 8.0,
+    "decode_probe_wall_per_probe_mean_s": 0.8,
+    "training_dominates_fraction": 0.954,
+    "device": "cuda (AMD Radeon 780M + RX 7800 XT)",
+    "verdict": "MEASURED — 10k-step training dominates wall-clock (~95%); 10 decode probes add ~8s total; full 30/30 decode lift achieved. Per-seed variance is small (591.4s ± 47.9s)."
+  },
+  "source": "logs/r17_retrain_10k/seed_{0,1,2}.log (decode_smoke wall + done_in total + elapsed at step=10000)",
+  "render": "paper/figures/fig21_wall_clock_per_phase.py"
+}

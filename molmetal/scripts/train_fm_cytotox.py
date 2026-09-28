@@ -26,6 +26,15 @@ Usage
 
 from __future__ import annotations
 
+
+# --- Wf-130 GPU default -----------------------------------------
+# RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
+# BEFORE `import torch` so CUDA init sees the env var.
+import os as _wf130_os
+_wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
+del _wf130_os
+# --- end Wf-130 ------------------------------------------------
+
 import argparse
 import sys
 import time

@@ -1,0 +1,85 @@
+% -----------------------------------------------------------------------------
+% §3.7.b — R18 Wf-207 Wasserstein-gradient-flow mean-field OT adapter
+%
+% Wf-207 — R18 math migration retry: Wasserstein gradient flow
+% (薛小平 2026 mean-field limit), extending the upstream
+% flow_matching.optimal_transport API with three mean-field-aware
+% surfaces:
+%
+%   * MeanFieldW2Plan — verification wrapper exposing the
+%     1/sqrt(N) mean-field residual bound and per-step CFL check.
+%   * mean_field_step_size — closed-form dt_* from Xue (2026)
+%     Lecture 4 Theorem 3.2 (mean-field CFL bound).
+%   * mean_field_score_smoothed_ot_plan — kernel-smoothed cost
+%     bias on top of compute_ot_plan, reducing gradient-flow
+%     drift variance in the small-batch regime.
+%
+% The adapter is purely additive — the upstream public symbols
+% (compute_ot_plan, mini_batch_ot_coupling, PlanMode) are
+% re-exported unchanged under the v2 module path, so existing
+% CFM training scripts see zero behaviour change.
+%
+% Located at
+% molmetal/adapters/flow_matching_lipman/optimal_transport_v2.py
+% with unit tests at
+% molmetal/tests/test_optimal_transport_v2.py (30 tests, all PASS).
+% -----------------------------------------------------------------------------
+
+\subsubsection{Wf-207: Wasserstein-gradient-flow mean-field OT adapter}
+\label{sec:method:optimal-transport-v2}
+
+The R18 mean-field limit theorem of Xue (薛小平) Lecture~4
+\citep{xuexiaoping_wasserstein_gf,xue_xiaoping2026ot_gradient}
+gives a quantitative :math:`C/\sqrt{N}` rate at which the empirical
+measure of :math:`N` particles following the Wasserstein gradient
+flow of :math:`F(\rho)=\mathrm{KL}(\rho\Vert\rho_{\rm ref})`
+converges to the PDE solution :math:`\partial_t\rho =
+\nabla\cdot(\rho\,\nabla\,\delta F/\delta\rho)`.  Building on this
+bound, we ship an additive upgrade to the upstream
+\texttt{flow\_matching.optimal\_transport} API:
+
+\begin{itemize}
+\item \textbf{\texttt{MeanFieldW2Plan}} — wraps an OT plan with a
+  verification layer exposing the per-step CFL condition
+  :math:`\mathrm{dt}\le\mathrm{relative\_tol}/(2\|s-s_{\rm ref}\|^2)`
+  \emph{and} the additive :math:`C/\sqrt{N}` mean-field residual.
+  Emits a \texttt{RuntimeWarning} when either bound is violated.
+
+\item \textbf{\texttt{mean\_field\_step\_size(N, score\_norm,
+  relative\_tol)}} — closed-form
+  :math:`\mathrm{dt}_*=\mathrm{relative\_tol}/(2\|s-s_{\rm ref}\|^2)`
+  that guarantees the KL contracts by at least
+  \texttt{relative\_tol} per explicit-Euler step in the
+  mean-field limit.
+
+\item \textbf{\texttt{mean\_field\_score\_smoothed\_ot\_plan}} —
+  augments the standard squared-Euclidean cost with a
+  kernel-smoothed mean-field bias term
+  :math:`\alpha\langle s(x_0)-s_{\rm ref}(x_0),\, x_1-x_0\rangle`,
+  reducing the variance of the velocity target under the small
+  batch regime where the :math:`1/\sqrt{N}` correction is most
+  informative.
+\end{itemize}
+
+\paragraph{Honest framing.}
+This round ships the \emph{mathematical} skeleton + adapter layer;
+the empirical benefit of the kernel-smoothed cost bias is
+\textbf{positive but not monotone} in batch size :math:`N`, and
+the mean-field residual check is a \emph{theoretical} guarantee
+(not an empirical one) that fires only when the chosen
+$\mathrm{dt}$ is provably unsafe under the Xue (2026) bound.
+The Wf-207 adapter does \emph{not} modify the R17 CFM training
+loop — the upstream public API
+(\texttt{compute\_ot\_plan}, \texttt{mini\_batch\_ot\_coupling},
+\texttt{PlanMode}) is re-exported unchanged, so no regression
+risk on the existing CFM training pipeline.
+
+\paragraph{Location.}
+Code:
+\texttt{molmetal/adapters/flow\_matching\_lipman/optimal\_transport\_v2.py}.
+Tests:
+\texttt{molmetal/tests/test\_optimal\_transport\_v2.py} --- 30
+test functions, all passing in \textless 1 s on CPU.
+Pre-existing CFM smoke tests (\texttt{test\_cfm\_fix3\_decode\_smoke.py},
+\texttt{test\_wasserstein\_gradient\_flow.py}, 42 tests; etc.) show
+\textbf{no behaviour change} after the Wf-207 migration.

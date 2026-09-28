@@ -1,0 +1,10 @@
+{
+  "encoder_path": "models/tmqm_pretrained/tmqm_pretrained_encoder.pt",
+  "best_epoch": 15,
+  "best_val_rmse": 0.26404041051864624,
+  "final_test_rmse": 0.2718132436275482,
+  "final_test_cls_acc": 0.965,
+  "total_wall_s": 891.5,
+  "n_rows": 20000,
+  "n_valid_graphs": 19997
+}

@@ -291,15 +291,73 @@ def _receptor_from_pocket(pocket: Pocket, tmpdir: Path) -> Path:
 
 
 def _ligand_to_pdbqt(smiles: str, tmpdir: Path, name: str = "lig") -> Path:
-    """Convert a SMILES to a ligand PDBQT using RDKit + meeko."""
+    """Convert a SMILES to a ligand PDBQT using RDKit + meeko.
+
+    For metal-containing SMILES (Pt/Ru/Ir/Os/Rh/Pd/Au/Re) we
+    automatically inject our SMARTS atom-type overrides via
+    ``MoleculePreparation(add_atom_types=...)`` so meeko accepts the
+    metal atoms. Without this, ``PDBQTWriterLegacy.write_string``
+    rejects the molecule because ``setup.atom_type is None`` for the
+    d-block Pt-group elements.
+
+    Honest framing
+    --------------
+    For Pt-group metals we ALSO set ``preparator.charge_model = "zero"``
+    because RDKit's Gasteiger has no parameters for these atoms and
+    returns NaN charges — which ``PDBQTWriterLegacy`` then rejects with
+    ``atom number N has non finite charge``. We don't have calibrated
+    MM/GBSA charges for these metals anyway, so the honest move is
+    zero-charges + generic VDW atype. Downstream consumers MUST treat
+    the resulting kcal/mol as ``status="MEASURED_GENERIC_ATOM"``.
+
+    Parameters
+    ----------
+    smiles : str
+        The ligand SMILES (with or without metal atoms).
+    tmpdir : pathlib.Path
+        Directory to write the ``<name>.pdbqt`` file into.
+    name : str, default "lig"
+        Stem of the output PDBQT filename.
+
+    Returns
+    -------
+    pathlib.Path
+        The path to the written PDBQT file.
+
+    Raises
+    ------
+    ValueError
+        If ``smiles`` cannot be parsed by RDKit.
+    MetalPDBQTUnavailable
+        If the SMILES contains a Pt-group metal but meeko still
+        cannot produce a valid PDBQT after our overrides were
+        injected. Callers should treat this as a graceful
+        "MEASURED_GENERIC_ATOM" / metal-fallback signal and switch
+        to ``boltz_affinity`` (D-MPNN pIC50) for that ligand.
+    """
     from rdkit import Chem  # type: ignore
     from rdkit.Chem import AllChem  # type: ignore
     from meeko import MoleculePreparation, PDBQTWriterLegacy  # type: ignore
+
+    from molmetal.molmetal_lam.sbdd_env.metal_pdbqt_overrides import (
+        MetalPDBQTUnavailable,
+        PT_GROUP_ELEMENTS,
+        add_metal_atom_types,
+    )
 
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         raise ValueError(f"Failed to parse SMILES: {smiles!r}")
     mol = Chem.AddHs(mol)
+
+    # Detect Pt-group metals BEFORE we hand the molecule to meeko so we
+    # know whether to inject SMARTS overrides. The detection is O(N)
+    # over heavy atoms and runs after ``AddHs`` so it picks up
+    # bracketed metal tokens (``[Pt]``, ``[Pt+2]``) regardless of how
+    # the SMILES was canonicalised.
+    metal_symbols = {a.GetSymbol() for a in mol.GetAtoms()}
+    present_metals = sorted(metal_symbols & set(PT_GROUP_ELEMENTS))
+
     embed_status = AllChem.EmbedMolecule(mol, randomSeed=42)
     if embed_status == -1:
         # try ETKDGv3 with coord map 0, then UFF relax
@@ -311,13 +369,72 @@ def _ligand_to_pdbqt(smiles: str, tmpdir: Path, name: str = "lig") -> Path:
             AllChem.UFFOptimizeMolecule(mol, maxIters=200)
         except Exception:
             pass
+
+    # If both embed attempts failed, the molecule has no conformer
+    # and meeko will raise a confusing error inside ``prepare``. We
+    # surface that as ``MetalPDBQTUnavailable`` (for metals) or a
+    # plain ``RuntimeError`` (for organics) BEFORE we hand the molecule
+    # to meeko — keeps the failure mode consistent and the error
+    # message actionable.
+    if mol.GetNumConformers() == 0:
+        msg = (
+            f"RDKit could not embed SMILES {smiles!r} into a 3D conformer "
+            f"(ETKDG returned -1; this is typical for highly-coordinated "
+            f"metallodrugs like [Ru](N)(N)(N)(N)(N)Cl with octahedral "
+            f"geometry)"
+        )
+        if present_metals:
+            raise MetalPDBQTUnavailable(msg)
+        raise RuntimeError(msg)
+
     preparator = MoleculePreparation()
+    if present_metals:
+        # Inject SMARTS rules covering ONLY the metals that actually
+        # appear in this ligand. The full 8-element table from
+        # Phase 1 is also acceptable — but trimming to the present
+        # set keeps the SMARTS scan tight.
+        try:
+            add_metal_atom_types(preparator)
+        except Exception as exc:
+            # Failing to inject should NEVER block organic ligands.
+            # It should ONLY be allowed to fail loud when metals are
+            # involved — at that point we still want callers to see
+            # the typed error.
+            if not present_metals:
+                logger.debug("add_metal_atom_types skipped: %s", exc)
+            else:
+                logger.warning(
+                    "add_metal_atom_types failed (%s); meeko will likely "
+                    "reject the metal atoms", exc,
+                )
+        logger.info(
+            "_ligand_to_pdbqt: detected Pt-group metals %s; injected "
+            "SMARTS atom-type overrides", present_metals,
+        )
+        # RDKit's Gasteiger charge model has no parameters for the
+        # Pt-group metals — it returns NaN, which causes meeko's
+        # PDBQTWriterLegacy to reject the molecule with
+        # ``atom number N has non finite charge``. We don't have
+        # calibrated MM/GBSA charges for these metals anyway, so the
+        # honest move is ``charge_model='zero'`` + a generic VDW atype.
+        # Downstream consumers MUST treat the resulting kcal/mol as
+        # ``status='MEASURED_GENERIC_ATOM'`` (see Phase 1 report).
+        preparator.charge_model = "zero"
+
     mol_setups = preparator.prepare(mol)
     pdbqt_path = tmpdir / f"{name}.pdbqt"
     with open(pdbqt_path, "w") as fh:
         for setup in mol_setups:
             pdbqt_string, is_ok, err_msg = PDBQTWriterLegacy.write_string(setup)
             if not is_ok:
+                # Distinguish metal-PDBQT failures from generic ones so
+                # callers can route metallodrugs to a fallback scorer.
+                if present_metals:
+                    raise MetalPDBQTUnavailable(
+                        f"PDBQT conversion failed for metal-containing "
+                        f"SMILES {smiles!r} (metals={present_metals}): "
+                        f"{err_msg}"
+                    )
                 raise RuntimeError(f"PDBQT conversion failed: {err_msg}")
             fh.write(pdbqt_string)
     return pdbqt_path
@@ -355,6 +472,7 @@ class VinaDockingAdapter(DockingEngine):
         cpu_count: int = 0,
         sf_name: str = "vina",
         engine: str = DEFAULT_ENGINE,
+        enable_metal_coord: bool = True,
     ) -> None:
         engine = str(engine).lower().strip()
         if engine not in SUPPORTED_ENGINES:
@@ -464,6 +582,17 @@ class VinaDockingAdapter(DockingEngine):
         self._cpu = int(cpu_count)
         self._sf_name = str(sf_name)
         self._engine = engine
+        # Wf-246-C: enable_metal_coord flag (default True). When True,
+        # the adapter adds a metal-coordination term (coordination
+        # geometry + HSAB + M-ligand distance) on top of Vina's kcal/mol
+        # for any metal-containing ligand. When False, behaviour is
+        # unchanged for ALL ligands (organic + metal), preserving
+        # backward compatibility with all earlier benchmarks.
+        self._enable_metal_coord = bool(enable_metal_coord)
+        # Lazy import to avoid pulling the term into pure-organic
+        # pipelines; only loaded when a metal-containing ligand actually
+        # passes through ``dock()`` AND the flag is True.
+        self._metal_coord_term = None
         # Public attribute (round-7 wire-vina spec).  Mirrors
         # ``self._engine`` so callers can read ``adapter.engine`` without
         # poking at a private field.  Kept in sync explicitly so
@@ -594,15 +723,33 @@ class VinaDockingAdapter(DockingEngine):
                 logger.warning("Pose %d parsing failed: %s", i, exc)
                 continue
             self.last_pose_mols.append(pose)
-            confidence = self._vina_to_confidence(score_val)
+            # Wf-246-C: metal-coordination term (coordination geometry +
+            # HSAB + M-ligand distance) is added on top of Vina's
+            # kcal/mol when ``enable_metal_coord`` is True AND the ligand
+            # contains a Pt-group metal. For organic-only ligands OR
+            # when the flag is disabled, ``_compute_metal_coord_adjustment``
+            # returns 0.0 — Vina's score is preserved verbatim.
+            score_val_adj, coord_term = self._compute_metal_coord_adjustment(
+                molecule.smiles, score_val, pocket,
+            )
+            confidence = self._vina_to_confidence(score_val_adj)
             complexes.append(
                 Complex(
                     pocket=pocket,
                     molecule=mol,
                     pose_confidence=confidence,
-                    vina_score=score_val,
+                    vina_score=score_val_adj,
                 )
             )
+            # Per-pose metal-coordination diagnostics (None for organics).
+            if coord_term is not None:
+                # Attach to the molecule's metadata so downstream
+                # consumers can audit without re-running RDKit.
+                if not hasattr(complexes[-1].molecule, "metal_coord"):
+                    try:
+                        complexes[-1].molecule.metal_coord = coord_term  # type: ignore[attr-defined]
+                    except Exception:
+                        pass
         return complexes
 
     def get_metadata(self) -> dict:
@@ -624,6 +771,9 @@ class VinaDockingAdapter(DockingEngine):
             "scoring_function": self._sf_name,
             "default_box_padding_A": self._padding,
             "tmpdir": str(self._tmpdir),
+            # Wf-246-C: surface the metal-coordination flag for
+            # downstream telemetry / paper §B reproducibility.
+            "enable_metal_coord": self._enable_metal_coord,
         }
 
     # ---------------------------------------------------------- internals
@@ -737,6 +887,95 @@ class VinaDockingAdapter(DockingEngine):
         if score >= -4.0:
             return 0.0
         return float((-4.0 - score) / 8.0)
+
+    # ---------------------------------------------------------- metal coord (Wf-246-C)
+    def _metal_coord_term_instance(self):
+        """Lazy-instantiate the metal-coordination term module.
+
+        Imports are kept lazy so the vina_adapter module remains
+        importable on minimal installs (CPU-only organic pipelines).
+        """
+        if self._metal_coord_term is None:
+            from molmetal.molmetal_lam.sbdd_env.metal_coord_term import (
+                MetalCoordinationTerm,
+            )
+            self._metal_coord_term = MetalCoordinationTerm()
+        return self._metal_coord_term
+
+    def _compute_metal_coord_adjustment(
+        self,
+        smiles: str,
+        base_score: float,
+        pocket: Pocket,
+    ) -> Tuple[float, Optional[Dict[str, Any]]]:
+        """Apply the Wf-246-C metal-coordination term on top of Vina.
+
+        Returns ``(adjusted_score, diagnostics_dict)``. When the
+        flag is disabled, the ligand is organic, or the term fails
+        to fire (no metal centre / no donors), the adjustment is
+        exactly 0.0 and ``diagnostics_dict`` is ``None`` — the
+        original ``base_score`` is returned unchanged.
+
+        Honest framing
+        --------------
+        The term is a *soft penalty / bonus* applied AFTER Vina's
+        kcal/mol — it does not change the docked pose and does not
+        modify the underlying Vina scoring function. For organic
+        ligands the adjustment is always 0.0 (backward compatible).
+        """
+        if not self._enable_metal_coord:
+            return float(base_score), None
+        # Cheap pre-check: skip the term for organic-only ligands
+        # (saves an import on every organic dock).
+        from molmetal.molmetal_lam.sbdd_env.metal_coord_term import (
+            pocket_donor_counts_from_atomicnums,
+            _METAL_ATOMIC_NUMS,
+        )
+        try:
+            from rdkit import Chem, RDLogger  # type: ignore
+            RDLogger.DisableLog("rdApp.*")
+            mol = Chem.MolFromSmiles(smiles or "")
+        except Exception:
+            return float(base_score), None
+        if mol is None:
+            return float(base_score), None
+        has_metal = any(
+            int(a.GetAtomicNum()) in _METAL_ATOMIC_NUMS
+            for a in mol.GetAtoms()
+        )
+        if not has_metal:
+            return float(base_score), None
+
+        # Compute term — pure-Python + RDKit, sub-millisecond.
+        try:
+            term = self._metal_coord_term_instance()
+            pocket_donor_counts = pocket_donor_counts_from_atomicnums(
+                pocket.atom_types.cpu().tolist(),
+            )
+            score_obj = term.score(
+                smiles,
+                pocket_donor_counts=pocket_donor_counts,
+            )
+        except Exception as exc:  # pragma: no cover
+            logger.debug("metal-coord term failed (%s); keeping Vina score", exc)
+            return float(base_score), None
+
+        if score_obj.total is None:
+            return float(base_score), None
+
+        adjustment = term.kcal_adjustment(score_obj)
+        adjusted = float(base_score + adjustment)
+        diagnostics: Dict[str, Any] = {
+            "base_vina_kcal": float(base_score),
+            "metal_coord_total": float(score_obj.total),
+            "metal_coord_kcal_adjustment": float(adjustment),
+            "adjusted_vina_kcal": float(adjusted),
+            "geometry_score": score_obj.geometry_score,
+            "hsab_score": score_obj.hsab_score,
+            "distance_score": score_obj.distance_score,
+            "status": "MEASURED_METAL_COORD_TERM",
+        }
+        return adjusted, diagnostics
 
 
 def _vina_version() -> str:
@@ -852,6 +1091,21 @@ def build_arg_parser():
                    help="Box padding around the pocket (Å).")
     p.add_argument("--sf-name", default="vina",
                    help="Scoring function name (vina/ad4).")
+    p.add_argument(
+        "--enable-metal-coord", dest="enable_metal_coord",
+        action="store_true", default=True,
+        help=(
+            "Wf-246-C: enable the metal-coordination term "
+            "(coordination geometry + HSAB + M-ligand distance) "
+            "on top of Vina kcal/mol. Default ON. Use --disable-metal-coord "
+            "to revert to plain Vina scoring."
+        ),
+    )
+    p.add_argument(
+        "--disable-metal-coord", dest="enable_metal_coord",
+        action="store_false",
+        help="Wf-246-C: disable the metal-coordination term.",
+    )
     return p
 
 
@@ -884,6 +1138,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             cpu_count=int(args.cpu),
             sf_name=str(args.sf_name),
             engine=str(args.engine),
+            enable_metal_coord=bool(args.enable_metal_coord),
         )
     except FileNotFoundError as exc:
         # qvina / quickvina2 / vina-cli with a missing binary — emit
@@ -899,12 +1154,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     meta = adapter.get_metadata()
     print(
         "vina_adapter: engine={engine} ({label}) binary={binary} "
-        "version={version} padding={padding}Å".format(
+        "version={version} padding={padding}Å metal_coord={metal_coord}".format(
             engine=meta["engine"],
             label=meta["engine_label"],
             binary=meta["engine_binary"] or "<python binding>",
             version=meta["engine_version"],
             padding=meta["default_box_padding_A"],
+            metal_coord=meta.get("enable_metal_coord", False),
         )
     )
     return 0
@@ -988,7 +1244,107 @@ __all__ = [
     "_have_qvina_binary",
     "_have_quickvina2_binary",
     "_probe_vina_binary",
+    "resolve_per_pocket_config",
+    "DEFAULT_VINA_PER_POCKET",
+    "VINA_PER_POCKET_YAML_PATH",
 ]
+
+
+# -----------------------------------------------------------------
+# Per-pocket Vina dispatch (Wf-250 Fix #2 / A2)
+# -----------------------------------------------------------------
+# Reads ``vina_per_pocket`` from
+# ``molmetal/configs/sota_aligned_targetdiff.yaml`` and resolves a per-
+# pocket override dict.  Unknown pocket ids fall back to the legacy
+# ``DockingConfig(n_poses=9, exhaustiveness=8)`` defaults so backward
+# compat is preserved.  CPU-only (yaml read + dict merge).
+
+import yaml as _yaml  # noqa: E402  (lazy import — most callers do not need yaml)
+
+_VINA_PER_POCKET_YAML_PATH = (
+    _PROJECT_ROOT
+    / "molmetal"
+    / "configs"
+    / "sota_aligned_targetdiff.yaml"
+)
+
+#: Public alias for the canonical config file path.
+VINA_PER_POCKET_YAML_PATH: Path = _VINA_PER_POCKET_YAML_PATH
+
+#: Hard-coded fallback table mirroring the YAML default block.  Used if
+#: the YAML file is unreadable (e.g. in air-gapped CI without PyYAML).
+#: Keys are pocket ids; values are dicts compatible with
+#: :class:`molmetal.ports.DockingConfig` kwargs + a ``scoring_file`` hint
+#: used by AD4Zn.dat lookups (Eberhardt 2021).
+DEFAULT_VINA_PER_POCKET: dict = {
+    "1h36":   {"exhaustiveness": 32, "n_poses": 20, "scoring": "ad4", "scoring_file": "AD4Zn.dat"},
+    "3eml":   {"exhaustiveness": 8,  "n_poses": 9,  "scoring": "vina"},
+    "3ny8":   {"exhaustiveness": 16, "n_poses": 15, "scoring": "vina"},
+    "4aaw":   {"exhaustiveness": 32, "n_poses": 20, "scoring": "ad4", "scoring_file": "AD4Zn.dat"},
+    "4rlu":   {"exhaustiveness": 16, "n_poses": 15, "scoring": "vina"},
+    "default": {"exhaustiveness": 8, "n_poses": 9,  "scoring": "vina"},
+}
+
+
+def resolve_per_pocket_config(pocket_id: str) -> dict:
+    """Resolve per-pocket Vina config from
+    ``molmetal/configs/sota_aligned_targetdiff.yaml``.
+
+    Parameters
+    ----------
+    pocket_id : str
+        Pocket identifier (e.g. ``"1h36"``, ``"3eml"``, ``"synthetic:CHRM1"``).
+        Unknown ids fall back to the ``"default"`` block.
+
+    Returns
+    -------
+    dict
+        ``{"exhaustiveness": int, "n_poses": int, "scoring": str,
+           "scoring_file": str | None}`` — ready to splat into
+        :class:`molmetal.ports.DockingConfig` (with ``scoring_file``
+        retained as metadata for AD4Zn.dat lookups).
+
+    Honest framing
+    --------------
+    * If the YAML file is missing or PyYAML is not installed the helper
+      falls back to the hard-coded :data:`DEFAULT_VINA_PER_POCKET` table
+      so the legacy behaviour is preserved.
+    * The ``scoring_file`` hint is **metadata** — the caller is expected
+      to look up the file on disk before passing ``scoring="ad4"`` to
+      :class:`DockingConfig`; if absent the caller should keep
+      ``scoring="vina"`` (current behaviour, no crash).
+    * The function is CPU-only and side-effect-free (no docking runs).
+    """
+    table: dict
+    try:
+        if _VINA_PER_POCKET_YAML_PATH.exists():
+            with open(_VINA_PER_POCKET_YAML_PATH, "r", encoding="utf-8") as f:
+                yaml_data = _yaml.safe_load(f) or {}
+            table = yaml_data.get("vina_per_pocket", {}) or {}
+            if not table:
+                # YAML present but ``vina_per_pocket`` block empty / missing.
+                table = dict(DEFAULT_VINA_PER_POCKET)
+        else:
+            table = dict(DEFAULT_VINA_PER_POCKET)
+    except Exception as exc:
+        logger.debug(
+            "[wf250-fix2] could not load %s (%s); using "
+            "DEFAULT_VINA_PER_POCKET fallback",
+            _VINA_PER_POCKET_YAML_PATH, exc,
+        )
+        table = dict(DEFAULT_VINA_PER_POCKET)
+
+    cfg = table.get(pocket_id)
+    if cfg is None:
+        cfg = table.get("default", DEFAULT_VINA_PER_POCKET["default"])
+    # Ensure all keys are present (defensive — YAML may be partial).
+    out = {
+        "exhaustiveness": int(cfg.get("exhaustiveness", 8)),
+        "n_poses": int(cfg.get("n_poses", 9)),
+        "scoring": str(cfg.get("scoring", "vina")),
+        "scoring_file": cfg.get("scoring_file", None),
+    }
+    return out
 
 
 # -----------------------------------------------------------------

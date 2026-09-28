@@ -1,0 +1,188 @@
+{
+  "metric": "metal_lomo_auc",
+  "description": "Mean test ROC-AUC across 5 folds \u00d7 N seeds of multi-metal leave-one-metal-out transfer on MetalCytoToxDB precious-metal subset.",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier2_sbdd_ood_lomo",
+  "source": "molmetal/scripts/train_metal_lomo.py",
+  "gate_target": 0.7,
+  "value": 0.5113540056224237,
+  "value_std": 0.08972997209819887,
+  "per_fold_auc_mean": {
+    "Ru": 0.5894437523696041,
+    "Ir": 0.639495079161318,
+    "Os": 0.4888888888888889,
+    "Rh": 0.4326923076923076,
+    "Re": 0.40625
+  },
+  "per_fold_auc_std": {
+    "Ru": 0.0,
+    "Ir": 0.0,
+    "Os": 0.0,
+    "Rh": 0.0,
+    "Re": 0.0
+  },
+  "per_run_auc": [
+    0.5894437523696041,
+    0.639495079161318,
+    0.4888888888888889,
+    0.4326923076923076,
+    0.40625
+  ],
+  "n_runs": 5,
+  "n_folds": 5,
+  "metals": [
+    "Ru",
+    "Ir",
+    "Os",
+    "Rh",
+    "Re"
+  ],
+  "seeds": [
+    0
+  ],
+  "epochs": 5,
+  "model": "dmpnn_multitask",
+  "data_source": "molmetal/data/metal_lomo.csv",
+  "status": "MEASURED_BELOW_GATE",
+  "verdict": "BELOW_GATE",
+  "timestamp": "2026-09-25T16:33:41",
+  "per_run": [
+    {
+      "fold": "Ru",
+      "seed": 0,
+      "n_train": 284,
+      "n_val": 32,
+      "n_test": 684,
+      "pos_rate_train": 0.43309859154929575,
+      "pos_rate_test": 0.27046783625730997,
+      "test_metrics": {
+        "roc_auc": 0.5894437523696041,
+        "pr_auc": 0.34246505773773767,
+        "hit_rate_top5pct": 0.4411764705882353,
+        "n": 684
+      },
+      "val_metrics": {
+        "roc_auc": 0.6190476190476191,
+        "pr_auc": 0.7298627802353148,
+        "hit_rate_top5pct": 0.5,
+        "n": 32
+      },
+      "elapsed_seconds": 14.080217838287354
+    },
+    {
+      "fold": "Ir",
+      "seed": 0,
+      "n_train": 669,
+      "n_val": 75,
+      "n_test": 256,
+      "pos_rate_train": 0.28101644245142005,
+      "pos_rate_test": 0.48046875,
+      "test_metrics": {
+        "roc_auc": 0.639495079161318,
+        "pr_auc": 0.6190377714347994,
+        "hit_rate_top5pct": 0.7692307692307693,
+        "n": 256
+      },
+      "val_metrics": {
+        "roc_auc": 0.6276803118908382,
+        "pr_auc": 0.419460775298935,
+        "hit_rate_top5pct": 0.5,
+        "n": 75
+      },
+      "elapsed_seconds": 22.86342978477478
+    },
+    {
+      "fold": "Os",
+      "seed": 0,
+      "n_train": 882,
+      "n_val": 99,
+      "n_test": 19,
+      "pos_rate_train": 0.32653061224489793,
+      "pos_rate_test": 0.47368421052631576,
+      "test_metrics": {
+        "roc_auc": 0.4888888888888889,
+        "pr_auc": 0.544880174291939,
+        "hit_rate_top5pct": 0.0,
+        "n": 19
+      },
+      "val_metrics": {
+        "roc_auc": 0.7000932835820896,
+        "pr_auc": 0.5594465096303383,
+        "hit_rate_top5pct": 0.8,
+        "n": 99
+      },
+      "elapsed_seconds": 27.848593711853027
+    },
+    {
+      "fold": "Rh",
+      "seed": 0,
+      "n_train": 881,
+      "n_val": 98,
+      "n_test": 21,
+      "pos_rate_train": 0.3314415437003405,
+      "pos_rate_test": 0.38095238095238093,
+      "test_metrics": {
+        "roc_auc": 0.4326923076923076,
+        "pr_auc": 0.37856313578062806,
+        "hit_rate_top5pct": 0.0,
+        "n": 21
+      },
+      "val_metrics": {
+        "roc_auc": 0.6811594202898551,
+        "pr_auc": 0.561222975195217,
+        "hit_rate_top5pct": 0.6,
+        "n": 98
+      },
+      "elapsed_seconds": 23.100050926208496
+    },
+    {
+      "fold": "Re",
+      "seed": 0,
+      "n_train": 882,
+      "n_val": 98,
+      "n_test": 20,
+      "pos_rate_train": 0.33900226757369617,
+      "pos_rate_test": 0.2,
+      "test_metrics": {
+        "roc_auc": 0.40625,
+        "pr_auc": 0.21830357142857143,
+        "hit_rate_top5pct": 0.0,
+        "n": 20
+      },
+      "val_metrics": {
+        "roc_auc": 0.6006944444444445,
+        "pr_auc": 0.43405348357551793,
+        "hit_rate_top5pct": 0.8,
+        "n": 98
+      },
+      "elapsed_seconds": 31.683016538619995
+    }
+  ],
+  "aggregate": {
+    "n_runs": 5,
+    "n_folds": 5,
+    "test_auc_mean": 0.5113540056224237,
+    "test_auc_std": 0.08972997209819887,
+    "per_fold_auc_mean": {
+      "Ru": 0.5894437523696041,
+      "Ir": 0.639495079161318,
+      "Os": 0.4888888888888889,
+      "Rh": 0.4326923076923076,
+      "Re": 0.40625
+    },
+    "per_fold_auc_std": {
+      "Ru": 0.0,
+      "Ir": 0.0,
+      "Os": 0.0,
+      "Rh": 0.0,
+      "Re": 0.0
+    },
+    "per_run_auc": [
+      0.5894437523696041,
+      0.639495079161318,
+      0.4888888888888889,
+      0.4326923076923076,
+      0.40625
+    ]
+  }
+}

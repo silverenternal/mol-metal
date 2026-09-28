@@ -1,0 +1,327 @@
+% =============================================================================
+%  paper/supplementary/S3_architecture.tex
+%  Supplementary section S3 -- Architecture details for four shipped
+%  component groups: (a) backbone chain (EGNN -> YuelBond -> W-Flow
+%  -> MacroGuide -> CoordGNN -> QuotientDiff); (b) Lambda x CFM
+%  coupling adapter; (c) Variance MCTS node structure; (d)
+%  Hilbert-ASTSR composite.  Anchored to molmetal/adapters/
+%  {egnn_predictor, coordination_gnn, quotient_space_diffusion,
+%  flow_matching_lipman, multi_ph_integration}.py +
+%  molmetal/molmetal_lam/lam_chem/{yuelbond_decoder, macroguide_ph,
+%  coupling_adapter}.py + molmetal/molmetal_lam/search_alg/
+%  {variance_puct_integration, variance_mcts_integration}.py +
+%  molmetal/molmetal_lam/reward/{hilbert_astsr_integration,
+%  astsr_multiph_hilbert}.py.  Status: SHIPPED (Wf-26 Phase 1,
+%  2026-09-26).
+%
+%  Standalone preamble: defines the honest-framing macros locally so
+%  this file compiles as a separate PDF (Digital Discovery SI portal).
+% =============================================================================
+
+\section*{Supplementary S3: Architecture details}
+\addcontentsline{toc}{section}{Supplementary S3: Architecture details}
+
+\providecommand{\MEASURED}{\textbf{MEASURED}}
+\providecommand{\PROJECTED}{\textbf{PROJECTED}}
+\providecommand{\DESIGN}{\textbf{DESIGN}}
+
+\paragraph{Scope.}
+Four component groups.  Each is tagged \DESIGN{} (architecture
+specification); shipped CPU / GPU split is \MEASURED{} (per R17 /
+R18 ship manifests); per-layer parameter counts are \DESIGN{} (the
+\texttt{molmetal/scripts/count\_module\_params.py} introspection
+is shipped as a utility).
+
+% ===========================================================================
+\subsection*{S3.1 Backbone chain: EGNN -> YuelBond -> W-Flow -> MacroGuide -> CoordGNN -> QuotientDiff}
+\label{supp:s3-backbone}
+
+The backbone chain runs left-to-right during training; at
+inference time only W-Flow + QuotientDiff are exercised end-to-end
+(the rest are conditioning features consumed as side inputs).
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Backbone chain layer-wise shapes.  $B$ = batch size,
+  $N$ = max atom count, $d_{\mathrm{feat}}$ = node feature dim,
+  $d_{\mathrm{edge}}$ = edge feature dim, $K$ = EGNN depth.
+  Parameter counts are CPU-shipped (no learned weights in math
+  skeletons).}
+  \label{tab:backbone-shapes}
+  \begin{tabular}{lllll}
+    \toprule
+    \textbf{Stage} & \textbf{Module} & \textbf{In} & \textbf{Out} &
+    \textbf{Params (M)} \\
+    \midrule
+    EGNN           & \texttt{EGNNPredictor}
+                                  & $(B, N, d_{\mathrm{feat}})$
+                                  & $(B, N, d_{\mathrm{feat}})$
+                                  & $0.12$ (5-layer) \\
+    YuelBond       & \texttt{YuelBondDecoder}
+                                  & $(B, N, N, d_{\mathrm{edge}})$
+                                  & $(B, N, N, 4)$
+                                  & $0.41$ (3-stage) \\
+    W-Flow         & \texttt{LipmanFM}
+                                  & $(B, N, 3)$
+                                  & $(B, N, 3)$
+                                  & $0.83$ (8-layer EGNN) \\
+    MacroGuide     & \texttt{MacroGuidePH}
+                                  & SMILES
+                                  & $(B, n_{\mathrm{bins}})$
+                                  & $0$ (CPU skeleton) \\
+    CoordGNN       & \texttt{CoordinationGNN}
+                                  & $(B, N, N, d_{\mathrm{coord}})$
+                                  & $(B, N, n_{\mathrm{coord}})$
+                                  & $0.27$ (4-layer) \\
+    QuotientDiff   & \texttt{QSDiff}
+                                  & $(B, N, 3)$
+                                  & $(B, N, 3)$ equivariant
+                                  & $0.56$ (denoise net) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{EGNN (Satorras et al.\ 2021).}
+5-layer EGNN at \texttt{molmetal/adapters/egnn\_predictor.py};
+node features $h_{i}^{(0)} = (z_{i}, h_{\mathrm{atom}}) \in
+\mathbb{R}^{32}$; edge features $e_{ij}^{(0)} = (z_{i}, z_{j},
+h_{\mathrm{bond}}) \in \mathbb{R}^{16}$; equivariant messages
+\begin{equation}
+  \label{eq:egnn-message}
+  m_{ij} \;=\; \phi_{e}\!\bigl( h_{i}, h_{j}, \|x_{i} - x_{j}\|^{2},
+                            e_{ij} \bigr), \quad
+  x_{i}^{\prime} \;=\; x_{i} + \sum_{j \neq i} (x_{i} - x_{j})\,
+                          \phi_{x}(m_{ij}).
+\end{equation}
+
+\paragraph{YuelBond decoder (R18 P2-3).}
+\texttt{molmetal/molmetal\_lam/lam\_chem/yuelbond\_decoder.py} is
+a 3-stage 2-layer MLP per stage with skip connections that takes
+the EGNN edge features and predicts the bond-order tensor over
+$\{\text{covalent, dative, aromatic, hydrogen}\}$.  $\approx 0.41$
+M params.
+
+\paragraph{W-Flow (Lipman 2023).}
+\texttt{molmetal/adapters/flow\_matching\_lipman/} wraps an 8-layer
+EGNN velocity net that predicts $\mathrm{d} X_{t} / \mathrm{d} t$
+given pocket embedding + atom features + bond head output.
+Interpolant is Euclidean $X_{t} = (1 - t) X_{0} + t X_{1}$; R18
+W2.1 replaces it with the SE(3) geodesic of M22.
+
+\paragraph{MacroGuide (Maksymiuk 2026) + CoordGNN + QuotientDiff.}
+MacroGuide PH at \texttt{macroguide\_ph.py} is the R18 P2-2
+CPU-only skeleton; ships the ring-size histogram +
+aromaticity-aware persistence proxy as $(B, n_{\mathrm{bins}})$
+($n_{\mathrm{bins}} = 8$ default), no learned parameters; W2.x
+will integrate the full differentiable Vietoris--Rips.  CoordGNN
+is a 4-layer \texttt{coordination\_gnn.py} that consumes the EGNN
+pairwise features and predicts per-atom coordination numbers over
+$\{0, 2, 3, 4, 5, 6\}$; $\approx 0.27$ M params, conditioning
+input to the MetalGeometryPrior gate.  QuotientDiff at
+\texttt{quotient\_space\_diffusion.py} replaces the Euclidean
+$(B, N, 3)$ output of W-Flow with a rotation-translation-
+equivariant output on the $\mathrm{SE}(3) / (\mathrm{SO}(3)
+\ltimes \{0\}) = \mathbb{R}^{3}$ quotient; 6-layer EGNN denoise
+net, $\approx 0.56$ M params.
+
+\paragraph{Integration surface.}
+The backbone chain is consumed by (i) the RewardAggregator
+(7-channel reward head); (ii) the \texttt{BondAwareDecoder} of
+the CFM pocket-conditioned pipeline; and (iii) the
+\texttt{MultiPHPocketFeatures} adapter of W2.3.  No module in the
+chain is mutated by the R18 upgrade path; each R18 adapter wraps
+the chain with an \texttt{nn.Module} that exposes the chain's
+outputs as side inputs.
+
+% ===========================================================================
+\subsection*{S3.2 Lambda x CFM coupling adapter}
+\label{supp:s3-coupling}
+
+\paragraph{Architecture.}
+The Lambda x CFM coupling adapter at
+\texttt{molmetal/molmetal\_lam/lam\_chem/coupling\_adapter.py}
+ships as a torch-free numpy 2-layer MLP that maps a 9-d pocket
+feature vector to a 64-d embedding (the Pocket2Mol convention).
+Opt-in via \texttt{COUPLING\_ENABLED} env var (default off); the
+\texttt{augment\_pocket\_embedding} wrapper in W2.3 is the
+matching opt-in for the 2-PH feature map.
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Coupling adapter layer-wise shapes.  Inference-time
+  numpy MLP; .npz checkpoint at
+  \texttt{molmetal/checkpoints/coupling/coupling\_mlp.npz}.}
+  \label{tab:coupling-shapes}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Layer} & \textbf{In} & \textbf{Out} \\
+    \midrule
+    \texttt{Linear(9, 64)} & $(B, 9)$ & $(B, 64)$ \\
+    \texttt{ReLU}          & $(B, 64)$ & $(B, 64)$ \\
+    \texttt{Linear(64, 64)} & $(B, 64)$ & $(B, 64)$ \\
+    \texttt{LayerNorm(64)} & $(B, 64)$ & $(B, 64)$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Training script.}
+Numpy MLP pre-trained by
+\texttt{molmetal/scripts/tmqm\_cfm\_pretraining.py} on the tmQM
+corpus (or, in --dry-run mode, on an 8-mol subset).  Checkpoint is
+.npz with keys \texttt{W1, b1, W2, b2, gamma, beta}.
+\texttt{load\_coupling\_adapter} returns a deterministic stub
+adapter when the checkpoint is missing.
+
+\paragraph{Honest framing.}
+64-d embedding is a real pocket-feature function, but the MLP was
+trained on 8 mols in --dry-run mode (or, when tmQM is mounted, on
+the first 8 rows).  It is a stand-in for the real CFM pocket
+embedding.  Bit-for-bit determinism and the shape contract are
+preserved.
+
+% ===========================================================================
+\subsection*{S3.3 Variance MCTS node structure}
+\label{supp:s3-variance-mcts}
+
+\paragraph{Node structure.}
+The Variance MCTS node at
+\texttt{molmetal/molmetal\_lam/search\_alg/
+variance\_mcts\_integration.py:VarianceMCTSNode} is a
+self-contained variance-aware MCTS node; given prior
+$P(\cdot \mid s)$ and per-arm statistics
+$\{(Q(s, a), N(s, a), \sigma(s, a))\}$, the node implements the
+variance-penalised PUCT rule of Wf-11 \S 3 in one class.
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{VarianceMCTSNode field layout.  All fields are per-arm
+  attributes; the node carries one copy per arm in $\mathcal{A}(s)$.}
+  \label{tab:variance-mcts-fields}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Field} & \textbf{Type} & \textbf{Description} \\
+    \midrule
+    \texttt{q\_sa} & \texttt{float} & running mean of reward \\
+    \texttt{n\_sa} & \texttt{int} & visit count of $a$ at $s$ \\
+    \texttt{sigma\_sa} & \texttt{float} & empirical std of reward \\
+    \texttt{n\_s} & \texttt{int} & visit count of $s$ \\
+    \texttt{p\_sa} & \texttt{float} & prior $P(a \mid s)$ \\
+    \texttt{c\_puct} & \texttt{float} & exploration constant ($1.5$) \\
+    \texttt{c\_var} & \texttt{float} & variance penalty ($0.5$) \\
+    \texttt{n\_min\_visits} & \texttt{int} & threshold ($5$) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Score function.}
+\begin{equation}
+  \label{eq:variance-puct-score}
+  \mathrm{score}(a) \;=\; Q(s, a)
+        \;+\; c_{\mathrm{puct}}\, P(a \mid s)\,
+                  \frac{ \sqrt{N(s)} }{ 1 + N(s, a) }
+        \;-\; c_{\mathrm{var}}\, \frac{ \sigma(s, a) }
+                                       { 1 + N(s, a) }
+\end{equation}
+when $N(s, a) \ge n_{\mathrm{min}}^{\mathrm{visits}}$, otherwise
+the variance term is disabled.  When $\sigma(s, a) = 0$ the
+variance term vanishes exactly and the canonical PUCT rule of
+Silver 2016 + Rosin 2011 is recovered.
+
+\paragraph{Wrapper class.}
+\texttt{VarianceMCTSWrapper} wraps an existing
+\texttt{MCTSProofSearch} instance and exposes
+\texttt{search(\dots)} / \texttt{tree\_statistics} so callers can
+attach variance control to the R17 MCTS without patching its
+internals (read-mostly; calls \texttt{MCTSProofSearch.search} to
+get the candidate list, never mutates the search state machine).
+
+\paragraph{Integration with Score-Repellent MC.}
+The variance-MCTS node is the inner-loop selector consumed by the
+SynFlowNet advantage estimator at the leaf-state level: MCTS walk
+gated by Eq.~\eqref{eq:variance-puct-score}, leaf sampled by the
+Score-Repellent MC walk of \S\ref{supp:s2-m26}, seven-channel
+\texttt{RewardAggregator} scores the leaf, SynFlowNet advantage
+estimator receives the variance-controlled reward.
+
+% ===========================================================================
+\subsection*{S3.4 Hilbert-ASTSR composite}
+\label{supp:s3-hilbert-astsr}
+
+\paragraph{Architecture.}
+The Hilbert-ASTSR composite at
+\texttt{molmetal/molmetal\_lam/reward/
+hilbert\_astsr\_integration.py} combines the Hilbert-space
+primal-dual framework of \S\ref{supp:s1-hilbert} with the ASTSR
+multiparameter persistence reward of
+\texttt{molmetal/molmetal\_lam/reward/
+astsr\_multiph\_hilbert.py}.  The composite ships as a single
+\texttt{nn.Module} that takes the MCTS leaf state, runs the
+Hilbert-space primal-dual iteration on the ASTSR feature map, and
+returns the saddle-point value as the reward channel.
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Hilbert-ASTSR composite layer-wise shapes.  ASTSR
+  feature map is $(B, n_{\mathrm{bins}})$; Hilbert-space primal-
+  dual layer operates on
+  $\mathcal{H}_{1} = \mathcal{H}_{2} = \mathbb{R}^{n_{\mathrm{bins}}}$.}
+  \label{tab:hilbert-astsr-shapes}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Layer} & \textbf{In} & \textbf{Out} \\
+    \midrule
+    ASTSR feat.   & $(B, n_{\mathrm{astsr}})$ & $(B, n_{\mathrm{bins}})$ \\
+    Linear ($K$)  & $(B, n_{\mathrm{bins}})$ & $(B, n_{\mathrm{bins}})$ \\
+    OTPD iter.    & $(B, n_{\mathrm{bins}})$ & $(B, n_{\mathrm{bins}})$ \\
+    Ergodic avg.  & $(B, n_{\mathrm{bins}})$ & $(B, n_{\mathrm{bins}})$ \\
+    Reward head   & $(B, n_{\mathrm{bins}})$ & $(B, 1)$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Component wiring.}
+The composite is a 3-stage module:
+\begin{enumerate}
+  \item \textbf{ASTR feature extraction} (line $\sim$120 of
+        \texttt{astsr\_multiph\_hilbert.py}).  Takes the MCTS leaf
+        state, extracts the aromaticity-aware ring-size histogram,
+        then concatenates with the multi-PH feature map of W2.3 to
+        produce the $(B, n_{\mathrm{bins}})$ ASTSR feature vector.
+  \item \textbf{Hilbert-space primal-dual iteration} (line
+        $\sim$240 of \texttt{hilbert\_astsr\_integration.py}).
+        Implements the OTPD iteration of M25 with $K$ the
+        $n_{\mathrm{bins}} \times n_{\mathrm{bins}}$ identity and
+        $G$, $F^{\ast}$ the SW-kernel cost and positivity-cone
+        indicator.
+  \item \textbf{Reward head} (line $\sim$340 of
+        \texttt{hilbert\_astsr\_integration.py}).  2-layer MLP
+        that maps the ergodic average to a scalar reward in
+        $[0, 1]$; appended to the seven-channel
+        \texttt{RewardAggregator} as the $r_{\mathrm{astsr}}$
+        channel.
+\end{enumerate}
+
+\paragraph{Honest framing.}
+Composite is \DESIGN{} (CPU-only \texttt{nn.Module}).  Seven-
+channel reward is the live \texttt{RewardAggregator} of R17;
+$r_{\mathrm{astsr}}$ is opt-in via \texttt{--enable-astsr}; the
+projected reward contribution is \PROJECTED{}.
+
+% ===========================================================================
+\paragraph{Summary.}
+Four component groups: backbone chain (six modules, $\approx 2.2$
+M params in learned stages); Lambda x CFM coupling adapter (2-layer
+numpy MLP, 64-d output); variance MCTS node structure (wrapper over
+R17 \texttt{MCTSProofSearch}, no new learnable parameters);
+Hilbert-ASTSR composite (3-stage module, $\approx 0.15$ M reward
+head).  Each is CPU-only on the math skeleton layer and ships with
+a W2.x adapter for the live pipeline.  Total shipped parameter
+count is $\approx 2.4$ M for learned stages, plus the R17
+\texttt{LipmanFlowMatchingAdapter} ($0.83$ M) which is
+do-not-modify as of W2.1.
+
+\endinput

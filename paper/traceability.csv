@@ -1,0 +1,739 @@
+section,claim_id,type,value,source_file,source_line,type_index_in_file
+main.tex,c0001,MEASURED,"Ir(III)), report results from the Round-12 pilot",main.tex,152,1
+main.tex,c0002,PROJECTED,the headline Round-13 experiment and is reported as in,main.tex,159,1
+main.tex,c0003,MEASURED,from \texttt{molmetal/reports/lambda\_layer\_metrics.md};,main.tex,300,2
+main.tex,c0004,PROJECTED,the 9-layer end-to-end integration is .,main.tex,301,2
+main.tex,c0005,MEASURED,from the source code; the example reactant/product,main.tex,354,3
+main.tex,c0006,PROJECTED,( --- not synthesised by the rule engine).,main.tex,356,3
+main.tex,c0007,MEASURED,evaluation. Both coordinates are from,main.tex,389,4
+sections,c0008,MEASURED,% explicit / \PROJECTED{} / \DESIGN{} tag consistent with,sections/01_intro.tex,5,1
+sections,c0009,PROJECTED,% explicit \MEASURED{} / / \DESIGN{} tag consistent with,sections/01_intro.tex,5,1
+sections,c0010,DESIGN,% explicit \MEASURED{} / \PROJECTED{} / tag consistent with,sections/01_intro.tex,5,1
+sections,c0011,MEASURED,the full training distribution ($ $ expansion from,sections/01_intro.tex,202,2
+sections,c0012,MEASURED,"$\mathrm{decode\_ratio}$ from $ \,0/192$ to",sections/01_intro.tex,210,3
+sections,c0013,MEASURED,"$ \,1.000$ on three seeds over four probe budgets",sections/01_intro.tex,211,4
+sections,c0014,MEASURED,"The combined rule set has $ \,27$ SMARTS reactions",sections/01_intro.tex,229,5
+sections,c0015,MEASURED,"$ \,84$+ reactions on the $12\times 7$ metal-matrix",sections/01_intro.tex,231,6
+sections,c0016,MEASURED,"$ \,\sim 20\%$ of the full-5-click diversity",sections/01_intro.tex,233,7
+sections,c0017,MEASURED,Vina-vs-QuickVina parity audit ($ $ Pearson $r = 0.9983$,sections/01_intro.tex,256,8
+sections,c0018,MEASURED,$ $ honest null at $n_{\mathrm{docked}}=4$ which we,sections/01_intro.tex,262,9
+sections,c0019,MEASURED,pocket-ready.} --- decode ratio $= 1.000$,sections/01_intro.tex,287,10
+sections,c0020,MEASURED,"--- 27-SMARTS reaction registry, $84{+}$ on the",sections/01_intro.tex,296,11
+sections,c0021,PROJECTED,$ $ (the Scaffold split guard is wired but the,sections/01_intro.tex,305,2
+sections,c0022,PROJECTED,the NCI-60 multi-cell-line extension is $ $ (the,sections/01_intro.tex,309,3
+sections,c0023,DESIGN,"\subsubsection{Soft tiered reward prior (Phase-3H, --- not wired)}",sections/03_4_mcts_search.tex,135,1
+sections,c0024,DESIGN,"Phase~4 integrator \texttt{w8579x29t}; status , see",sections/03_4_mcts_search.tex,187,2
+sections,c0025,DESIGN,"and per-pocket feature modulation (Phase-3J, )}",sections/03_4_mcts_search.tex,205,3
+sections,c0026,DESIGN,"diversity (Tanimoto) once wired; status , file-set",sections/03_4_mcts_search.tex,252,4
+sections,c0027,DESIGN,"(Phase-3L, )}",sections/03_4_mcts_search.tex,272,5
+sections,c0028,DESIGN,"(Phase-3R, )}",sections/03_4_mcts_search.tex,332,6
+sections,c0029,MEASURED,% = value is a real generated-candidate measurement,sections/04_5_honest_negative.tex,10,1
+sections,c0030,PROJECTED,"% = value is a structural-fix projection, not yet run.",sections/04_5_honest_negative.tex,12,1
+sections,c0031,DESIGN,% = metric protocol wired but paper-grade cell,sections/04_5_honest_negative.tex,13,1
+sections,c0032,MEASURED,"numbers from the cited internal reports, (ii)~an honest",sections/04_5_honest_negative.tex,30,2
+sections,c0033,PROJECTED,(not yet run on the $100{\times}3$ panel) it is labelled,sections/04_5_honest_negative.tex,34,2
+sections,c0034,CITEDONLY,0.810,sections/04_5_honest_negative.tex,54,1
+sections,c0035,MEASURED,0.712,sections/04_5_honest_negative.tex,58,3
+sections,c0036,MEASURED,The $0.712$ sits below \emph{both} the Krasnov~2026,sections/04_5_honest_negative.tex,63,4
+sections,c0037,MEASURED,0.023,sections/04_5_honest_negative.tex,92,5
+sections,c0038,MEASURED,0.030,sections/04_5_honest_negative.tex,93,6
+sections,c0039,MEASURED,0.019,sections/04_5_honest_negative.tex,94,7
+sections,c0040,MEASURED,0.006,sections/04_5_honest_negative.tex,95,8
+sections,c0041,MEASURED,0.009,sections/04_5_honest_negative.tex,97,9
+sections,c0042,MEASURED,0.85,sections/04_5_honest_negative.tex,102,10
+sections,c0043,MEASURED,$n_{\mathrm{distinct}}{=}20$ within-cell (R12/R16,sections/04_5_honest_negative.tex,254,11
+sections,c0044,MEASURED,numbers in this paper are produced on either:,sections/04_5_honest_negative.tex,322,12
+sections,c0045,MEASURED,$\sim 30$~min for $10$K-step retrain (R17 ) \\,sections/04_5_honest_negative.tex,348,13
+sections,c0046,CITEDONLY,"$\sim 5$--$7$ days (paper-reported, ) \\",sections/04_5_honest_negative.tex,350,2
+sections,c0047,CITEDONLY,"$\sim 2$--$3$ days (paper-reported, ) \\",sections/04_5_honest_negative.tex,352,3
+sections,c0048,MEASURED,"sanitisation, ). \emph{5-click-rule coverage}",sections/04_5_honest_negative.tex,408,14
+sections,c0049,MEASURED,1.000,sections/04_5_honest_negative.tex,409,15
+sections,c0050,MEASURED,( ). These three positive controls anchor the,sections/04_5_honest_negative.tex,413,16
+sections,c0051,DESIGN,promoted from to \MEASURED{}; every value above,sections/04_5_honest_negative.tex,427,2
+sections,c0052,MEASURED,promoted from \DESIGN{} to ; every value above,sections/04_5_honest_negative.tex,427,17
+sections,c0053,DESIGN,% - = Round-12 pilot has NOT yet executed end-to-end; data cel,sections/04_evaluation.tex,5,1
+sections,c0054,MEASURED,% pending. Methodology cells are tagged where the,sections/04_evaluation.tex,6,1
+sections,c0055,MEASURED,% - = protocol cell is wired and has been exercised on this box,sections/04_evaluation.tex,9,2
+sections,c0056,CITEDONLY,% - = cell value is taken verbatim from the cited SOTA paper,sections/04_evaluation.tex,12,1
+sections,c0057,DESIGN,"% After Round-12 completes, replace data cells with the actual",sections/04_evaluation.tex,22,2
+sections,c0058,MEASURED,% values and re-tag . The pilot scope is the first 10 pockets,sections/04_evaluation.tex,23,3
+sections,c0059,DESIGN,\noindent\textbf{Cells promoted $\to$ \MEASURED{} in,sections/04_evaluation.tex,156,3
+sections,c0060,MEASURED,\noindent\textbf{Cells promoted \DESIGN{} $\to$ in,sections/04_evaluation.tex,156,4
+sections,c0061,MEASURED,aggregates are the new contributions; they are,sections/04_evaluation.tex,162,5
+sections,c0062,MEASURED,0.1065,sections/04_evaluation.tex,171,6
+sections,c0063,DESIGN,f{tab:per-pocket}--\ref{tab:aggregate} captions. No number is silently promoted from to \MEASURED{}.,sections/04_evaluation.tex,171,4
+sections,c0064,MEASURED,ef{tab:per-pocket}--\ref{tab:aggregate} captions. No number is silently promoted from \DESIGN{} to .,sections/04_evaluation.tex,171,7
+sections,c0065,DESIGN,"( ) produces 10$\times$3\,=\,30 cells per column (90 cells",sections/04_evaluation.tex,206,5
+sections,c0066,MEASURED,choices for backward-compatible runs. Round-11 the parity,sections/04_evaluation.tex,224,8
+sections,c0067,DESIGN,novelty --- this column is until Round-13.,sections/04_evaluation.tex,268,6
+sections,c0068,DESIGN,$\to$ \MEASURED{}:} all 10 pockets $\times$ 11 metric colum,sections/04_evaluation.tex,453,7
+sections,c0069,MEASURED,\DESIGN{} $\to$ :} all 10 pockets $\times$ 11 metric columns,sections/04_evaluation.tex,453,9
+sections,c0070,DESIGN,per-pocket cells remain pending the,sections/04_evaluation.tex,467,8
+sections,c0071,MEASURED,; the hybrid $\Lambda$+CFM column remains \DESIGN{} (GPU-bou,sections/04_evaluation.tex,470,10
+sections,c0072,DESIGN,"\MEASURED{}; the hybrid $\Lambda$+CFM column remains (GPU-bound,",sections/04_evaluation.tex,470,9
+sections,c0073,DESIGN,\paragraph{Cells promoted $\to$ \MEASURED{} in this,sections/04_evaluation.tex,575,10
+sections,c0074,MEASURED,\paragraph{Cells promoted \DESIGN{} $\to$ in this,sections/04_evaluation.tex,575,11
+sections,c0075,DESIGN,0.5,sections/04_evaluation.tex,608,11
+sections,c0076,DESIGN,0.5,sections/04_evaluation.tex,608,12
+sections,c0077,CITEDONLY,0.5,sections/04_evaluation.tex,608,2
+sections,c0078,DESIGN,-8.0,sections/04_evaluation.tex,610,13
+sections,c0079,DESIGN,-8.0,sections/04_evaluation.tex,610,14
+sections,c0080,CITEDONLY,-8.0,sections/04_evaluation.tex,610,3
+sections,c0081,DESIGN,Validity rate (RDKit-sanitisable) & & $1.0000$ \MEASURED{} & n/a \\,sections/04_evaluation.tex,612,15
+sections,c0082,MEASURED,1.0000,sections/04_evaluation.tex,612,12
+sections,c0083,DESIGN,Synthesizability rate (5-click-rule coverage) & & $1.0000$ \MEASURED{} & n/a \\,sections/04_evaluation.tex,614,16
+sections,c0084,MEASURED,1.0000,sections/04_evaluation.tex,614,13
+sections,c0085,DESIGN,Metal-compliance rate (Pt$=4$ / Ru$\cdot$Ir$=6$) & & $0.0000$ \MEASURED{} & n/a \\,sections/04_evaluation.tex,616,17
+sections,c0086,MEASURED,0.0000,sections/04_evaluation.tex,616,14
+sections,c0087,DESIGN,Diversity (mean pairwise Tanimoto) & & $0.1065$ \MEASURED{} & \CITEDONLY{} \\,sections/04_evaluation.tex,620,18
+sections,c0088,MEASURED,0.1065,sections/04_evaluation.tex,620,15
+sections,c0089,CITEDONLY,0.1065,sections/04_evaluation.tex,620,4
+sections,c0090,DESIGN,"Diversity (mean pairwise Homotype, enriched vocab) & & $0.0749$ \MEASURED{} & n/a \\",sections/04_evaluation.tex,624,19
+sections,c0091,MEASURED,0.0749,sections/04_evaluation.tex,624,16
+sections,c0092,DESIGN,"Novelty (max Tanimoto to training set, scaffold split) & & $1.0000$ \MEASURED{} & \CITEDONLY{} \\",sections/04_evaluation.tex,627,20
+sections,c0093,MEASURED,1.0000,sections/04_evaluation.tex,627,17
+sections,c0094,CITEDONLY,1.0000,sections/04_evaluation.tex,627,5
+sections,c0095,DESIGN,NFE budget (per-cell) & & $1000$ \MEASURED{} & \CITEDONLY{} \\,sections/04_evaluation.tex,629,21
+sections,c0096,MEASURED,NFE budget (per-cell) & \DESIGN{} & $1000$ & \CITEDONLY{} \\,sections/04_evaluation.tex,629,18
+sections,c0097,CITEDONLY,NFE budget (per-cell) & \DESIGN{} & $1000$ \MEASURED{} & \\,sections/04_evaluation.tex,629,6
+sections,c0098,DESIGN,$n_{\text{distinct}}$ (count of distinct molecules per cell) & & $\mathbf{20}$ \MEASURED{} & n/a \\,sections/04_evaluation.tex,631,22
+sections,c0099,MEASURED,$n_{\text{distinct}}$ (count of distinct molecules per cell) & \DESIGN{} & $\mathbf{20}$ & n/a \\,sections/04_evaluation.tex,631,19
+sections,c0100,DESIGN,"\textbf{SA (Ertl 2008, cohort mean, 30 cells)} & & $\mathbf{3.6574}$ \MEASURED{} & \CITEDONLY{} \\",sections/04_evaluation.tex,633,23
+sections,c0101,MEASURED,3.6574,sections/04_evaluation.tex,633,20
+sections,c0102,CITEDONLY,3.6574,sections/04_evaluation.tex,633,7
+sections,c0103,DESIGN,"\textbf{QED (Bickerton 2012, cohort mean, 30 cells)} & & $\mathbf{0.7080}$ \MEASURED{} & n/a \\",sections/04_evaluation.tex,636,24
+sections,c0104,MEASURED,0.7080,sections/04_evaluation.tex,636,21
+sections,c0105,DESIGN,"\textbf{logP (Wildman-Crippen, cohort mean, 30 cells)} & & $\mathbf{-0.5752}$ \MEASURED{} & n/a \\",sections/04_evaluation.tex,638,25
+sections,c0106,MEASURED,-0.5752,sections/04_evaluation.tex,638,22
+sections,c0107,DESIGN,"\textbf{TPSA (Ertl 2000, cohort mean, 30 cells)} & & $\mathbf{56.47}$ \MEASURED{} & n/a \\",sections/04_evaluation.tex,640,26
+sections,c0108,MEASURED,56.47,sections/04_evaluation.tex,640,23
+sections,c0109,DESIGN,"\textbf{rotB (Veber 2002, cohort mean, 30 cells)} & & $\mathbf{2.40}$ \MEASURED{} & n/a \\",sections/04_evaluation.tex,642,27
+sections,c0110,MEASURED,2.40,sections/04_evaluation.tex,642,24
+sections,c0111,DESIGN,"\textbf{anticancer\_index (cohort mean, 30 cells)} & & $\mathbf{0.1800}$ \MEASURED{} & n/a \\",sections/04_evaluation.tex,644,28
+sections,c0112,MEASURED,0.1800,sections/04_evaluation.tex,644,25
+sections,c0113,MEASURED,on the $10{\times}3$,sections/04_evaluation.tex,660,26
+sections,c0114,DESIGN,from to $1.0000$ (trivially true: cisplatin is,sections/04_evaluation.tex,694,29
+sections,c0115,DESIGN,from to $1000$ ($\texttt{n\_simulations}=1000$ is the,sections/04_evaluation.tex,696,30
+sections,c0116,DESIGN,"(failure-case analysis, head-to-head PB comparison,",sections/04_evaluation.tex,699,31
+sections,c0117,CITEDONLY,SOTA column is with the seven protocol-mismatch flags,sections/04_evaluation.tex,701,8
+sections,c0118,DESIGN,columns are pending Round-12 pilot completion; the,sections/04_evaluation.tex,721,32
+sections,c0119,CITEDONLY,100) are and not re-counted by Mol-Metal.,sections/04_evaluation.tex,733,9
+sections,c0120,CITEDONLY,All 9 SOTA rows are : the numbers are taken from the,sections/04_evaluation.tex,741,10
+sections,c0121,MEASURED,both are but the second uses a Vina-proxy placeholder,sections/04_evaluation.tex,746,27
+sections,c0122,DESIGN,No cell in the cite-only SOTA column is promoted to,sections/04_evaluation.tex,867,33
+sections,c0123,MEASURED,by this round. The §4.4 cite-only SOTA column,sections/04_evaluation.tex,868,28
+sections,c0124,CITEDONLY,retains its tag for all 9 SOTA rows; the 5,sections/04_evaluation.tex,869,11
+sections,c0125,CITEDONLY,status (the SOTA confidence values for those pockets,sections/04_evaluation.tex,872,12
+sections,c0126,MEASURED,1.0000,sections/04_evaluation.tex,888,29
+sections,c0127,MEASURED,( ).,sections/04_evaluation.tex,891,30
+sections,c0128,MEASURED,"( , lifted from 0.0000 in WF-Lambda-1b by the 1c",sections/04_evaluation.tex,893,31
+sections,c0129,MEASURED,0.0000,sections/04_evaluation.tex,898,32
+sections,c0130,MEASURED,( ).,sections/04_evaluation.tex,903,33
+sections,c0131,MEASURED,($\overline{19/19}$ RDKit-sanitisable) ( ).,sections/04_evaluation.tex,917,34
+sections,c0132,MEASURED,($\overline{19/19}$ $\beta$-NF + RDKit-valid) ( ).,sections/04_evaluation.tex,919,35
+sections,c0133,MEASURED,3.1,sections/04_evaluation.tex,922,36
+sections,c0134,MEASURED,level) ( ).,sections/04_evaluation.tex,928,37
+sections,c0135,MEASURED,same singleton-cell reason as Tanimoto) ( ).,sections/04_evaluation.tex,931,38
+sections,c0136,DESIGN,structure are pending the Round-12 pilot run. The,sections/04_evaluation.tex,949,34
+sections,c0137,DESIGN,pending Round-12.,sections/04_evaluation.tex,956,35
+sections,c0138,MEASURED,follow-ups). All 3 cells are on this box; the EV-3,sections/04_evaluation.tex,990,39
+sections,c0139,MEASURED,"( on this box; total wall-clock $\sim$16~s, far under",sections/04_evaluation.tex,1007,40
+sections,c0140,MEASURED,"5 pockets, $n_{\text{sim}}{=}100$).} Cells below are",sections/04_evaluation.tex,1026,41
+sections,c0141,DESIGN,the dispatch-asymmetry diagnosis. No $\to$ \MEASURED{},sections/04_evaluation.tex,1161,36
+sections,c0142,MEASURED,the dispatch-asymmetry diagnosis. No \DESIGN{} $\to$,sections/04_evaluation.tex,1161,42
+sections,c0143,DESIGN,\noindent\textbf{Cells promoted $\to$ \MEASURED{} in this,sections/04_evaluation.tex,1167,37
+sections,c0144,MEASURED,\noindent\textbf{Cells promoted \DESIGN{} $\to$ in this,sections/04_evaluation.tex,1167,43
+sections,c0145,MEASURED,"already ($0.0050$ / $0.0020$, identical to",sections/04_evaluation.tex,1170,44
+sections,c0146,MEASURED,introduced by this paragraph is as a \emph{negative,sections/04_evaluation.tex,1172,45
+sections,c0147,DESIGN,\noindent\textbf{Cells promoted $\to$ \MEASURED{} in this,sections/04_evaluation.tex,1290,38
+sections,c0148,MEASURED,\noindent\textbf{Cells promoted \DESIGN{} $\to$ in this,sections/04_evaluation.tex,1290,46
+sections,c0149,MEASURED,cells (test\_010..012 $\times$ 1 seed) promote to on,sections/04_evaluation.tex,1293,47
+sections,c0150,DESIGN,promote from prior (or pre-fix singleton-collapse,sections/04_evaluation.tex,1297,39
+sections,c0151,DESIGN,\noindent\textbf{Cells promoted $\to$ \MEASURED{} in this,sections/04_evaluation.tex,1376,40
+sections,c0152,MEASURED,\noindent\textbf{Cells promoted \DESIGN{} $\to$ in this,sections/04_evaluation.tex,1376,48
+sections,c0153,DESIGN,1.000,sections/04_evaluation.tex,1380,41
+sections,c0154,DESIGN,previously ); plus the §4.2 per-pocket cells for,sections/04_evaluation.tex,1381,42
+sections,c0155,DESIGN,\texttt{test\_005}..\texttt{test\_009} (5 previously- rows,sections/04_evaluation.tex,1382,43
+sections,c0156,DESIGN,re-tagged $\to$ \MEASURED{}; the diversity cells of,sections/04_evaluation.tex,1478,44
+sections,c0157,MEASURED,re-tagged \DESIGN{} $\to$ ; the diversity cells of,sections/04_evaluation.tex,1478,49
+sections,c0158,MEASURED,labels. The per-click scaffold-aware gate is the,sections/04_evaluation.tex,1480,50
+sections,c0159,DESIGN,\noindent\textbf{Cells promoted $\to$ \MEASURED{} in,sections/04_evaluation.tex,1528,45
+sections,c0160,MEASURED,\noindent\textbf{Cells promoted \DESIGN{} $\to$ in,sections/04_evaluation.tex,1528,51
+sections,c0161,MEASURED,already carry their labels. The,sections/04_evaluation.tex,1532,52
+sections,c0162,MEASURED,gate is the only new architectural contribution.,sections/04_evaluation.tex,1534,53
+sections,c0163,DESIGN,aquated). metric.,sections/04_evaluation.tex,1580,46
+sections,c0164,MEASURED,cancer-cell-line-relevant pockets. The predictor is,sections/04_evaluation.tex,1596,54
+sections,c0165,DESIGN,The per-pocket pIC50 values are pending the Round-12,sections/04_evaluation.tex,1615,47
+sections,c0166,MEASURED,:,sections/04_evaluation.tex,1627,55
+sections,c0167,MEASURED,1.0000,sections/04_evaluation.tex,1630,56
+sections,c0168,MEASURED,1.0000,sections/04_evaluation.tex,1634,57
+sections,c0169,MEASURED,1.0000,sections/04_evaluation.tex,1639,58
+sections,c0170,MEASURED,1.0000,sections/04_evaluation.tex,1642,59
+sections,c0171,MEASURED,0.0000,sections/04_evaluation.tex,1646,60
+sections,c0172,MEASURED,0.0000,sections/04_evaluation.tex,1651,61
+sections,c0173,DESIGN,are at the per-pocket level for the Round-12,sections/04_evaluation.tex,1694,48
+sections,c0174,DESIGN,.,sections/04_evaluation.tex,1700,49
+sections,c0175,MEASURED,( ).,sections/04_evaluation.tex,1716,62
+sections,c0176,MEASURED,( ).,sections/04_evaluation.tex,1722,63
+sections,c0177,MEASURED,"( , the \texttt{PoseBustersAdapter.validate\_list}",sections/04_evaluation.tex,1724,64
+sections,c0178,MEASURED,( ).,sections/04_evaluation.tex,1733,65
+sections,c0179,MEASURED,\textbf{ -on-real-docked-poses} for one,sections/04_evaluation.tex,1770,66
+sections,c0180,DESIGN,columns of Table~\ref{tab:per-pocket} remain,sections/04_evaluation.tex,1772,50
+sections,c0181,DESIGN,4.6,sections/04_evaluation.tex,1774,51
+sections,c0182,CITEDONLY,remains (no live DiffDock / TargetDiff /,sections/04_evaluation.tex,1776,13
+sections,c0183,DESIGN,\noindent\textbf{Cells promoted $\to$ \MEASURED{}.},sections/04_evaluation.tex,1781,52
+sections,c0184,MEASURED,\noindent\textbf{Cells promoted \DESIGN{} $\to$ .},sections/04_evaluation.tex,1781,67
+sections,c0185,MEASURED,1.000,sections/04_evaluation.tex,1784,68
+sections,c0186,DESIGN,PB cells of Table~\ref{tab:per-pocket} remain .,sections/04_evaluation.tex,1786,53
+sections,c0187,CITEDONLY,\item \textbf{Cite-only SOTA column for PB remains }.,sections/04_evaluation.tex,1870,14
+sections,c0188,DESIGN,\noindent\textbf{Cells promoted $\to$ \MEASURED{}.},sections/04_evaluation.tex,1876,54
+sections,c0189,MEASURED,\noindent\textbf{Cells promoted \DESIGN{} $\to$ .},sections/04_evaluation.tex,1876,69
+sections,c0190,MEASURED,0.800,sections/04_evaluation.tex,1881,70
+sections,c0191,DESIGN,\textbf{Cells promoted $\to$ \MEASURED{}:} \textbf{0} ---,sections/04_evaluation.tex,1969,55
+sections,c0192,MEASURED,\textbf{Cells promoted \DESIGN{} $\to$ :} \textbf{0} ---,sections/04_evaluation.tex,1969,71
+sections,c0193,DESIGN,Table~\ref{tab:per-pocket} remains pending the,sections/04_evaluation.tex,1971,56
+sections,c0194,DESIGN,4.6,sections/04_evaluation.tex,1975,57
+sections,c0195,CITEDONLY,. Artefact:,sections/04_evaluation.tex,1981,15
+sections,c0196,DESIGN,pending the GPU retrain of,sections/04_evaluation.tex,2029,58
+sections,c0197,DESIGN,labelled and not promoted.,sections/04_evaluation.tex,2041,59
+sections,c0198,DESIGN,test\_000 & 20 & & \DESIGN{} & \DESIGN{} \\,sections/04_evaluation.tex,2050,60
+sections,c0199,DESIGN,test\_000 & 20 & \DESIGN{} & & \DESIGN{} \\,sections/04_evaluation.tex,2050,61
+sections,c0200,DESIGN,test\_000 & 20 & \DESIGN{} & \DESIGN{} & \\,sections/04_evaluation.tex,2050,62
+sections,c0201,DESIGN,test\_001 & 20 & & \DESIGN{} & \DESIGN{} \\,sections/04_evaluation.tex,2051,63
+sections,c0202,DESIGN,test\_001 & 20 & \DESIGN{} & & \DESIGN{} \\,sections/04_evaluation.tex,2051,64
+sections,c0203,DESIGN,test\_001 & 20 & \DESIGN{} & \DESIGN{} & \\,sections/04_evaluation.tex,2051,65
+sections,c0204,DESIGN,test\_002 & 20 & & \DESIGN{} & \DESIGN{} \\,sections/04_evaluation.tex,2052,66
+sections,c0205,DESIGN,test\_002 & 20 & \DESIGN{} & & \DESIGN{} \\,sections/04_evaluation.tex,2052,67
+sections,c0206,DESIGN,test\_002 & 20 & \DESIGN{} & \DESIGN{} & \\,sections/04_evaluation.tex,2052,68
+sections,c0207,DESIGN,test\_003 & 20 & & \DESIGN{} & \DESIGN{} \\,sections/04_evaluation.tex,2053,69
+sections,c0208,DESIGN,test\_003 & 20 & \DESIGN{} & & \DESIGN{} \\,sections/04_evaluation.tex,2053,70
+sections,c0209,DESIGN,test\_003 & 20 & \DESIGN{} & \DESIGN{} & \\,sections/04_evaluation.tex,2053,71
+sections,c0210,DESIGN,test\_004 & 20 & & \DESIGN{} & \DESIGN{} \\,sections/04_evaluation.tex,2054,72
+sections,c0211,DESIGN,test\_004 & 20 & \DESIGN{} & & \DESIGN{} \\,sections/04_evaluation.tex,2054,73
+sections,c0212,DESIGN,test\_004 & 20 & \DESIGN{} & \DESIGN{} & \\,sections/04_evaluation.tex,2054,74
+sections,c0213,DESIGN,test\_005 & 20 & & \DESIGN{} & \DESIGN{} \\,sections/04_evaluation.tex,2055,75
+sections,c0214,DESIGN,test\_005 & 20 & \DESIGN{} & & \DESIGN{} \\,sections/04_evaluation.tex,2055,76
+sections,c0215,DESIGN,test\_005 & 20 & \DESIGN{} & \DESIGN{} & \\,sections/04_evaluation.tex,2055,77
+sections,c0216,DESIGN,test\_006 & 20 & & \DESIGN{} & \DESIGN{} \\,sections/04_evaluation.tex,2056,78
+sections,c0217,DESIGN,test\_006 & 20 & \DESIGN{} & & \DESIGN{} \\,sections/04_evaluation.tex,2056,79
+sections,c0218,DESIGN,test\_006 & 20 & \DESIGN{} & \DESIGN{} & \\,sections/04_evaluation.tex,2056,80
+sections,c0219,DESIGN,test\_007 & 20 & & \DESIGN{} & \DESIGN{} \\,sections/04_evaluation.tex,2057,81
+sections,c0220,DESIGN,test\_007 & 20 & \DESIGN{} & & \DESIGN{} \\,sections/04_evaluation.tex,2057,82
+sections,c0221,DESIGN,test\_007 & 20 & \DESIGN{} & \DESIGN{} & \\,sections/04_evaluation.tex,2057,83
+sections,c0222,DESIGN,test\_008 & 20 & & \DESIGN{} & \DESIGN{} \\,sections/04_evaluation.tex,2058,84
+sections,c0223,DESIGN,test\_008 & 20 & \DESIGN{} & & \DESIGN{} \\,sections/04_evaluation.tex,2058,85
+sections,c0224,DESIGN,test\_008 & 20 & \DESIGN{} & \DESIGN{} & \\,sections/04_evaluation.tex,2058,86
+sections,c0225,DESIGN,test\_009 & 20 & & \DESIGN{} & \DESIGN{} \\,sections/04_evaluation.tex,2059,87
+sections,c0226,DESIGN,test\_009 & 20 & \DESIGN{} & & \DESIGN{} \\,sections/04_evaluation.tex,2059,88
+sections,c0227,DESIGN,test\_009 & 20 & \DESIGN{} & \DESIGN{} & \\,sections/04_evaluation.tex,2059,89
+sections,c0228,DESIGN,\textbf{10-p mean} & $\mathbf{20}$ & & \DESIGN{} & \DESIGN{} \\,sections/04_evaluation.tex,2061,90
+sections,c0229,DESIGN,\textbf{10-p mean} & $\mathbf{20}$ & \DESIGN{} & & \DESIGN{} \\,sections/04_evaluation.tex,2061,91
+sections,c0230,DESIGN,\textbf{10-p mean} & $\mathbf{20}$ & \DESIGN{} & \DESIGN{} & \\,sections/04_evaluation.tex,2061,92
+sections,c0231,DESIGN,\item \textbf{Pearson $r$ vs wet-lab IC50}: pending the,sections/04_evaluation.tex,2085,93
+sections,c0232,DESIGN,\item \textbf{MAE / RMSE}: --- same caveat.,sections/04_evaluation.tex,2088,94
+sections,c0233,DESIGN,\textbf{Cells promoted $\to$ \MEASURED{}: 0.},sections/04_evaluation.tex,2134,95
+sections,c0234,MEASURED,\textbf{Cells promoted \DESIGN{} $\to$ : 0.},sections/04_evaluation.tex,2134,72
+sections,c0235,DESIGN,\paragraph{Cells promoted $\to$ \MEASURED{}.},sections/04_evaluation.tex,2311,96
+sections,c0236,MEASURED,\paragraph{Cells promoted \DESIGN{} $\to$ .},sections/04_evaluation.tex,2311,73
+sections,c0237,DESIGN,\texttt{PB pass} cells remain pending a search,sections/04_evaluation.tex,2318,97
+sections,c0238,DESIGN,$\to$ \MEASURED{}: 0.} The §4.6 PB column remains,sections/04_evaluation.tex,2349,98
+sections,c0239,MEASURED,\DESIGN{} $\to$ : 0.} The §4.6 PB column remains,sections/04_evaluation.tex,2349,74
+sections,c0240,DESIGN,at the 15-cell production scale; the honest,sections/04_evaluation.tex,2350,99
+sections,c0241,MEASURED,"80\,\% / 20\,\% diversity split is on the WF-Lambda-1",sections/04_evaluation.tex,2380,75
+sections,c0242,MEASURED,The synthesizability lift of the 4 non-CuAAC rules is,sections/04_evaluation.tex,2391,76
+sections,c0243,DESIGN,4 non-CuAAC rules is pending Round-12 (the,sections/04_evaluation.tex,2396,100
+sections,c0244,MEASURED,The homotype-vs-Tanimoto orthogonality panel is on,sections/04_evaluation.tex,2403,77
+sections,c0245,MEASURED,the dual-metric diversity reporting; it is on the,sections/04_evaluation.tex,2418,78
+sections,c0246,DESIGN,"(the 10-mol panel is a convenience test set, not the",sections/04_evaluation.tex,2421,101
+sections,c0247,DESIGN,This section is pending Round-12 pilot completion;,sections/04_evaluation.tex,2445,102
+sections,c0248,DESIGN,one of exactly three tags --- (Round-12,sections/04_evaluation.tex,2471,103
+sections,c0249,MEASURED,"pending), (protocol wired and exercised",sections/04_evaluation.tex,2472,79
+sections,c0250,CITEDONLY,"at least once on this box), or (taken",sections/04_evaluation.tex,2473,16
+sections,c0251,DESIGN,\item \emph{Promotion rule}: a cell can be promoted,sections/04_evaluation.tex,2475,104
+sections,c0252,MEASURED,to only by running the Round-12 pilot and,sections/04_evaluation.tex,2476,80
+sections,c0253,DESIGN,re-tagging at the point of use; no cell is,sections/04_evaluation.tex,2477,105
+sections,c0254,DESIGN,Tables~\ref{tab:per-pocket}--\ref{tab:aggregate} is .,sections/04_evaluation.tex,2483,106
+sections,c0255,MEASURED,The protocol descriptions in this section are and,sections/04_evaluation.tex,2484,81
+sections,c0256,CITEDONLY,the cite-only SOTA column is (with the seven,sections/04_evaluation.tex,2485,17
+sections,c0257,DESIGN,\textbf{No cell is promoted from to \MEASURED{} in this,sections/04_evaluation.tex,2524,107
+sections,c0258,MEASURED,\textbf{No cell is promoted from \DESIGN{} to in this,sections/04_evaluation.tex,2524,82
+sections,c0259,DESIGN,section.} All Round-13 design cells that were remain,sections/04_evaluation.tex,2525,108
+sections,c0260,DESIGN,.,sections/04_evaluation.tex,2526,109
+sections,c0261,DESIGN,-8.45,sections/04_evaluation.tex,2792,110
+sections,c0262,DESIGN,re-execution. \textbf{No cell is promoted from to,sections/04_evaluation.tex,2793,111
+sections,c0263,MEASURED,on this round.},sections/04_evaluation.tex,2794,83
+sections,c0264,DESIGN,--- it does NOT promote any new cells from to,sections/04_evaluation.tex,2951,112
+sections,c0265,MEASURED,because the values match the existing \MEASURED{} Path-A,sections/04_evaluation.tex,2952,84
+sections,c0266,MEASURED,\MEASURED{} because the values match the existing Path-A,sections/04_evaluation.tex,2952,85
+sections,c0267,DESIGN,\paragraph{Cells promoted $\to$ \MEASURED{} in this,sections/04_evaluation.tex,2987,113
+sections,c0268,MEASURED,\paragraph{Cells promoted \DESIGN{} $\to$ in this,sections/04_evaluation.tex,2987,86
+sections,c0269,MEASURED,existing Path-A cells in \S\ref{sec:evaluation:per-pocket},sections/04_evaluation.tex,2989,87
+sections,c0270,DESIGN,Table~\ref{tab:per-pocket} is promoted,sections/04_evaluation.tex,3029,114
+sections,c0271,MEASURED,$\to$ on this round.,sections/04_evaluation.tex,3030,88
+sections,c0272,DESIGN,silently promoted from to \MEASURED{} on the,sections/04_evaluation.tex,3041,115
+sections,c0273,MEASURED,silently promoted from \DESIGN{} to on the,sections/04_evaluation.tex,3041,89
+sections,c0274,DESIGN,"; the rework is a code-and-paper deliverable, not",sections/04_evaluation.tex,3103,116
+sections,c0275,DESIGN,Table~\ref{tab:per-pocket} stays ; the recommended,sections/04_evaluation.tex,3169,117
+sections,c0276,DESIGN,"$\to$ \MEASURED{}}: 12 cells with pb\_pass\_rate\,=\,1.000,",sections/04_evaluation.tex,3295,118
+sections,c0277,MEASURED,"\DESIGN{} $\to$ }: 12 cells with pb\_pass\_rate\,=\,1.000,",sections/04_evaluation.tex,3295,90
+sections,c0278,MEASURED,. \textbf{Honest caveats}: (a)~\emph{singleton collapse} ---,sections/04_evaluation.tex,3298,91
+sections,c0279,CITEDONLY,remains }.,sections/04_evaluation.tex,3305,18
+sections,c0280,DESIGN,"cells, 5 pockets $\times$ 3 seeds, PB \texttt{mol} mode) & & $\mathbf{0.800}$ strict (12/15 cells)\\",sections/04_evaluation.tex,3349,119
+sections,c0281,DESIGN,"\texttt{pb\_pass\_rate} \texttt{test\_001,002,004,005} & & $\mathbf{1.000}$ (12 cells)\\",sections/04_evaluation.tex,3350,120
+sections,c0282,DESIGN,\texttt{pb\_pass\_rate} \texttt{test\_003} & & $\mathbf{0.000}$ (3 cells)\\,sections/04_evaluation.tex,3351,121
+sections,c0283,DESIGN,"exttt{sa\_mean} (cohort, 30 cells, $n_{\text{sim}}{=}1000$) & & $\mathbf{3.6574}$ (n\_distinct=20)\\",sections/04_evaluation.tex,3352,122
+sections,c0284,DESIGN,"\texttt{qed} (cohort, 30 cells) & & $\mathbf{0.7080}$ (n\_distinct=20)\\",sections/04_evaluation.tex,3353,123
+sections,c0285,DESIGN,"\texttt{logP} (cohort, 30 cells) & & $\mathbf{-0.5752}$\\",sections/04_evaluation.tex,3354,124
+sections,c0286,DESIGN,"\texttt{TPSA} (cohort, 30 cells) & & $\mathbf{56.47}$\\",sections/04_evaluation.tex,3355,125
+sections,c0287,DESIGN,"\texttt{rotB} (cohort, 30 cells) & & $\mathbf{2.40}$\\",sections/04_evaluation.tex,3356,126
+sections,c0288,DESIGN,"\texttt{anticancer\_index} (cohort, 30 cells) & & $\mathbf{0.1800}$\\",sections/04_evaluation.tex,3357,127
+sections,c0289,MEASURED,"Path-A 30 cells, identical value) & $\mathbf{20}$ (R12) & $\mathbf{20}$ \MEASURED{} (R16b confirm)\\",sections/04_evaluation.tex,3358,92
+sections,c0290,MEASURED,"Path-A 30 cells, identical value) & $\mathbf{20}$ \MEASURED{} (R12) & $\mathbf{20}$ (R16b confirm)\\",sections/04_evaluation.tex,3358,93
+sections,c0291,DESIGN,% = metric protocol wired but paper-grade cell,sections/04_results.tex,11,1
+sections,c0292,MEASURED,% = value is a real generated-candidate measurement,sections/04_results.tex,13,1
+sections,c0293,CITEDONLY,% = value taken verbatim from the cited SOTA paper,sections/04_results.tex,15,1
+sections,c0294,DESIGN,carries a /\MEASURED{}/\CITEDONLY{} tag for trace-ability,sections/04_results.tex,52,2
+sections,c0295,MEASURED,carries a \DESIGN{}/ /\CITEDONLY{} tag for trace-ability,sections/04_results.tex,52,2
+sections,c0296,CITEDONLY,carries a \DESIGN{}/\MEASURED{}/ tag for trace-ability,sections/04_results.tex,52,2
+sections,c0297,MEASURED,the best \emph{currently} value on a smaller panel,sections/04_results.tex,66,3
+sections,c0298,DESIGN,re-scored by QuickVina~2) is in this round and is,sections/04_results.tex,163,3
+sections,c0299,CITEDONLY,-9.37,sections/04_results.tex,175,3
+sections,c0300,CITEDONLY,-9.25,sections/04_results.tex,175,4
+sections,c0301,CITEDONLY,-8.39,sections/04_results.tex,175,5
+sections,c0302,CITEDONLY,-7.15,sections/04_results.tex,175,6
+sections,c0303,MEASURED,3.099,sections/04_results.tex,176,4
+sections,c0304,CITEDONLY,2.86,sections/04_results.tex,176,7
+sections,c0305,CITEDONLY,2.86,sections/04_results.tex,176,8
+sections,c0306,MEASURED,0.621,sections/04_results.tex,177,5
+sections,c0307,CITEDONLY,0.48,sections/04_results.tex,177,9
+sections,c0308,CITEDONLY,0.56,sections/04_results.tex,177,10
+sections,c0309,CITEDONLY,0.45,sections/04_results.tex,177,11
+sections,c0310,CITEDONLY,0.51,sections/04_results.tex,177,12
+sections,c0311,MEASURED,0.137,sections/04_results.tex,178,6
+sections,c0312,CITEDONLY,0.81,sections/04_results.tex,178,13
+sections,c0313,CITEDONLY,0.76,sections/04_results.tex,178,14
+sections,c0314,CITEDONLY,0.681,sections/04_results.tex,178,15
+sections,c0315,MEASURED,0.846,sections/04_results.tex,179,7
+sections,c0316,CITEDONLY,0.97,sections/04_results.tex,179,16
+sections,c0317,CITEDONLY,0.88,sections/04_results.tex,179,17
+sections,c0318,CITEDONLY,0.88,sections/04_results.tex,179,18
+sections,c0319,CITEDONLY,0.78,sections/04_results.tex,179,19
+sections,c0320,CITEDONLY,-9.37,sections/04_results.tex,181,20
+sections,c0321,CITEDONLY,-9.25,sections/04_results.tex,181,21
+sections,c0322,CITEDONLY,-8.39,sections/04_results.tex,181,22
+sections,c0323,CITEDONLY,-7.15,sections/04_results.tex,181,23
+sections,c0324,MEASURED,best currently value on the Round-12 10$\times$3 panel,sections/04_results.tex,186,8
+sections,c0325,CITEDONLY,oracle). SOTA columns are from the original papers,sections/04_results.tex,190,24
+sections,c0326,MEASURED,per-axis value.,sections/04_results.tex,229,9
+sections,c0327,MEASURED,0.712,sections/04_results.tex,264,10
+sections,c0328,CITEDONLY,0.81,sections/04_results.tex,264,25
+sections,c0329,MEASURED,"metal-ligand pairs (cell) & $\mathbf{20}$ (post-fix, $n_{\mathrm{top\_k}}$ cap) & n/a & n/a & LIFTED",sections/04_results.tex,269,11
+sections,c0330,MEASURED,}$ metal-ligand pairs (cross-pool) & $3$ (cisplatin + ru\_arene + ir\_cp\_star) & n/a & n/a & Cross-,sections/04_results.tex,270,12
+sections,c0331,MEASURED,0.000,sections/04_results.tex,271,13
+sections,c0332,MEASURED,value (\texttt{metrics/by\_metric/metalcytotox\_ru\_auc.jso,sections/04_results.tex,278,14
+sections,c0333,CITEDONLY,proxy). \textbf{Baseline columns} are from,sections/04_results.tex,281,26
+sections,c0334,CITEDONLY,Rusanov~2025 baseline bars are from,sections/04_results.tex,313,27
+sections,c0335,DESIGN,--- all four rows below carry the,sections/04_results.tex,334,4
+sections,c0336,MEASURED,$n_{\mathrm{cells}}{=}30$ anchor from the,sections/04_results.tex,335,15
+sections,c0337,MEASURED,impact} ($n_{\mathrm{distinct}}$) & $1$ & $\mathbf{20}$ \MEASURED{} & $+19$ & LIFTED (singleton col,sections/04_results.tex,347,16
+sections,c0338,MEASURED,athrm{distinct}}$) & $1$ \MEASURED{} & $\mathbf{20}$ & $+19$ & LIFTED (singleton collapse broken) \\,sections/04_results.tex,347,17
+sections,c0339,MEASURED,0.000,sections/04_results.tex,348,18
+sections,c0340,MEASURED,0.137,sections/04_results.tex,348,19
+sections,c0341,MEASURED,{\mathrm{distinct}}$ cross-pocket) & $1$ & $1$ \MEASURED{} & $0$ & \textbf{REGRESSED} (pocket-invari,sections/04_results.tex,349,20
+sections,c0342,MEASURED,}$ cross-pocket) & $1$ \MEASURED{} & $1$ & $0$ & \textbf{REGRESSED} (pocket-invariant attractor rema,sections/04_results.tex,349,21
+sections,c0343,MEASURED,0.002,sections/04_results.tex,350,22
+sections,c0344,MEASURED,0.075,sections/04_results.tex,350,23
+sections,c0345,MEASURED,vs F5} ($n_{\mathrm{distinct}}$) & $20$ (F5 fragment-only) & \textit{pending --- metric 16} & n/a &,sections/04_results.tex,352,24
+sections,c0346,DESIGN,is therefore until the retrain ships; the §4.2,sections/04_results.tex,464,5
+sections,c0347,DESIGN,% Honest framing: = pending Round-12 acceptance;,sections/05_ablation.tex,8,1
+sections,c0348,MEASURED,% = cite existing report; \PROJECTED{} = theoretical.,sections/05_ablation.tex,9,1
+sections,c0349,PROJECTED,% \MEASURED{} = cite existing report; = theoretical.,sections/05_ablation.tex,9,1
+sections,c0350,DESIGN,Table~\ref{tab:ablation-cells} below is tagged ; every,sections/05_ablation.tex,21,2
+sections,c0351,MEASURED,is tagged ; every pre-computed ablation result,sections/05_ablation.tex,23,2
+sections,c0352,MEASURED,($\S$\ref{sec:ablation:precomputed}) is tagged with a,sections/05_ablation.tex,24,3
+sections,c0353,DESIGN,\item \textbf{ } --- the ablation cell has been,sections/05_ablation.tex,30,3
+sections,c0354,MEASURED,"\item \textbf{ } --- the protocol, harness, or",sections/05_ablation.tex,34,4
+sections,c0355,PROJECTED,\item \textbf{ } --- a theoretical rank-order or,sections/05_ablation.tex,37,2
+sections,c0356,MEASURED,at off=disabled via \texttt{-{}-prior-disabled},sections/05_ablation.tex,66,5
+sections,c0357,MEASURED,(cf.~$\S$\ref{sec:click-chem}). at both endpoints,sections/05_ablation.tex,71,6
+sections,c0358,MEASURED,batch. at off=identity-coupling default;,sections/05_ablation.tex,79,7
+sections,c0359,PROJECTED,\texttt{on} path is .,sections/05_ablation.tex,80,3
+sections,c0360,MEASURED,guidance weight applied at CFM inference. at,sections/05_ablation.tex,82,8
+sections,c0361,MEASURED,2.0,sections/05_ablation.tex,83,9
+sections,c0362,PROJECTED,pending Round-12 acceptance.,sections/05_ablation.tex,107,4
+sections,c0363,MEASURED,protocol cells aligned with the Round-9 baseline,sections/05_ablation.tex,115,10
+sections,c0364,DESIGN,1.0,sections/05_ablation.tex,125,4
+sections,c0365,DESIGN,1.0,sections/05_ablation.tex,125,5
+sections,c0366,DESIGN,1.0,sections/05_ablation.tex,125,6
+sections,c0367,DESIGN,1.0,sections/05_ablation.tex,125,7
+sections,c0368,DESIGN,1.0,sections/05_ablation.tex,125,8
+sections,c0369,DESIGN,1.0,sections/05_ablation.tex,125,9
+sections,c0370,DESIGN,1.0,sections/05_ablation.tex,125,10
+sections,c0371,DESIGN,1.0,sections/05_ablation.tex,125,11
+sections,c0372,DESIGN,1.0,sections/05_ablation.tex,125,12
+sections,c0373,DESIGN,2.0,sections/05_ablation.tex,126,13
+sections,c0374,DESIGN,2.0,sections/05_ablation.tex,126,14
+sections,c0375,DESIGN,2.0,sections/05_ablation.tex,126,15
+sections,c0376,DESIGN,2.0,sections/05_ablation.tex,126,16
+sections,c0377,DESIGN,2.0,sections/05_ablation.tex,126,17
+sections,c0378,DESIGN,2.0,sections/05_ablation.tex,126,18
+sections,c0379,DESIGN,2.0,sections/05_ablation.tex,126,19
+sections,c0380,DESIGN,2.0,sections/05_ablation.tex,126,20
+sections,c0381,DESIGN,2.0,sections/05_ablation.tex,126,21
+sections,c0382,DESIGN,1.0,sections/05_ablation.tex,127,22
+sections,c0383,DESIGN,1.0,sections/05_ablation.tex,127,23
+sections,c0384,DESIGN,1.0,sections/05_ablation.tex,127,24
+sections,c0385,DESIGN,1.0,sections/05_ablation.tex,127,25
+sections,c0386,DESIGN,1.0,sections/05_ablation.tex,127,26
+sections,c0387,DESIGN,1.0,sections/05_ablation.tex,127,27
+sections,c0388,DESIGN,1.0,sections/05_ablation.tex,127,28
+sections,c0389,DESIGN,1.0,sections/05_ablation.tex,127,29
+sections,c0390,DESIGN,1.0,sections/05_ablation.tex,127,30
+sections,c0391,DESIGN,2.0,sections/05_ablation.tex,128,31
+sections,c0392,DESIGN,2.0,sections/05_ablation.tex,128,32
+sections,c0393,DESIGN,2.0,sections/05_ablation.tex,128,33
+sections,c0394,DESIGN,2.0,sections/05_ablation.tex,128,34
+sections,c0395,DESIGN,2.0,sections/05_ablation.tex,128,35
+sections,c0396,DESIGN,2.0,sections/05_ablation.tex,128,36
+sections,c0397,DESIGN,2.0,sections/05_ablation.tex,128,37
+sections,c0398,DESIGN,2.0,sections/05_ablation.tex,128,38
+sections,c0399,DESIGN,2.0,sections/05_ablation.tex,128,39
+sections,c0400,DESIGN,1.0,sections/05_ablation.tex,129,40
+sections,c0401,DESIGN,1.0,sections/05_ablation.tex,129,41
+sections,c0402,DESIGN,1.0,sections/05_ablation.tex,129,42
+sections,c0403,DESIGN,1.0,sections/05_ablation.tex,129,43
+sections,c0404,DESIGN,1.0,sections/05_ablation.tex,129,44
+sections,c0405,DESIGN,1.0,sections/05_ablation.tex,129,45
+sections,c0406,DESIGN,1.0,sections/05_ablation.tex,129,46
+sections,c0407,DESIGN,1.0,sections/05_ablation.tex,129,47
+sections,c0408,DESIGN,1.0,sections/05_ablation.tex,129,48
+sections,c0409,DESIGN,2.0,sections/05_ablation.tex,130,49
+sections,c0410,DESIGN,2.0,sections/05_ablation.tex,130,50
+sections,c0411,DESIGN,2.0,sections/05_ablation.tex,130,51
+sections,c0412,DESIGN,2.0,sections/05_ablation.tex,130,52
+sections,c0413,DESIGN,2.0,sections/05_ablation.tex,130,53
+sections,c0414,DESIGN,2.0,sections/05_ablation.tex,130,54
+sections,c0415,DESIGN,2.0,sections/05_ablation.tex,130,55
+sections,c0416,DESIGN,2.0,sections/05_ablation.tex,130,56
+sections,c0417,DESIGN,2.0,sections/05_ablation.tex,130,57
+sections,c0418,DESIGN,1.0,sections/05_ablation.tex,131,58
+sections,c0419,DESIGN,1.0,sections/05_ablation.tex,131,59
+sections,c0420,DESIGN,1.0,sections/05_ablation.tex,131,60
+sections,c0421,DESIGN,1.0,sections/05_ablation.tex,131,61
+sections,c0422,DESIGN,1.0,sections/05_ablation.tex,131,62
+sections,c0423,DESIGN,1.0,sections/05_ablation.tex,131,63
+sections,c0424,DESIGN,1.0,sections/05_ablation.tex,131,64
+sections,c0425,DESIGN,1.0,sections/05_ablation.tex,131,65
+sections,c0426,DESIGN,1.0,sections/05_ablation.tex,131,66
+sections,c0427,DESIGN,2.0,sections/05_ablation.tex,132,67
+sections,c0428,DESIGN,2.0,sections/05_ablation.tex,132,68
+sections,c0429,DESIGN,2.0,sections/05_ablation.tex,132,69
+sections,c0430,DESIGN,2.0,sections/05_ablation.tex,132,70
+sections,c0431,DESIGN,2.0,sections/05_ablation.tex,132,71
+sections,c0432,DESIGN,2.0,sections/05_ablation.tex,132,72
+sections,c0433,DESIGN,2.0,sections/05_ablation.tex,132,73
+sections,c0434,DESIGN,2.0,sections/05_ablation.tex,132,74
+sections,c0435,DESIGN,2.0,sections/05_ablation.tex,132,75
+sections,c0436,DESIGN,1.0,sections/05_ablation.tex,133,76
+sections,c0437,DESIGN,1.0,sections/05_ablation.tex,133,77
+sections,c0438,DESIGN,1.0,sections/05_ablation.tex,133,78
+sections,c0439,DESIGN,1.0,sections/05_ablation.tex,133,79
+sections,c0440,DESIGN,1.0,sections/05_ablation.tex,133,80
+sections,c0441,DESIGN,1.0,sections/05_ablation.tex,133,81
+sections,c0442,DESIGN,1.0,sections/05_ablation.tex,133,82
+sections,c0443,DESIGN,1.0,sections/05_ablation.tex,133,83
+sections,c0444,DESIGN,1.0,sections/05_ablation.tex,133,84
+sections,c0445,DESIGN,2.0,sections/05_ablation.tex,134,85
+sections,c0446,DESIGN,2.0,sections/05_ablation.tex,134,86
+sections,c0447,DESIGN,2.0,sections/05_ablation.tex,134,87
+sections,c0448,DESIGN,2.0,sections/05_ablation.tex,134,88
+sections,c0449,DESIGN,2.0,sections/05_ablation.tex,134,89
+sections,c0450,DESIGN,2.0,sections/05_ablation.tex,134,90
+sections,c0451,DESIGN,2.0,sections/05_ablation.tex,134,91
+sections,c0452,DESIGN,2.0,sections/05_ablation.tex,134,92
+sections,c0453,DESIGN,2.0,sections/05_ablation.tex,134,93
+sections,c0454,DESIGN,1.0,sections/05_ablation.tex,135,94
+sections,c0455,DESIGN,1.0,sections/05_ablation.tex,135,95
+sections,c0456,DESIGN,1.0,sections/05_ablation.tex,135,96
+sections,c0457,DESIGN,1.0,sections/05_ablation.tex,135,97
+sections,c0458,DESIGN,1.0,sections/05_ablation.tex,135,98
+sections,c0459,DESIGN,1.0,sections/05_ablation.tex,135,99
+sections,c0460,DESIGN,1.0,sections/05_ablation.tex,135,100
+sections,c0461,DESIGN,1.0,sections/05_ablation.tex,135,101
+sections,c0462,DESIGN,1.0,sections/05_ablation.tex,135,102
+sections,c0463,DESIGN,2.0,sections/05_ablation.tex,136,103
+sections,c0464,DESIGN,2.0,sections/05_ablation.tex,136,104
+sections,c0465,DESIGN,2.0,sections/05_ablation.tex,136,105
+sections,c0466,DESIGN,2.0,sections/05_ablation.tex,136,106
+sections,c0467,DESIGN,2.0,sections/05_ablation.tex,136,107
+sections,c0468,DESIGN,2.0,sections/05_ablation.tex,136,108
+sections,c0469,DESIGN,2.0,sections/05_ablation.tex,136,109
+sections,c0470,DESIGN,2.0,sections/05_ablation.tex,136,110
+sections,c0471,DESIGN,2.0,sections/05_ablation.tex,136,111
+sections,c0472,DESIGN,1.0,sections/05_ablation.tex,137,112
+sections,c0473,DESIGN,1.0,sections/05_ablation.tex,137,113
+sections,c0474,DESIGN,1.0,sections/05_ablation.tex,137,114
+sections,c0475,DESIGN,1.0,sections/05_ablation.tex,137,115
+sections,c0476,DESIGN,1.0,sections/05_ablation.tex,137,116
+sections,c0477,DESIGN,1.0,sections/05_ablation.tex,137,117
+sections,c0478,DESIGN,1.0,sections/05_ablation.tex,137,118
+sections,c0479,DESIGN,1.0,sections/05_ablation.tex,137,119
+sections,c0480,DESIGN,1.0,sections/05_ablation.tex,137,120
+sections,c0481,DESIGN,2.0,sections/05_ablation.tex,138,121
+sections,c0482,DESIGN,2.0,sections/05_ablation.tex,138,122
+sections,c0483,DESIGN,2.0,sections/05_ablation.tex,138,123
+sections,c0484,DESIGN,2.0,sections/05_ablation.tex,138,124
+sections,c0485,DESIGN,2.0,sections/05_ablation.tex,138,125
+sections,c0486,DESIGN,2.0,sections/05_ablation.tex,138,126
+sections,c0487,DESIGN,2.0,sections/05_ablation.tex,138,127
+sections,c0488,DESIGN,2.0,sections/05_ablation.tex,138,128
+sections,c0489,DESIGN,2.0,sections/05_ablation.tex,138,129
+sections,c0490,DESIGN,1.0,sections/05_ablation.tex,139,130
+sections,c0491,DESIGN,1.0,sections/05_ablation.tex,139,131
+sections,c0492,DESIGN,1.0,sections/05_ablation.tex,139,132
+sections,c0493,DESIGN,1.0,sections/05_ablation.tex,139,133
+sections,c0494,DESIGN,1.0,sections/05_ablation.tex,139,134
+sections,c0495,DESIGN,1.0,sections/05_ablation.tex,139,135
+sections,c0496,DESIGN,1.0,sections/05_ablation.tex,139,136
+sections,c0497,DESIGN,1.0,sections/05_ablation.tex,139,137
+sections,c0498,DESIGN,1.0,sections/05_ablation.tex,139,138
+sections,c0499,DESIGN,2.0,sections/05_ablation.tex,140,139
+sections,c0500,DESIGN,2.0,sections/05_ablation.tex,140,140
+sections,c0501,DESIGN,2.0,sections/05_ablation.tex,140,141
+sections,c0502,DESIGN,2.0,sections/05_ablation.tex,140,142
+sections,c0503,DESIGN,2.0,sections/05_ablation.tex,140,143
+sections,c0504,DESIGN,2.0,sections/05_ablation.tex,140,144
+sections,c0505,DESIGN,2.0,sections/05_ablation.tex,140,145
+sections,c0506,DESIGN,2.0,sections/05_ablation.tex,140,146
+sections,c0507,DESIGN,2.0,sections/05_ablation.tex,140,147
+sections,c0508,DESIGN,$g$ = cfg\_scale. All data cells are pending,sections/05_ablation.tex,148,148
+sections,c0509,MEASURED,Round-12 acceptance; column definitions are protocol,sections/05_ablation.tex,149,11
+sections,c0510,MEASURED,protocol from \texttt{molmetal/reports/,sections/05_ablation.tex,162,12
+sections,c0511,MEASURED,\item \textbf{Vina $\bar x$} --- protocol from,sections/05_ablation.tex,165,13
+sections,c0512,MEASURED,\item \textbf{valid.\%} --- from,sections/05_ablation.tex,168,14
+sections,c0513,MEASURED,\item \textbf{syn.\%} --- from,sections/05_ablation.tex,171,15
+sections,c0514,DESIGN,0.0,sections/05_ablation.tex,173,149
+sections,c0515,MEASURED,\item \textbf{metal\%} --- from,sections/05_ablation.tex,175,16
+sections,c0516,MEASURED,\item \textbf{h.div.} --- from,sections/05_ablation.tex,178,17
+sections,c0517,PROJECTED,\item \textbf{h.vs.T rank-$\rho$} --- on the 10-mol,sections/05_ablation.tex,181,5
+sections,c0518,MEASURED,( from \texttt{wf\_lambda1\_build.md} $\S$3).,sections/05_ablation.tex,219,18
+sections,c0519,PROJECTED,.,sections/05_ablation.tex,254,6
+sections,c0520,MEASURED,cost of validity\%; the WF-1 A1+A2+A3 path is at,sections/05_ablation.tex,263,19
+sections,c0521,MEASURED,in \texttt{molmetal/reports/wf2\_final.md} $\S$2,sections/05_ablation.tex,266,20
+sections,c0522,PROJECTED,( for any further CFG values).,sections/05_ablation.tex,267,7
+sections,c0523,MEASURED,Three ablation results are already from prior,sections/05_ablation.tex,272,21
+sections,c0524,MEASURED,from,sections/05_ablation.tex,281,22
+sections,c0525,MEASURED,productive-space diversity .,sections/05_ablation.tex,287,23
+sections,c0526,MEASURED,from,sections/05_ablation.tex,294,24
+sections,c0527,MEASURED,0.5,sections/05_ablation.tex,307,25
+sections,c0528,PROJECTED,synthesizability front. pending Round-12,sections/05_ablation.tex,316,8
+sections,c0529,MEASURED,the Round-9 N=5 pilot at,sections/05_ablation.tex,325,26
+sections,c0530,PROJECTED,the cfg\_scale overhead. for the 1020-branching,sections/05_ablation.tex,329,9
+sections,c0531,MEASURED,rows; for the 60-branching rows.,sections/05_ablation.tex,330,27
+sections,c0532,MEASURED,1.0,sections/05_ablation.tex,339,28
+sections,c0533,PROJECTED,1.0,sections/05_ablation.tex,339,10
+sections,c0534,MEASURED,2.0,sections/05_ablation.tex,340,29
+sections,c0535,PROJECTED,1.1,sections/05_ablation.tex,340,11
+sections,c0536,MEASURED,1.0,sections/05_ablation.tex,341,30
+sections,c0537,PROJECTED,1.2,sections/05_ablation.tex,341,12
+sections,c0538,MEASURED,2.0,sections/05_ablation.tex,342,31
+sections,c0539,PROJECTED,1.3,sections/05_ablation.tex,342,13
+sections,c0540,MEASURED,1.0,sections/05_ablation.tex,343,32
+sections,c0541,PROJECTED,1.0,sections/05_ablation.tex,343,14
+sections,c0542,MEASURED,2.0,sections/05_ablation.tex,344,33
+sections,c0543,PROJECTED,1.1,sections/05_ablation.tex,344,15
+sections,c0544,MEASURED,1.0,sections/05_ablation.tex,345,34
+sections,c0545,PROJECTED,1.2,sections/05_ablation.tex,345,16
+sections,c0546,MEASURED,2.0,sections/05_ablation.tex,346,35
+sections,c0547,PROJECTED,1.3,sections/05_ablation.tex,346,17
+sections,c0548,MEASURED,1.0,sections/05_ablation.tex,347,36
+sections,c0549,PROJECTED,1.0,sections/05_ablation.tex,347,18
+sections,c0550,MEASURED,2.0,sections/05_ablation.tex,348,37
+sections,c0551,PROJECTED,1.1,sections/05_ablation.tex,348,19
+sections,c0552,MEASURED,1.0,sections/05_ablation.tex,349,38
+sections,c0553,PROJECTED,1.2,sections/05_ablation.tex,349,20
+sections,c0554,MEASURED,2.0,sections/05_ablation.tex,350,39
+sections,c0555,PROJECTED,1.3,sections/05_ablation.tex,350,21
+sections,c0556,MEASURED,1.0,sections/05_ablation.tex,351,40
+sections,c0557,PROJECTED,1.0,sections/05_ablation.tex,351,22
+sections,c0558,MEASURED,2.0,sections/05_ablation.tex,352,41
+sections,c0559,PROJECTED,1.1,sections/05_ablation.tex,352,23
+sections,c0560,MEASURED,1.0,sections/05_ablation.tex,353,42
+sections,c0561,PROJECTED,1.2,sections/05_ablation.tex,353,24
+sections,c0562,MEASURED,2.0,sections/05_ablation.tex,354,43
+sections,c0563,PROJECTED,1.3,sections/05_ablation.tex,354,25
+sections,c0564,MEASURED,1.0,sections/05_ablation.tex,355,44
+sections,c0565,PROJECTED,2.5,sections/05_ablation.tex,355,26
+sections,c0566,MEASURED,2.0,sections/05_ablation.tex,356,45
+sections,c0567,PROJECTED,3.3,sections/05_ablation.tex,356,27
+sections,c0568,MEASURED,2.0,sections/05_ablation.tex,357,46
+sections,c0569,PROJECTED,3.3,sections/05_ablation.tex,357,28
+sections,c0570,PROJECTED,1.0,sections/05_ablation.tex,358,29
+sections,c0571,PROJECTED,17.0,sections/05_ablation.tex,358,30
+sections,c0572,PROJECTED,2.0,sections/05_ablation.tex,359,31
+sections,c0573,PROJECTED,22.1,sections/05_ablation.tex,359,32
+sections,c0574,PROJECTED,2.0,sections/05_ablation.tex,360,33
+sections,c0575,PROJECTED,55.3,sections/05_ablation.tex,360,34
+sections,c0576,PROJECTED,cells are the only ones expected to trip the cap; .,sections/05_ablation.tex,387,35
+sections,c0577,PROJECTED,"The expected axis importance ranking, pending",sections/05_ablation.tex,392,36
+sections,c0578,MEASURED,diversity ( ).,sections/05_ablation.tex,399,47
+sections,c0579,MEASURED,0 $\to$ 1 metal-compliance rate when enabled,sections/05_ablation.tex,401,48
+sections,c0580,PROJECTED,.,sections/05_ablation.tex,405,37
+sections,c0581,PROJECTED,$k \approx 20$ on the Vina channel; .,sections/05_ablation.tex,407,38
+sections,c0582,MEASURED,cost of validity\%; at the protocol level,sections/05_ablation.tex,409,49
+sections,c0583,PROJECTED,Vina-aggregate table; .,sections/05_ablation.tex,413,39
+sections,c0584,MEASURED,The values below come from,sections/05_ablation.tex,474,50
+sections,c0585,DESIGN,metrics and therefore have cells in this panel.,sections/05_ablation.tex,482,150
+sections,c0586,MEASURED,-2.3979,sections/05_ablation.tex,491,51
+sections,c0587,MEASURED,233.5373,sections/05_ablation.tex,492,52
+sections,c0588,MEASURED,9.6667,sections/05_ablation.tex,493,53
+sections,c0589,MEASURED,on\_state\_distribution} & $\emptyset$ & & no Pt/Ru/Ir/Au/Rh/Os centres in cell --- expected for met,sections/05_ablation.tex,494,54
+sections,c0590,MEASURED,0.0000,sections/05_ablation.tex,495,55
+sections,c0591,MEASURED,\texttt{monodentate\_cl\_count} & $0$ & & ditto \\,sections/05_ablation.tex,496,56
+sections,c0592,MEASURED,0.0000,sections/05_ablation.tex,497,57
+sections,c0593,MEASURED,0.0000,sections/05_ablation.tex,498,58
+sections,c0594,MEASURED,0.1250,sections/05_ablation.tex,499,59
+sections,c0595,DESIGN,\textbf{0/9 P0 cells were promoted from to \MEASURED{},sections/05_ablation.tex,505,151
+sections,c0596,MEASURED,\textbf{0/9 P0 cells were promoted from \DESIGN{} to,sections/05_ablation.tex,505,60
+sections,c0597,MEASURED,"this subsection; they are at a single (pocket, seed)",sections/05_ablation.tex,509,61
+sections,c0598,PROJECTED,cell and therefore on the Round-12 $N{=}10{\times}3$,sections/05_ablation.tex,510,40
+sections,c0599,MEASURED,on a single 1-pocket $\times$ 3-seed cell,sections/05_ablation.tex,567,62
+sections,c0600,PROJECTED,on the Round-12 $N{=}10{\times}3$ scientific,sections/05_ablation.tex,570,41
+sections,c0601,PROJECTED,more diverse drug-likeness). on the full,sections/05_ablation.tex,593,42
+sections,c0602,PROJECTED,place). on the full matrix; the smoke-run,sections/05_ablation.tex,614,43
+sections,c0603,PROJECTED,at this round.,sections/05_ablation.tex,716,44
+sections,c0604,MEASURED,all 15 cells are on this box.,sections/05_ablation.tex,732,63
+sections,c0605,DESIGN,\item 0 cells in §5 promoted to \MEASURED{} by this,sections/05_ablation.tex,811,152
+sections,c0606,MEASURED,\item 0 \DESIGN{} cells in §5 promoted to by this,sections/05_ablation.tex,811,64
+sections,c0607,MEASURED,"\emph{as a negative result}, not a substitution",sections/05_ablation.tex,813,65
+sections,c0608,MEASURED,0.90,sections/05_ablation.tex,870,66
+sections,c0609,PROJECTED,The Cohen's-$d$ panel below is from prior Lambda,sections/05_ablation.tex,903,45
+sections,c0610,PROJECTED,$d$ cell below can be promoted from $\to$,sections/05_ablation.tex,915,46
+sections,c0611,MEASURED,.,sections/05_ablation.tex,916,67
+sections,c0612,PROJECTED,\paragraph{5 $\times$ 4 effect-size panel ( on,sections/05_ablation.tex,918,47
+sections,c0613,DESIGN,"$n{=}1$ smoke, on $n{=}15$ production).}",sections/05_ablation.tex,919,153
+sections,c0614,PROJECTED,0.3,sections/05_ablation.tex,928,48
+sections,c0615,PROJECTED,0.2,sections/05_ablation.tex,928,49
+sections,c0616,PROJECTED,0.1,sections/05_ablation.tex,928,50
+sections,c0617,PROJECTED,0.0,sections/05_ablation.tex,928,51
+sections,c0618,PROJECTED,0.1,sections/05_ablation.tex,929,52
+sections,c0619,PROJECTED,0.1,sections/05_ablation.tex,929,53
+sections,c0620,PROJECTED,0.0,sections/05_ablation.tex,929,54
+sections,c0621,PROJECTED,0.0,sections/05_ablation.tex,929,55
+sections,c0622,PROJECTED,-0.2,sections/05_ablation.tex,930,56
+sections,c0623,PROJECTED,-0.3,sections/05_ablation.tex,930,57
+sections,c0624,PROJECTED,-0.4,sections/05_ablation.tex,930,58
+sections,c0625,PROJECTED,0.0,sections/05_ablation.tex,930,59
+sections,c0626,PROJECTED,-0.4,sections/05_ablation.tex,931,60
+sections,c0627,PROJECTED,-0.2,sections/05_ablation.tex,931,61
+sections,c0628,PROJECTED,-0.1,sections/05_ablation.tex,931,62
+sections,c0629,PROJECTED,0.0,sections/05_ablation.tex,931,63
+sections,c0630,PROJECTED,-0.5,sections/05_ablation.tex,932,64
+sections,c0631,PROJECTED,-0.5,sections/05_ablation.tex,932,65
+sections,c0632,PROJECTED,-0.3,sections/05_ablation.tex,932,66
+sections,c0633,PROJECTED,0.0,sections/05_ablation.tex,932,67
+sections,c0634,CITEDONLY,are .,sections/05_ablation.tex,951,1
+sections,c0635,PROJECTED,depending on sign. The panel above is,sections/05_ablation.tex,960,68
+sections,c0636,MEASURED,\paragraph{Reference probes ( on the,sections/05_ablation.tex,1044,68
+sections,c0637,CITEDONLY,\paragraph{15-metal CN/OS coverage table (,sections/05_ablation.tex,1062,2
+sections,c0638,DESIGN,\paragraph{Per-pocket \texttt{compliance\_rate} cell (,sections/05_ablation.tex,1092,154
+sections,c0639,DESIGN,\texttt{compliance\_rate} column is ; on completion the,sections/05_ablation.tex,1097,155
+sections,c0640,DESIGN,scaffold; otherwise (the test panel's,sections/05_ablation.tex,1104,156
+sections,c0641,MEASURED,"\paragraph{6-SMILES reference smoke ( , reproducible",sections/05_ablation.tex,1208,69
+sections,c0642,DESIGN,\paragraph{Per-pocket batch-mean column ( pending,sections/05_ablation.tex,1243,157
+sections,c0643,DESIGN,batch-mean columns are ; on completion the expected,sections/05_ablation.tex,1248,158
+sections,c0644,PROJECTED,claim that touches wet-lab is \SEARCHONLY{} / /,sections/05_ablation.tex,1261,69
+sections,c0645,DESIGN,in the paper posture; these metrics are no,sections/05_ablation.tex,1262,159
+sections,c0646,MEASURED,exception. The 6-SMILES reference table above is,sections/05_ablation.tex,1263,70
+sections,c0647,PROJECTED,on the 1920-cell matrix.,sections/05_ablation.tex,1279,70
+sections,c0648,PROJECTED,on the matrix.,sections/05_ablation.tex,1286,71
+sections,c0649,PROJECTED,on the matrix.,sections/05_ablation.tex,1297,72
+sections,c0650,MEASURED,potency. saturation captured honestly.,sections/05_ablation.tex,1303,71
+sections,c0651,MEASURED,"The Ru subset of MetalCytoToxDB (19\,135 rows; in",sections/05_ablation.tex,1330,72
+sections,c0652,MEASURED,\paragraph{3-arm ablation panel ( via,sections/05_ablation.tex,1341,73
+sections,c0653,MEASURED,0.666,sections/05_ablation.tex,1355,74
+sections,c0654,MEASURED,0.034,sections/05_ablation.tex,1356,75
+sections,c0655,MEASURED,0.046,sections/05_ablation.tex,1357,76
+sections,c0656,CITEDONLY,0.144,sections/05_ablation.tex,1359,3
+sections,c0657,MEASURED,state. pretrain RMSE drops from $0.4875$,sections/05_ablation.tex,1383,77
+sections,c0658,MEASURED,\paragraph{Panel ( via,sections/05_ablation.tex,1449,78
+sections,c0659,MEASURED,2.3,sections/05_ablation.tex,1460,79
+sections,c0660,MEASURED,0.00,sections/05_ablation.tex,1461,80
+sections,c0661,MEASURED,0.107,sections/05_ablation.tex,1462,81
+sections,c0662,MEASURED,0.075,sections/05_ablation.tex,1463,82
+sections,c0663,MEASURED,0.379,sections/05_ablation.tex,1464,83
+sections,c0664,MEASURED,0.000,sections/05_ablation.tex,1465,84
+sections,c0665,MEASURED,0.000,sections/05_ablation.tex,1466,85
+sections,c0666,MEASURED,0.000,sections/05_ablation.tex,1467,86
+sections,c0667,MEASURED,distinct metal-ligand pairs (coarse) & $4$ (Pt-Cl/F/N/O) & $1$ (Pt-Cl) & $+3$ & \\,sections/05_ablation.tex,1468,87
+sections,c0668,MEASURED,"}}$, N$_{\text{arom}}$, triazole-N, O$_{\text{acyl}}$, O$_{\text{alcohol/ether}}$) & $1$ & $+6$ & \\",sections/05_ablation.tex,1469,88
+sections,c0669,MEASURED,( in \texttt{wf\_lift\_ev3/final.md}).,sections/05_ablation.tex,1503,89
+sections,c0670,MEASURED,\paragraph{Panel ( via,sections/05_ablation.tex,1561,90
+sections,c0671,MEASURED,0.046,sections/05_ablation.tex,1571,91
+sections,c0672,PROJECTED,0.046,sections/05_ablation.tex,1571,73
+sections,c0673,PROJECTED,0.71,sections/05_ablation.tex,1572,74
+sections,c0674,PROJECTED,0.04,sections/05_ablation.tex,1572,75
+sections,c0675,PROJECTED,0.66,sections/05_ablation.tex,1573,76
+sections,c0676,PROJECTED,0.04,sections/05_ablation.tex,1573,77
+sections,c0677,PROJECTED,0.62,sections/05_ablation.tex,1574,78
+sections,c0678,PROJECTED,0.04,sections/05_ablation.tex,1574,79
+sections,c0679,PROJECTED,0.58,sections/05_ablation.tex,1575,80
+sections,c0680,PROJECTED,0.04,sections/05_ablation.tex,1575,81
+sections,c0681,PROJECTED,0.667,sections/05_ablation.tex,1577,82
+sections,c0682,PROJECTED,0.043,sections/05_ablation.tex,1577,83
+sections,c0683,MEASURED,0.0160,sections/05_ablation.tex,1579,92
+sections,c0684,PROJECTED,\item \textbf{Multi-task arm is on this paper,sections/05_ablation.tex,1608,84
+sections,c0685,MEASURED,round.} Single-task values are in,sections/05_ablation.tex,1609,93
+sections,c0686,MEASURED,\paragraph{Panel ( via,sections/05_ablation.tex,1661,94
+sections,c0687,MEASURED,0.00,sections/05_ablation.tex,1671,95
+sections,c0688,MEASURED,0.379,sections/05_ablation.tex,1672,96
+sections,c0689,MEASURED,0.000,sections/05_ablation.tex,1673,97
+sections,c0690,MEASURED,0.107,sections/05_ablation.tex,1674,98
+sections,c0691,MEASURED,0.075,sections/05_ablation.tex,1675,99
+sections,c0692,MEASURED,0.654,sections/05_ablation.tex,1676,100
+sections,c0693,MEASURED,0.000,sections/05_ablation.tex,1677,101
+sections,c0694,MEASURED,0.087,sections/05_ablation.tex,1678,102
+sections,c0695,MEASURED,-2.34,sections/05_ablation.tex,1679,103
+sections,c0696,MEASURED,distinct metal-ligand pairs (fine) & $7$ & $1$ & $+6$ & \\,sections/05_ablation.tex,1680,104
+sections,c0697,MEASURED,86.5,sections/05_ablation.tex,1681,105
+sections,c0698,MEASURED,SyntheMol rules. in,sections/05_ablation.tex,1703,106
+sections,c0699,MEASURED,\paragraph{Panel ( via,sections/05_ablation.tex,1771,107
+sections,c0700,MEASURED,4.1,sections/05_ablation.tex,1782,108
+sections,c0701,MEASURED,38.2,sections/05_ablation.tex,1783,109
+sections,c0702,MEASURED,5.8,sections/05_ablation.tex,1784,110
+sections,c0703,MEASURED,124.7,sections/05_ablation.tex,1785,111
+sections,c0704,MEASURED,\paragraph{Panel ( via,sections/05_ablation.tex,1878,112
+sections,c0705,MEASURED,0.0740,sections/05_ablation.tex,1889,113
+sections,c0706,MEASURED,-0.0583,sections/05_ablation.tex,1890,114
+sections,c0707,MEASURED,4.70,sections/05_ablation.tex,1891,115
+sections,c0708,MEASURED,0.0676,sections/05_ablation.tex,1893,116
+sections,c0709,DESIGN,"d Lambda$\times$CFM, $\S$\ref{sec:future:hybrid})} & & \DESIGN & \DESIGN & \DESIGN & \textbf{yes} \\",sections/05_discussion.tex,276,1
+sections,c0710,DESIGN,"d Lambda$\times$CFM, $\S$\ref{sec:future:hybrid})} & \DESIGN & & \DESIGN & \DESIGN & \textbf{yes} \\",sections/05_discussion.tex,276,2
+sections,c0711,DESIGN,"d Lambda$\times$CFM, $\S$\ref{sec:future:hybrid})} & \DESIGN & \DESIGN & & \DESIGN & \textbf{yes} \\",sections/05_discussion.tex,276,3
+sections,c0712,DESIGN,"d Lambda$\times$CFM, $\S$\ref{sec:future:hybrid})} & \DESIGN & \DESIGN & \DESIGN & & \textbf{yes} \\",sections/05_discussion.tex,276,4
+sections,c0713,DESIGN,pending the \texttt{proof\_search.py:2580-2584},sections/05_discussion.tex,314,5
+sections,c0714,DESIGN,calibration-curve slope; reviewers should treat this as,sections/05_discussion.tex,400,6
+sections,c0715,MEASURED,"grounded in a number from the cited internal reports,",sections/06_limitations.tex,16,1
+sections,c0716,MEASURED,\citep{rusanov2025platinai}. Both gates are failures:,sections/06_limitations.tex,39,2
+sections,c0717,MEASURED,ultracodes ($60$ min total concurrent budget). actual,sections/06_limitations.tex,62,3
+sections,c0718,MEASURED,$12/12$ backbone tensors into the baseline,sections/06_limitations.tex,84,4
+sections,c0719,MEASURED,random initialisation. evidence: Stage 1.5 line 5,sections/06_limitations.tex,94,5
+sections,c0720,MEASURED,The $m_2$ PlatinAI A2780 cell line returns,sections/06_limitations.tex,110,6
+sections,c0721,MEASURED,All reported numbers are on a single Blackwell-class,sections/06_limitations.tex,140,7
+sections,c0722,DESIGN,Table~\ref{tab:sbdd-comparison} is pending a cloud-GPU,sections/06_limitations.tex,158,1
+sections,c0723,MEASURED,"json}), and the real-pocket strict measurement is",sections/06_limitations.tex,206,8
+sections,c0724,MEASURED,from $\mathrm{Inf}$ to $2.996$ and,sections/06_limitations.tex,210,9
+sections,c0725,MEASURED,$\mathrm{decode\_ratio}$ from $0/192$ to $1.000$,sections/06_limitations.tex,211,10
+sections,c0726,DESIGN,$ \!\to\!\MEASURED{}$ promotion under the strict,sections/06_limitations.tex,221,2
+sections,c0727,MEASURED,$\DESIGN{}\!\to\! $ promotion under the strict,sections/06_limitations.tex,221,11
+sections,c0728,DESIGN,from to \MEASURED{} by this inventory; every,sections/06_limitations.tex,268,3
+sections,c0729,MEASURED,from \DESIGN{} to by this inventory; every,sections/06_limitations.tex,268,12
+sections,c0730,MEASURED,headline = \textit{n/a} (target \textit{see METRICS\_TARGET,sections/06_limitations_auto.tex,24,1
+sections,c0731,MEASURED,headline = $0.535$ (target $0.7$).,sections/06_limitations_auto.tex,30,2
+sections,c0732,MEASURED,headline = $0.712$ (target $0.86$).,sections/06_limitations_auto.tex,36,3
+sections,c0733,MEASURED,headline = \textit{n/a} (target \textit{see METRICS\_TARGET,sections/06_limitations_auto.tex,42,4
+sections,c0734,MEASURED,headline = $0.553$ (target \textit{see METRICS\_TARGETS.md},sections/06_limitations_auto.tex,48,5
+sections,c0735,MEASURED,headline = \textit{n/a} (target \textit{see METRICS\_TARGET,sections/06_limitations_auto.tex,54,6
+sections,c0736,MEASURED,All reported numbers in this paper are on a single,sections/06_limitations_auto.tex,83,7
+sections,c0737,DESIGN,Table~\ref{tab:sbdd-comparison} is pending a cloud-GPU,sections/06_limitations_auto.tex,93,1
+sections,c0738,PROJECTED,headline number is on the unseen 5 cell lines; the,sections/06_limitations_auto.tex,109,1

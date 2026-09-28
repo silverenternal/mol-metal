@@ -1,0 +1,18 @@
+{
+  "hook": "vina_min",
+  "date": "2026-09-25T22:31:47+0800",
+  "wall_clock_s": 0.007618904113769531,
+  "pocket_id": "synthetic:CHRM1",
+  "n_samples": 3,
+  "n_docked": 0,
+  "n_requested": 3,
+  "exhaustiveness": 4,
+  "best_score": NaN,
+  "scores": [],
+  "errors": [
+    "CCO: Error: Vina requires a PDBQT file for the (rigid) receptor.",
+    "c1ccccc1: Error: Vina requires a PDBQT file for the (rigid) receptor.",
+    "CCN: Error: Vina requires a PDBQT file for the (rigid) receptor."
+  ],
+  "vina_python_binding": true
+}

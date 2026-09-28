@@ -1,0 +1,183 @@
+{
+  "metric": "nci60_precious_9cell_auc",
+  "description": "Test per-cell ROC-AUC on the precious-metal (Ru, Ir, Rh, Os, Re) 9-cell-line subset of MetalCytoToxDB overlapping with the NCI-60 panel (k=9 cell lines) with D-MPNN k-cell-line multi-task (9 cls + 9 reg heads).",
+  "unit": "ROC-AUC (0-1, higher better) per cell line",
+  "scope": "tier1_precious_metal_anticancer",
+  "source": "molmetal/scripts/train_nci60_10cell.py (seeds=[0, 1, 2], epochs=50, scaffold_split=True)",
+  "krasnov_2026_baseline_auc": 0.81,
+  "gate_target": 0.7,
+  "value_overall_mean_auc": 0.80072017249287,
+  "value_overall_mean_std": 0.01598032473882782,
+  "per_cell_line": {
+    "MCF7": {
+      "auc_mean": 0.7440865820927224,
+      "auc_std": 0.0016994767884922141,
+      "per_seed": [
+        0.7421363610033018,
+        0.7438452180965069,
+        0.7462781671783583
+      ]
+    },
+    "A549": {
+      "auc_mean": 0.7758007705918343,
+      "auc_std": 0.002867066656031844,
+      "per_seed": [
+        0.7779670266069154,
+        0.7776859094141186,
+        0.771749375754469
+      ]
+    },
+    "A2780": {
+      "auc_mean": 0.6930695970695971,
+      "auc_std": 0.025402824500440797,
+      "per_seed": [
+        0.7131428571428572,
+        0.7088351648351648,
+        0.6572307692307693
+      ]
+    },
+    "A2780cis": {
+      "auc_mean": 0.7277591973244147,
+      "auc_std": 0.04063327225760636,
+      "per_seed": [
+        0.7692307692307693,
+        0.7414715719063545,
+        0.6725752508361205
+      ]
+    },
+    "HCT116": {
+      "auc_mean": 0.7583619702176403,
+      "auc_std": 0.014595936481233977,
+      "per_seed": [
+        0.75893470790378,
+        0.7759450171821306,
+        0.7402061855670102
+      ]
+    },
+    "PC3": {
+      "auc_mean": 0.87,
+      "auc_std": 0.004082482904638634,
+      "per_seed": [
+        0.87,
+        0.865,
+        0.875
+      ]
+    },
+    "HL60": {
+      "auc_mean": 0.9320486815415822,
+      "auc_std": 0.013556414912619033,
+      "per_seed": [
+        0.9503042596348885,
+        0.9178498985801216,
+        0.9279918864097363
+      ]
+    },
+    "SKOV3": {
+      "auc_mean": 0.9046345811051694,
+      "auc_std": 0.04744681516651039,
+      "per_seed": [
+        0.9572192513368984,
+        0.9144385026737968,
+        0.8422459893048129
+      ]
+    },
+    "DU145": {
+      "auc_mean": null,
+      "auc_std": null,
+      "per_seed": [
+        null,
+        null,
+        null
+      ]
+    }
+  },
+  "n_seeds": 3,
+  "n_rows": 5207,
+  "n_cells": 9,
+  "cell_lines": [
+    "MCF7",
+    "A549",
+    "A2780",
+    "A2780cis",
+    "HCT116",
+    "PC3",
+    "HL60",
+    "SKOV3",
+    "DU145"
+  ],
+  "metals": [
+    "Ru",
+    "Ir",
+    "Rh",
+    "Os",
+    "Re"
+  ],
+  "timestamp": "2026-09-25",
+  "data_source": "MetalCytoToxDB.csv (precious-metal subset, NCI-60-overlapping cells)",
+  "status": "MEASURED",
+  "honest_framing": "Data source: MetalCytoToxDB precious-metal (Ru, Ir, Rh, Os, Re) x NCI-60 9-cell-line subset (5,207 rows); NCI-60 raw release has no SMILES so we use MetalCytoToxDB precious subset restricted to NCI-60-overlapping cell lines. Model: D-MPNN k-cell-line multi-task (dmpnn_kcell_multitask) with 9 cls + 9 reg heads. Protocol: scaffold split, 3 seeds [0,1,2], 50 epochs. Krasnov 2026 baseline = 0.81 cite-only; iMoLD cite-only. NOT a head-to-head against Krasnov chemprop v2 reference — same-protocol comparison requires chemprop v2 backbone + full training. Cites TODO-140/141/142/143/144.",
+  "framing": "NCI-60 raw release has no SMILES; we use the MetalCytoToxDB precious-metal subset restricted to 9 NCI-60-overlapping cell lines.",
+  "split": "scaffold",
+  "model": "dmpnn_kcell_multitask",
+  "audit_provenance": {
+    "audit_date": "2026-09-27",
+    "audit_doc": "TODO/completed/nci60_9cell_audit.md",
+    "verdict": "claimed == actual (seeds=[0,1,2], epochs=50, scaffold_split=True all match)",
+    "code_defaults_match_json": {
+      "MT_EPOCHS": 50,
+      "MT_SEEDS_DEFAULT": [0, 1, 2],
+      "scaffold_split_flag_present": true,
+      "source_path": "molmetal/scripts/train_nci60_10cell.py"
+    },
+    "report_header_match": {
+      "split": "scaffold (Bemis-Murcko) 70/10/20",
+      "seeds": [0, 1, 2],
+      "epochs": 50,
+      "overall_auc": 0.8007,
+      "overall_auc_std": 0.0160,
+      "report_path": "molmetal/reports/wf_nci60_precious_9cell/final.md"
+    },
+    "per_seed_mean_auc_from_report": [0.8174, 0.8056, 0.7792],
+    "per_seed_mean_auc_mean": 0.8007,
+    "correction_note": "Earlier turn claimed seeds=N/A epochs=N/A. This audit confirms seeds=[0,1,2], epochs=50 are real and reproducible across the trainer source, JSON, and wf report. The N/A claim was wrong."
+  },
+  "wf31_phase5_lift_update": {
+    "metric_id": "m2",
+    "workflow": "Wf-31",
+    "phase": "Phase 5 — MEASURED vs R17 baseline lift comparison",
+    "date_utc": "2026-09-26",
+    "r17_baseline_retained_as_canonical": true,
+    "r17_baseline_source_note": "**IMPORTANT**: The m2 R17 baseline 0.6476 (Pt A2780cis, rounded to 0.648 in task spec) lives in **platinai_4cell_auc.json** (value_a2780cis_auc field), NOT in this file. This file (nci60_precious_9cell_auc.json) is a DIFFERENT metric: precious-metal (Ru, Ir, Rh, Os, Re) × NCI-60 9-cell-line subset of MetalCytoToxDB (3 seeds × 50 epoch D-MPNN k-cell-line multi-task). The A2780cis per-cell AUC in this file is 0.7278 ± 0.041 (a different cohort). Cross-reference both JSONs.",
+    "r17_baseline_value_platinai_4cell": 0.6475694444444444,
+    "r17_baseline_value_nci60_9cell_A2780cis": 0.7277591973244147,
+    "r17_baseline_source_platinai_4cell": "metrics/by_metric/platinai_4cell_auc.json value_a2780cis_auc field (PlatinAI 4,078 Pt 4-cell dataset, 3 seeds × 50 epoch D-MPNN 4-cell-line multi-task scaffold split, A2780cis per-seed: 0.6563 / 0.6458 / 0.6406)",
+    "r17_baseline_source_nci60_9cell": "this file per_cell_line.A2780cis.auc_mean field",
+    "r17_baseline_value_overall_mean_auc_preserved": 0.80072017249287,
+    "r18_wf31_status": "DEFER_NO_MEASURED_VALUE",
+    "r18_wf31_measured_value": null,
+    "r18_wf31_wall_seconds": null,
+    "r18_wf31_seed": null,
+    "r18_wf31_smoke_only": true,
+    "r18_wf31_smoke_config": "2 epochs × batch 8 × hidden 64 × depth 2 (per TODO-86 §1)",
+    "r18_wf31_full_spec": "4-cell × 5-seed × 50-epoch × {se3sb, tmqm} dual-init = 400 epoch-runs at ~12-24 h GPU wall per init",
+    "r18_wf31_defer_reason": "Wf-31 Phase 4 dual-line parallel per TODO/completed/86_wf31_phase4_dual_line.md only executed smoke-version of m2 trainer (molmetal/scripts/train_cisplatin_resistance_v2.py). Full 4-cell × 5-seed × 50-epoch × {se3sb, tmqm} dual-init GPU sweep requires ~12-24 h per init on RTX 5090 (GPU 1) which did not fit in single workflow session. tmQM init inherits encoder arch mismatch from Wf-29 (V4MultiTaskDMPNN.encoder.dmpnn DirectedMPNN hidden=64 vs tmQM pretrained encoder hidden=300) → random init fallback, same caveat that blocked Wf-22 honest-negative.",
+    "lift_r18_minus_r17": null,
+    "pass_target_r18": "≥0.85 (R18 PLAN §3, R20 P3 target, Rusanov tier)",
+    "sota_target": "0.85 (Rusanov 2025 baseline)",
+    "ship_gate": "≥0.85 (Rusanov tier)",
+    "ship_gate_passed": null,
+    "verdict": "HONEST_NO_MEASURED",
+    "verdict_detail": "Wf-31 Phase 4 dual-line parallel only executed smoke-version of m2 (2 epochs × batch 8 × hidden 64 × depth 2). The full 4-cell × 5-seed × 50-epoch × {se3sb, tmqm} dual-init spec requires ~12-24 h GPU wall-time per init on RTX 5090 (deferred to R20·P3). The PlatinAI 4-cell baseline 0.6476 has 3-seed std = 0.0065 (low variance), so any honest lift on this metric will need to clear ~0.85 to claim a real Rusanov-tier lift. R17 baseline (0.6476) remains the canonical MEASURED number for the m2 Pt A2780cis AUC metric.",
+    "r20_plan_item": "R20·P3 — m2 Pt A2780cis AUC GPU retrain (4-cell × 5-seed × 50-epoch × {se3sb, tmqm} dual-init, pre-condition: resolve tmQM encoder arch mismatch + wet-lab validation per TODO-81)",
+    "companion_files": [
+      "molmetal/reports/wf31_m1_m2_m7_lift_analysis.json",
+      "molmetal/reports/wf31_m1_m2_m7_lift_summary.md",
+      "molmetal/reports/wf31_m2_summary.json (Phase 4 predecessor summary)",
+      "metrics/by_metric/platinai_4cell_auc.json (m2 R17 baseline 0.6476)"
+    ],
+    "honest_negative_provenance": {
+      "policy": "party-twenty-spirit §3.5 (0 容忍 + 不掩盖)",
+      "applied": "m2 Wf-31 MEASURED = null (smoke only). Status = HONEST_NO_MEASURED. No fabricated headline value invented. m2 R17 baseline 0.648 cross-referenced in platinai_4cell_auc.json (this file is broader 9-cell metric, A2780cis 0.7278 ≠ R17 m2 baseline 0.6476)."
+    }
+  }
+}

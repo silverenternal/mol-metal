@@ -1,0 +1,71 @@
+{
+  "recipe": "wf32_pb_valid_summary",
+  "n_evaluations": 2,
+  "n_target_evaluations": 2,
+  "n_pockets": 1,
+  "n_candidates": 1,
+  "pb_modes": [
+    "mol",
+    "dock"
+  ],
+  "trajectory_method": "se3sb",
+  "n_pb_checks_mol": 14,
+  "n_pb_checks_dock": 26,
+  "per_pocket_per_method": {
+    "pdk1|mol": {
+      "n": 1,
+      "mean_pass_rate": 0.0,
+      "std_pass_rate": 0.0,
+      "min_pass_rate": 0.0,
+      "max_pass_rate": 0.0,
+      "n_passed": 0,
+      "n_failed": 0,
+      "n_skipped": 1,
+      "n_error": 0,
+      "n_total": 1
+    },
+    "pdk1|dock": {
+      "n": 1,
+      "mean_pass_rate": 0.0,
+      "std_pass_rate": 0.0,
+      "min_pass_rate": 0.0,
+      "max_pass_rate": 0.0,
+      "n_passed": 0,
+      "n_failed": 0,
+      "n_skipped": 1,
+      "n_error": 0,
+      "n_total": 1
+    }
+  },
+  "overall_pb_pass_rate": {
+    "mol": 0.0,
+    "dock": 0.0
+  },
+  "aggregate": {
+    "pdk1|mol": {
+      "n": 1,
+      "mean_pass_rate": 0.0,
+      "std_pass_rate": 0.0,
+      "min_pass_rate": 0.0,
+      "max_pass_rate": 0.0,
+      "n_passed": 0,
+      "n_failed": 0,
+      "n_skipped": 1,
+      "n_error": 0,
+      "n_total": 1
+    },
+    "pdk1|dock": {
+      "n": 1,
+      "mean_pass_rate": 0.0,
+      "std_pass_rate": 0.0,
+      "min_pass_rate": 0.0,
+      "max_pass_rate": 0.0,
+      "n_passed": 0,
+      "n_failed": 0,
+      "n_skipped": 1,
+      "n_error": 0,
+      "n_total": 1
+    }
+  },
+  "date_utc": "2026-09-26"
+}

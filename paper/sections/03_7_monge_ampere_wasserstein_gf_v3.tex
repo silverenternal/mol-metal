@@ -1,0 +1,80 @@
+% =============================================================================
+%  Paper §3.7 -- Wasserstein-Geometric Foundations (Monge-Ampere +
+%  Wasserstein gradient flow) (v3 TEMPLATE).
+%  (Wf-33 Phase 3, 2026-09-26, awaits Wf-32 m16 + m19 GPU retrain)
+%
+%  Source-of-truth (when filled):
+%    - Section body: paper/sections/03_7_monge_ampere_wasserstein_gf.tex
+%      (Wf-3 ship, 2026-09-26, R17 / Wf-3 close-out -- DO NOT MODIFY)
+%    - R18 MEASURED rows: TODO/pending/82_metric_gap_filling_plan.md
+%                        G5 (m16 Affinity Pearson r) + G6 (m19
+%                        Multi-metal LOMO mean AUC), Wf-32 Phase D
+%                        5-seed x 50-epoch retrain via
+%                        molmetal/scripts/train_affinity_regression.py
+%                        + train_multimetal_lomo.py
+%                        (molmetal/reports/wf32_*/final.md,
+%                        target ship 2026-10-05)
+%    - R18 PROJECTED ceilings: TODO/02_metrics/METRICS_TARGETS.md §2
+%                        per-metric gate targets (m16 Affinity
+%                        Pearson r >= 0.50; m19 LOMO >= 0.70)
+%
+%  Diff vs Wf-3 ship (03_7_monge_ampere_wasserstein_gf.tex):
+%    (a) Single paragraph added below the existing §3.7 body, carrying
+%        the Wf-32 R18 MEASURED rows for the G5 (m16 Affinity
+%        Pearson r) and G6 (m19 Multi-metal LOMO mean AUC) gaps. The
+%        existing body is preserved verbatim (R17 / Wf-3 version is
+%        the load-bearing §3.7 reference; this v3 is the Wf-32
+%        fill-target).
+%    (b) \MEASURED{TBD Wf-32} placeholders are replaced by the actual
+%        5-seed x 50-epoch numbers + (n_seeds x epochs) provenance
+%        strings once Wf-32 ships. The R17 anchors (0.207 m16
+%        Pearson r, 0.535 m19 LOMO) and the R18 PROJECTED ceilings
+%        (>= 0.50 m16, >= 0.70 m19) are stable across the Wf-32
+%        window.
+%    (c) No cell is silently fabricated. If Wf-32 fails, the
+%        placeholders are replaced by \textbf{HONEST-NEGATIVE} +
+%        the failure mode (per party-twenty-spirit §3.5).
+%
+%  Status tags (defined in paper/main.tex:104-110):
+%    \MEASURED{}            = real measurement on this box at the
+%                             reported seed/panel size.
+%    \PROJECTED{}           = structural-fix projection (R18 ceiling).
+%    \MEASURED{TBD Wf-32}   = pending GPU-retrain anchor; the Wf-32
+%                             tag maps to molmetal/reports/wf32_*/
+%                             (TODO-82 §2 Phase D).
+%
+%  Honest framing (v3, 2026-09-26):
+%    - This v3 is a SHELL ONLY. The R18 MEASURED rows for m16
+%      Affinity Pearson r and m19 Multi-metal LOMO are
+%      \MEASURED{TBD Wf-32} placeholders pending the Wf-32 Phase D
+%      GPU retrain.
+%    - The R17 anchors 0.207 (m16 best-margin, 3-seed spread
+%      0.005/0.519/0.071, seed-fragile) and 0.535 (m19 LOMO, 15
+%      runs) are stable; the R18 PROJECTED ceilings >= 0.50
+%      (m16, more realistic than Boltz-2 0.86) and >= 0.70
+%      (m19) are also stable.
+%    - The existing Wf-3 §3.7 body is the load-bearing method
+%      reference and is NOT modified by this v3 addendum.
+% =============================================================================
+
+\paragraph{Expected Wasserstein-GF lift on $m_{16}$ Affinity
+Pearson $r$ and $m_{19}$ Multi-metal LOMO AUC (v3 placeholder,
+Wf-32 pending).}
+The R18 backlog projects two lifts via the Wasserstein-geometric
+chain (T3 Monge-Amp\`ere + T4 Wasserstein gradient flow):
+$m_{16}$ Affinity Pearson $r$ $0.207 \to \geq 0.50$ (G5,
+realistic ceiling vs.\ Boltz-2 $0.86$, seed-fragile per the
+$0.005 / 0.519 / 0.071$ spread) and $m_{19}$ Multi-metal LOMO
+mean AUC $0.535 \to \geq 0.70$ (G6, P1 deferred to Wf-32 per
+the Theorem 1 stability dependency).  Both R17 anchors are
+\MEASURED{}; both R18 ceilings are \PROJECTED{} per
+\texttt{TODO/02\_metrics/METRICS\_TARGETS.md}\S2.  The Wf-32
+replacements are \MEASURED{TBD Wf-32} placeholders for the
+Phase D $5$-seed $\times$ $50$-epoch GPU retrain via
+\texttt{train\_affinity\_regression.py} (RTX $5090$ \texttt{gpu1},
+PlatinAI $4$-cell + MetalCytoToxDB $5$-metal affinity cohort,
+$\sim 4$\,h) and \texttt{train\_multimetal\_lomo.py} (Blackwell
+\texttt{gpu0}, $5$-seed $\times$ $50$-epoch leave-one-metal-out,
+$\sim 6$\,h; TODO-82 \S2 Phase D, target ship 2026-10-05).
+When Wf-32 ships, these placeholders are replaced by the actual
+per-seed means + (n\_seeds $\times$ epochs) provenance strings.

@@ -1,0 +1,184 @@
+{
+  "metric": "chemprop_v2_lomo_v2",
+  "description": "Per-metal single-task chemprop v2 binary activity classifier; one independent BinaryClassificationFFN per metal (Ru/Ir/Os/Rh/Re), trained on only that metal's data with 80/20 stratified holdout. Honest in-domain baseline (no cross-metal leakage).  Replaces the broken Wf-146 v1 design (TODO-170 \u00a70; mean AUC 0.446).",
+  "scope": "5 precious metals \u00d7 5 seeds \u00d7 50 epochs",
+  "source": "molmetal/scripts/wf146_chemprop_v2_lomo_v2.py",
+  "gate_target": "G3: per-metal mean in-domain AUC > 0.7",
+  "value": 0.9014689030296891,
+  "value_std": 0.016779831449665356,
+  "per_metal_in_domain": {
+    "Ru": 0.9263982794040094,
+    "Ir": 0.9133802987036205,
+    "Os": 0.9001196172248804,
+    "Rh": 0.8862544830812412,
+    "Re": 0.8811918367346938
+  },
+  "per_metal_seed_auc": {
+    "Ru": {
+      "0": {
+        "auc": 0.9229572186059448,
+        "time_sec": 214.80894470214844,
+        "status": "ok"
+      },
+      "1": {
+        "auc": 0.9252547245550929,
+        "time_sec": 196.50519490242004,
+        "status": "ok"
+      },
+      "2": {
+        "auc": 0.9313052116375047,
+        "time_sec": 202.67755722999573,
+        "status": "ok"
+      },
+      "3": {
+        "auc": 0.9284796941862326,
+        "time_sec": 224.29010009765625,
+        "status": "ok"
+      },
+      "4": {
+        "auc": 0.9239945480352724,
+        "time_sec": 244.92466473579407,
+        "status": "ok"
+      }
+    },
+    "Ir": {
+      "0": {
+        "auc": 0.909639980479414,
+        "time_sec": 71.6747305393219,
+        "status": "ok"
+      },
+      "1": {
+        "auc": 0.9050376641009659,
+        "time_sec": 72.56025528907776,
+        "status": "ok"
+      },
+      "2": {
+        "auc": 0.9107923715096082,
+        "time_sec": 65.58964681625366,
+        "status": "ok"
+      },
+      "3": {
+        "auc": 0.9169988548567121,
+        "time_sec": 79.3055636882782,
+        "status": "ok"
+      },
+      "4": {
+        "auc": 0.9244326225714024,
+        "time_sec": 77.32916307449341,
+        "status": "ok"
+      }
+    },
+    "Os": {
+      "0": {
+        "auc": 0.917384370015949,
+        "time_sec": 55.87771272659302,
+        "status": "ok"
+      },
+      "1": {
+        "auc": 0.9129585326953749,
+        "time_sec": 50.04278206825256,
+        "status": "ok"
+      },
+      "2": {
+        "auc": 0.9246012759170654,
+        "time_sec": 82.63786005973816,
+        "status": "ok"
+      },
+      "3": {
+        "auc": 0.8997208931419458,
+        "time_sec": 40.549925327301025,
+        "status": "ok"
+      },
+      "4": {
+        "auc": 0.845933014354067,
+        "time_sec": 29.821823120117188,
+        "status": "ok"
+      }
+    },
+    "Rh": {
+      "0": {
+        "auc": 0.9022688289412132,
+        "time_sec": 27.130773544311523,
+        "status": "ok"
+      },
+      "1": {
+        "auc": 0.8595431155465462,
+        "time_sec": 23.224771976470947,
+        "status": "ok"
+      },
+      "2": {
+        "auc": 0.8988382972087947,
+        "time_sec": 25.31148052215576,
+        "status": "ok"
+      },
+      "3": {
+        "auc": 0.8845314205520037,
+        "time_sec": 25.67638874053955,
+        "status": "ok"
+      },
+      "4": {
+        "auc": 0.8860907531576485,
+        "time_sec": 25.034281730651855,
+        "status": "ok"
+      }
+    },
+    "Re": {
+      "0": {
+        "auc": 0.8146938775510204,
+        "time_sec": 25.944514989852905,
+        "status": "ok"
+      },
+      "1": {
+        "auc": 0.9182857142857143,
+        "time_sec": 22.821171283721924,
+        "status": "ok"
+      },
+      "2": {
+        "auc": 0.8852244897959183,
+        "time_sec": 22.89734983444214,
+        "status": "ok"
+      },
+      "3": {
+        "auc": 0.8682448979591836,
+        "time_sec": 24.199516773223877,
+        "status": "ok"
+      },
+      "4": {
+        "auc": 0.9195102040816326,
+        "time_sec": 22.876675844192505,
+        "status": "ok"
+      }
+    }
+  },
+  "n_runs": 25,
+  "n_runs_planned": 25,
+  "verdict": "MEASURED",
+  "wall_min": 32.91048359473546,
+  "wall_budget_min": 240.0,
+  "honest_framing_note": "Wf-146 v2 / Wf-194 per-metal single-task chemprop v2 sweep (25/25 ok runs in 32.91 min).  hidden_dim=300, depth=3 (chemprop v2 default backbone, matches TODO-154 in-domain protocol); Adam(lr=0.001); 50 epochs; 80/20 stratified holdout per metal; BF16 autocast on encoder forward + fp32 head + BCEWithLogitsLoss; num_workers=4.  NO multi-task scaffolding, NO shared encoder across metals, NO per-metal heads, NO coord head, NO Wasserstein transfer, NO L2 guard, NO Noam scheduler, NO LR scheduler (plain Adam proved more stable in this single-task per-metal protocol than the v1 Noam scheduler that locked chemprop v2 BCE near 0.69 forever \u2014 see TODO-170 \u00a73.4).  Per-metal single-task design collapses to one independent BinaryClassificationFFN per metal.  Cross-metal LOMO transfer is intentionally NOT measured here (the per-metal design has no metal identity leakage from the held-out fold \u2014 there is no 'LOMO' experimental arm left to run).  The reported per-metal in-domain test_auc is the honest apples-to-apples single-task baseline; cross-metal transfer (e.g. via a learned shared encoder + metal-conditioned head) is a follow-up TODO-170 \u00a75 v3 (TODO-pending).",
+  "config": {
+    "metals": [
+      "Ru",
+      "Ir",
+      "Os",
+      "Rh",
+      "Re"
+    ],
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "epochs": 50,
+    "hidden": 300,
+    "depth": 3,
+    "batch_size": 64,
+    "lr": 0.001,
+    "num_workers": 4,
+    "device": "cuda",
+    "time_budget_s": 14400.0,
+    "bf16_autocast": true
+  }
+}

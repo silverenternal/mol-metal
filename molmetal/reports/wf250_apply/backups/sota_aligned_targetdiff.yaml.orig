@@ -1,0 +1,96 @@
+# =============================================================================
+# Canonical SOTA-aligned run config — TargetDiff protocol
+# =============================================================================
+# This file encodes the **TargetDiff / CrossDocked100** evaluation protocol
+# (Guan et al. 2023) as the canonical reference for Lambda sweep comparisons.
+#
+# Rationale
+# ----------
+# TargetDiff is the closest published SOTA protocol to Lambda's setup:
+#   - flow matching on EGNN features
+#   - CrossDocked100 pocket split
+#   - Vina 1.2.x docking with exhaustiveness=8
+#   - 100 test pockets
+#   - 9 poses/pocket, then pick best
+#
+# Protocol parity is what makes a *cited* comparison defensible (see
+# TODO/pending/decisions.md D1).  Strict head-to-head is gated on DiffSBDD
+# checkpoint + torch_geometric ROCm 7.2 wheels (TODO/pending/risks.md R1).
+#
+# All numeric values below are sourced from:
+#   - TargetDiff paper (Guan 2023)
+#   - molmetal/reports/lambda_vs_sbdd_paper_numbers.md
+#   - molmetal/reports/lambda_vs_sbdd_protocol_aligned.md
+# =============================================================================
+
+# Test set — CrossDocked100 pocket split (canonical SOTA split)
+# TODO: extend to crossdocked_full (CrossDocked2020 / PoseBusters) once
+#       the full extracted directory is available on disk.
+test_set: crossdocked_pocket10
+n_test_pockets: 100              # SOTA baseline uses 100 (per Guan 2023)
+
+# Docking — Vina is the canonical engine; QVina / Vinardo are protocol
+# deviations that must be flagged per-row in the sweep markdown.
+docking:
+  engine: vina
+  version: 1.2.7
+  exhaustiveness: 8              # TargetDiff / SOTA default
+  n_poses: 9
+
+# Property scoring — use the same SA/QED/Lipinski mix that SOTA papers
+# report (Ertl 2000 SA, RDKit QED, Lipinski Rule of 5).
+scoring:
+  sa: ertl_2000                  # Ertl SA, not RDKit's simple proxy
+  qed: rdkit
+  lipinski: true
+  logp_threshold: 5
+
+# Success-rate thresholds — match the SOTA-paper definition of a
+# "successful" ligand (Vina < -8.0, SA < 4, QED > 0.5, logP <= 5).
+success_rate:
+  vina_threshold_kcal: -8.0
+  sa_threshold: 4
+  qed_threshold: 0.5
+  logp_max: 5
+
+# Number of Function Evaluations — the SOTA-comparable budget is
+# 1000 rollouts / pocket (matches Jin 2020 JT-VAE and most flow-matching
+# papers' "MCTS-rollouts" framing).
+nfe:
+  target_per_pocket: 1000
+  method: mcts_rollouts
+
+# PoseBusters validity check — SOTA papers (2024+) report this as
+# part of their validity table; pass_all = every generated pose must
+# satisfy the full PoseBusters suite.
+posebusters:
+  enabled: true
+  threshold: pass_all
+
+# MCTS knobs — calibrated from round-0 sweep observations:
+#   - top_k=100 lifts per-pocket candidates from ~1.7 toward SOTA bands
+#     (50-100 cands/pocket per TransDiff/MolCRAFT/Pocket2Mol).
+#   - max_depth=3 is the round-0 sweet spot (depth=2 throttles diversity).
+#   - patience=50 + early_stop=true: round-0 showed UCB plateau by
+#     conv_iter 2-7 at branching=12 / 16-37 at branching=1020; the rest
+#     of the budget is compute burned.
+#   - branching_target=1020 is the Phase-1 ceiling (204 tiles x 5 click
+#     rules) — the dominant quality signal per round-0 ablation
+#     (12/60 -> 1.7046 vs 1020 -> 1.9338, +13.5%).
+mcts:
+  top_k: 100
+  max_depth: 3
+  patience: 50
+  early_stop: true
+  branching_target: 1020
+
+# Lambda-specific levers — these are the Mol-Metal advantages over
+# plain flow-matching baselines.  Encoding them in YAML makes the
+# "what makes Lambda Lambda" surface explicit so the sweep markdown
+# can label them as Lambda-only contributions (not SOTA-comparable).
+lambda_specific:
+  tile_library: extended_204     # FRAGMENT_LIBRARY_200_TILES + extension
+  click_rules: all_5             # CuAAC + SPAAC + thiol-ene + Suzuki + amide coupling
+  synthesis_oracle: true         # gate candidates through retro-synthesis filter
+  symbolic_prior: true           # SymbolicPrior learned from prior sweeps
+  symbolic_prior_refit_every: 5  # refit SymbolicPrior every 5 pockets

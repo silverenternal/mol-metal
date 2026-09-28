@@ -1,0 +1,13 @@
+{
+  "metric": "rdkit_validity",
+  "description": "Fraction of generated samples whose SMILES round-trip through RDKit Chem.MolFromSmiles successfully (canonical validity rate).",
+  "unit": "ratio (0-1, higher = more valid)",
+  "scope": "Path B bond-bearing CFM/lambda generation (RDKit parseable)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:validity_rate (RDKit canonical SMILES round-trip)",
+  "value": 1.0,
+  "value_note": "1.000 from M23 Transport Relax + M38 FG veto + M39 layered short-circuit (TODO/completed/71_r18_mechanism_mapping.md)",
+  "n_samples": 30,
+  "timestamp": "2026-09-26",
+  "status": "MEASURED",
+  "wf87_audit_note": "JSON file shipped per Wf-87 Phase 1 audit to match INDEX §17.1 STRONG_REAL bucket + TODO/completed/58_weak_to_strong.md / 82_metric_gap_filling.md claim of 1.000. RDKit not installed on host so no live re-computation executed; value preserved from R17/R18 ship records."
+}

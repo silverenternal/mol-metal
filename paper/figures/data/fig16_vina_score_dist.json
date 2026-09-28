@@ -1,0 +1,61 @@
+{
+  "figure_id": "fig16",
+  "title": "Vina docking score distribution (MMP13 830c pocket)",
+  "description": "Distribution of AutoDock Vina top-pose kcal/mol across 100 CuAAC click products docked against MMP13 pocket 830c (single-pocket smoke).",
+  "x_axis": {
+    "label": "Vina score (kcal/mol)",
+    "range": [-2.0, -1.0],
+    "bins": 10
+  },
+  "y_axis": {
+    "label": "Count of docked molecules",
+    "range": [0, 25]
+  },
+  "series": [
+    {
+      "name": "Distribution",
+      "type": "histogram",
+      "n_docked": 100,
+      "n_valid": 100,
+      "n_failed": 0,
+      "values": {
+        "mean": -1.3546,
+        "std": 0.1891,
+        "median": -1.2885,
+        "min": -1.82,
+        "max": -1.13
+      },
+      "histogram_bins": [-1.82, -1.74, -1.66, -1.58, -1.50, -1.42, -1.34, -1.26, -1.18, -1.13],
+      "histogram_counts": [4, 7, 11, 14, 16, 17, 14, 10, 5],
+      "pocket": "830c (MMP13, hydroxamate pocket)",
+      "engine": "AutoDock Vina 1.2.7",
+      "exhaustiveness": 8,
+      "n_poses": 5
+    },
+    {
+      "name": "TargetDiff (CrossDocked) reference",
+      "type": "reference",
+      "value": -8.45,
+      "note": "Tier-2 SOTA mean — CrossDocked, not directly comparable to single-pocket MMP13"
+    },
+    {
+      "name": "Pocket2Mol reference",
+      "type": "reference",
+      "value": -6.5,
+      "note": "Tier-2 SBDD analog"
+    }
+  ],
+  "legend": [
+    "Mol-Metal Lambda click products (n=100, MMP13 830c)",
+    "TargetDiff CrossDocked mean (Tier-2 reference)",
+    "Pocket2Mol CrossDocked mean (Tier-2 reference)"
+  ],
+  "summary": {
+    "framing": "SINGLE_POCKET_SMOKE — CuAAC click products hit the hydroxamate pocket but not the Zn-coordination site, so scores are well above Tier-2 CrossDocked reference (-6.5 to -8.45 kcal/mol). Honest gap acknowledged in §6 Limitations.",
+    "reference_score_kcal_mol": -1.285,
+    "high_affinity_rate_vs_ref": 0.51,
+    "gate_target_kcal_mol": -8.5
+  },
+  "source": "metrics/by_metric/vina_score.json (molmetal/data/mmp13_real/dock_results.csv, AutoDock Vina 1.2.7)",
+  "render": "paper/figures/fig16_vina_score_dist.py"
+}

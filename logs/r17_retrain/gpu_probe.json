@@ -1,0 +1,32 @@
+{
+  "probed_at": "2026-09-25T15:44:51+0800",
+  "nvidia_smi": {
+    "present": true,
+    "rc": 0,
+    "gpus": [
+      "GPU 0: NVIDIA RTX PRO 6000 Blackwell Workstation Edition (UUID: GPU-9421eb6c-1bc6-f610-a5b6-1d9f4dc4bf36)",
+      "GPU 1: NVIDIA GeForce RTX 5090 (UUID: GPU-f892839a-1afa-463e-ff88-6cc5ceeabddf)"
+    ],
+    "stderr": ""
+  },
+  "rocm_smi": {
+    "present": false,
+    "rc": 127,
+    "stderr": "FileNotFoundError: [Errno 2] No such file or directory: 'rocm-smi'"
+  },
+  "torch_cuda": {
+    "probed": true,
+    "cuda_available": true,
+    "device_count": 1,
+    "torch_version": "2.14.0+cu130"
+  },
+  "vendor": "nvidia",
+  "usable": true,
+  "decision": "NVIDIA_PATH",
+  "env": {
+    "CUDA_VISIBLE_DEVICES": "0",
+    "MOLMETAL_CFM_AMP_DTYPE": "bfloat16",
+    "MOLMETAL_CFM_AMP": "1",
+    "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+  }
+}

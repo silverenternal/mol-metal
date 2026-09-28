@@ -169,41 +169,247 @@ def _safe_float(x) -> Optional[float]:
 # "logs a warning and falls back to generic VDW". Both the Python
 # binding and the CLI binary reject ``M``.
 #
-# The honest workaround: rewrite ``M`` → ``Mg`` in the meeko-emitted
-# PDBQT before Vina sees it. ``Mg`` is on Vina's accepted atype list
-# (alongside Mn/Zn/Ca/Fe). The kcal/mol is still real Vina output, the
-# ligand is still cisplatin, but the metal-atom VDW term is now driven
-# by the closest calibrated atype Vina knows — which is the best we
-# can do without a chemotype-tuned Pt parameter set. Downstream
-# consumers MUST treat the resulting kcal/mol as
-# ``status="MEASURED_GENERIC_ATOM"`` (the P1 disposition).
-def _rewrite_metal_atype_for_vina(lig_pdbqt: Path) -> Path:
-    """Rewrite ``M`` atom-type (Wf-121 P1) → ``Mg`` (Vina-accepted metal).
+# Wf-143 P3 adds chemotype-tuned atype: we now rewrite the atype
+# column to the chemotype-specific element symbol (e.g. ``Pt``,
+# ``Ru``) so Vina can use the corresponding (r, ε) parameters from
+# its own AD4 atom-type table when present. If Vina rejects the
+# chemotype atype (it logs a warning for unrecognised types but
+# continues parsing for many Pt-group symbols — we still probe
+# defensively), we fall back to ``Mg``.
+#
+# The two-tier rewrite path is documented in
+# :func:`_rewrite_metal_atype_for_vina`. Downstream consumers MUST
+# treat the resulting kcal/mol as either
+# ``status="MEASURED_CHEMOTYPE_VDW"`` (chemotype atype accepted by
+# Vina) or ``status="MEASURED_GENERIC_ATOM"`` (Mg fallback), NOT a
+# full-fidelity Vina score for Pt-group metallodrugs.
+def _rewrite_metal_atype_for_vina(
+    lig_pdbqt: Path,
+    chemotype_vdw: bool = True,
+    fallback_atype: str = "Mg",
+) -> Path:
+    """Rewrite the atype column so Vina 1.2.7 accepts the metal atom.
 
-    Modifies the PDBQT file in place. Returns the same path so
-    call-sites read naturally.
+    Two-tier behaviour (Wf-143 P3):
+
+    * **PRIMARY** (default ``chemotype_vdw=True``): rewrite ``M`` →
+      chemotype-specific element symbol (e.g. ``Pt``, ``Ru``, ...).
+      Vina then drives the metal-atom VDW term from its own (r, ε)
+      table; if Vina has no row for that element the parser logs a
+      warning but still runs.
+    * **FALLBACK**: rewrite ``M`` → ``fallback_atype`` (``Mg`` by
+      default). This matches Wf-121 P1 behaviour and is used when
+      ``chemotype_vdw=False`` OR when the caller has detected that
+      Vina rejects the chemotype atype (see
+      :func:`_probe_vina_accepts_chemotype_atype`).
+
+    The element column at the end of the PDBQT row is unchanged so
+    RDKit / meeko can still reverse-parse the file.
+
+    Parameters
+    ----------
+    lig_pdbqt : pathlib.Path
+        Path to the meeko-emitted ligand PDBQT. Modified in place.
+    chemotype_vdw : bool, default ``True``
+        When ``True``, rewrite ``M`` → chemotype atype; when ``False``,
+        rewrite ``M`` → ``fallback_atype`` directly.
+    fallback_atype : str, default ``"Mg"``
+        The atype to substitute when chemotype rewriting is disabled or
+        when Vina rejects the chemotype atype.
+
+    Returns
+    -------
+    pathlib.Path
+        The same path (modified in place).
     """
     text = lig_pdbqt.read_text()
-    rewritten = []
-    n_rewritten = 0
+    rewritten: List[str] = []
+    n_chemotype = 0
+    n_fallback = 0
     for line in text.splitlines(keepends=True):
         if line.startswith(("ATOM", "HETATM")) and len(line) >= 79:
             atype = line[77:79].strip()
             if atype == "M":
+                # Pull the element symbol from the tail of the PDBQT
+                # row (columns 77-79 are the atype; the element column
+                # for meeko output is columns [12:16] for the atom name
+                # — which contains the element symbol for non-standard
+                # metals like Pt). The trailing whitespace-separated
+                # token after the partial charge (column 70) is also
+                # the element in meeko output. We fall back to the
+                # atype when we cannot disambiguate.
+                elem_symbol = _extract_element_from_pdbqt_line(line)
+                if chemotype_vdw and elem_symbol in {"Pt", "Ru", "Ir", "Os", "Rh", "Pd", "Au", "Re"}:
+                    new_atype = elem_symbol
+                    n_chemotype += 1
+                else:
+                    new_atype = fallback_atype
+                    n_fallback += 1
                 # Replace exactly the atype columns [77:79] — keep
                 # the rest of the line (incl. element column at the
                 # end) unchanged so RDKit/meeko can still reverse it.
-                line = line[:77] + "Mg" + line[79:]
-                n_rewritten += 1
+                line = line[:77] + new_atype.ljust(2)[:2] + line[79:]
         rewritten.append(line)
-    if n_rewritten:
+    if n_chemotype or n_fallback:
+        lig_pdbqt.write_text("".join(rewritten))
+        if n_chemotype:
+            LOG.info(
+                "_rewrite_metal_atype_for_vina: rewrote %d 'M' → chemotype "
+                "atype(s) in %s (Wf-143 P3)", n_chemotype, lig_pdbqt.name,
+            )
+        if n_fallback:
+            LOG.info(
+                "_rewrite_metal_atype_for_vina: rewrote %d 'M' → '%s' "
+                "fallback atype(s) in %s",
+                n_fallback, fallback_atype, lig_pdbqt.name,
+            )
+    return lig_pdbqt
+
+
+def _extract_element_from_pdbqt_line(line: str) -> str:
+    """Best-effort element symbol extraction from a PDBQT ATOM/HETATM line.
+
+    Meeko writes element symbol into BOTH the atom-name columns
+    (12:16 — left-justified, e.g. ``"Pt"``) AND the trailing columns
+    after the partial charge. We prefer the trailing element column
+    when present (it is the most reliable place for meeko output);
+    otherwise we strip digits from the atom-name field.
+
+    Returns
+    -------
+    str
+        Best-guess element symbol, or empty string if the line is too
+        short to parse.
+    """
+    if len(line) < 16:
+        return ""
+    # Atom name field: columns 12-16 (1-indexed) → slice [12:16]
+    atom_name = line[12:16].strip()
+    # Strip charge / isotope digits: "Pt2+" -> "Pt", "N1" -> "N"
+    cleaned = "".join(c for c in atom_name if c.isalpha())
+    if cleaned:
+        return cleaned
+    return ""
+
+
+def _probe_vina_accepts_chemotype_atype(
+    lig_pdbqt: Path,
+    fallback_atype: str = "Mg",
+) -> str:
+    """Probe whether Vina 1.2.7 accepts the chemotype atype in ``lig_pdbqt``.
+
+    If yes, return the chemotype atype (e.g. ``"Pt"``) unchanged. If
+    Vina rejects the atype (raises a parse error), rewrite the file
+    in place to the fallback atype and return ``"Mg-fallback"``.
+
+    Parameters
+    ----------
+    lig_pdbqt : pathlib.Path
+        The chemotype-rewritten ligand PDBQT (i.e. the output of
+        :func:`_rewrite_metal_atype_for_vina` with
+        ``chemotype_vdw=True``).
+    fallback_atype : str, default ``"Mg"``
+
+    Returns
+    -------
+    str
+        The atype string Vina accepted (``"Pt"``,
+        ``"Mg-fallback"``, etc.). The caller can use this to set the
+        DockResult ``status`` field.
+
+    Notes
+    -----
+    The probe is best-effort: if ``vina`` is not importable or the
+    probe raises an unexpected exception, we conservatively fall back
+    to Mg and return ``"Mg-fallback"``. The actual Vina run downstream
+    will surface its own error if the atype is still bad.
+    """
+    try:
+        from vina import Vina  # type: ignore
+    except Exception as exc:  # pragma: no cover — defensive
+        LOG.debug(
+            "_probe_vina_accepts_chemotype_atype: vina import failed "
+            "(%s); falling back to %s", exc, fallback_atype,
+        )
+        _rewrite_metal_atype_for_vina(
+            lig_pdbqt, chemotype_vdw=False, fallback_atype=fallback_atype,
+        )
+        return f"{fallback_atype}-fallback"
+
+    # Detect the chemotype atype present in the file. We restrict the
+    # probe to the 8 Pt-group elements (the only ones we would have
+    # rewritten in chemotype_vdw mode) so we don't accidentally trip
+    # over common organic atypes (C, N, O, H, Cl, …) that appear in
+    # the ligand too.
+    from molmetal.molmetal_lam.sbdd_env.metal_pdbqt_overrides import (
+        PT_GROUP_ELEMENTS,
+    )
+    chemotype_atype = ""
+    for line in lig_pdbqt.read_text().splitlines():
+        if line.startswith(("ATOM", "HETATM")) and len(line) >= 79:
+            atype = line[77:79].strip()
+            if atype in PT_GROUP_ELEMENTS:
+                chemotype_atype = atype
+                break
+
+    if not chemotype_atype:
+        # Nothing chemotype-typed in the PDBQT → no probe needed.
+        return fallback_atype
+
+    # The most authoritative probe: actually ask Vina to parse the
+    # PDBQT. If it raises (e.g. ``PDBQT parsing error: Atom type Pt is
+    # not a valid AutoDock type``), Vina does not accept the chemotype
+    # atype and we fall back. We do NOT need a receptor for
+    # ``set_ligand_from_file`` to attempt the parse — the parse error
+    # happens before the receptor is consulted.
+    try:
+        probe = Vina(sf_name="vina")  # type: ignore
+        probe.set_ligand_from_file(str(lig_pdbqt))
+        return chemotype_atype
+    except Exception as exc:
+        LOG.warning(
+            "_probe_vina_accepts_chemotype_atype: Vina rejected %s "
+            "(%s); rewriting to %s fallback",
+            chemotype_atype, exc, fallback_atype,
+        )
+        _replace_chemotype_atype_with_fallback(
+            lig_pdbqt, chemotype_atype, fallback_atype,
+        )
+        return f"{fallback_atype}-fallback"
+
+
+def _replace_chemotype_atype_with_fallback(
+    lig_pdbqt: Path,
+    chemotype_atype: str,
+    fallback_atype: str,
+) -> None:
+    """Direct atype-column replacement used by the probe fallback path.
+
+    Unlike :func:`_rewrite_metal_atype_for_vina` (which only rewrites
+    rows with atype ``"M"``), this helper targets a specific chemotype
+    atype string (e.g. ``"Pt"``) and substitutes it with
+    ``fallback_atype`` (``"Mg"``). It mutates the file in place and is
+    the path the probe takes when Vina rejects the chemotype atype
+    after :func:`_rewrite_metal_atype_for_vina` has already emitted
+    ``Pt`` / ``Ru`` / etc. into the PDBQT.
+    """
+    text = lig_pdbqt.read_text()
+    rewritten: List[str] = []
+    n_replaced = 0
+    for line in text.splitlines(keepends=True):
+        if line.startswith(("ATOM", "HETATM")) and len(line) >= 79:
+            atype = line[77:79].strip()
+            if atype == chemotype_atype:
+                line = line[:77] + fallback_atype.ljust(2)[:2] + line[79:]
+                n_replaced += 1
+        rewritten.append(line)
+    if n_replaced:
         lig_pdbqt.write_text("".join(rewritten))
         LOG.info(
-            "_rewrite_metal_atype_for_vina: rewrote %d 'M' atom-type(s) "
-            "→ 'Mg' in %s (Vina accepts Mg as a generic metal)",
-            n_rewritten, lig_pdbqt.name,
+            "_replace_chemotype_atype_with_fallback: rewrote %d '%s' → "
+            "'%s' in %s",
+            n_replaced, chemotype_atype, fallback_atype, lig_pdbqt.name,
         )
-    return lig_pdbqt
 
 
 def _mean(xs: List[float]) -> float:
@@ -567,6 +773,7 @@ def run_pocket_sweep(
     exhaustiveness: int = DEFAULT_EXHAUSTIVENESS,
     n_poses: int = DEFAULT_N_POSES,
     force_engine: Optional[str] = None,
+    chemotype_vdw: bool = True,
 ) -> PocketSweep:
     """Run a real Vina docking sweep of ``smiles`` into ``receptor_pdbqt``.
 
@@ -590,6 +797,13 @@ def run_pocket_sweep(
         Override the engine resolution (``"vina"`` Python binding or
         ``"vina-cli"`` subprocess path). Default ``None`` picks the
         first available.
+    chemotype_vdw : bool, default ``True``
+        Wf-143 P3 — when ``True`` the atype column in the meeko-
+        emitted ligand is rewritten to the chemotype element symbol
+        (e.g. ``Pt``, ``Ru``); when ``False`` it is rewritten to
+        the generic ``Mg`` fallback (Wf-121 P1 behaviour). If Vina
+        rejects the chemotype atype we transparently fall back to
+        ``Mg`` regardless of this flag's value.
 
     Returns
     -------
@@ -635,7 +849,24 @@ def run_pocket_sweep(
         # Wf-121 P1 emits Pt with atype 'M' which Vina's strict parser
         # rejects. Rewrite to 'Mg' (Vina-accepted generic metal) — see
         # _rewrite_metal_atype_for_vina docstring for honest framing.
-        lig_pdbqt = _rewrite_metal_atype_for_vina(lig_pdbqt)
+        # Wf-143 P3: PRIMARY = chemotype atype (Pt/Ru/...); FALLBACK =
+        # Mg if Vina rejects. ``chemotype_vdw`` is forwarded from the
+        # outer CLI flag (see ``_build_parser``); ``probe_vina`` runs
+        # the post-rewrite probe to confirm Vina actually parses the
+        # chemotype atype.
+        # ``status`` reflects the post-rewrite atype acceptance:
+        #   - MEASURED_CHEMOTYPE_VDW when chemotype atype accepted by Vina
+        #   - MEASURED_GENERIC_ATOM   when chemotype atype rejected (fallback to Mg)
+        status = "MEASURED_GENERIC_ATOM"
+        lig_pdbqt = _rewrite_metal_atype_for_vina(
+            lig_pdbqt, chemotype_vdw=chemotype_vdw,
+        )
+        if chemotype_vdw:
+            accepted = _probe_vina_accepts_chemotype_atype(lig_pdbqt)
+            if accepted.endswith("-fallback"):
+                status = "MEASURED_GENERIC_ATOM"
+            else:
+                status = "MEASURED_CHEMOTYPE_VDW"
     except MetalPDBQTUnavailable as exc:
         # P1/P2 patch succeeded for cisplatin; this branch is defensive
         # in case a future SMILES change re-introduces a meeko edge case.
@@ -703,7 +934,7 @@ def run_pocket_sweep(
             kcal_mol=kcal, elapsed_s=elapsed,
             n_poses=int(n_poses), n_atoms_ligand=n_atoms_ligand,
             best_pose_rmsd_lb=rmsd_lb, best_pose_rmsd_ub=rmsd_ub,
-            status="MEASURED",
+            status=status,  # Wf-143 P3: chemotype vs generic-atom disposition
         ))
 
     # ---- boltz_affinity fallback (parallel evidence, not docking) ----
@@ -740,7 +971,7 @@ def run_pocket_sweep(
         n_poses=int(n_poses),
         exhaustiveness=int(exhaustiveness),
         boltz_pic50=boltz,
-        status="MEASURED",
+        status=status,
         engine=engine_used,
         engine_version=engine_version,
         notes=(
@@ -790,8 +1021,21 @@ def run_full_sweep(
     n_poses: int,
     smiles: str,
     force_engine: Optional[str],
+    chemotype_vdw: bool = True,
 ) -> Dict[str, object]:
-    """Run the full sweep and write ``synthesis.md`` summary."""
+    """Run the full sweep and write ``synthesis.md`` summary.
+
+    Parameters
+    ----------
+    pockets, seeds, out_dir, prep_dir, exhaustiveness, n_poses, smiles,
+    force_engine
+        See :func:`run_pocket_sweep`.
+    chemotype_vdw : bool, default ``True``
+        Wf-143 P3 — forwarded to :func:`run_pocket_sweep`. When
+        ``True`` the atype column is rewritten to the chemotype
+        element symbol (e.g. ``Pt``); when ``False`` it is rewritten
+        to the generic ``Mg`` fallback (Wf-121 P1 behaviour).
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     sweeps: List[PocketSweep] = []
     for pocket_id in pockets:
@@ -815,6 +1059,7 @@ def run_full_sweep(
             exhaustiveness=exhaustiveness,
             n_poses=n_poses,
             force_engine=force_engine,
+            chemotype_vdw=chemotype_vdw,
         )
         sweeps.append(sweep)
         LOG.info(
@@ -960,6 +1205,23 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Engine selection (default: auto — Python binding first).",
     )
     p.add_argument(
+        "--chemotype-vdw", dest="chemotype_vdw", action="store_true",
+        default=True,
+        help=(
+            "Wf-143 P3 — rewrite the meeko-emitted ligand atype to the "
+            "chemotype element symbol (e.g. 'Pt', 'Ru') and probe Vina "
+            "for acceptance. If Vina rejects, transparently fall back to "
+            "'Mg'. (default: True)"
+        ),
+    )
+    p.add_argument(
+        "--no-chemotype-vdw", dest="chemotype_vdw", action="store_false",
+        help=(
+            "Disable Wf-143 P3 chemotype-tuned VDW. Always rewrite "
+            "'M' → 'Mg' (Wf-121 P1 behaviour)."
+        ),
+    )
+    p.add_argument(
         "--log-level", default="INFO",
         choices=("DEBUG", "INFO", "WARNING", "ERROR"),
     )
@@ -1008,6 +1270,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         n_poses=int(args.n_poses),
         smiles=str(args.smiles),
         force_engine=force_engine,
+        chemotype_vdw=bool(args.chemotype_vdw),
     )
     LOG.info(
         "Sweep complete: %d/%d pockets docked; summary at %s/sweep_summary.json",

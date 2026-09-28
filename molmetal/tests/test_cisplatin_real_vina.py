@@ -482,7 +482,10 @@ class TestBenchCisplatinRealVinaScript:
         )
         lig = tmp_path / "lig.pdbqt"
         lig.write_text(pdbqt_text)
-        out = _rewrite_metal_atype_for_vina(lig)
+        # Wf-143 P3: ``chemotype_vdw`` defaults to True now (rewrites
+        # ``M`` → ``Pt``); explicit ``chemotype_vdw=False`` preserves the
+        # Wf-121 P1 ``M`` → ``Mg`` behaviour under test here.
+        out = _rewrite_metal_atype_for_vina(lig, chemotype_vdw=False)
         assert out == lig
         text = out.read_text()
         # Pt line should now read 'Mg' in the atype columns.

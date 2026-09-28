@@ -1,0 +1,17 @@
+{
+  "seed": 1,
+  "task": "clintox",
+  "n_rows": 1484,
+  "n_train": 1038,
+  "n_val": 146,
+  "n_test": 300,
+  "pos_rate_train": 0.07514450699090958,
+  "pos_rate_test": 0.07000000029802322,
+  "test_metrics": {
+    "roc_auc": 0.8152415087898959,
+    "pr_auc": 0.3789398866698088,
+    "hit_rate_top5pct": 0.4666666666666667,
+    "n": 300
+  },
+  "epochs": 50
+}

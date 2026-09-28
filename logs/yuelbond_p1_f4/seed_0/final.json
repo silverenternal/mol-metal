@@ -1,0 +1,187 @@
+{
+  "config": {
+    "csv": "/home/hugo/codes/mol-metal/molmetal/data/metallo_drugs_500_train.csv",
+    "n_train_loaded": 449,
+    "n_train_embedded": 358,
+    "n_skipped": 91,
+    "steps_planned": 2000,
+    "steps_executed": 2000,
+    "batch_size": 4,
+    "lr": 0.0001,
+    "lr_warmup_steps": 200,
+    "hidden_dim": 128,
+    "n_layers": 3,
+    "joint_train": true,
+    "bond_head": "learned",
+    "vocab_size": 20,
+    "bond_head_in_dim": 265,
+    "device": "cuda",
+    "cuda_available": true,
+    "torch_version": "2.14.0+cu130",
+    "seed": 0
+  },
+  "wall_clock_s": 139.84491300582886,
+  "loss_curves_summary": {
+    "cfm": {
+      "n": 2000,
+      "first": 18.538455963134766,
+      "last": 31.185190200805664,
+      "min": 4.163437843322754,
+      "max": 3338.110595703125,
+      "delta_first_to_last": 12.646734237670898
+    },
+    "atom": {
+      "n": 2000,
+      "first": 2.995732307434082,
+      "last": 1.2269262075424194,
+      "min": 1.0091227293014526,
+      "max": 37.9254150390625,
+      "delta_first_to_last": -1.7688060998916626
+    },
+    "bond": {
+      "n": 2000,
+      "first": 27.684694290161133,
+      "last": 1.259647011756897,
+      "min": 1.1170300245285034,
+      "max": 30.89590072631836,
+      "delta_first_to_last": -26.425047278404236
+    },
+    "total": {
+      "n": 2000,
+      "first": 46.52272415161133,
+      "last": 32.567527770996094,
+      "min": 5.546828746795654,
+      "max": 3339.865478515625,
+      "delta_first_to_last": -13.955196380615234
+    }
+  },
+  "lr_curve_summary": {
+    "n": 2000,
+    "first": 5.000000000000001e-07,
+    "last": 0.0001,
+    "min": 5.000000000000001e-07,
+    "max": 0.0001,
+    "delta_first_to_last": 9.95e-05,
+    "target_lr": 0.0001,
+    "warmup_steps_requested": 200,
+    "lr_at_step_1": 5.000000000000001e-07,
+    "lr_at_end_of_warmup": 0.0001,
+    "lr_at_final_step": 0.0001
+  },
+  "decode_summary": {
+    "decode_ratio_at_200": null,
+    "decode_ratio_at_500": 0.0,
+    "decode_ratio_at_1000": 0.0,
+    "max_decode_ratio": 0.0,
+    "first_decode_ratio_nonzero_step": null,
+    "all_probes": [
+      {
+        "decode_ratio": 0.0,
+        "n_decoded": 0,
+        "mean_atoms": 0.0,
+        "disconnected_count": 16,
+        "lap_p95": 0.0,
+        "error": "TypeError: `model` must be a VelocityNet; got ModelWrapper.",
+        "step": 500,
+        "wall_s": 0.0009865760803222656
+      },
+      {
+        "decode_ratio": 0.0,
+        "n_decoded": 0,
+        "mean_atoms": 0.0,
+        "disconnected_count": 16,
+        "lap_p95": 0.0,
+        "error": "TypeError: `model` must be a VelocityNet; got ModelWrapper.",
+        "step": 1000,
+        "wall_s": 0.0007221698760986328
+      },
+      {
+        "decode_ratio": 0.0,
+        "n_decoded": 0,
+        "mean_atoms": 0.0,
+        "disconnected_count": 16,
+        "lap_p95": 0.0,
+        "error": "TypeError: `model` must be a VelocityNet; got ModelWrapper.",
+        "step": 1500,
+        "wall_s": 0.0005767345428466797
+      },
+      {
+        "decode_ratio": 0.0,
+        "n_decoded": 0,
+        "mean_atoms": 0.0,
+        "disconnected_count": 16,
+        "lap_p95": 0.0,
+        "error": "TypeError: `model` must be a VelocityNet; got ModelWrapper.",
+        "step": 2000,
+        "wall_s": 0.0005843639373779297
+      }
+    ]
+  },
+  "p0_fixes_active": {
+    "F1_bond_aware_decoder_wired": true,
+    "F2_bond_head_in_dim_correct": true,
+    "F3_vocab_mask_in_loss": true,
+    "F4_hidden_dim_64_plus": true,
+    "F5_no_bonds_zeros_placeholder": true
+  },
+  "p1_fixes_active": {
+    "P1_1_hidden_dim_128": true,
+    "P1_2_learnable_vel_scale": true,
+    "P1_3_pcgrad_multi_task": false,
+    "P1_4_connectivity_aware_decoder": true
+  },
+  "lambda_reward_active": {
+    "lambda_reward_enabled": false,
+    "lambda_reward_samples_requested": 64,
+    "lambda_dataset_size": 0,
+    "lambda_dataset_after_zero_filter": 0,
+    "lambda_zero_weight_dropped": 0,
+    "lambda_mix_ratio": 0.25,
+    "lambda_reweight_alpha": 1.0,
+    "lambda_pocket_id": "metallo_drug_smoke",
+    "lambda_loss_is_weighted": false
+  },
+  "raw_log_tail": [
+    {
+      "step": 1991,
+      "loss": 11.594998359680176
+    },
+    {
+      "step": 1992,
+      "loss": 10.528983116149902
+    },
+    {
+      "step": 1993,
+      "loss": 8.213886260986328
+    },
+    {
+      "step": 1994,
+      "loss": 21.262657165527344
+    },
+    {
+      "step": 1995,
+      "loss": 11.587542533874512
+    },
+    {
+      "step": 1996,
+      "loss": 9.855494499206543
+    },
+    {
+      "step": 1997,
+      "loss": 12.309501647949219
+    },
+    {
+      "step": 1998,
+      "loss": 7.884258270263672
+    },
+    {
+      "step": 1999,
+      "loss": 11.422041893005371
+    },
+    {
+      "step": 2000,
+      "loss": 32.567527770996094
+    }
+  ],
+  "checkpoint_path": "logs/yuelbond_p1_f4/seed_0/ckpt.pt"
+}

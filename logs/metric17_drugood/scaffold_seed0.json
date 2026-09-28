@@ -1,0 +1,12 @@
+{
+  "split": "scaffold",
+  "seed": 0,
+  "n_train": 3681,
+  "n_val": 530,
+  "n_test": 1060,
+  "n_id_test": 368,
+  "id_test_auc": 0.9723839683999047,
+  "ood_test_auc": 0.7222774193548387,
+  "pos_rate_test": 0.29245283018867924,
+  "epochs": 30
+}

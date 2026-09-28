@@ -22,10 +22,13 @@ from molmetal.data.metal_smiles import (
     reconstruct_metal_complex,
 )
 from molmetal.data.splits import (
+    AssayGroupSplitter,
     ChemicalSplitter,
+    GroupIdSplitter,
     LigandDeduplicatedSplitter,
     RandomSplitter,
     ScaffoldSplitter,
+    SizeGroupSplitter,
     SplitResult,
     TemporalSplitter,
 )
@@ -70,6 +73,15 @@ from molmetal.data.tmqm import (
     load_tmqm,
     summarize,
 )
+from molmetal.data.metal_cytotox import load_metal_cytotox
+from molmetal.data.nci60 import load_nci60
+from molmetal.data.binding_db import load_binding_db
+from molmetal.data.drugood_loader import load_drugood
+from molmetal.data.tdc_loader import (
+    load_tdc_bace,
+    load_tdc_bbbp,
+    load_tdc_hiv,
+)
 
 __all__ = [
     "MetalCytotoxDataset",
@@ -103,4 +115,11 @@ __all__ = [
     "filter_by_metal",
     "load_tmqm",
     "summarize",
+    "load_metal_cytotox",
+    "load_nci60",
+    "load_binding_db",
+    "load_drugood",
+    "load_tdc_bace",
+    "load_tdc_bbbp",
+    "load_tdc_hiv",
 ]

@@ -442,12 +442,19 @@ def fit_hilbert(
     lr: float,
     epochs: int,
     seed: int,
+    use_l2_guard: bool = False,
+    l2_weight: float = 0.01,
 ) -> Tuple[np.ndarray, "LambdaASTSRHilbert"]:
-    """Fit LambdaASTSRHilbert and return (best_params, fitted_model)."""
+    """Fit LambdaASTSRHilbert and return (best_params, fitted_model).
+
+    Wf-127 Phase 4: when ``use_l2_guard`` is True, ``l2_weight`` is
+    forwarded to ``LambdaASTSRHilbert`` — engages the dual-side
+    proximal shrinkage guard (P2 ship, default 0.0 backward-compat).
+    """
     from molmetal.molmetal_lam.reward.hilbert_primal_dual import (
         LambdaASTSRHilbert,
     )
-    opt = LambdaASTSRHilbert(
+    opt_kwargs = dict(
         population_dim=hilbert_dim,
         lr_primal=lr,
         lr_dual=lr,
@@ -456,6 +463,9 @@ def fit_hilbert(
         grad_clip_max_norm=1.0,
         step_size_decay=0.5,
     )
+    if use_l2_guard:
+        opt_kwargs["l2_weight"] = float(l2_weight)
+    opt = LambdaASTSRHilbert(**opt_kwargs)
     opt.optimize(X_tr_n, y_tr)
     return opt.best_params_, opt
 
@@ -480,10 +490,20 @@ def fit_astr(
     generations: int,
     depth: int,
     seed: int,
+    use_astr_scale_guard: bool = False,
+    scale_clip_min: float = -10.0,
+    scale_clip_max: float = 10.0,
 ) -> "LambdaASTSR":
-    """Fit LambdaASTSR on the raw 12-d RDKit descriptor (no augmentation)."""
+    """Fit LambdaASTSR on the raw 12-d RDKit descriptor (no augmentation).
+
+    Wf-127 Phase 4: when ``use_astr_scale_guard`` is True, the fitted
+    LambdaASTSR is configured with ``scale_clip_min`` / ``scale_clip_max``
+    — engages the value-space ASTSR signature guard (P3 ship, default
+    ±inf backward-compat).  The Phase 1 stable range on synthetic is
+    ``(-10, 10)`` per Wf-127 P1 l2_sweep.json.
+    """
     from molmetal.molmetal_lam.reward.lambda_astsr import LambdaASTSR
-    reg = LambdaASTSR(
+    reg_kwargs = dict(
         depth=depth,
         population=population,
         generations=generations,
@@ -491,6 +511,10 @@ def fit_astr(
         feature_names=FEATURE_COLUMNS,
         early_stop_on_nan=True,
     )
+    if use_astr_scale_guard:
+        reg_kwargs["scale_clip_min"] = float(scale_clip_min)
+        reg_kwargs["scale_clip_max"] = float(scale_clip_max)
+    reg = LambdaASTSR(**reg_kwargs)
     reg.fit(X_tr.astype(np.float64), y_tr.astype(np.float64))
     return reg
 
@@ -639,13 +663,25 @@ def evaluate_metal(
     device: str,
     strict_scaffold: bool,
     repo_root: Path,
+    use_l2_guard: bool = False,
+    l2_weight: float = 0.01,
+    use_astr_scale_guard: bool = False,
+    scale_clip_min: float = -10.0,
+    scale_clip_max: float = 10.0,
 ) -> Dict[str, Any]:
     """Run combined Hilbert+ASTSR 5-fold × N-seed on MetalCytoToxDB
     5-metal for a single metal.
 
+    Wf-127 Phase 4: when ``use_l2_guard`` is True, the Hilbert primal-dual
+    fit is configured with ``l2_weight`` (default 0.01 — Phase 1 stable
+    weight on synthetic).  When ``use_astr_scale_guard`` is True, the
+    ASTSR fit is configured with ``(scale_clip_min, scale_clip_max)``
+    (default (-10, 10) — Phase 1 stable range).
+
     Returns the per-seed metrics dict in Wf-77 P1 / P2 JSON shape,
     extended with ``alpha_chosen``, ``hilbert_r2``, ``astr_r2``,
-    ``combined_r2`` per-fold, plus ``strict_scaffold`` flag.
+    ``combined_r2`` per-fold, plus ``strict_scaffold`` flag and
+    guard diagnostics.
     """
     X, y, smiles, scaffold_ids = load_metal_cohort(metal)
     n, d_feat = X.shape
@@ -752,6 +788,8 @@ def evaluate_metal(
                     lr=lr,
                     epochs=epochs,
                     seed=seed_int,
+                    use_l2_guard=use_l2_guard,
+                    l2_weight=l2_weight,
                 )
                 y_h_inner = predict_hilbert(X_te_inner_h, bp_inner)
             except Exception:
@@ -766,6 +804,9 @@ def evaluate_metal(
                     generations=generations,
                     depth=depth,
                     seed=seed_int,
+                    use_astr_scale_guard=use_astr_scale_guard,
+                    scale_clip_min=scale_clip_min,
+                    scale_clip_max=scale_clip_max,
                 )
                 y_a_inner = predict_astr(reg_inner, X_tr[inner_te_idx])
             except Exception:
@@ -783,6 +824,8 @@ def evaluate_metal(
                     lr=lr,
                     epochs=epochs,
                     seed=seed_int,
+                    use_l2_guard=use_l2_guard,
+                    l2_weight=l2_weight,
                 )
                 y_h_te = predict_hilbert(X_te_h, bp)
             except Exception:
@@ -796,6 +839,9 @@ def evaluate_metal(
                     generations=generations,
                     depth=depth,
                     seed=seed_int,
+                    use_astr_scale_guard=use_astr_scale_guard,
+                    scale_clip_min=scale_clip_min,
+                    scale_clip_max=scale_clip_max,
                 )
                 y_a_te = predict_astr(reg, X_te.astype(np.float32))
             except Exception:
@@ -1135,6 +1181,44 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         default="cpu",
         help="Compute device (default: cpu; Hilbert branch is CPU fp32).",
     )
+    # Wf-127 Phase 4 guard flags.
+    parser.add_argument(
+        "--use-l2-guard", dest="use_l2_guard",
+        action="store_true", default=False,
+        help="Wf-127 P2 L2 weight-decay guard on Hilbert primal+dual "
+             "(default: False; P2 ship default is off, P4 turns on with --use-l2-guard).",
+    )
+    parser.add_argument(
+        "--no-l2-guard", dest="use_l2_guard",
+        action="store_false",
+        help="Disable the Wf-127 P2 L2 weight-decay guard (explicit override).",
+    )
+    parser.add_argument(
+        "--l2-weight", type=float, default=0.01,
+        help="L2 weight-decay guard value when --use-l2-guard is set "
+             "(default: 0.01, Phase 1 stable on synthetic).",
+    )
+    parser.add_argument(
+        "--use-astr-scale-guard", dest="use_astr_scale_guard",
+        action="store_true", default=False,
+        help="Wf-127 P3 ASTSR value-space scale clip guard "
+             "(default: False; P3 ship default is off, P4 turns on with --use-astr-scale-guard).",
+    )
+    parser.add_argument(
+        "--no-astr-scale-guard", dest="use_astr_scale_guard",
+        action="store_false",
+        help="Disable the Wf-127 P3 ASTSR scale-guard (explicit override).",
+    )
+    parser.add_argument(
+        "--scale-clip-min", type=float, default=-10.0,
+        help="ASTSR scale clip min when --use-astr-scale-guard is set "
+             "(default: -10.0, Phase 1 stable on synthetic).",
+    )
+    parser.add_argument(
+        "--scale-clip-max", type=float, default=10.0,
+        help="ASTSR scale clip max when --use-astr-scale-guard is set "
+             "(default: 10.0, Phase 1 stable on synthetic).",
+    )
     parser.add_argument(
         "--out-dir",
         type=Path,
@@ -1185,6 +1269,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             args.device,
             args.strict_scaffold,
             _REPO_ROOT,
+            use_l2_guard=bool(args.use_l2_guard),
+            l2_weight=float(args.l2_weight),
+            use_astr_scale_guard=bool(args.use_astr_scale_guard),
+            scale_clip_min=float(args.scale_clip_min),
+            scale_clip_max=float(args.scale_clip_max),
         )
         per_seed_path = args.out_dir / metal / "per_seed_metrics.json"
         _write_json(per_seed_path, result)

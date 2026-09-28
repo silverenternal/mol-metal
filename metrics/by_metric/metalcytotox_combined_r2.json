@@ -1,0 +1,117 @@
+{
+  "metric": "metalcytotox_combined_r2",
+  "description": "MetalCytoToxDB 5-metal (Ru/Ir/Os/Rh/Re) regression R² aggregated from Wf-77 ASTSR baseline + Wf-79 3-way PLL experiments + Wf-128 P2 3-way REAL MetalCytoToxDB. Per-method breakdown kept as ``per_method``.",
+  "unit": "R² (can be negative; higher = better)",
+  "scope": "tier1_precious_metal_anticancer / MetalCytoToxDB 5-metal",
+  "source": "molmetal/scripts/bench_hilbert_astr_real_metalcytotox.py + Wf-77/79 + Wf-128 P2 3-way REAL",
+  "n_methods": 3,
+  "methods": [
+    "wf77_p2_astr_baseline/metalcytotox_5metal",
+    "wf79_p2_3way_pll/metalcytotox_5metal",
+    "wf128_p2_3way_real/metalcytotox_5metal"
+  ],
+  "per_method": {
+    "wf77_p2_astr_baseline/metalcytotox_5metal": {
+      "overall_r2_mean": -0.28412056401641317,
+      "overall_r2_std": 0.12304815276190986,
+      "n_seeds": 5,
+      "n_samples": 20000,
+      "cohorts": [
+        "Ir",
+        "Ru"
+      ],
+      "source": "molmetal/reports/wf77_p2_astr_baseline/metalcytotox_5metal/per_seed_metrics.json"
+    },
+    "wf79_p2_3way_pll/metalcytotox_5metal": {
+      "overall_r2_mean": null,
+      "overall_r2_std": null,
+      "n_seeds": null,
+      "n_samples": null,
+      "cohorts": null,
+      "source": "molmetal/reports/wf79_p2_3way_pll/metalcytotox_5metal/per_seed_metrics.json"
+    },
+    "wf128_p2_3way_real/metalcytotox_5metal": {
+      "combined_r2_mean_5metal_aggregate": -150.64475978241438,
+      "combined_r2_std_5metal_aggregate": 127.02615959972816,
+      "combined_r2_median_5metal_aggregate": -125.6806174833492,
+      "combined_r2_min_5metal_aggregate": -489.39619387886324,
+      "combined_r2_max_5metal_aggregate": -0.02390489853148765,
+      "combined_r2_p25_5metal_aggregate": -253.70482308941206,
+      "combined_r2_p75_5metal_aggregate": -52.60415957648028,
+      "hilbert_r2_mean": -1.6093620821180763,
+      "mph_r2_mean": -0.8189954637597552,
+      "astr_r2_mean": -1.1003703253453176,
+      "per_metal_mean_combined_r2": {
+        "Ir": -201.25455321650324,
+        "Os": -287.1975422161478,
+        "Re": -80.88051455674177,
+        "Rh": -183.82178093628028,
+        "Ru": -0.06940798639887549
+      },
+      "n_seeds": 5,
+      "n_folds_per_seed": 5,
+      "n_total_fits": 25,
+      "n_metals": 5,
+      "feature_dim": 172,
+      "feature_stack": "RDKit12 + Multi-PH32 + PLL128 (zero-padded for fallback rows)",
+      "backbone": "shared 172 → 128 trunk + 5 per-metal 128 → 64 → 1 heads",
+      "guards": "L2 grad-norm clip_max=1.0 + ASTSR loss_scale ≤ 1.0",
+      "wasserstein_weight": 0.05,
+      "device": "cpu",
+      "verdict": "FAIL",
+      "verdict_target": "combined R² ≥ 0 for ≥ 1 of 5 metals",
+      "verdict_n_pass": 0,
+      "verdict_n_total": 5,
+      "source": "molmetal/reports/wf128_p2_3way_real/synthesis.md + per-metal per_seed_metrics.json"
+    }
+  },
+  "cross_dataset_3way_anchor": {
+    "description": "Wf-128 P3 cross-dataset 3-way verify on PlatinAI 4-cell + tmQM 29 elements — cross-reference for honest framing",
+    "platinai_4cell": {
+      "source": "molmetal/reports/wf128_p3_platinai_4cell/synthesis.md",
+      "combined_r2_mean": -114.87253041822248,
+      "combined_r2_std": 12.286972783850063,
+      "hilbert_r2_mean": -124.53687981153253,
+      "verdict_vs_hilbert": "PASS (4 of 4 cell-lines: 3-way ≥ Hilbert)"
+    },
+    "tmqm_29": {
+      "source": "molmetal/reports/wf128_p3_tmqm_29/synthesis.md",
+      "combined_r2_mean": -40.23997724747657,
+      "combined_r2_std": 47.06275030720524,
+      "hilbert_r2_mean": -44.619473482977575,
+      "verdict_vs_hilbert": "PASS (29 of 29 elements: 3-way ≥ Hilbert)"
+    }
+  },
+  "timestamp": "2026-09-27",
+  "status": "MEASURED_HONEST_NEGATIVE_ARCHITECTURAL_CEILING",
+  "wf_139_p4_l10_arch_ceiling_closeout": {
+    "date": "2026-09-27",
+    "wf_tag": "Wf-139 Phase 4 — L5/L7/L10 R² architectural ceiling honest close-out",
+    "close_out_doc": "TODO/completed/137_l5_l7_l10_arch_ceiling_honest.md",
+    "l10_combined_r2_mean_5metal_aggregate": -150.64475978241438,
+    "l10_target_r2_geq_0_for_geq_1_of_5_metals": false,
+    "l10_n_pass": 0,
+    "l10_n_total": 5,
+    "l10_arch_ceiling_proof": "12-d RDKit signal |ρ| ≤ 0.02 on MetalCytoToxDB binary-activity target (Wf-49 §Cause 2 audit; binary 0/1 target is structurally uninformative for R² regression). The 172-d stack on MetalCytoToxDB is dominated by 160-d zero-padded Multi-PH + PLL rows (MetalCytoToxDB does not expose Multi-PH or PLL features natively), so the regression is effectively 12-d with constant-mean prior — hence the catastrophic REGRESSION to -150.64. The 3-way multi-task backbone lifts Ru near 0 (collapse-driven; -0.07 on 4/5 seeds) but cannot lift Ir/Os/Rh due to extreme collapse/explode modes.",
+    "l10_lift_paths": ["Wf-94 R20-P3 Multi-PH + PLL real feature augmentation on REAL MetalCytoToxDB (~3 wk GPU retrain)", "R22-P4 AlphaFold-Multimer + M43 Bergman d-orbital RBFE 420-d protein-aware (~6-12 mo)", "R23-P6 wet-lab pIC50 hybrid training replacing binary activity target (~12-18 mo)"],
+    "l10_paper_section6_verdict": "RELEGATE to §6 honest limitations; do NOT cite in §4 main; cite the 5-metal aggregate -150.64 (median -125.68) + per-metal breakdown + 3 future lift paths as architectural-ceiling evidence.",
+    "wf128_p3_cross_dataset_lift_caveat": "Wf-128 P3 cross-dataset verify on PlatinAI 4-cell (4/4 PASS vs Hilbert; combined R² = -114.87 lift +9.66) + tmQM 29 (29/29 PASS vs Hilbert; combined R² = -40.24 lift +4.38) confirms the 3-way integration IS a consistent lift over single-stream Hilbert. The MetalCytoToxDB 5-metal aggregate remains negative (-150.64) because the 160-d zero-padded noise dominates the multi-task backbone. The cross-dataset consistency of the +lift-over-Hilbert verdict + the absolute R² ≤ 0 ceiling is consistent with the Wf-49 architectural-ceiling conclusion."
+  },
+  "honest_framing_note": "Wf-128 P2 3-way REAL MetalCytoToxDB: 5-metal aggregate combined R² = -150.64 (median -125.68). 0 of 5 metals hit R² ≥ 0 — gate FAIL. Per-metal breakdown: Ru -0.07 (closest to 0; collapse_detected on 4/5 seeds), Re -80.88, Rh -183.82, Ir -201.25, Os -287.20. Wf-139 P4 close-out (TODO/completed/137_l5_l7_l10_arch_ceiling_honest.md) confirms this is an ARCHITECTURAL CEILING: 12-d RDKit signal floor + binary-activity target are structural (cause per Wf-49 §Cause 2); the 3-way integration lifts Ru near zero but cannot lift the heavy d-block metals (Ir/Os/Rh) due to extreme collapse/explode modes that the L2+ASTR guards cannot eliminate. Wf-128 P3 cross-dataset verify on PlatinAI 4-cell (4/4 PASS vs Hilbert) + tmQM 29 (29/29 PASS vs Hilbert) shows the 3-way integration IS a consistent lift over single-stream Hilbert — but on REAL MetalCytoToxDB the 5-metal aggregate remains negative because the lift is offset by collapse modes on the heavier metals. Architectural lift requires Multi-PH + PLL feature augmentation (Wf-94 R20-P3 GPU retrain, RTX 5090 ETA ~4 weeks) + AlphaFold-Multimer protein-aware descriptors (R22-P4, ETA +6-12 mo) + wet-lab pIC50 labels replacing binary activity (R23-P6, ETA +12-18 mo).",
+  "wf_phase": "Wf-128 P2 3-way REAL MetalCytoToxDB 5-metal + Wf-128 P3 cross-dataset verify (PlatinAI 4-cell + tmQM 29)",
+  "cross_references": {
+    "close_out_doc": "TODO/completed/128_l10_3way_real_pic50_rescue.md",
+    "wf128_p2_synthesis": "molmetal/reports/wf128_p2_3way_real/synthesis.md",
+    "wf128_p3_platinai_synthesis": "molmetal/reports/wf128_p3_platinai_4cell/synthesis.md",
+    "wf128_p3_tmqm_synthesis": "molmetal/reports/wf128_p3_tmqm_29/synthesis.md",
+    "wf128_p2_script": "molmetal/scripts/bench_3way_real_metalcytotox.py",
+    "wf128_p3_platinai_script": "molmetal/scripts/bench_3way_platinai_4cell.py",
+    "wf128_p3_tmqm_script": "molmetal/scripts/bench_3way_tmqm.py",
+    "wf77_baseline": "TODO/completed/104_wf83_phase1_hilbert_astr_phase2_4cell.md",
+    "wf49_signal_floor": "TODO/completed/91_wf49_r2_root_fix.md Cause 2",
+    "wf127_stable_region": "TODO/completed/127_l5_hilbert_diagnostic_closeout.md",
+    "wf122_l2_guards": "TODO/completed/122_p3_hilbert_astr_post_fix.md",
+    "wf94_multiph_pll_lift": "TODO/pending/94_r20_p3_multiph_pll_feature.md",
+    "lambda_roadmap": "TODO/03_plans/LAMBDA_ROADMAP.md §4.2 L10"
+  }
+}

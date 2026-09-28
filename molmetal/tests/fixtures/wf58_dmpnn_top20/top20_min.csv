@@ -1,0 +1,6 @@
+rank,compound_smiles,id,metal,dmpnn_pic50,qed,sa,vina_kcal,astsr_score
+1,CCO,test_001,Pt,7.0,0.5,1.0,-5.0,0.05
+2,CC(=O)O,test_002,Pd,6.5,0.4,1.0,-5.5,0.04
+3,c1ccccc1,test_003,Ir,7.2,0.6,1.0,-4.8,0.06
+4,CCCC,test_004,Ru,6.8,0.55,1.0,-5.2,0.05
+5,CC(C)C,test_005,Au,7.1,0.45,1.0,-5.1,0.04

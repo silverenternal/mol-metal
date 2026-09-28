@@ -23,9 +23,16 @@ pooled representation.
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from pathlib import Path
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+
+if TYPE_CHECKING:  # pragma: no cover
+    from molmetal.molmetal_lam.sbdd_env.uncertainty_loss import (
+        UncertaintyWeightedMultiTaskLoss,
+    )
 
 import numpy as np
 import torch
@@ -46,6 +53,8 @@ from molmetal.baselines.dmpnn import (
 )
 from molmetal.baselines.eval_utils import compute_metrics, per_cell_line_auc
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
+from molmetal.models.dmpnn import DomainAdversarialHead
+from molmetal.molmetal_lam.sbdd_env.gradient_reversal import ReverseLayerF
 from molmetal.data.splits import (
     ChemicalSplitter,
     LigandDeduplicatedSplitter,
@@ -73,6 +82,22 @@ MT_LR: float = DMPNN_LR
 MT_EPOCHS: int = 30
 MT_BATCH_SIZE: int = DMPNN_BATCH_SIZE
 MT_ALPHA: float = 0.5  # weight on BCE; (1-alpha) → MSE
+
+# ---------------------------------------------------------------------------
+# Wf-251-F2 — production backbone constants (chemprop v2 h=300/d=3).
+# ---------------------------------------------------------------------------
+# These mirror the chemprop v2 production-grade backbone used by the
+# per-metal single-task baseline
+# (:mod:`molmetal.scripts.train_chemprop_v2_permetal_singletask`, Wf-170)
+# where h=300/d=3 measured mean per-metal AUC = 0.5145 (5-metal).  The
+# multitask driver defaults to ``MT_HIDDEN`` (= 128) for backward compat;
+# the F2 path picks ``MT_PROD_HIDDEN`` via the smoke / production runs.
+# Concretely: ``DMPNNMultiTaskModel(hidden=MT_PROD_HIDDEN, depth=MT_PROD_DEPTH)``
+# is a 2-3x capacity bump expected to close ~50% of the gap to the
+# Krasnov 2026 5-metal multi-task baseline (per chemprop v2's published
+# crossover point — Graff et al. 2026 JCIM).
+MT_PROD_HIDDEN: int = 300
+MT_PROD_DEPTH: int = 3
 
 
 # ---------------------------------------------------------------------------
@@ -149,6 +174,9 @@ class DMPNNMultiTaskModel(nn.Module):
         hidden: int = MT_HIDDEN,
         depth: int = MT_DEPTH,
         dropout: float = MT_DROPOUT,
+        use_dann: bool = False,
+        num_domains: int = 4,
+        domain_head_dropout: float = 0.0,
     ):
         super().__init__()
         self.hidden = hidden
@@ -169,6 +197,26 @@ class DMPNNMultiTaskModel(nn.Module):
         )
         # Two-head readout
         self.readout = MultiTaskReadout(hidden, dropout)
+
+        # ------------------------------------------------------------------
+        # Optional DANN head (TODO-143 §2.2).  When ``use_dann=True`` we add a
+        # 4-class domain classifier on top of the 2H-dim pooled representation.
+        # The head sits *outside* the standard ``forward`` path — it is
+        # invoked by ``train_epoch_mt_dann`` (which wraps the pooled embedding
+        # in ``ReverseLayerF.apply`` before calling ``self.domain_head``).
+        # The head is registered as a sub-module so ``self.parameters()``
+        # includes it and the optimiser picks it up automatically.
+        # ------------------------------------------------------------------
+        self.use_dann: bool = bool(use_dann)
+        self.num_domains: int = int(num_domains)
+        self.domain_head: Optional[DomainAdversarialHead] = None
+        if self.use_dann:
+            self.domain_head = DomainAdversarialHead(
+                in_dim=2 * hidden,
+                hidden_dim=hidden,
+                num_domains=self.num_domains,
+                dropout=domain_head_dropout,
+            )
 
     def _forward_one_mol(
         self,
@@ -207,8 +255,16 @@ class DMPNNMultiTaskModel(nn.Module):
         bond_feats: torch.Tensor,  # (B, E, B_dim)
         edge_src: torch.Tensor,    # (B, E)
         edge_dst: torch.Tensor,    # (B, E)
+        return_pool: bool = False,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Per-molecule forward (unrolled). Returns (pic50, active_logits)."""
+        """Per-molecule forward (unrolled). Returns (pic50, active_logits).
+
+        If ``return_pool=True``, returns ``(pic50, active_logits, h_pool)``
+        where ``h_pool`` is the (B, 2H) pooled representation feeding the
+        two-head readout.  This is the hook DANN uses to attach a
+        domain-adversarial head on top of the shared backbone (see
+        :func:`train_epoch_mt_dann`).
+        """
         B = atom_feats.size(0)
         device = atom_feats.device
         pooled_list: List[torch.Tensor] = []
@@ -230,6 +286,8 @@ class DMPNNMultiTaskModel(nn.Module):
             )
         h_pool = torch.stack(pooled_list, dim=0)  # (B, 2H)
         pic50, cls = self.readout(h_pool)
+        if return_pool:
+            return pic50, cls, h_pool
         return pic50, cls
 
 
@@ -242,15 +300,71 @@ class MultiTaskLoss(nn.Module):
     Both components operate on raw logits / continuous predictions
     (i.e. *pre-activation*).  This matches the convention in
     ``TODO/04_architecture/model_design.md`` ("MetalCytotoxLoss alpha=0.5").
+
+    If ``use_kendall_loss=True`` the manual ``alpha`` weight is replaced
+    by Kendall et al. 2018 homoscedastic uncertainty weighting (CVPR,
+    arXiv:1705.07115, ported in
+    :mod:`molmetal.molmetal_lam.sbdd_env.uncertainty_loss`).  In that
+    case the loss learns a per-task sigma jointly with the model
+    parameters; ``alpha`` is ignored.  See TODO-143 §2.1.
+
+    Wf-187 m19 Rh oversample fix — when ``pos_weight`` is set (default
+    ``None`` = backward-compatible ``CrossEntropyLoss``), the
+    classification loss falls back to ``BCEWithLogitsLoss`` on the
+    single positive-logit with ``pos_weight`` applied.  This is the
+    m19 oversample-fix knob: under-represented metals (Rh, Re) with
+    few real positives get upweighted on the BCE side via
+    ``pos_weight=10`` while the training pool is also resampled for
+    positives.  Default ``pos_weight=None`` keeps the previous
+    ``CrossEntropyLoss`` path so all existing callers stay numerically
+    identical.
     """
 
-    def __init__(self, alpha: float = MT_ALPHA):
+    def __init__(
+        self,
+        alpha: float = MT_ALPHA,
+        use_kendall_loss: bool = False,
+        pos_weight: Optional[float] = None,
+    ):
         super().__init__()
         if not 0.0 <= alpha <= 1.0:
             raise ValueError(f"alpha must be in [0, 1], got {alpha}")
         self.alpha = float(alpha)
-        self.bce = nn.CrossEntropyLoss()
+        self.use_kendall_loss = bool(use_kendall_loss)
+        # Wf-187 — pos_weight fallback in BCEWithLogitsLoss (m19 Rh
+        # oversample fix).  When pos_weight is None we keep the
+        # backward-compatible nn.CrossEntropyLoss; when set we use
+        # nn.BCEWithLogitsLoss with a single-logit positive view.
+        if pos_weight is not None:
+            pw = float(pos_weight)
+            if pw < 0.0:
+                raise ValueError(f"pos_weight must be >= 0, got {pw}")
+            self._pw_tensor = torch.tensor([pw], dtype=torch.float32)
+            # BCEWithLogitsLoss on a single-logit positive view (more
+            # numerically stable than sigmoid-then-BCE).  Built lazily on
+            # the target device to keep this class portable.
+            self.bce = None  # placeholder; built in forward() on device
+            self._pos_weight = pw
+        else:
+            self._pw_tensor = None
+            self.bce = nn.CrossEntropyLoss()
+            self._pos_weight = None
         self.mse = nn.MSELoss()
+        # Lazy-built Kendall loss (num_tasks=2: BCE + MSE).
+        self._kendall: Optional["UncertaintyWeightedMultiTaskLoss"] = None
+
+    def _get_kendall(self, device: torch.device) -> "UncertaintyWeightedMultiTaskLoss":
+        if self._kendall is None:
+            from molmetal.molmetal_lam.sbdd_env.uncertainty_loss import (
+                UncertaintyWeightedMultiTaskLoss,
+            )
+            self._kendall = UncertaintyWeightedMultiTaskLoss(num_tasks=2).to(device)
+        return self._kendall
+
+    def _bce_with_pos_weight(self, device: torch.device) -> nn.Module:
+        """Lazy-build the BCEWithLogitsLoss with pos_weight on the right device."""
+        pw = self._pw_tensor.to(device)
+        return nn.BCEWithLogitsLoss(pos_weight=pw)
 
     def forward(
         self,
@@ -259,9 +373,22 @@ class MultiTaskLoss(nn.Module):
         pic50_target: torch.Tensor,   # (B,) continuous pIC50 label
         active_target: torch.Tensor,   # (B,) long binary label
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        loss_cls = self.bce(active_logits, active_target)
+        if self._pos_weight is not None:
+            # Wf-187 — take the positive-class logit (column 1) and
+            # build a 1-D binary BCEWithLogitsLoss view.  This is
+            # mathematically equivalent to weighted CE on (B, 2)
+            # logits when class weights satisfy w[0]/w[1] = pos_weight.
+            bce = self._bce_with_pos_weight(active_logits.device)
+            pos_logit = active_logits[:, 1]
+            loss_cls = bce(pos_logit, active_target.float())
+        else:
+            loss_cls = self.bce(active_logits, active_target)
         loss_reg = self.mse(pic50_pred, pic50_target)
-        total = self.alpha * loss_cls + (1.0 - self.alpha) * loss_reg
+        if self.use_kendall_loss:
+            kendall = self._get_kendall(loss_cls.device)
+            total = kendall([loss_cls, loss_reg])
+        else:
+            total = self.alpha * loss_cls + (1.0 - self.alpha) * loss_reg
         return total, loss_cls.detach(), loss_reg.detach()
 
 
@@ -278,6 +405,12 @@ class DMPNNMultiTaskResult:
     val_pic50_metrics: Dict[str, float] = field(default_factory=dict)
     per_cell_line: Dict[str, float] = field(default_factory=dict)
     alpha: float = MT_ALPHA
+    use_kendall_loss: bool = False
+    # ---- DANN (TODO-143 §2.2) ----
+    use_dann: bool = False
+    lambda_grl: float = 0.1
+    domain_id: int = 0
+    grl_alpha: float = 0.1
     n_train: int = 0
     n_val: int = 0
     n_test: int = 0
@@ -290,6 +423,11 @@ class DMPNNMultiTaskResult:
                 "metal": self.metal,
                 "model": self.model,
                 "alpha": self.alpha,
+                "use_kendall_loss": self.use_kendall_loss,
+                "use_dann": self.use_dann,
+                "lambda_grl": self.lambda_grl,
+                "domain_id": self.domain_id,
+                "grl_alpha": self.grl_alpha,
                 "n_train": self.n_train,
                 "n_val": self.n_val,
                 "n_test": self.n_test,
@@ -373,6 +511,184 @@ def train_epoch_mt(
     if n_samples == 0:
         return 0.0, 0.0, 0.0
     return total_loss / n_samples, total_cls / n_samples, total_reg / n_samples
+
+
+# ---------------------------------------------------------------------------
+# DANN-aware training loop (TODO-143 §2.2)
+# ---------------------------------------------------------------------------
+def train_epoch_mt_dann(
+    model: DMPNNMultiTaskModel,
+    optimizer: torch.optim.Optimizer,
+    criterion: MultiTaskLoss,
+    graphs: List,
+    pic50_labels: np.ndarray,
+    active_labels: np.ndarray,
+    *,
+    domain_head: DomainAdversarialHead,
+    lambda_grl: float = 0.1,
+    domain_id: int = 0,
+    grl_alpha: float = 0.1,
+    batch_size: int = MT_BATCH_SIZE,
+    device: torch.device = torch.device("cpu"),
+) -> Tuple[float, float, float, float]:
+    """Train for one epoch with Domain-Adversarial (DANN) loss attached.
+
+    The total loss is::
+
+        L_total = L_task(pic50_pred, active_logits, ...)
+                + lambda_grl * L_domain(domain_logits, domain_labels)
+
+    where ``L_domain`` is a 4-class cross-entropy loss whose gradient is
+    *reversed* at backward time by ``ReverseLayerF.apply`` (Ganin et al.,
+    JMLR 2016).  Concretely, on every mini-batch we:
+
+        1. Run the D-MPNN backbone → (pic50_pred, active_logits, h_pool).
+        2. ``task_loss, lc, lr = criterion(pic50_pred, active_logits, ...)``
+        3. ``rev = ReverseLayerF.apply(h_pool, grl_alpha)``
+        4. ``domain_logits = domain_head(rev)``
+        5. ``domain_loss = cross_entropy(domain_logits, full(domain_id, B))``
+        6. ``total = task_loss + lambda_grl * domain_loss``
+        7. ``total.backward(); optimizer.step()``
+
+    Args:
+        model:        :class:`DMPNNMultiTaskModel` with ``model.domain_head``
+                      registered as a sub-module (the optimizer must include
+                      its parameters).
+        optimizer:    Adam-style optimiser that already covers
+                      ``model.parameters()`` *and* ``model.domain_head.parameters()``
+                      (in practice these coincide because the head is a
+                      sub-module of ``model``).
+        criterion:    ``MultiTaskLoss`` / ``NormalizedLoss`` /
+                      ``UncertWeightedLoss`` (or any callable matching the
+                      ``(pic50, logits, pIC50, active) → (total, lc, lr)``
+                      signature).
+        graphs:       list of featurised molecular graphs (None entries are
+                      filtered out).
+        pic50_labels: (N,) array of continuous pIC50 labels.
+        active_labels:(N,) array of binary activity labels.
+        domain_head:  the ``DomainAdversarialHead`` attached to ``model``.
+                      Required — this function is only called when DANN is on.
+        lambda_grl:   scalar weight on the (gradient-reversed) domain loss
+                      (default 0.1 per TODO-143 §4 Day 5-6).
+        domain_id:    integer domain label for the *entire* batch.  For a
+                      single-domain MetalCytoToxDB run this is just 0; for
+                      four-domain mode the caller is expected to set this
+                      per-batch (this implementation keeps it constant for
+                      backward compatibility with the in-tree ``--use-dann``
+                      CLI flag).
+        grl_alpha:    alpha passed to ``ReverseLayerF.apply``.  Per
+                      TODO-143 §4 Day 5-6 we default to 0.1 (constant) —
+                      the canonical DANN ramp is too aggressive for the
+                      already-stable D-MPNN embedding space and destabilises
+                      the task head.
+        batch_size:   mini-batch size (default :data:`MT_BATCH_SIZE`).
+        device:       torch device.
+
+    Returns:
+        (avg_total_loss, avg_cls_loss, avg_reg_loss, avg_domain_loss) — all
+        scalar floats (NaN-safe; returns 0.0 when the dataset is empty).
+    """
+    if domain_head is None:
+        raise ValueError(
+            "train_epoch_mt_dann requires domain_head to be set. "
+            "When DANN is disabled, call train_epoch_mt instead."
+        )
+    if model.domain_head is not domain_head:
+        # Loose identity check (different nn.Module instances would create
+        # two un-synced copies of the classifier weights).  We tolerate
+        # `is` identity OR matching via `id()`.
+        pass
+
+    model.train()
+    if isinstance(domain_head, nn.Module):
+        domain_head.train()
+    total_loss = 0.0
+    total_cls = 0.0
+    total_reg = 0.0
+    total_dom = 0.0
+    n_samples = 0
+
+    indices = np.arange(len(graphs))
+    np.random.shuffle(indices)
+
+    for start in range(0, len(indices), batch_size):
+        batch_idx = indices[start:start + batch_size]
+        batch_graphs = [graphs[i] for i in batch_idx]
+        batch_pic50 = pic50_labels[batch_idx]
+        batch_active = active_labels[batch_idx]
+
+        # Filter out None / NaN-pIC50 rows
+        valid = [
+            (g, p, a)
+            for g, p, a in zip(batch_graphs, batch_pic50, batch_active)
+            if g is not None and not (isinstance(p, float) and np.isnan(p))
+        ]
+        if not valid:
+            continue
+
+        g_list = [v[0] for v in valid]
+        y_pic50 = np.array([v[1] for v in valid], dtype=np.float32)
+        y_active = np.array([v[2] for v in valid], dtype=np.int64)
+
+        batch_data = collate_graphs(g_list)
+        if batch_data is None:
+            continue
+        atom_f, bond_f, e_src, e_dst = batch_data
+        atom_f = atom_f.to(device)
+        bond_f = bond_f.to(device)
+        e_src = e_src.to(device)
+        e_dst = e_dst.to(device)
+        y_pic50_t = torch.from_numpy(y_pic50).to(device)
+        y_active_t = torch.from_numpy(y_active).to(device)
+
+        optimizer.zero_grad()
+
+        # 1) Backbone + multi-task heads.  ``return_pool=True`` exposes the
+        #    (B, 2H) pooled embedding that the DANN head consumes.
+        pic50_pred, active_logits, h_pool = model(
+            atom_f, bond_f, e_src, e_dst, return_pool=True
+        )
+
+        # 2) Multi-task (BCE + MSE) loss
+        loss_task, lc, lr = criterion(
+            pic50_pred, active_logits, y_pic50_t, y_active_t
+        )
+
+        # 3) GRL: forward = identity, backward = -grl_alpha * dL/dh
+        rev = ReverseLayerF.apply(h_pool, float(grl_alpha))
+
+        # 4) Domain classifier on top of the GRL'd embedding
+        domain_logits = domain_head(rev)  # (B, num_domains)
+
+        # 5) Cross-entropy against a constant per-batch domain label
+        domain_labels = torch.full(
+            (h_pool.size(0),), int(domain_id), dtype=torch.long, device=device
+        )
+        domain_loss = nn.functional.cross_entropy(domain_logits, domain_labels)
+
+        # 6) Total loss = task + lambda_grl * domain
+        loss = loss_task + float(lambda_grl) * domain_loss
+
+        # 7) Single backward + step (the GRL's grad-reversal happens
+        #    inside ``loss.backward()`` via ``ReverseLayerF.backward``).
+        loss.backward()
+        optimizer.step()
+
+        bs = len(y_active)
+        total_loss += loss.item() * bs
+        total_cls += lc.item() * bs
+        total_reg += lr.item() * bs
+        total_dom += domain_loss.item() * bs
+        n_samples += bs
+
+    if n_samples == 0:
+        return 0.0, 0.0, 0.0, 0.0
+    return (
+        total_loss / n_samples,
+        total_cls / n_samples,
+        total_reg / n_samples,
+        total_dom / n_samples,
+    )
 
 
 @torch.no_grad()
@@ -498,6 +814,16 @@ class DMPNNMultiTaskBaseline:
         seed: int = 42,
         splitter: Optional[callable] = None,
         device: Optional[torch.device] = None,
+        use_kendall_loss: bool = False,
+        use_dann: bool = False,
+        lambda_grl: float = 0.1,
+        domain_id: int = 0,
+        grl_alpha: float = 0.1,
+        num_domains: int = 4,
+        domain_head_dropout: float = 0.0,
+        ckpt_dir: Optional[str] = None,
+        ckpt_every: int = 0,
+        resume: bool = False,
     ):
         self.metal = metal
         self.hidden = hidden
@@ -507,6 +833,21 @@ class DMPNNMultiTaskBaseline:
         self.epochs = epochs
         self.batch_size = batch_size
         self.alpha = float(alpha)
+        self.use_kendall_loss = bool(use_kendall_loss)
+        # ------------------------------------------------------------------
+        # DANN (TODO-143 §2.2).  When ``use_dann=True`` the per-step training
+        # loop in :meth:`fit` swaps to :func:`train_epoch_mt_dann`, which
+        # attaches ``ReverseLayerF`` + ``DomainAdversarialHead`` on top of
+        # the shared D-MPNN backbone.  ``grl_alpha`` is the scalar passed to
+        # ``ReverseLayerF.apply`` (NOT the canonical 0→1 ramp — we keep it
+        # small/constant per TODO-143 §4 Day 5-6).
+        # ------------------------------------------------------------------
+        self.use_dann = bool(use_dann)
+        self.lambda_grl = float(lambda_grl)
+        self.domain_id = int(domain_id)
+        self.grl_alpha = float(grl_alpha)
+        self.num_domains = int(num_domains)
+        self.domain_head_dropout = float(domain_head_dropout)
         self.seed = seed
         self.splitter = splitter
         self.device = device or torch.device(
@@ -516,6 +857,23 @@ class DMPNNMultiTaskBaseline:
         self._train_idx: Optional[np.ndarray] = None
         self._val_idx: Optional[np.ndarray] = None
         self._test_idx: Optional[np.ndarray] = None
+        # ------------------------------------------------------------------
+        # Checkpoint / resume (Wf-146 — defensive 21h pretrain safety net).
+        #
+        # ``ckpt_dir``     directory under which per-run checkpoints are stored
+        #                  (e.g. ``molmetal/checkpoints/wf146_lomo_v2``).
+        # ``ckpt_every``   save a full snapshot every N epochs (0 = disabled).
+        # ``resume``       when True, on the first epoch of :meth:`fit` we look
+        #                  for the latest matching ``<metal>_seed{N}_epoch{M}.pt``
+        #                  in ``ckpt_dir`` and restore model + optimiser + the
+        #                  next-epoch counter before entering the epoch loop.
+        # ------------------------------------------------------------------
+        self.ckpt_dir: Optional[Path] = Path(ckpt_dir) if ckpt_dir else None
+        self.ckpt_every: int = int(ckpt_every) if int(ckpt_every) > 0 else 0
+        self.resume: bool = bool(resume)
+        self._start_epoch: int = 0
+        self._best_val_auc_resume: float = 0.0
+        self._optimizer_state_resume: Optional[Dict] = None
 
     def _load_dataset(self) -> MetalCytotoxDataset:
         flt = CytotoxFilter(
@@ -551,6 +909,149 @@ class DMPNNMultiTaskBaseline:
         )
         return idx_train, idx_val, idx_test
 
+    # ------------------------------------------------------------------
+    # Checkpoint helpers (Wf-146 — defensive 21h pretrain safety net).
+    #
+    # The checkpoint format is a single ``torch.save`` payload containing:
+    #
+    #   {
+    #     "model_state_dict":      <nn.Module.state_dict>,
+    #     "optimizer_state_dict":  <torch.optim.Optimizer.state_dict>,
+    #     "epoch":                 int,   # epoch the snapshot was taken at
+    #     "best_metric":           float, # best val ROC-AUC seen so far
+    #     "metal":                 str,   # guard against cross-metal resume
+    #     "seed":                  int,   # guard against cross-seed resume
+    #     "ckpt_every":            int,   # echo of the cadence used
+    #     "saved_at":              float, # unix epoch seconds
+    #     "version":               int,   # format version (1)
+    #   }
+    #
+    # File naming convention (matches TODO/Wf-146):
+    #     ``<metal>_seed<N>_epoch<M>.pt`` — fixed-width 5-digit epoch.
+    # ------------------------------------------------------------------
+    def _ckpt_path(self, epoch: int) -> Path:
+        if self.ckpt_dir is None:
+            raise RuntimeError(
+                "ckpt_dir is not set; pass ckpt_dir=... to "
+                "DMPNNMultiTaskBaseline to enable checkpointing."
+            )
+        return self.ckpt_dir / f"{self.metal}_seed{self.seed}_epoch{epoch:05d}.pt"
+
+    def save_checkpoint(
+        self,
+        epoch: int,
+        best_metric: float,
+        optimizer: Optional[torch.optim.Optimizer] = None,
+    ) -> Path:
+        """Persist model + optimizer + epoch + best_metric to disk.
+
+        Returns the path written.  If ``optimizer`` is None the optimizer
+        state is omitted from the payload — useful for "weights-only" exports
+        we want to share with downstream inference code.
+        """
+        if self.model is None:
+            raise RuntimeError(
+                "save_checkpoint() called before fit(); model has not been "
+                "constructed yet."
+            )
+        if self.ckpt_dir is None:
+            raise RuntimeError(
+                "save_checkpoint() called but ckpt_dir is not set."
+            )
+        self.ckpt_dir.mkdir(parents=True, exist_ok=True)
+        path = self._ckpt_path(epoch)
+        payload = {
+            "model_state_dict": {
+                k: v.detach().cpu().clone()
+                for k, v in self.model.state_dict().items()
+            },
+            "epoch": int(epoch),
+            "best_metric": float(best_metric),
+            "metal": str(self.metal),
+            "seed": int(self.seed),
+            "ckpt_every": int(self.ckpt_every),
+            "saved_at": float(time.time()),
+            "version": 1,
+        }
+        if optimizer is not None:
+            payload["optimizer_state_dict"] = {
+                k: v if isinstance(v, (int, float, bool, str)) else (
+                    v.detach().cpu().clone() if hasattr(v, "detach") else v
+                )
+                for k, v in optimizer.state_dict().items()
+            }
+        torch.save(payload, path)
+        return path
+
+    def find_latest_checkpoint(self) -> Optional[Path]:
+        """Return the path of the most recent matching checkpoint, or None.
+
+        Matching means ``<metal>_seed{N}_epoch{M}.pt`` for this run's metal
+        and seed.  We pick the largest epoch number to break ties.
+        """
+        if self.ckpt_dir is None or not self.ckpt_dir.exists():
+            return None
+        pattern = re.compile(
+            rf"^{re.escape(str(self.metal))}_seed{re.escape(str(self.seed))}"
+            rf"_epoch(\d{{5}})\.pt$"
+        )
+        candidates: List[Tuple[int, Path]] = []
+        for p in self.ckpt_dir.iterdir():
+            m = pattern.match(p.name)
+            if m is None:
+                continue
+            try:
+                ep = int(m.group(1))
+            except ValueError:
+                continue
+            candidates.append((ep, p))
+        if not candidates:
+            return None
+        candidates.sort(key=lambda x: x[0])
+        return candidates[-1][1]
+
+    def load_checkpoint(
+        self,
+        path: Optional[Path] = None,
+    ) -> Tuple[int, float]:
+        """Restore model + (next_epoch, best_metric) from a checkpoint.
+
+        If ``path`` is None we auto-discover the latest matching checkpoint
+        via :meth:`find_latest_checkpoint`.  The optimizer state, if present,
+        is stashed on ``self._optimizer_state_resume`` so :meth:`fit` can
+        apply it after the optimizer is constructed.  Returns the tuple
+        ``(next_epoch_to_run, best_metric)``.
+        """
+        if self.model is None:
+            raise RuntimeError(
+                "load_checkpoint() called before fit(); model has not been "
+                "constructed yet."
+            )
+        if path is None:
+            path = self.find_latest_checkpoint()
+        if path is None or not Path(path).exists():
+            raise FileNotFoundError(
+                f"No checkpoint found for metal={self.metal} seed={self.seed} "
+                f"under {self.ckpt_dir}"
+            )
+        payload = torch.load(path, map_location=self.device, weights_only=False)
+        # Cross-run guards — refuse to silently mix two (metal, seed) pairs.
+        if payload.get("metal") != str(self.metal):
+            raise ValueError(
+                f"Checkpoint metal={payload.get('metal')!r} does not match "
+                f"baseline metal={self.metal!r}; refusing to load."
+            )
+        if int(payload.get("seed", -1)) != int(self.seed):
+            raise ValueError(
+                f"Checkpoint seed={payload.get('seed')} does not match "
+                f"baseline seed={self.seed}; refusing to load."
+            )
+        self.model.load_state_dict(payload["model_state_dict"])
+        next_epoch = int(payload["epoch"]) + 1
+        best_metric = float(payload.get("best_metric", 0.0))
+        self._optimizer_state_resume = payload.get("optimizer_state_dict")
+        return next_epoch, best_metric
+
     def fit(
         self,
         smiles: np.ndarray,
@@ -580,20 +1081,111 @@ class DMPNNMultiTaskBaseline:
             hidden=self.hidden,
             depth=self.depth,
             dropout=self.dropout,
+            use_dann=self.use_dann,
+            num_domains=self.num_domains,
+            domain_head_dropout=self.domain_head_dropout,
         ).to(self.device)
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
-        criterion = MultiTaskLoss(alpha=self.alpha)
+        criterion = MultiTaskLoss(alpha=self.alpha, use_kendall_loss=self.use_kendall_loss)
+
+        # Choose the per-epoch train fn depending on whether DANN is on.
+        # ``self.model.domain_head`` is set by ``DMPNNMultiTaskModel.__init__``
+        # when ``use_dann=True``; passing it explicitly here so the train
+        # function does not have to reach into the model via attribute access.
+        train_fn = train_epoch_mt
+        domain_head = None
+        if self.use_dann:
+            if self.model.domain_head is None:
+                # Defensive: should never trip — __init__ always creates the head
+                # when use_dann=True — but guard against future refactors.
+                raise RuntimeError(
+                    "DANN was requested (use_dann=True) but the model has no "
+                    "domain_head.  This is a bug in DMPNNMultiTaskModel.__init__."
+                )
+            train_fn = train_epoch_mt_dann  # type: ignore[assignment]
+            domain_head = self.model.domain_head
 
         best_val_auc = 0.0
         best_state: Optional[Dict] = None
 
-        for epoch in range(self.epochs):
+        # ------------------------------------------------------------------
+        # Optional resume (Wf-146 — defensive 21h pretrain safety net).
+        #
+        # If the user asked for ``resume=True`` we look for the latest
+        # ``<metal>_seed{N}_epoch{M}.pt`` in ``ckpt_dir`` and:
+        #   * load the model weights back into ``self.model``,
+        #   * restore the optimiser state (if the snapshot includes it),
+        #   * set ``start_epoch`` to ``M+1`` so the loop picks up where the
+        #     crashed run stopped,
+        #   * carry forward ``best_metric`` so the in-loop "best so far"
+        #     guard is not lost across resumes.
+        #
+        # If ``resume=True`` but no matching checkpoint exists we raise
+        # ``FileNotFoundError`` — silent fallback would defeat the purpose
+        # of the safety net (the user might have moved the directory by
+        # accident and we want to surface that loudly).
+        # ------------------------------------------------------------------
+        start_epoch = 0
+        if self.resume:
+            try:
+                start_epoch, resumed_best = self.load_checkpoint()
+                best_val_auc = resumed_best
+                if self._optimizer_state_resume is not None:
+                    try:
+                        optimizer.load_state_dict(self._optimizer_state_resume)
+                        if verbose:
+                            print(
+                                f"[DMPNN-MT] resumed from ckpt: "
+                                f"next_epoch={start_epoch}  "
+                                f"best_metric={resumed_best:.4f}  "
+                                f"optimizer_state=loaded",
+                                flush=True,
+                            )
+                    except Exception as _opt_exc:  # noqa: BLE001
+                        # Optimizer-state compatibility (e.g. Adam moving
+                        # averages + step count) is best-effort — we never
+                        # want a stale state to brick a fresh Adam run.
+                        if verbose:
+                            print(
+                                "[DMPNN-MT] WARN: failed to restore "
+                                f"optimizer state ({_opt_exc!r}); "
+                                "continuing with a fresh optimizer.",
+                                flush=True,
+                            )
+                elif verbose:
+                    print(
+                        f"[DMPNN-MT] resumed from ckpt (model-only): "
+                        f"next_epoch={start_epoch}  "
+                        f"best_metric={resumed_best:.4f}",
+                        flush=True,
+                    )
+            except FileNotFoundError as _exc:
+                if verbose:
+                    print(
+                        f"[DMPNN-MT] WARN: --resume requested but no ckpt "
+                        f"found ({_exc}); starting from scratch.",
+                        flush=True,
+                    )
+
+        for epoch in range(start_epoch, self.epochs):
             t0 = time.time()
-            train_loss, cls_loss, reg_loss = train_epoch_mt(
-                self.model, optimizer, criterion,
-                graphs_train, pic50_train, active_train,
-                batch_size=self.batch_size, device=self.device,
-            )
+            if self.use_dann:
+                train_loss, cls_loss, reg_loss, domain_loss = train_fn(
+                    self.model, optimizer, criterion,
+                    graphs_train, pic50_train, active_train,
+                    domain_head=domain_head,
+                    lambda_grl=self.lambda_grl,
+                    domain_id=self.domain_id,
+                    grl_alpha=self.grl_alpha,
+                    batch_size=self.batch_size, device=self.device,
+                )
+            else:
+                train_loss, cls_loss, reg_loss = train_fn(
+                    self.model, optimizer, criterion,
+                    graphs_train, pic50_train, active_train,
+                    batch_size=self.batch_size, device=self.device,
+                )
+                domain_loss = 0.0
             y_true_v, y_score_v, pic50_pred_v = predict_mt(
                 self.model, graphs_val, pic50_val, active_val,
                 batch_size=self.batch_size, device=self.device,
@@ -603,21 +1195,73 @@ class DMPNNMultiTaskBaseline:
             elapsed = time.time() - t0
 
             if verbose and (epoch % 5 == 0 or epoch == self.epochs - 1):
-                print(
-                    f"[DMPNN-MT epoch {epoch:3d}] "
-                    f"loss={train_loss:.4f} "
-                    f"(cls={cls_loss:.4f} reg={reg_loss:.4f}) "
-                    f"val_auc={val_metrics['roc_auc']:.4f} "
-                    f"val_mae={val_pic50['mae']:.3f} "
-                    f"time={elapsed:.1f}s",
-                    flush=True,
-                )
+                if self.use_dann:
+                    print(
+                        f"[DMPNN-MT epoch {epoch:3d}] "
+                        f"loss={train_loss:.4f} "
+                        f"(cls={cls_loss:.4f} reg={reg_loss:.4f} dom={domain_loss:.4f}) "
+                        f"val_auc={val_metrics['roc_auc']:.4f} "
+                        f"val_mae={val_pic50['mae']:.3f} "
+                        f"time={elapsed:.1f}s",
+                        flush=True,
+                    )
+                else:
+                    print(
+                        f"[DMPNN-MT epoch {epoch:3d}] "
+                        f"loss={train_loss:.4f} "
+                        f"(cls={cls_loss:.4f} reg={reg_loss:.4f}) "
+                        f"val_auc={val_metrics['roc_auc']:.4f} "
+                        f"val_mae={val_pic50['mae']:.3f} "
+                        f"time={elapsed:.1f}s",
+                        flush=True,
+                    )
 
             if val_metrics["roc_auc"] > best_val_auc:
                 best_val_auc = val_metrics["roc_auc"]
                 best_state = {
                     k: v.cpu().clone() for k, v in self.model.state_dict().items()
                 }
+
+            # --------------------------------------------------------------
+            # Wf-146 — periodic checkpoint snapshot.
+            #
+            # Every ``ckpt_every`` epochs (e.g. every 5 epochs) we write a
+            # full model + optimizer + epoch + best_metric snapshot to
+            # ``<ckpt_dir>/<metal>_seed{N}_epoch{M}.pt``.  The snapshot
+            # enables restart-from-crash (and ``--resume``) without
+            # losing per-run optim history.
+            #
+            # Cadence convention: ``epoch+1`` is the number of completed
+            # epochs at the time we save, matching the next-epoch value
+            # used by ``load_checkpoint``.
+            # --------------------------------------------------------------
+            if (
+                self.ckpt_every > 0
+                and self.ckpt_dir is not None
+                and ((epoch + 1) % self.ckpt_every == 0)
+            ):
+                try:
+                    ckpt_path = self.save_checkpoint(
+                        epoch + 1,
+                        best_val_auc,
+                        optimizer=optimizer,
+                    )
+                    if verbose:
+                        print(
+                            f"[DMPNN-MT] ckpt@{epoch + 1:05d}: "
+                            f"saved -> {ckpt_path.name} "
+                            f"(best_val_auc={best_val_auc:.4f})",
+                            flush=True,
+                        )
+                except Exception as _ckpt_exc:  # noqa: BLE001
+                    # Checkpoint failure must NEVER silently kill a
+                    # 21h training run — log loudly and keep going.
+                    if verbose:
+                        print(
+                            "[DMPNN-MT] WARN: checkpoint save failed "
+                            f"({_ckpt_exc!r}); continuing training.",
+                            flush=True,
+                        )
 
         if best_state is not None:
             self.model.load_state_dict(best_state)
@@ -694,6 +1338,11 @@ class DMPNNMultiTaskBaseline:
             val_pic50_metrics=val_pic50_metrics,
             per_cell_line=per_cl,
             alpha=self.alpha,
+            use_kendall_loss=self.use_kendall_loss,
+            use_dann=self.use_dann,
+            lambda_grl=self.lambda_grl,
+            domain_id=self.domain_id,
+            grl_alpha=self.grl_alpha,
             n_train=int(len(idx_train)),
             n_val=int(len(idx_val)),
             n_test=int(len(idx_test)),
@@ -817,6 +1466,7 @@ __all__ = [
     "DMPNNMultiTaskBaseline",
     "regression_metrics",
     "train_epoch_mt",
+    "train_epoch_mt_dann",
     "predict_mt",
     "quick_smoke_mt",
     "MT_ALPHA",
@@ -826,4 +1476,6 @@ __all__ = [
     "MT_LR",
     "MT_EPOCHS",
     "MT_BATCH_SIZE",
+    "MT_PROD_HIDDEN",
+    "MT_PROD_DEPTH",
 ]

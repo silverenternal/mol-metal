@@ -1,5 +1,9 @@
 # MolFlow-Triton default config
 # YAML is loaded by utils.config.load_config()
+#
+# DIRECTIVE 2026-09-28: "强者默认路由倒真实测试" — strong (production-scale)
+# measurements default-route to real test data. Use --smoke (or set
+# data.dataset=metalcytotox_fallback explicitly) only for opt-in smoke runs.
 
 model:
   hidden_dim: 128

@@ -833,6 +833,37 @@ class RewardAggregator:
     #: :attr:`diversity_homotype` without disturbing the dominant
     #: Vina / SA / PB reward channels.
     w_diversity: float = 0.0
+    #: Wf-180 (m7 diversity lift) — continuous **Morgan-ECFP4 Tanimoto
+    #: distance** reward at rank-time.  At :meth:`MCTSProofSearch.search`
+    #: end we re-score each candidate by adding
+    #: ``w_tanimoto_distance * mean Tanimoto-distance(state, others)``
+    #: where the mean is over OTHER candidates in the result set.
+    #: ``mean Tanimoto-distance`` is in ``[0, 1]`` — 0.0 if every other
+    #: candidate shares an identical Morgan-ECFP4 fingerprint, 1.0 if
+    #: every other candidate is maximally distant.  This is the
+    #: continuous analogue of :attr:`w_diversity` (which is binary on
+    #: canonical-SMILES uniqueness) and is the lever for Wf-180's m7
+    #: diversity lift beyond the wf_lift_ev3 0.137 ceiling — the
+    #: diversity bonus cannot reward a candidate that is "unique by
+    #: SMILES" but "close in chemical space" (e.g. methyl vs ethyl
+    #: regio-isomers).  Lit anchor: Riniker 2013 (Tanimoto distance on
+    #: Morgan fingerprints is the de-facto diversity metric for SBDD
+    #: benchmarks — Guan 2023 TargetDiff reports 0.860 mean pairwise
+    #: Tanimoto distance on CrossDocked).
+    #:
+    #: Defaults to ``0.0`` (off) so existing reward is bit-for-bit
+    #: unchanged when unused; set ``w_tanimoto_distance = 0.1`` (or any
+    #: positive scalar) in production pilots to lift m7 without
+    #: disturbing the dominant Vina / SA / PB reward channels.
+    w_tanimoto_distance: float = 0.0
+    #: Wf-180 — minimum Tanimoto distance floor for the penalty term.
+    #: When the candidate has less than this mean Tanimoto distance
+    #: from every other candidate in the result set (e.g. singleton
+    #: mode of failure where the MCTS re-emits one molecule) the
+    #: candidate receives ``min_tanimoto_floor`` as the bonus instead
+    #: of the raw mean.  Defaults to ``0.0`` (no floor) to preserve
+    #: bit-for-bit legacy behaviour.
+    min_tanimoto_floor: float = 0.0
     #: WF-Deflex Wire-up Phase 1 — F5 symbolic-reward shaping channel.
     #: When ``use_learned_shaping=True`` (or env-var
     #: ``LEARNED_SHAPING_ENABLED=1`` is set), ``__call__`` applies the
@@ -910,6 +941,134 @@ class RewardAggregator:
             if other_smi and other_smi == cand_smi:
                 return 0.0
         return 1.0
+
+    # ------------------------------------------------------------------
+    # Tanimoto distance reward (Wf-180 — m7 diversity lift)
+    # ------------------------------------------------------------------
+    def tanimoto_distance_to_set(
+        self,
+        state: MoleculeClosedTerm,
+        result_set: Sequence[MoleculeClosedTerm],
+        *,
+        candidate_smi: Optional[str] = None,
+    ) -> float:
+        """Continuous **Morgan-ECFP4 Tanimoto-distance** from ``state``
+        to the rest of ``result_set``.
+
+        Wf-180 — closes the m7 diversity gap that the binary
+        :meth:`diversity_bonus` (canonical-SMILES uniqueness) cannot
+        close: two candidates with distinct canonical SMILES can still
+        have Tanimoto similarity ~0.95 (e.g. methyl vs ethyl
+        regio-isomers on the same scaffold).  This helper returns the
+        *mean Tanimoto-distance* (1 - Tanimoto-similarity) between
+        ``state`` and every OTHER member of ``result_set`` — a value in
+        ``[0, 1]`` where 1.0 means "maximally distant from every
+        other candidate in the result set" and 0.0 means "shares the
+        exact Morgan-ECFP4 fingerprint with at least one other
+        candidate".
+
+        The Tanimoto distance is multiplied by ``w_tanimoto_distance``
+        (a scalar weight on :class:`RewardAggregator`) and added to
+        each candidate's aggregated scalar reward at rank-time by
+        :meth:`MCTSProofSearch.search` so candidates that are
+        *chemically* distinct (not just unique-by-SMILES) are
+        preferred.
+
+        Parameters
+        ----------
+        state : MoleculeClosedTerm
+            The candidate being scored.
+        result_set : Sequence[MoleculeClosedTerm]
+            The other candidates in the result set.  ``state`` itself
+            MAY appear in ``result_set``; the comparison excludes the
+            candidate by identity (using ``is``) so the bonus is
+            symmetric across the result set.
+        candidate_smi : str, optional
+            Pre-computed canonical SMILES of ``state``.  When supplied
+            we skip re-canonicalising (useful for callers that have
+            already computed the SMILES at leaf-evaluation time).
+            Defaults to ``None`` — we fall back to
+            ``state.canonical_smiles()``.
+
+        Returns
+        -------
+        float
+            Mean Tanimoto distance in ``[0, 1]`` (averaged over OTHER
+            members of ``result_set``).  Returns ``1.0`` if the
+            candidate cannot be fingerprinted but at least one OTHER
+            member can (treated as maximally distant from anything
+            parseable).  Returns ``0.0`` when every other member
+            fails to parse (degenerate case: nothing to compare
+            against, so we cannot reward diversity).
+        """
+        # Lazy RDKit imports — we already guard the module-level
+        # _RDKIT_AVAILABLE flag in this file, so when RDKit is missing
+        # this helper silently returns 0.0 (no lift, but also no
+        # crash).  This keeps the deterministic unit-test path fully
+        # green even when ``rdkit`` is uninstalled.
+        try:
+            from rdkit import Chem as _Chem_local  # type: ignore
+            from rdkit.Chem import AllChem as _AllChem_local  # type: ignore
+            from rdkit import DataStructs as _DataStructs_local  # type: ignore
+        except Exception:
+            return 0.0
+
+        # Resolve candidate SMILES / fingerprint.
+        try:
+            cand_smi = (
+                candidate_smi
+                if candidate_smi is not None
+                else state.canonical_smiles()
+            ) or ""
+        except Exception:
+            cand_smi = ""
+        cand_fp = None
+        if cand_smi:
+            try:
+                cand_mol = _Chem_local.MolFromSmiles(cand_smi)
+                if cand_mol is not None:
+                    cand_fp = _AllChem_local.GetMorganFingerprintAsBitVect(
+                        cand_mol, radius=2, nBits=2048
+                    )
+            except Exception:
+                cand_fp = None
+
+        # Aggregate distance to every OTHER candidate in the result
+        # set.  We exclude ``state`` itself (identity check) so the
+        # bonus is well-defined when the candidate is iterated over
+        # the full candidate list at rank-time.
+        distances: List[float] = []
+        for other in result_set:
+            if other is state:
+                continue
+            try:
+                other_smi = other.canonical_smiles() or ""
+            except Exception:
+                other_smi = ""
+            if not other_smi:
+                continue
+            try:
+                other_mol = _Chem_local.MolFromSmiles(other_smi)
+                if other_mol is None:
+                    continue
+                other_fp = _AllChem_local.GetMorganFingerprintAsBitVect(
+                    other_mol, radius=2, nBits=2048
+                )
+            except Exception:
+                continue
+            try:
+                sim = _DataStructs_local.TanimotoSimilarity(cand_fp, other_fp) \
+                    if cand_fp is not None else 0.0
+            except Exception:
+                sim = 0.0
+            distances.append(max(0.0, 1.0 - float(sim)))
+
+        if not distances:
+            # Degenerate: no parseable neighbours.
+            return 0.0
+        mean_distance = sum(distances) / len(distances)
+        # Clamp to [0, 1] for downstream arithmetic.
+        return float(min(1.0, max(0.0, mean_distance)))
 
     def __post_init__(self) -> None:
         """Apply environment-variable overrides on weight fields.
@@ -4058,18 +4217,40 @@ class MCTSProofSearch:
             w_div = float(getattr(reward_fn, "w_diversity", 0.0) or 0.0)
         except Exception:
             w_div = 0.0
-        if w_div > 0.0 and candidates:
+        # Wf-180 — read the continuous Morgan-ECFP4 Tanimoto-distance
+        # weight alongside the legacy canonical-SMILES uniqueness
+        # weight.  Both can be enabled simultaneously without
+        # disturbing the dominant Vina / SA / PB reward channels.
+        try:
+            w_td = float(
+                getattr(reward_fn, "w_tanimoto_distance", 0.0) or 0.0
+            )
+        except Exception:
+            w_td = 0.0
+        try:
+            td_floor = float(
+                getattr(reward_fn, "min_tanimoto_floor", 0.0) or 0.0
+            )
+        except Exception:
+            td_floor = 0.0
+        if (w_div > 0.0 or w_td > 0.0) and candidates:
             state_list = [s for _, s in candidates]
-            candidates = [
-                (
-                    float(score)
-                    + w_div * float(
+            rescored: List[Tuple[float, MoleculeClosedTerm]] = []
+            for score, s in candidates:
+                bonus = 0.0
+                if w_div > 0.0:
+                    bonus += w_div * float(
                         reward_fn.diversity_bonus(s, state_list)
-                    ),
-                    s,
-                )
-                for score, s in candidates
-            ]
+                    )
+                if w_td > 0.0:
+                    td = float(
+                        reward_fn.tanimoto_distance_to_set(s, state_list)
+                    )
+                    if td_floor > 0.0 and td < td_floor:
+                        td = float(td_floor)
+                    bonus += w_td * td
+                rescored.append((float(score) + bonus, s))
+            candidates = rescored
         # Sort best-first by aggregated reward.
         # TODO-30 / Rank-1 P3.3 — when ``pareto_rank_top_k`` is True we
         # delegate to :func:`_pareto_rank_candidates` so the ordering

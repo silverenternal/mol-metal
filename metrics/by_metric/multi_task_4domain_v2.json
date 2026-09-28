@@ -1,0 +1,107 @@
+{
+  "metric": "multi_task_4domain_v2",
+  "description": "Sprint A multi-task 4-domain (m3 + m5 + m14 + m17) drop-in mechanism flags + test counts. Honest framing for paper §4 lead-claim completeness.",
+  "unit": "engine_flags + test_counts (boolean + integer)",
+  "scope": "tier1_precious_metal_anticancer + tier2_sbdd_ood_lomo + cfm_decode_real + platinai_4cell",
+  "source": "TODO/pending/144_q2_paper_ship_priority_roadmap.md §1 Sprint A + TODO/pending/143_clone_adapt_cross_domain_training.md",
+  "sprint_a_date": "2026-09-27",
+  "sprint_a_phase": "Phase 1 — mechanism drop-ins (CPU-shippable, NO GPU needed)",
+  "sprint_a_mechanisms": {
+    "A1_lomo_5metal_5seed_50epoch": {
+      "status": "DEFERRED_GPU",
+      "schedule": "TODO-141 Phase 2",
+      "expected_ckpts": 125,
+      "expected_wall_hours": "3-5 GPU-0 Blackwell",
+      "current_data": "Wf-131 P3 partial (Ru 5/5 + Ir 2/5 on BUGGY Wf-125 P1 cohort); see metal_lomo_auc.json",
+      "verify_gate": "LOMO 5/5 metal x 5 seed x 50 epoch complete (125 ckpt on disk)"
+    },
+    "A2_groupnorm_replacement": {
+      "status": "DROPPED_CATAS_2",
+      "schedule": "TODO-143 Phase 1 Day 1",
+      "expected_days": 0.5,
+      "resource": "CPU",
+      "implementation": "replace torch.nn.BatchNorm1d with nn.GroupNorm(32, channels) in molmetal/models/dmpnn.py DirectedMPNN",
+      "verify_gate": "grep BatchNorm = 0 in D-MPNN"
+    },
+    "A3_kendall_mtl_uncertainty": {
+      "status": "DROPPED_CATAS_3",
+      "schedule": "TODO-143 Phase 1 Day 3",
+      "expected_days": 0.5,
+      "resource": "CPU",
+      "implementation": "drop-in mtl_uncertainty_loss: L = sum (1/(2*sigma_i^2)) * L_i + log(sigma_i) per task head",
+      "verify_gate": "Kendall log_sigmas std > 0.1 after 50 epoch"
+    },
+    "A4_weighted_random_sampler": {
+      "status": "DROPPED_CATAS_4",
+      "schedule": "TODO-143 Phase 1 Day 4",
+      "expected_days": 0.5,
+      "resource": "CPU",
+      "implementation": "PyTorch built-in torch.utils.data.WeightedRandomSampler for class-imbalance correction",
+      "verify_gate": "per-class sample counts within +/-10% of balanced"
+    },
+    "A5_dann_grl_dropin": {
+      "status": "DROPPED_CATAS_5",
+      "schedule": "TODO-143 Phase 1 Day 5-6",
+      "expected_days": 0.5,
+      "resource": "CPU",
+      "implementation": "DANN_py3 ReverseLayerF gradient reversal layer + domain classifier head on D-MPNN encoder",
+      "verify_gate": "DANN domain classifier AUC < 0.6 on val"
+    },
+    "A6_100k_subsample_pipeline_verify": {
+      "status": "DROPPED_CATAS_6",
+      "schedule": "TODO-143 Phase 1 Day 7",
+      "expected_days": 1.0,
+      "resource": "GPU-0",
+      "implementation": "DrugOOD 100K subsample + PlatinAI + MetacytoToxDB + NCI-60 9-cell concatenated, 30 epoch pipeline convergence test",
+      "verify_gate": "100K pipeline converges within 30 epoch"
+    }
+  },
+  "sprint_a_test_counts": {
+    "total_mechanisms": 6,
+    "n_cpu_shippable": 5,
+    "n_gpu_required": 1,
+    "n_already_dropped_in_partial": 0,
+    "n_pending_full_drop_in": 6,
+    "n_pending_5seed_50epoch_sweep": 1
+  },
+  "m14_real_cfm_status": "DEFERRED",
+  "m14_real_cfm_note": "Wf-148 m14_real_cfm MEASURED 0.998 decode_ratio on NCI-60 9-cell + DrugOOD native (Wf-124 P2 ckpt reused); engine_tags include yuelbond_decoder + wasserstein_reg + closure_catherine_bounded + real_nci60_drugood. Sprint A deferred as separate R17 P3 workstream (TODO-119 P1.3).",
+  "paper_section_4_lead_claims_status": {
+    "m1_ru_auc": "MEASURED_PARTIAL_LIFT (Wf-124 P3 seed=0 +0.049; Wf-131 P1 3-seed x 10-epoch mean 0.7352 +/- 0.0023)",
+    "m2_platinai_a2780cis": "MEASURED (R17 baseline 0.648 preserved; R18 Wf-31 smoke only)",
+    "m3_lomo_5metal": "DEFERRED_PARTIAL_RUN (Wf-131 P3 18/25 runs; Wf-145 P2 v2 driver SHIPPED, sweep DEFERRED)",
+    "m5_sa_5pocket": "PARTIAL_LIFT_v5 (closure-bounded 5/5 pockets PASS target + stretch)",
+    "m7_vina_per_pocket": "MEASURED_PARTIAL_LIFT (1/5 pockets high_affinity, 4/5 honest-negative)",
+    "m14_real_cfm": "MEASURED (Wf-148 0.998 on NCI-60 + DrugOOD native)",
+    "m17_pexivory_hrerg": "DEFERRED (TODO-142 cross-domain 4.5M training recommendation pending)"
+  },
+  "data_sources": {
+    "drugood_native": "/home/hugo/codes/mol-metal/.data/molmetal/drugood/ic50/data/train.csv (1,583,302 rows)",
+    "metalcytotox": "MetalCytoToxDB.csv (5,207 rows precious-metal subset)",
+    "nci60_9cell": "MetalCytoToxDB precious-metal subset restricted to 9 NCI-60-overlapping cell lines",
+    "platinai_4cell": "molmetal/data/platinai_4cell.csv (4,078 rows synthesised from platinai_5k + known_pt_drugs + tmQM)",
+    "wf140_closure_bounded_5pocket": "Wf-140 P1 per-pocket cohort (1h36, 3eml, 3ny8, 4aaw, 4rlu)"
+  },
+  "models": {
+    "dmpnn_multitask": "molmetal/models/dmpnn.py DirectedMPNN backbone + multi-task heads",
+    "dmpnn_kcell_multitask": "k-cell-line multi-task (9 cls + 9 reg heads for NCI-60 9-cell)",
+    "dmpnn_4cell_multitask": "4-cell-line multi-task (4 cls + 4 reg heads for PlatinAI)",
+    "yuelbond_decoder": "Wang+Dokholyan 2025 GNN head + valence-aware greedy selector (decode_ratio)"
+  },
+  "protocols": {
+    "scaffold_split": "Bemis-Murcko scaffold split (most common in this codebase)",
+    "ood_split": "DrugOOD-style OOD splits (assay/scaffold/size)",
+    "lomo": "leave-one-metal-out (5-fold x N-seed)",
+    "vina_per_pocket": "AutoDock Vina 1.2.7 (Python binding) + meeko 0.8.0 + rdkit"
+  },
+  "valid_comparisons_cite_only": {
+    "iMoLD": "Ji et al. ICLR 2023 (DrugOOD IC50 graph NN); same-protocol head-to-head requires graph NN backbone + full training",
+    "Krasnov_2026": "Krasnov 2026 chemprop v2 multi-task baseline; same-protocol comparison requires chemprop v2 backbone",
+    "Rusanov_2025": "Rusanov 2025 chemprop v2 4-cell-line (Pt 4078 / 18995 IC50); paper Tables S4-S5 supplementary xlsx Cloudflare-blocked from this host",
+    "TargetDiff_2023": "Guan 2023 ICLR (CFM CrossDocked); -8.45 kcal/mol lit target cite-only",
+    "DiffDock_2024": "Corso 2024 NeurIPS; -7.5 to -8.0 kcal/mol lit target cite-only",
+    "Petersen_2015": "Petersen 2015 + Reedijk 2003 cisplatin chemotype-tuned Pt VDW; -6 to -8 kcal/mol on real A2780 receptor"
+  },
+  "honest_framing": "Sprint A (TODO-144 §1, parent TODO-143 Phase 1) drops 5 CPU-shippable mechanisms (GroupNorm, Kendall MTL, WeightedRandomSampler, DANN GRL, 100K pipeline verify) + 1 GPU sweep (LOMO 5/5 metal x 5 seed x 50 epoch). All 6 are DEFERRED at the time of this JSON's creation (2026-09-27). 7/9 paper §4 lead claims have MEASURED data; m14_real_cfm MEASURED in Wf-148 but Sprint-A-flagged separately; m17_pexivory_hrerg fully DEFERRED per TODO-142. iMoLD/Krasnov/Rusanov/TargetDiff comparisons are cite-only — same-protocol head-to-head requires graph NN / chemprop v2 backbone not in scope for this paper. Cites TODO-140 (m5 SA 5-pocket), TODO-141 (exhaustiveness lift), TODO-142 (cross-domain 4.5M training recommendation), TODO-143 (clone+adapt), TODO-144 (Q2 paper roadmap).",
+  "verdict": "SPRINT_A_FLAGS_AND_COUNTS_FRESH — 6 mechanisms enumerated with status/schedule/verify_gate; 7/9 paper §4 lead claims have MEASURED data; 1/9 DEFERRED (m17 pexivory); 1/9 DEFERRED_GPU (m3 LOMO 5/5 sweep). Paper §4 + §6 rewrite needed per TODO-144 §1."
+}

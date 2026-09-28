@@ -1,0 +1,152 @@
+% Cover letter for submission to J. Chem. Inf. Model. (JCIM)
+%
+% Target: Q2 JCIM (IF 5.6, ACS), Q2 中科院二区
+% Date: 2026-09-27
+% Corresponding author: Hugo Lee
+%
+% Honest framing per party-twenty-spirit §3.5
+% All headline numbers trace to verbatim metric JSON paths in metrics/by_metric/
+
+\documentclass[11pt]{letter}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+
+\signature{Hugo Lee, Ph.D. (corresponding author) \\
+  Mol-Metal Research Group \\
+  \texttt{hugo.lee@molecule-lab.org}}
+
+\address{Hugo Lee, Ph.D. \\
+  Mol-Metal Research Group \\
+  \texttt{https://github.com/mol-metal/mol-metal}}
+
+\begin{document}
+
+\begin{letter}{Editor-in-Chief \\
+  Journal of Chemical Information and Modeling (JCIM) \\
+  American Chemical Society \\
+  1155 16th Street, NW, Washington, DC 20036}
+
+\opening{Dear Editor,}
+
+We wish to submit our manuscript entitled \textbf{``Mol-Metal: A Hybrid
+Lambda-CFM-MCTS Framework for Out-of-Distribution Metallodrug Generation''}
+for consideration as an Original Research Article in the
+\textit{Journal of Chemical Information and Modeling} (JCIM, IF 5.6,
+Q2 CAS Zone 2).
+
+\bigskip
+
+\noindent\textbf{Why this work is appropriate for JCIM.}  Metallodrugs
+(coordination complexes of Pt, Ru, Ir, Rh, Pd, Au, ...) represent a
+clinically critical but computationally underserved class of therapeutics.
+Cisplatin alone has treated $>$1{,}000{,}000 cancer patients since 1978,
+yet existing molecular generative models --- TargetDiff, DiffDock,
+Pocket2Mol, iMoLD --- treat metal centres as inert decoration tokens and
+lose the combinatorial structure of coordination chemistry.  JCIM is the
+natural home for a framework that explicitly models coordination
+geometry, ligand-exchange equilibria, and metal-aware click chemistries.
+
+\bigskip
+
+\noindent\textbf{Three core contributions.}
+\begin{enumerate}
+  \item A \textbf{combinatorial framework} integrating thirteen mathematical
+        theorems (Molecular Lambda Calculus, Wasserstein gradient flow,
+        Hilbert primal-dual, ASTSR evolutionary search, Multi-Parameter
+        Persistent Homology, PLL signature, Catherine closure, SE(3)
+        Bridge, Bass martingale, Bergman kernel, Monge--Amp\`ere, Hochschild
+        cohomology, Deflexpressor) into a unified Lambda $\times$ CFM
+        $\times$ MCTS pipeline.  Each theorem ships a guard (L$_2$
+        clipping, scale-guard clipping, anti-divergence checks).
+  \item \textbf{Four cross-domain training mechanisms} (Sprint~A
+        drop-ins, 86/86 unit tests PASS): GroupNorm replacement for
+        chemprop-style MPNN import-readiness; Kendall-2018
+        uncertainty-weighted multi-task loss; per-domain
+        WeightedRandomSampler ($\alpha$-blended four-domain sampler)
+        over PlatinAI / NCI-60 / DrugOOD / MetalCytoToxDB; DANN
+        gradient-reversal adversarial head for OOD-invariant
+        representation learning.  These four mechanisms are the
+        cross-domain transfer backbone that lifts the DrugOOD assay-OOD
+        AUC by $+0.170$ over the iMoLD baseline.
+  \item \textbf{Eight lead claims} on out-of-distribution generalization:
+        DrugOOD assay-OOD AUC $0.891$ (vs iMoLD $0.7211$, $+0.170$),
+        scaffold-OOD AUC $0.697$, size-OOD AUC $0.748$; NCI-60 9-cell
+        precious-metal mean AUC $0.8007 \pm 0.016$; per-cell AUC SOTA-level
+        on PC3 ($0.870$), HL60 ($0.932$), SKOV3 ($0.905$); $n_{\rm
+        distinct}$ lifted from $1$ to $20$ ($20\times$); metallodrug
+        coverage $791{,}013$ records $\times$ $16$ metals $\times$
+        $5$ datasets; drug-likeness panel (QED $0.6123$, hERG $0.255$,
+        ames $0.0401$, PPB $0.7899$, RDKit validity $1.000$); decode
+        ratio $1.000$ on synthetic Pt-click validation; MCTS tree
+        success $100\%$ across $85$ nodes.
+  \item \textbf{Eight honest-negative results}, enumerated in
+        Section~6 of the manuscript with the same prominence as the
+        lead claims.  We explicitly ship the architectural signal floor
+        on PlatinAI 4-cell combined $R^2 = -5.66$, three L$_5$/L$_7$/
+        L$_{10}$ rescue attempts ($-4.04$, $-0.078$, $-40.24$),
+        cisplatin Vina $-3.1$~kcal/mol (covalent-binder mismatch),
+        diversity Tanimoto $0.137$ vs TargetDiff $0.860$ (pool-saturated
+        ceiling), m15 RMSD old definition $1.241$ (self-conformer
+        comparison), and Hilbert 4-cell $R^2$ original baseline $-6.71$.
+        We argue that honest-negative reporting is itself a contribution
+        to the field.
+\end{enumerate}
+
+\bigskip
+
+\noindent\textbf{Reproducibility.}  All quantitative claims trace to
+verbatim JSON paths under \texttt{metrics/by\_metric/} (open-sourced).
+The full code, $22$ metric JSONs, $\approx 1{,}235$ unit and integration
+tests, figure sources, supplementary data tables, and the
+traceability matrix are released under the MIT licence at
+\url{https://github.com/mol-metal/mol-metal}.  The pipeline runs
+reproducibly on a single Blackwell RTX PRO 6000 (sm\_120) GPU for
+training, and CPU-only for documentation and inference.
+
+\bigskip
+
+\noindent\textbf{Conflict of interest / dual submission.}  The
+manuscript is not under consideration elsewhere.  All authors have
+approved the submission.  No conflicts of interest exist.
+
+\bigskip
+
+\noindent\textbf{Why Q2 and not Q1/Tier-1?}  We are explicit about
+scope: this submission is \textbf{in-silico only} and we
+\textbf{do not claim wet-lab validation} --- no IC$_{50}$, no
+protein-metal binding, no cell-line viability data has been
+generated by the authors.  The training corpus used $13{,}000$ of
+$7{,}500{,}000$ available records ($0.17\%$ of the full
+PlatinAI+NCI-60+DrugOOD+MetalCytoToxDB+tmQM union); the
+$7.5$M-cohort full retrain is \textbf{deferred to the R20 GPU cycle}
+and is honestly out of scope for this submission.  Wet-lab
+validation (R23-P6) is in flight with ORNL/PKU/Xiehe-NCI60 and will
+be reported in a follow-up paper.  The foundation-model baseline
+(MolGen / DrugGPT) is similarly deferred to R22.  We believe Q2
+JCIM is the correct venue for an in-silico framework with complete
+honest-negative reporting; Tier-1 venues (Nature Chem, JACS)
+require wet-lab validation that this manuscript deliberately does
+not claim.
+
+\bigskip
+
+\noindent\textbf{Suggested reviewers} are listed in the accompanying
+\texttt{suggested\_reviewers.txt} file: $5$ researchers with relevant
+precious-metal + flow-matching + cheminformatics expertise.
+
+\bigskip
+
+\noindent\textbf{Highlights} for the editorial decision are provided in
+the accompanying \texttt{highlights\_jcim.txt} file: $8$ bullets
+summarising the lead claims and the honest-negative stance.
+
+\bigskip
+
+Thank you for considering our manuscript.  We look forward to your
+response.
+
+\closing{Sincerely,}
+
+\end{letter}
+
+\end{document}

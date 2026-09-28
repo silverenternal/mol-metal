@@ -863,7 +863,42 @@ internal reports; numbers labelled \textbf{PROJECTED} are not run.
 
 \end{enumerate}
 
-\noindent\textbf{User-gated decisions affecting the above.}
+\subsection{Per-metal held-out collapse (Os LOMO, AUC $\approx 0.5$)}
+\label{sec:lim_os_lomo}
+
+Under leave-one-metal-out (LOMO) cross-validation, the per-metal binary
+cross-entropy head receives \textbf{zero training rows} for the
+held-out metal. The head's sigmoid output converges to
+$\hat{p} \approx 0.5$ across all random seeds, yielding
+$\mathrm{AUC} \approx 0.5$ for the held-out metal
+(\textsc{measured}, Wf-243 Os LOMO collapse report).
+This behaviour is consistent with the multi-task learning
+literature~\cite{xu2017demystifying}, but represents a structural
+limitation of the current per-metal head architecture, not a
+recoverable bug.
+
+Published CPU-only uncertainty-quantification solutions
+(MUBen~\cite{li2023muben}, AutoGNNUQ~\cite{jiang2024autognnuq},
+MC-dropout~\cite{liu2024mc}) address variance estimation but
+\textbf{cannot recover AUC for a head with zero training rows}:
+the underlying issue is zero-shot out-of-distribution
+generalisation, which remains an open research problem in
+multi-task molecular ML. The Wf-249 MC-dropout wrapper
+(\texttt{molmetal/models/mc\_dropout\_wrapper.py}) is therefore
+applied as a calibrated-uncertainty reporting improvement
+rather than an AUC-recovery mechanism --- the mean prediction
+remains $\approx 0.5$, but the standard deviation becomes
+$>$ 0, allowing the per-metal head to honestly report
+epistemic uncertainty in lieu of a confident-but-wrong point
+estimate.
+
+\textbf{Future work (GPU retrain, deferred to R20+):}
+(i)~transfer learning from the most chemically similar metal
+in the training set (e.g.\ Pt $\to$ Pd for late-5$d$-block
+neighbours); (ii)~incorporate metal-physics priors
+(electronegativity, ionic radius, $d$-orbital splitting) into
+the head input; (iii)~report epistemic uncertainty alongside
+the per-metal AUC in Table~\ref{tab:per-metal}.
 Decisions \texttt{D1}--\texttt{D6} in \texttt{TODO/pending/19\_user\_decisions.md}
 control the priority order of fixes (1)--(8); decision \texttt{D7}
 (\texttt{TODO/pending/20\_post\_r10\_r11\_action\_plan.md}) sets the

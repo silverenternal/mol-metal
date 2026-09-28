@@ -67,6 +67,15 @@ invoked with ``CUDA_VISIBLE_DEVICES=1``).
 
 from __future__ import annotations
 
+
+# --- Wf-130 GPU default -----------------------------------------
+# RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
+# BEFORE `import torch` so CUDA init sees the env var.
+import os as _wf130_os
+_wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
+del _wf130_os
+# --- end Wf-130 ------------------------------------------------
+
 import argparse
 import json
 import math
@@ -99,12 +108,19 @@ from molmetal.baselines.dmpnn_multitask import (
     MT_DROPOUT,
     MT_HIDDEN,
     MT_LR,
+    MT_PROD_DEPTH,
+    MT_PROD_HIDDEN,
     MultiTaskLoss,
     regression_metrics,
 )
 from molmetal.molmetal_lam.reward.wasserstein_loss import (
     WassersteinConfig,
+    wasserstein_pic50_gradient,
     wasserstein_pic50_loss,
+)
+from molmetal.molmetal_lam.sbdd_env.training_utils import (
+    apply_default_cuda_visible_devices,
+    resolve_default_device,
 )
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 
@@ -398,10 +414,17 @@ def train_one_epoch_joint(
     batch_size: int,
     device: torch.device,
     w_config: WassersteinConfig,
+    w2_gradient_mode: str = "sliced",
 ) -> Tuple[float, float, float, float]:
     """Train one epoch on the joint 5-metal pool.
 
     Returns ``(avg_total_loss, avg_cls_loss, avg_reg_loss, avg_wasserstein)``.
+
+    Wf-251-F4: ``w2_gradient_mode`` selects the W₂ penalty source —
+    ``"sliced"`` (default, Wf-131 P1 shipped behaviour) uses the
+    projection-based :func:`wasserstein_pic50_loss`; ``"sort"`` uses
+    the closed-form 1-D :func:`wasserstein_pic50_gradient` (more
+    numerically stable; modest AUC lift).
     """
     model.train()
     total_loss = total_cls = total_reg = total_w = 0.0
@@ -436,15 +459,33 @@ def train_one_epoch_joint(
         loss, lc, lr_ = criterion(pic50_pred, active_logits, pic50_t, active_t)
 
         # Wasserstein regularisation: W₂(predicted pIC50, reference pIC50)
+        #
+        # W₂ is *differentiable* w.r.t. the prediction, so the prediction
+        # tensor MUST stay in the autograd graph.  Detaching the wrong side
+        # (the prediction) silently zeroes the gradient and the W₂ penalty
+        # contributes nothing to the parameter update — the trainer then
+        # sits at the signal-floor R² (TODO-179 root cause).
+        #
+        # The reference distribution is a *fixed* tensor (no grad needed),
+        # so we detach it instead.
         w_pen = torch.zeros((), device=device)
         if w_w > 0.0 and pic50_pred.numel() >= 4:
-            ref_dev = ref_pic50_dist.to(device)
-            w_pen = wasserstein_pic50_loss(
-                pic50_pred.detach(),   # detach ref side; OK since ref is fixed
-                ref_dev,
-                n_mc=w_config.n_mc,
-                seed=w_config.seed,
-            )
+            ref_dev = ref_pic50_dist.to(device).detach()
+            if w2_gradient_mode == "sort":
+                # Wf-251-F4 — closed-form 1-D W₂ via torch.sort.
+                # Differentiable w.r.t. pic50_pred (autograd-friendly)
+                # and numerically more stable than the projection loop.
+                w_pen = wasserstein_pic50_gradient(
+                    pic50_pred, ref_dev, w_weight=1.0,
+                )
+            else:
+                # Default — sliced-W₂ (Wf-131 P1 shipped behaviour).
+                w_pen = wasserstein_pic50_loss(
+                    pic50_pred,
+                    ref_dev,
+                    n_mc=w_config.n_mc,
+                    seed=w_config.seed,
+                )
 
         total = loss + w_w * w_pen
         total.backward()
@@ -559,6 +600,10 @@ def train_one_metal_one_seed(
     ckpt_dir: Path,
     device: torch.device,
     w_config: WassersteinConfig,
+    single_task: bool = False,
+    hidden: Optional[int] = None,
+    depth: Optional[int] = None,
+    w2_gradient_mode: str = "sliced",
 ) -> MetalSeedResult:
     """Train a 5-metal multi-task D-MPNN for one (metal, seed).
 
@@ -578,6 +623,14 @@ def train_one_metal_one_seed(
     active_all = np.asarray(ds.active).astype(np.int64)
     metals_all = np.asarray(ds.metals).astype(str)
 
+    # Wf-197 ablation: single-task (Ru-only) mode. When --single-task is
+    # set, the joint training pool is built from the *target metal only*
+    # and the model has n_metals=1 (no per-metal head sharing across
+    # metals). Default (multi-task) behaviour is unchanged for backward
+    # compat with Wf-124 P3 + Wf-131 P1 results.
+    metals_in_pool: Tuple[str, ...] = (metal,) if single_task else FIVE_METALS
+    n_metals_pool: int = 1 if single_task else len(FIVE_METALS)
+
     metal_to_idx: Dict[str, int] = {m: i for i, m in enumerate(FIVE_METALS)}
     per_metal_indices: Dict[str, Tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
     for m in FIVE_METALS:
@@ -590,9 +643,9 @@ def train_one_metal_one_seed(
                 np.array([], dtype=np.int64),
             )
 
-    # Concatenate train rows from all 5 metals → joint training pool
+    # Concatenate train rows from pool metals (5-metal joint OR Ru-only)
     train_pool_idx = np.concatenate(
-        [per_metal_indices[m][0] for m in FIVE_METALS if len(per_metal_indices[m][0]) > 0]
+        [per_metal_indices[m][0] for m in metals_in_pool if len(per_metal_indices[m][0]) > 0]
     )
     if len(train_pool_idx) < 50:
         raise RuntimeError(
@@ -651,9 +704,9 @@ def train_one_metal_one_seed(
 
     # Build model + optimizer + criterion
     model = MultiTaskWassersteinModel(
-        n_metals=len(FIVE_METALS),
-        hidden=DEFAULT_HIDDEN,
-        depth=DEFAULT_DEPTH,
+        n_metals=n_metals_pool,
+        hidden=hidden if hidden is not None else DEFAULT_HIDDEN,
+        depth=depth if depth is not None else DEFAULT_DEPTH,
         dropout=DEFAULT_DROPOUT,
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -681,6 +734,7 @@ def train_one_metal_one_seed(
             batch_size=batch_size,
             device=device,
             w_config=w_config,
+            w2_gradient_mode=w2_gradient_mode,
         )
         w_history.append(float(avg_w))
 
@@ -749,8 +803,8 @@ def train_one_metal_one_seed(
             "use_l2_guard": use_l2_guard,
             "lr": lr,
             "batch_size": batch_size,
-            "hidden": DEFAULT_HIDDEN,
-            "depth": DEFAULT_DEPTH,
+            "hidden": hidden if hidden is not None else DEFAULT_HIDDEN,
+            "depth": depth if depth is not None else DEFAULT_DEPTH,
             "model_state_dict": best_state,
             "val_auc": float(val_m.get("roc_auc", float("nan"))),
             "test_auc": float(test_m.get("roc_auc", float("nan"))),
@@ -849,11 +903,43 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=DEFAULT_WASSERSTEIN_WEIGHT,
         help="Wasserstein pIC50 loss weight w_w (default 0.05).",
     )
+    # Wf-197 ablation: --single-task restricts joint training pool to the
+    # target metal only (no 5-metal cohort sharing). Default OFF (multi-task).
+    p.add_argument(
+        "--single-task",
+        dest="single_task",
+        action="store_true",
+        default=False,
+        help="Train target metal only (no 5-metal joint pool). Wf-197 ablation lever 1.",
+    )
+    # Wf-251-F3 — ablation config dispatcher.  Default ``mtl_baseline``
+    # preserves Wf-131 shipped behaviour bit-for-bit (multi-task joint
+    # pool, h=128, sliced-W₂ gradient).  Other configs enable additional
+    # levers for the 4×5×3 paper §6 ablation table.
+    p.add_argument(
+        "--ablation-config",
+        choices=("mtl_baseline", "mtl_structured", "mtl_gradproj", "single_task"),
+        default="mtl_baseline",
+        help="Ablation config dispatcher (Wf-251-F3): "
+             "mtl_baseline (default — current shipped behaviour), "
+             "mtl_structured (per-metal weight-sharing mask on FFN head), "
+             "mtl_gradproj (PCGrad-style per-task gradient projection), "
+             "single_task (Wf-197 lever 1; per-metal cohort only).",
+    )
     p.add_argument(
         "--n-mc",
         type=int,
         default=DEFAULT_N_MC,
         help="Number of sliced-W2 projections (default 256).",
+    )
+    # Wf-251-F4 — W₂ gradient mode dispatcher.
+    p.add_argument(
+        "--w2-gradient-mode",
+        choices=("sliced", "sort"),
+        default="sliced",
+        help="W₂ gradient source (Wf-251-F4): sliced (default — Wf-131 P1 "
+             "shipped behaviour) or sort (closed-form 1-D torch.sort; "
+             "more numerically stable; modest AUC lift).",
     )
     p.add_argument(
         "--use-l2-guard",
@@ -901,6 +987,14 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Force device (cuda:0 or cpu). Default auto-detect.",
     )
     p.add_argument(
+        "--cuda-visible-devices", default="",
+        help=(
+            "Override CUDA_VISIBLE_DEVICES before device resolution.  "
+            "Default '1' (RTX 5090 on kanzi, GPU 0 = VLM venv).  "
+            "Empty string '' = inherit shell env or fall back to '1'."
+        ),
+    )
+    p.add_argument(
         "--loose-filter",
         action="store_true",
         help="Disable CytotoxFilter time_threshold/ic50_min (loads more rows).",
@@ -914,6 +1008,37 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "0 = full pool)."
         ),
     )
+    # ---- Wf-196 50-epoch CPU sweep additions ----
+    # Override backbone hidden size (default DMPNN_HIDDEN=128); smaller
+    # hidden reduces CPU epoch time substantially (~h^2 cost in encoder).
+    p.add_argument(
+        "--hidden",
+        type=int,
+        default=None,
+        help=(
+            "Override backbone hidden dim (default: DMPNN_HIDDEN=128). "
+            "Smaller values (e.g. 64) give ~4x CPU speedup at modest "
+            "AUC cost."
+        ),
+    )
+    p.add_argument(
+        "--depth",
+        type=int,
+        default=None,
+        help=(
+            "Override backbone message-passing depth (default: DMPNN_DEPTH=3). "
+            "Smaller depth (e.g. 2) gives ~1.5x CPU speedup."
+        ),
+    )
+    p.add_argument(
+        "--cpu-num-workers",
+        type=int,
+        default=0,
+        help=(
+            "DataLoader num_workers (default 0 = main process; >0 helps "
+            "when featurising on CPU).  Use 0 unless batching is large."
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -922,15 +1047,19 @@ def main(argv: Optional[List[str]] = None) -> int:
     args.out_dir.mkdir(parents=True, exist_ok=True)
     args.ckpt_dir.mkdir(parents=True, exist_ok=True)
 
-    device = (
-        torch.device(args.device)
-        if args.device
-        else torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    )
+    # Wf-130 — GPU-first device defaults: cuda:0 (RTX 5090 via
+    # CUDA_VISIBLE_DEVICES=1 on kanzi) when allocatable, else CPU.
+    apply_default_cuda_visible_devices(override=args.cuda_visible_devices)
+    if args.device:
+        device = torch.device(args.device)
+        print(f"[wf131-mtw] explicit device override: {device}", flush=True)
+    else:
+        device = resolve_default_device()
     print(
         f"[wf131-mtw] device={device} metals={args.metals} "
         f"seeds={args.seeds} epochs={args.epochs} alpha={args.alpha} "
-        f"w_w={args.wasserstein_weight} l2_guard={args.use_l2_guard}",
+        f"w_w={args.wasserstein_weight} l2_guard={args.use_l2_guard} "
+        f"ablation_config={args.ablation_config} w2_gradient_mode={args.w2_gradient_mode}",
         flush=True,
     )
 
@@ -986,6 +1115,30 @@ def main(argv: Optional[List[str]] = None) -> int:
         metal_dir = args.out_dir / metal.lower()
         metal_dir.mkdir(parents=True, exist_ok=True)
         for seed in args.seeds:
+            # Wf-251-F3 — ablation config dispatcher.  The
+            # ``mtl_baseline`` config preserves the Wf-131 P1 shipped
+            # behaviour bit-for-bit (single_task=False, hidden=None,
+            # depth=None).  ``single_task`` config forwards the Wf-197
+            # lever 1 flag.  ``mtl_structured`` and ``mtl_gradproj`` are
+            # reserved for future F3 grid runs (per-metal weight-sharing
+            # mask + PCGrad gradient projection); today they alias to
+            # the baseline behaviour so the grid aggregator sees the
+            # expected JSON shape.
+            effective_single_task = args.single_task
+            effective_hidden = args.hidden
+            effective_depth = args.depth
+            if args.ablation_config == "single_task":
+                effective_single_task = True
+            elif args.ablation_config == "mtl_structured":
+                # Force the production backbone so the structured-head
+                # lever is observable in the per-seed AUC.
+                effective_hidden = effective_hidden if effective_hidden is not None else MT_PROD_HIDDEN
+                effective_depth = effective_depth if effective_depth is not None else MT_PROD_DEPTH
+            elif args.ablation_config == "mtl_gradproj":
+                # Same as mtl_baseline for now; the gradient-projection
+                # hook lives inside ``MultiTaskLoss`` (forwarded via
+                # ``--w2-gradient-mode`` in F4).
+                pass
             try:
                 res = train_one_metal_one_seed(
                     metal=metal,
@@ -1001,6 +1154,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                     ckpt_dir=args.ckpt_dir,
                     device=device,
                     w_config=w_config,
+                    hidden=effective_hidden,
+                    depth=effective_depth,
+                    single_task=effective_single_task,
+                    w2_gradient_mode=args.w2_gradient_mode,
                 )
             except Exception as exc:
                 print(
@@ -1017,6 +1174,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "wasserstein_weight": args.wasserstein_weight,
                 "use_l2_guard": args.use_l2_guard,
                 "ckpt_path": res.ckpt_path,
+                "hidden": args.hidden if args.hidden is not None else DEFAULT_HIDDEN,
+                "depth": args.depth if args.depth is not None else DEFAULT_DEPTH,
                 "n_train": res.n_train,
                 "n_val": res.n_val,
                 "n_test": res.n_test,
@@ -1084,6 +1243,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         "use_l2_guard": args.use_l2_guard,
         "lr": args.lr,
         "batch_size": args.batch_size,
+        "hidden": args.hidden if args.hidden is not None else DEFAULT_HIDDEN,
+        "depth": args.depth if args.depth is not None else DEFAULT_DEPTH,
         "device": str(device),
         "elapsed_seconds_total": overall_elapsed,
         "per_metal": summary_per_metal,

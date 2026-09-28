@@ -1,0 +1,88 @@
+{
+  "recipe": "wf30_dock_verify_smoke",
+  "n_evaluations": 4,
+  "pocket_id": "830c",
+  "candidate": "CCO",
+  "use_real_vina": false,
+  "per_evaluation": [
+    {
+      "pocket_id": "830c",
+      "method": "se3sb",
+      "seed": 0,
+      "status": "docked",
+      "vina_kcal_mol": -7.452153339552436,
+      "elapsed_s": 0.11332677799509838
+    },
+    {
+      "pocket_id": "830c",
+      "method": "se3sb",
+      "seed": 1,
+      "status": "docked",
+      "vina_kcal_mol": -7.952713590037226,
+      "elapsed_s": 0.008128294022753835
+    },
+    {
+      "pocket_id": "830c",
+      "method": "baseline",
+      "seed": 0,
+      "status": "docked",
+      "vina_kcal_mol": -7.452153339552436,
+      "elapsed_s": 0.0013613980263471603
+    },
+    {
+      "pocket_id": "830c",
+      "method": "baseline",
+      "seed": 1,
+      "status": "docked",
+      "vina_kcal_mol": -7.9527136012650645,
+      "elapsed_s": 0.0003206160035915673
+    }
+  ],
+  "per_pocket_per_method": {
+    "830c": {
+      "se3sb": {
+        "n": 2,
+        "mean": -7.702433464794831,
+        "std": 0.2502801252423952,
+        "min": -7.952713590037226,
+        "max": -7.452153339552436,
+        "n_docked": 2,
+        "n_failed": 0
+      },
+      "baseline": {
+        "n": 2,
+        "mean": -7.70243347040875,
+        "std": 0.2502801308563143,
+        "min": -7.9527136012650645,
+        "max": -7.452153339552436,
+        "n_docked": 2,
+        "n_failed": 0
+      }
+    }
+  },
+  "aggregate": {
+    "830c|se3sb": {
+      "n": 2,
+      "mean": -7.702433464794831,
+      "std": 0.2502801252423952,
+      "min": -7.952713590037226,
+      "max": -7.452153339552436,
+      "n_docked": 2,
+      "n_failed": 0
+    },
+    "830c|baseline": {
+      "n": 2,
+      "mean": -7.70243347040875,
+      "std": 0.2502801308563143,
+      "min": -7.9527136012650645,
+      "max": -7.452153339552436,
+      "n_docked": 2,
+      "n_failed": 0
+    }
+  },
+  "win_tie_loss_vs_baseline": {
+    "830c": {
+      "se3sb": 0
+    }
+  }
+}

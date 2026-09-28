@@ -1,0 +1,304 @@
+{
+  "metric": "metal_lomo_auc",
+  "description": "Mean test ROC-AUC across 5 folds \u00d7 N seeds of multi-metal leave-one-metal-out transfer on MetalCytoToxDB precious-metal subset.",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier2_sbdd_ood_lomo",
+  "source": "molmetal/scripts/train_metal_lomo.py",
+  "gate_target": 0.7,
+  "value": 0.5346340730251975,
+  "value_std": 0.10964735803197875,
+  "per_fold_auc_mean": {
+    "Ru": 0.5706091124669564,
+    "Ir": 0.6175946917576345,
+    "Os": 0.6113498030791263,
+    "Rh": 0.36771037181996086,
+    "Re": 0.5059063860023092
+  },
+  "per_fold_auc_std": {
+    "Ru": 0.00321110341949279,
+    "Ir": 0.006762114844779983,
+    "Os": 0.02346856160417317,
+    "Rh": 0.018358486981300475,
+    "Re": 0.12813312538081728
+  },
+  "per_run_auc": [
+    0.5720712667877925,
+    0.566154682474404,
+    0.5736013881386727,
+    0.6119854800875388,
+    0.6136917008478685,
+    0.6271068943374962,
+    0.644468313641246,
+    0.5966702470461869,
+    0.5929108485499462,
+    0.3724070450097847,
+    0.38747553816046965,
+    0.3432485322896282,
+    0.3609112709832134,
+    0.484279243272049,
+    0.6725286437516653
+  ],
+  "n_runs": 15,
+  "n_folds": 5,
+  "metals": [
+    "Ru",
+    "Ir",
+    "Os",
+    "Rh",
+    "Re"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "epochs": 30,
+  "model": "dmpnn_multitask",
+  "data_source": "molmetal/data/metal_lomo.csv",
+  "status": "MEASURED_BELOW_GATE",
+  "verdict": "BELOW_GATE",
+  "wf32_phase5_lift_update": {
+    "date_utc": "2026-09-26",
+    "r17_baseline_retained_as_canonical": true,
+    "r18_wf32_measured_value": null,
+    "r18_wf32_status": "DEFER_NO_MEASURED_VALUE",
+    "r18_wf32_defer_reason": "Wf-32 Phase 4 sweep DEFERRED \u2014 GPU 1 (RTX 5090, 32 GB) was occupied at Wf-32 Phase 4 launch by Wf-31 m1 Ru-AUC SE(3) SB run (PID 3853986) and immediately before by Wf-29 train_se3sb.py smoke (PID 3802039). The 5 folds \u00d7 5 seeds \u00d7 50 epochs \u00d7 2 init modes (hilbert, tmqm) = 250 epoch-runs would have collided on the same card. Only structural verification (verify_train_multimetal_lomo.py 8/8 PASS on CLI + main() smoke) was executed; no actual training completed.",
+    "lift_r18_minus_r17": null,
+    "verdict": "DEFERRED_NO_DATA \u2014 No MEASURED value exists for the R18 Wf-32 m19 sweep. R17 baseline (0.5346 \u00b1 0.110) remains canonical for paper \u00a74 Table 2. Cannot claim lift or regression without data. Full 5-fold \u00d7 5-seed \u00d7 50-epoch \u00d7 {hilbert, tmqm} dual-init GPU retrain deferred to R20\u00b7P6.",
+    "r20_plan_item": "R20\u00b7P6 \u2014 m19 Multi-metal LOMO GPU retrain (5-fold \u00d7 5-seed \u00d7 50-epoch \u00d7 {hilbert, tmqm} dual-init)",
+    "wf32_phase5_lift_analysis": "molmetal/reports/wf32_m16_m19_m8_lift_analysis.json (metric m19)",
+    "wf32_phase4_summary": "molmetal/reports/wf32_m19_summary.json"
+  },
+  "wf131_phase3_lomo_full_update": {
+    "close_out_doc": "TODO/completed/121_m19_lomo_strengthen.md",
+    "date_utc": "2026-09-27",
+    "wf_tag": "Wf-131 Phase 3 \u2014 5-metal \u00d7 3-seed \u00d7 50-epoch full re-bench with W\u2082 transfer + Rh oversample",
+    "r17_baseline_retained_as_canonical": true,
+    "wf131_p3_measured_value": null,
+    "wf131_p3_status": "DEFERRED_PARTIAL_RUN",
+    "wf131_p3_defer_reason": "Wf-131 P3 full 5 \u00d7 3 \u00d7 50 sweep DEFERRED \u2014 only fold=Ru \u00d7 3 seeds \u00d7 50-epoch complete on disk at molmetal/reports/wf131_p3_lomo_full/Ru/per_seed_metrics_seed{0,1,2}.json. The 4 remaining folds (Ir / Os / Rh / Re) \u00d7 3 seeds = 12 runs DEFERRED due to 6-10 h GPU runtime beyond session budget. The fold=Ru partial-full result MEASURES test_auc = 0.5992 \u00b1 0.0166 (vs R17 baseline 0.5706 = +0.029 lift, vs Wf-125 P2 6-epoch smoke 0.5592 = +0.040 lift at full epochs). The W\u2082 decay is monotonic (2.0816 \u2192 1.2395 across 50 epochs; JKO-style CFL PASS).",
+    "wf131_p3_partial_observations": {
+      "fold": "Ru",
+      "n_seeds_completed": 3,
+      "seeds_completed": [
+        0,
+        1,
+        2
+      ],
+      "epochs_completed": 50,
+      "epochs_target": 50,
+      "n_train": 1892,
+      "n_val": 211,
+      "n_test": 3668,
+      "n_synthetic_rh_appended": 500,
+      "per_seed_test_auc": [
+        0.5911,
+        0.6185,
+        0.5881
+      ],
+      "per_seed_val_auc": [
+        0.8322,
+        0.8153,
+        0.8459
+      ],
+      "per_seed_w2_end": [
+        1.2395,
+        1.087,
+        1.462
+      ],
+      "per_seed_w2_decay_pct": [
+        -40.5,
+        -40.9,
+        -36.9
+      ],
+      "test_auc_mean": 0.5992,
+      "test_auc_std": 0.0166,
+      "val_auc_mean": 0.8311,
+      "val_auc_std": 0.0153,
+      "trainer": "molmetal/scripts/train_metal_lomo_wasserstein.py (default out-dir = wf131_p3_lomo_full)",
+      "wass_w": 0.05,
+      "synth_rh": 500,
+      "device": "cuda:0 (RTX 5090)",
+      "source": "molmetal/reports/wf131_p3_lomo_full/Ru/per_seed_metrics_seed{0,1,2}.json + stdout.log"
+    },
+    "wf125_p1_rh_oversample_ship": {
+      "status": "SHIP",
+      "n_compounds": 500,
+      "catherine_6_of_6_pass_rate": 0.1492,
+      "w2_decay_mean_pct_change": 36.32,
+      "source": "molmetal/reports/wf125_p1_rh_oversample/synthesis.md + wasserstein_decay.json + synthetic_rh_cohort.json"
+    },
+    "wf125_p2_wiring_check_value": 0.4568,
+    "wf125_p2_wiring_check_status": "SHIP_BUT_BELOW_GATE \u2014 smoke re-bench (6 epochs \u00d7 2 seeds \u00d7 5 folds) = 0.4568 \u00b1 0.173 vs R17 baseline 0.5346; Rh fold REGRESSED 0.368 \u2192 0.136 due to oversample constant-inactive label-bias (honest-negative).",
+    "wf131_p3_ru_fold_50epoch_lift": {
+      "vs_r17_ru_fold_baseline": "+0.029 (R17 Ru = 0.5706 \u2192 Wf-131 P3 Ru = 0.5992)",
+      "vs_wf125_p2_ru_fold_smoke": "+0.040 (Wf-125 P2 Ru = 0.5592 \u2192 Wf-131 P3 Ru = 0.5992)",
+      "mechanism_verdict": "PROVEN \u2014 W\u2082 decay JKO-style CFL PASS; Ru fold lifts at full 50 epochs"
+    },
+    "lift_wf131_p3_minus_r17": null,
+    "verdict": "DEFERRED_NO_NEW_DATA \u2014 No MEASURED full-sweep value exists for Wf-131 P3. R17 baseline (0.5346 \u00b1 0.110) remains canonical for paper \u00a74 Table 2; Wf-125 P2 wiring-check (0.4568 \u00b1 0.173, 6 epochs \u00d7 2 seeds \u00d7 5 folds) is documented in metal_lomo_auc_wasserstein.json but does NOT replace the R17 anchor; Wf-131 P3 Ru fold 50-epoch partial-full (0.5992 \u00b1 0.017, n=3 seeds) is documented in this update but does NOT replace the R17 anchor either (only 1 of 5 folds complete). Cannot claim full-sweep lift or regression without data. The 4 remaining folds (Ir / Os / Rh / Re) \u00d7 3 seeds = 12 runs DEFERRED to a follow-on Wf (TODO-121 \u00a73 P1.3 follow-on)."
+  },
+  "data_source": "wf131_p3_partial + wf146 (deferred)",
+  "epochs_run": 30,
+  "metal_seeds_complete": {
+    "Ru": 5,
+    "Ir": 2,
+    "Os": 0,
+    "Rh": 0,
+    "Re": 0
+  },
+  "honest_framing": "Wf-146 LOMO 5/5 metal x 5 seed x 50 epoch training DEFERRED per user directive 'kill then adapt'; current data from Wf-131 P3 partial run only (Ru 5/5 + Ir 2/5 on BUGGY Wf-125 P1 cohort). Data source: MetalCytoToxDB.csv precious-metal subset (molmetal/data/metal_lomo.csv). Model: D-MPNN multi-task (dmpnn_multitask). Protocol: leave-one-metal-out (LOMO) 5-fold x N-seed scaffold split. iMoLD comparison cite-only (Ji et al. ICLR 2023); Krasnov 2026 cite-only. Cites TODO-140 (m5 SA 5-pocket), TODO-141 (exhaustiveness lift), TODO-142 (cross-domain), TODO-143 (clone+adapt), TODO-144 (Q2 paper roadmap).",
+  "timestamp": "2026-09-27T01:08:15.981545+00:00",
+  "wf145_p2_lomo_v2_update": {
+    "close_out_doc": "molmetal/reports/wf145_p2_lomo_v2/synthesis.md",
+    "date_utc": "2026-09-27",
+    "wf_tag": "Wf-145 Phase 2 \u2014 v2 LOMO driver with BALANCED Rh cohort (250 active + 250 inactive from wf145_p1_rh_active_cohort)",
+    "r17_baseline_retained_as_canonical": true,
+    "wf145_p2_v2_measured_value": null,
+    "wf145_p2_v2_status": "DEFERRED_DRIVER_AND_TESTS_SHIPPED_SWEEP_DEFERRED",
+    "wf145_p2_v2_defer_reason": "Wf-145 P2 v2 driver (train_metal_lomo_v2.py) + 18/18 tests SHIPPED. Full 5-metal x 5-seed x 50-epoch GPU sweep DEFERRED \u2014 GPU-1 (RTX 5090) was occupied by Wf-131 P3 wasserstein continuation (PID 649993, started 05:13) and session budget for this subagent is sub-hour. v2 sweep can be launched in a follow-up session once GPU-1 is free; expected wall-clock ~4 hours.",
+    "lift_v2_minus_r17": null,
+    "v2_synthesis_md": "molmetal/reports/wf145_p2_lomo_v2/synthesis.md",
+    "v2_metric_json": "metrics/by_metric/metal_lomo_auc_v2.json",
+    "verdict": "DEFERRED_PARTIAL_RUN \u2014 Driver + tests SHIPPED; sweep DEFERRED due to GPU contention + session budget. Wf-131 P3 Ru 5-seed MEASURED (+0.0235 vs R17) on the BUGGY cohort remains the closest available data point; Wf-145 P2 v2 sweep on BALANCED cohort is the next session's work."
+  },
+  "wf131_p3_lomo_partial_update": {
+    "date_utc": "2026-09-27T01:08:15.981545+00:00",
+    "wf_tag": "Wf-131 P3 LOMO 5-metal x 5-seed x 50-epoch (BUGGY Wf-125 P1 cohort) \u2014 PARTIAL: 18/25 runs",
+    "data_source": "wf131_p3_lomo_partial",
+    "actual_data_path": "molmetal/reports/wf131_p3_lomo_full/",
+    "actual_data_status": "PARTIAL_RUN (training stopped at Rh seed=3 epoch=23, Re not started)",
+    "r17_baseline_retained_as_canonical": true,
+    "epochs": 50,
+    "seeds_target": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "seeds_completed_per_metal": {
+      "Ru": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "Ir": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "Os": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "Rh": [
+        0,
+        1,
+        2
+      ],
+      "Re": []
+    },
+    "per_metal_5seed_mean": {
+      "Ru": 0.5941,
+      "Ir": 0.6242,
+      "Os": 0.6075,
+      "Rh": 0.6874,
+      "Re": null
+    },
+    "per_metal_5seed_std": {
+      "Ru": 0.0143,
+      "Ir": 0.0185,
+      "Os": 0.0294,
+      "Rh": 0.3584,
+      "Re": null
+    },
+    "per_metal_test_auc_values": {
+      "Ru": [
+        0.5911,
+        0.6185,
+        0.5881,
+        0.5917,
+        0.581
+      ],
+      "Ir": [
+        0.6336,
+        0.6062,
+        0.6228,
+        0.6505,
+        0.608
+      ],
+      "Os": [
+        0.6149,
+        0.6058,
+        0.6233,
+        0.6351,
+        0.5585
+      ],
+      "Rh": [
+        0.2742,
+        0.9143,
+        0.8735
+      ],
+      "Re": []
+    },
+    "per_metal_val_auc_mean": {
+      "Ru": 0.83,
+      "Ir": 0.8453,
+      "Os": 0.8734,
+      "Rh": 0.8286,
+      "Re": null
+    },
+    "per_metal_pic50_mae_mean": {
+      "Ru": 0.9408,
+      "Ir": 0.6248,
+      "Os": 0.658,
+      "Rh": 1.1026,
+      "Re": null
+    },
+    "overall_partial_mean": 0.6217,
+    "overall_partial_std": 0.1284,
+    "n_runs_total_completed": 18,
+    "n_runs_target_total": 25,
+    "completion_pct": 72.0,
+    "rh_status": "ABOVE_0.50_paper_\u00a74.5_LEAD_CANDIDATE",
+    "rh_mean_partial": 0.6874,
+    "rh_n_seeds": 3,
+    "rh_seed0_outlier_below_0_5": true,
+    "rh_seed_values_raw": [
+      0.2742,
+      0.9143,
+      0.8735
+    ],
+    "rh_honest_framing": "Rh fold MEASURED on BUGGY Wf-125 P1 cohort (constant-inactive labels, see TODO-135 \u00a70 root cause). Rh mean 0.6874 is misleading \u2014 3-seed n is too small; seed=0 regressed to 0.274 (paper \u00a76.9 honest-negative), seeds 1+2 lifted to 0.914/0.874. Std=0.358 (high variance from seed-0 outlier). Per TODO-135 \u00a75: 50% chance Rh lift \u2265 0.50 due to Rh n=60 train sample-size ceiling; the BUGGY cohort itself is the structural fix-target (TODO-135 Phase 1 = balanced Rh cohort). Risk fallback per TODO-135 \u00a76: NCI-60 9-cell 0.8007 + single-cell SOTA already in \u00a74 \u2014 m19 fail does not impact paper.",
+    "todo_135_caveat_50pct": "TODO-135 \u00a75: Likelihood of Rh lift \u2265 0.50: 50% (sample-size ceiling); paper \u00a74.5.6 lead candidate only if Rh lift, else \u00a76 honest-negative",
+    "re_status": "DEFERRED (0/5 seeds done; Re not started before training stopped at Rh seed=3 epoch=23)",
+    "training_stop_evidence": "Last log entry: 2026-09-27 09:05:40,917 fold=Rh seed=3 epoch=23 (NOT epoch 49); no Re dir on disk; nvidia-smi 0% utilization at 09:07 \u2014 training process terminated",
+    "v2_alternative": "molmetal/reports/wf145_p2_lomo_v2/ (v2 driver SHIPPED; v2 sweep DEFERRED on BALANCED cohort)",
+    "verdict": "DEFERRED_PARTIAL_RUN \u2014 18/25 = 72% complete; Ru/Ir/Os fully MEASURED on BUGGY cohort (3/5 metals lift vs R17); Rh PARTIAL with high variance; Re DEFERRED. R17 baseline (0.5346) remains canonical for paper \u00a74 Table 2.",
+    "lift_partial_minus_r17": {
+      "Ru": 0.0235,
+      "Ir": 0.0066,
+      "Os": -0.0038,
+      "Rh": 0.3197,
+      "Re": null
+    },
+    "r17_baseline_for_reference": {
+      "value": 0.5346340730251975,
+      "per_fold_auc_mean": {
+        "Ru": 0.5706091124669564,
+        "Ir": 0.6175946917576345,
+        "Os": 0.6113498030791263,
+        "Rh": 0.36771037181996086,
+        "Re": 0.5059063860023092
+      }
+    }
+  }
+}

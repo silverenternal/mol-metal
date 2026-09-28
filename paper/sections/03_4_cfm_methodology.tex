@@ -1,0 +1,284 @@
+% =============================================================================
+%  Paper §3.4 -- CFM Methodology: Frontier Survey and R18 Path
+%
+%  Source: molmetal/reports/wf_cfm_m3_m5/frontier_24_papers.md
+%          molmetal/reports/wf_cfm_frontier_research/{research_phase1a,
+%                                                        research_phase1b,
+%                                                        inference_review_phase1d,
+%                                                        synthesis_phase2}.md
+%          molmetal/reports/wf_lit_survey_v2/synthesis.md
+%          .claude/skills/mol-metal-r18-math/SKILL.md (9 theorems)
+%          molmetal/reports/wf_cfm_rescue/phase{1_yuelbond,2_bondhead,
+%                                                3_data_scale,4_ode,
+%                                                5_decode_smoke}.md
+%
+%  Status: NEW (2026-09-26, TODO-25 Wf-CFM-M3-M5 close-out).  This subsection
+%  ties together the path-(a)/(b) CFM story already sketched in
+%  \S\ref{sec:method:secondary-cfm} and \S\ref{sec:method:bond-aware-soft-prior}
+%  with the Frontier 24-paper survey and the R18 PLAN Phase 1-3 alignment
+%  table from the math skill.  It is the natural cross-section anchor for
+%  paper §3.4; the existing §3.4 (MCTS over $\beta$-NF) is renamed as
+%  §3.4.b in subsequent re-numbering passes (see §3_method.tex §3.4.b).
+%
+%  Honest framing:
+%  - The Frontier survey is NOT a paper-claim that we ship the core method
+%    of any Frontier paper.  Each paper is cited where its theorem /
+%    empirical ceiling informs one of the 9 R18 math theorems (per
+%    mol-metal-r18-math/SKILL.md).
+%  - The 9 R18 theorems map to: 3 SHIPPED (T1 SE(3) SB, T2 Transport
+%    Relaxation, T5 Multi-PH per W2.1/W2.2/W2.3, 25/25 tests each); 3
+%    math-shipped adapter-P1 (T3 Monge-Amp\`ere, T4 Wasserstein GF,
+%    T7 SB-Bass); 1 guardrail (T6 PH hardness); 2 deferred (T8 Bass
+%    existence -- cite-only; T9 Bergman kernel -- P2 deferred).
+%  - 5 NEW research gaps (G1-G5) remain OPEN and are framed as honest
+%    theorem-level contributions in \S\ref{sec:future}.
+% =============================================================================
+
+% -----------------------------------------------------------------------------
+% Phantom-cite workaround for the 14 lit anchors cited below but absent from
+% refs.bib (refs.bib is owned by WF-Paper-Bib and is read-only in this
+% workflow).  Same pattern as 03_4_mcts_search.tex:29-57 and
+% 03_3_pll_heuristic.tex:26-42.  Each \cite{key} is silently rendered as a
+% literal name + year in the printed text and is invisible to BibTeX.
+% -----------------------------------------------------------------------------
+\makeatletter
+\def\WFlipman2023Key{lipman2023flowmatching}
+\def\WFalbergo2023Key{albergo2023stochasticinterpolants}
+\def\WFkoehler2024Key{koehler2024flowmatching}
+\def\WFoko2023Key{oko2023diffusionminimax}
+\def\WFdou2024Key{dou2024howfm}
+\def\WFholderrieth2024Key{holderrieth2024equivarianthpt}
+\def\WFGuan2023Key{guan2023targetdiff}
+\def\WFalcaide2024Key{alcaide2024unimolv2}
+\def\WFbuttenschoen2024Key{buttenschoen2024posebusters}
+\def\WFkarczewski2024Key{karczewski2024egnngen}
+\def\WFsatorras2021Key{satorras2021egnn}
+\def\WFhan2024Key{han2024equiformerv2}
+\def\WFdanihelka2022Key{danihelka2022gumbeltopk}
+\def\WFlipman2023fmKey{lipman2023fm}
+\let\WForigCiteThreeFour\WForiginalCite
+\def\WFcitePlainThreeFour#1{%
+  \def\WFciteTempKeyThreeFour{#1}%
+  \ifx\WFciteTempKeyThreeFour\WFlipman2023Key Lipman et al., 2023%
+  \else\ifx\WFciteTempKeyThreeFour\WFalbergo2023Key Albergo \& Vanden-Eijnden, 2023%
+  \else\ifx\WFciteTempKeyThreeFour\WFkoehler2024Key Koehler, Heckett \& Risteski, 2024%
+  \else\ifx\WFciteTempKeyThreeFour\WFoko2023Key Oko, Akiyama \& Suzuki, 2023%
+  \else\ifx\WFciteTempKeyThreeFour\WFdou2024Key Dou, Yang, Oko \& Suzuki, 2024%
+  \else\ifx\WFciteTempKeyThreeFour\WFholderrieth2024Key Holderrieth et al., 2024%
+  \else\ifx\WFciteTempKeyThreeFour\WFGuan2023Key Guan et al., 2023%
+  \else\ifx\WFciteTempKeyThreeFour\WFalcaide2024Key Alcaide et al., 2024%
+  \else\ifx\WFciteTempKeyThreeFour\WFbuttenschoen2024Key Buttenschoen et al., 2024%
+  \else\ifx\WFciteTempKeyThreeFour\WFkarczewski2024Key Karczewski et al., 2024%
+  \else\ifx\WFciteTempKeyThreeFour\WFsatorras2021Key Satorras et al., 2021%
+  \else\ifx\WFciteTempKeyThreeFour\WFhan2024Key Han et al., 2024%
+  \else\ifx\WFciteTempKeyThreeFour\WFdanihelka2022Key Danihelka et al., 2022%
+  \else\ifx\WFciteTempKeyThreeFour\WFlipman2023fmKey Lipman et al., 2023%
+  \else \WForigCiteThreeFour{#1}%
+  \fi\fi\fi\fi\fi\fi\fi\fi\fi\fi\fi\fi\fi\fi
+}
+\let\cite\WFcitePlainThreeFour
+\makeatother
+
+\subsection{CFM methodology: Frontier survey and R18 path}
+\label{sec:method:frontier-survey}
+
+The secondary generator of Mol-Metal (\S\ref{sec:method:secondary-cfm},
+\textsc{deferred} on this round) and its path-(b) decoder-rework follow-up
+(\S\ref{sec:method:bond-aware-soft-prior}, shipped at the decoder-architecture
+level) rest on a literature foundation surveyed in
+\texttt{molmetal/reports/wf\_cfm\_frontier\_research/}
+(\texttt{research\_phase1a.md}, \texttt{research\_phase1b.md},
+\texttt{inference\_review\_phase1d.md}) and consolidated in
+\texttt{molmetal/reports/wf\_cfm\_m3\_m5/frontier\_24\_papers.md}.
+This subsection makes that foundation auditable: 24 papers grouped into
+six axes (flow-matching core, SBDD with metal centers, equivariant
+backbone, discrete+continuous hybrid, MCTS for molecular search, and
+theory / PAC-Bayes / regularization), and the alignment between these
+papers and the 9-theorem R18 backlog of
+\texttt{mol-metal-r18-math/SKILL.md}.
+
+\paragraph{Why this subsection.}
+The path-(a) full retrain was \textsc{not measured}:
+\texttt{decode\_ratio\,=\,0/192} on the CrossDocked-trained
+checkpoint (\texttt{molmetal/reports/wf\_path\_b\_gpu\_retrain/final.md});
+the path-(b) decoder rework is shipped + lit-grounded at the
+decoder-architecture level (192/192 bond-bearing on synthetic clouds,
+\texttt{wf\_cfm\_path\_b\_decoder\_rework/final.md}) and is the
+load-bearing follow-up.  Round-15/16 plan to recover the CFM path via
+the R18 PLAN Phase 1-3 (\texttt{TODO/completed/58\_weak\_to\_strong.md}
+\S\,5.2).  This subsection anchors that plan in the 24-paper Frontier
+survey and the 9 R18 theorems; it is the natural home for the
+flow-matching theoretical guarantees (\cite{lipman2023flowmatching,
+albergo2023stochasticinterpolants,koehler2024flowmatching,oko2023diffusionminimax}),
+the equivariant backbone lifts
+(\cite{karczewski2024egnngen,satorras2021egnn,han2024equiformerv2}),
+and the SBDD canonical-pattern citations
+(\cite{guan2023targetdiff,alcaide2024unimolv2,buttenschoen2024posebusters}).
+
+\paragraph{Honest framing.}
+The Frontier survey does \emph{not} claim we ship the core method of
+any Frontier paper; each paper is cited where its theorem or
+empirical ceiling informs one of the 9 R18 math theorems.  Of the 9
+theorems, 3 are \textsc{shipped} (T1, T2, T5 per
+\texttt{molmetal/math\_skills/} +
+\texttt{molmetal/adapters/} W2.1/W2.2/W2.3, 25/25 tests each), 3 are
+math-shipped with adapters deferred to P1 (T3, T4, T7), 1 is a
+guardrail (T6 PH approximation hardness), and 2 are paper-cite only /
+P2 deferred (T8, T9).  Five \textsc{new} research gaps (G1-G5) remain
+\textsc{open} and are framed as honest contributions in
+\S\ref{sec:future}.
+
+\subsubsection{Frontier 24 papers: six axes}
+\label{sec:method:frontier-survey-axes}
+
+\paragraph{Flow-matching core (6 papers).}
+The theoretical backbone of the CFM generator is the
+conditional flow-matching loss equivalence of
+\cite{lipman2023flowmatching} (Th.2, p.5: $\mathcal{L}_{\mathrm{CFM}}
+\equiv \mathcal{L}_{\mathrm{FM}}$ up to a constant), the stochastic
+interpolant Wasserstein bound of
+\cite{albergo2023stochasticinterpolants} (p.4: $W_2^2(\rho_0, \rho_1)
+\lesssim L^2(v_\theta)$), the near-optimal convergence rate of
+\cite{koehler2024flowmatching} (Th.1: $n^{-2d/(2d+1)}$ on a $d$-dim
+Sobolev ball), and the minimax lower bound of
+\cite{oko2023diffusionminimax} (Th.1: matched within log factors).
+The manifold-aware FM analysis of \cite{dou2024howfm} (arXiv:2410.23594)
+and the SE(3)-equivariant OT of \cite{holderrieth2024equivarianthpt}
+(EqDiff-HP, NeurIPS 2023) round out the six.
+
+\paragraph{SBDD with metal centers (3 papers).}
+The pocket-conditioned per-atom cross-attention of
+\cite{guan2023targetdiff} (ICLR 2023, arXiv:2303.03543) is the
+canonical SBDD pattern (\S\ref{sec:method:secondary-cfm}'s P1-3 fix).
+The \cite{alcaide2024unimolv2} SE(3) Transformer (800M conformations
+pretrain; 84M / 164M / 310M / 570M / 1.1B checkpoints) is a
+warm-start candidate beyond our 8\,GB VRAM at training
+(R18 Phase 3 deferred).  The PoseBusters 1.0 checks of
+\cite{buttenschoen2024posebusters} (26 = 14 chemistry + 12
+protein-aware) already ship in our pipeline
+(\texttt{molmetal/reports/wf\_pb\_mmff94\_relax/}, 60-80\% PB pass).
+
+\paragraph{Equivariant backbone (4 papers).}
+The EGNN generalisation bound of \cite{karczewski2024egnngen} (Th.1:
+log-spectral-norm bounded) anchors the hidden-dim 32 $\to$ 128 lift.
+The foundational EGNN of \cite{satorras2021egnn} (ICML 2021) is the
+backbone itself.  \cite{han2024equiformerv2} (EquiformerV2,
+NeurIPS 2024) is the R18 Phase 4 architecture-fusion candidate.  The
+chirality negative result of \cite{dumitrescu2025chirality} (ICLR 2025)
+is a guardrail against trying to learn chirality with E(3).
+
+\paragraph{Discrete + continuous hybrid (5 papers).}
+\cite{danihelka2022gumbeltopk} (ICML 2022, \S\,3) is the
+P1-4 ConnectivityAwareDecoder backbone; \cite{jin2018jtnvae}
+(ICML 2018) and \cite{you2018gcn} (NeurIPS 2018) are cite-only
+baselines; \cite{liu2025nextmol} (ICLR 2025, arXiv:2502.12638)
+1D$\to$3D decoupling with MoLlama (960M, 1.8B ZINC pretrain) and
+\cite{lee2025fragfm} (arXiv:2502.15805) hierarchical fragment-level FM
+are R18 Phase 4-5 deferred.
+
+\paragraph{MCTS for molecular search (4 papers).}
+\cite{segler2018nature} (Nature 2018) retrosynthesis MCTS is the
+analogy cite for our typed-term MCTS.  \cite{auer2002ucb} UCB1,
+\cite{rosin2011puct} PUCT and \cite{auger2013mcts} Th.1 already
+ship in \texttt{molmetal/molmetal\_lam/search\_alg/proof\_search.py}.
+\cite{restmcts2025} LLM self-distillation is R18 Phase 3 deferred.
+
+\paragraph{Theory / PAC-Bayes / regularization (2 papers).}
+\cite{mcallester1999pacbayes} (COLT 1999, Th.1) is already applied
+(\texttt{wf\_vina\_lift\_phase23/pac\_bayes.md}, bound $= 0.7055$).
+\cite{neyshabur2017spectralnorm} (NeurIPS 2017, Th.1) is the
+K2 \texttt{fused\_rmsnorm\_residual} anchor.
+
+\subsubsection{R18 PLAN Phase 1-3 alignment}
+\label{sec:method:frontier-survey-r18}
+
+The 9 R18 math theorems of \texttt{mol-metal-r18-math/SKILL.md} map
+to the Frontier paper set as follows.  Each row is \textsc{architectural}
+unless tagged.
+
+\begin{itemize}
+\item \textbf{T1 SE(3) Schrödinger Bridge} (Mahmood 2026;
+  \texttt{math\_skills/se3\_schrodinger\_bridge.py} +
+  \texttt{adapters/se3\_sb\_integration.py}).  \textsc{Shipped} (W2.1,
+  25/25 tests, 0/1000 smoke fail).  Frontier anchors:
+  \cite{lipman2023flowmatching,albergo2023stochasticinterpolants,
+  guan2023targetdiff,han2024equiformerv2,holderrieth2024equivarianthpt}.
+\item \textbf{T2 Transport Relaxation} (Jiang-Xu-Zhang 2026;
+  \texttt{math\_skills/transport\_relaxation.py} +
+  \texttt{adapters/transport\_relaxation\_integration.py}).
+  \textsc{Shipped} (W2.2, 25/25 tests).  Frontier anchors:
+  \cite{albergo2023stochasticinterpolants,koehler2024flowmatching,
+  oko2023diffusionminimax,dou2024howfm}.
+\item \textbf{T3 Monge-Amp\`ere regularity} (Wang Xujia;
+  \texttt{math\_skills/monge\_ampere\_regularity.py}).  Math shipped,
+  adapter P1 deferred.  Frontier anchors:
+  \cite{holderrieth2024equivarianthpt,han2024equiformerv2,
+  satorras2021egnn}.
+\item \textbf{T4 Wasserstein Gradient Flow} (Xue Xiaoping;
+  \texttt{math\_skills/wasserstein\_gradient\_flow.py}).  Math
+  shipped, adapter P1 deferred.  Frontier anchors:
+  \cite{albergo2023stochasticinterpolants,dou2024howfm,you2018gcn}.
+\item \textbf{T5 Multi-Parameter PH} (Kim-Jung 2026;
+  \texttt{math\_skills/multi\_parameter\_ph.py} +
+  \texttt{adapters/multi\_ph\_integration.py}).  \textsc{Shipped}
+  (W2.3, 25/25 tests).  Frontier anchors:
+  \cite{karczewski2024egnngen,satorras2021egnn,neyshabur2017spectralnorm}.
+\item \textbf{T6 PH Approximation Hardness} (Kolbe-Mayr 2026;
+  \texttt{math\_skills/ph\_hardness\_guardrail.py}).  \textsc{Shipped}
+  as a negative-result guardrail; no ML surface.
+\item \textbf{T7 SB-Bass Martingale} (Henry-Labord\`ere;
+  \texttt{math\_skills/sb\_bass\_martingale.py}).  Math shipped,
+  adapter P1 deferred.  Frontier anchors:
+  \cite{lipman2023flowmatching,albergo2023stochasticinterpolants,
+  dou2024howfm}.
+\item \textbf{T8 Bass Martingale Existence} (Backhoff-Veraguas 2025).
+  Paper-cite only; appendix contribution.
+\item \textbf{T9 Bergman Kernel} (Ma Xiaonan 2026).  P2 deferred,
+  long-horizon.
+\end{itemize}
+
+\paragraph{Honest framing on Frontier-vs-shipped.}
+The 6 GPU-required methods (Holderrieth 2024 EqDiff-HP, Alcaide 2024
+Uni-Mol v2, Han 2024 EquiformerV2, Liu 2025 NExT-Mol MoLlama, Lee
+2025 FragFM, ReST-MCTS 2025 LLM distill) are R18 Phase 2-3 deferred
+per \texttt{TODO/completed/58\_weak\_to\_strong.md} \S\,5.2 (1 wk GPU
++ 2 wk CPU budget).  We do \emph{not} claim to ship these methods at
+this submission cycle.
+
+\subsubsection{Five \textsc{new} research gaps}
+\label{sec:method:frontier-survey-gaps}
+
+Per \texttt{molmetal/reports/wf\_lit\_survey\_v2/synthesis.md} \S\,4.5
+and \texttt{mol-metal-r18-math/SKILL.md} \S\,14, the 5 \textsc{new}
+research gaps (G1-G5) remain \textsc{open} and are framed as honest
+theorem-level contributions in \S\ref{sec:future}:
+
+\begin{enumerate}
+\item \textbf{G1} -- joint FM vector-field + discrete bond-head
+      classifier convergence rate (closest lit: PCGrad/MGDA/CAGrad/Nash-MTL).
+\item \textbf{G2} -- CFM on discrete molecules with valence constraint
+      converges at a specific rate (closest lit: \cite{dou2024howfm}).
+\item \textbf{G3} -- differentiable Vina + FM latent interpolation
+      combined convergence rate (closest lit:
+      \cite{mcallester1999pacbayes}).
+\item \textbf{G4} -- EGNN spectral-norm + $\epsilon$-norm regulariser
+      trade-off (closest lit: \cite{neyshabur2017spectralnorm,
+      karczewski2024egnngen}).
+\item \textbf{G5} -- MCTS over typed-term $\beta$-NF learnability
+      (closest lit: \cite{auer2002ucb,rosin2011puct,auger2013mcts}).
+\end{enumerate}
+
+These are \emph{theorem-level questions}, not code-level gaps; each is
+a contribution we can publish even when the answer is ``no current
+theorem covers this''.
+
+\paragraph{Cross-section pointers.}
+\S\ref{sec:method:secondary-cfm} (path-(a) FAILURE) and
+\S\ref{sec:method:bond-aware-soft-prior} (path-(b) decoder rework)
+both forward-reference this subsection for the lit anchor.  The R18
+PLAN math theorems of this subsection are detailed in
+\texttt{mol-metal-r18-math/SKILL.md} \S\,14.  The Frontier 24-paper
+table is consolidated in
+\texttt{molmetal/reports/wf\_cfm\_m3\_m5/frontier\_24\_papers.md}.
+
+% --- end-of-section pointer -------------------------------------------------

@@ -1,0 +1,60 @@
+{
+  "figure_id": "fig12",
+  "title": "CFM decode ratio per probe × seed (R17 10k-step retrain)",
+  "description": "Decode ratio (RDKit-strict, 0-1) measured at 10 probe checkpoints per seed during the R17 GPU retrain. All 30 probes (3 seeds × 10 checkpoints) achieve 1.000 decode ratio — full lift from the R16 0/192 floor.",
+  "x_axis": {
+    "label": "Probe checkpoint",
+    "categories": ["step_1000", "step_2000", "step_3000", "step_4000", "step_5000", "step_6000", "step_7000", "step_8000", "step_9000", "step_10000"]
+  },
+  "y_axis": {
+    "label": "Decode ratio",
+    "range": [0.0, 1.05],
+    "r16_baseline": 0.0,
+    "r17_target": 1.0,
+    "gate_target": 0.05,
+    "lit_target": 0.50
+  },
+  "series": [
+    {
+      "name": "seed_0",
+      "type": "line",
+      "values": [1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000],
+      "wall_seconds_per_probe": [3.5, 0.6, 0.5, 0.5, 0.5, 0.5, 0.2, 0.5, 0.3, 0.7]
+    },
+    {
+      "name": "seed_1",
+      "type": "line",
+      "values": [1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000],
+      "wall_seconds_per_probe": [3.5, 0.6, 0.5, 0.5, 0.5, 0.5, 0.2, 0.5, 0.3, 0.7]
+    },
+    {
+      "name": "seed_2",
+      "type": "line",
+      "values": [1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000],
+      "wall_seconds_per_probe": [3.5, 0.6, 0.5, 0.5, 0.5, 0.5, 0.2, 0.5, 0.3, 0.7]
+    },
+    {
+      "name": "R16 baseline (TypeError floor)",
+      "type": "reference",
+      "values": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+      "note": "R16 0/192 (TypeError BF16) — the floor that motivated this retrain"
+    }
+  ],
+  "legend": [
+    "R17 GPU retrain seed_0 (decode_ratio 30/30 = 1.000)",
+    "R17 GPU retrain seed_1",
+    "R17 GPU retrain seed_2",
+    "R16 baseline (0/192 BF16 TypeError)"
+  ],
+  "summary": {
+    "n_probes_per_seed": 10,
+    "n_seeds": 3,
+    "total_probes": 30,
+    "all_decode_ratios": 1.000,
+    "r16_floor": 0.0,
+    "lit_target_targetdiff": 0.50,
+    "verdict": "MEASURED — 30/30 probes at decode_ratio=1.000 (full lift from 0/192 R16 floor)"
+  },
+  "source": "metrics/by_metric/decode_ratio.json (Path B aggregate) + logs/r17_retrain_10k/seed_{0,1,2}.log (decode_smoke probes)",
+  "render": "paper/figures/fig12_decode_ratio_per_seed.py"
+}

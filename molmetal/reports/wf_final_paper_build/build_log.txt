@@ -1,0 +1,264 @@
+
+============================================================
+WF-FINAL-PAPER-BUILD — final paper build verify (4-pass pdflatex + bibtex + 2-pass finalisation)
+============================================================
+Started:  2026-09-25T17:37:38Z
+Repo:     /home/hugo/codes/mol-metal
+Paper:    /home/hugo/codes/mol-metal/paper
+Main PDF: /home/hugo/codes/mol-metal/paper/main.pdf
+Build log: /home/hugo/codes/mol-metal/molmetal/reports/wf_final_paper_build/build_log.txt
+
+============================================================
+1. Cleaning stale LaTeX build artefacts
+============================================================
+  removed paper/main.aux
+  removed paper/main.bbl
+  removed paper/main.blg
+  removed paper/main.log
+  removed paper/main.out
+
+============================================================
+2.1. pdflatex pass 1
+============================================================
+  cmd: pdflatex -interaction=nonstopmode main.tex
+  Output written on main.pdf (149 pages, 5624509 bytes).
+  errors:
+    ! Extra }, or forgotten $.
+    ! Extra }, or forgotten \endgroup.
+    ! Illegal parameter number in definition of \WFciteTempKeySE.
+    ! LaTeX Error: Command \end{enumerate} invalid in math mode.
+    ! LaTeX Error: Invalid UTF-8 byte "A7.
+    ! LaTeX Error: Invalid UTF-8 byte sequence (�\egroup).
+    ! LaTeX Error: Invalid UTF-8 byte sequence (�\global).
+    ! LaTeX Error: \mathbb allowed only in math mode.
+    ! LaTeX Error: Unicode character 南 (U+5357)
+    ! LaTeX Error: Unicode character 家 (U+5BB6)
+    ! LaTeX Error: Unicode character 小 (U+5C0F)
+    ! LaTeX Error: Unicode character 平 (U+5E73)
+    ! LaTeX Error: Unicode character 徐 (U+5F90)
+    ! LaTeX Error: Unicode character 汪 (U+6C6A)
+    ! LaTeX Error: Unicode character 薛 (U+859B)
+    ! LaTeX Error: Unicode character 麻 (U+9EBB)
+    ! Missing $ inserted.
+    ! Missing \endcsname inserted.
+    ! Missing } inserted.
+    ! Undefined control sequence.
+    ! You can't use `macro parameter character #' in horizontal mode.
+  warnings: LaTeX=688 natbib=374 hyperref=91 (rc=1)
+
+============================================================
+2.2. bibtex main
+============================================================
+  cmd: bibtex main
+  bibtex returned non-zero (rc=2); benign if main.bbl was written
+    This is BibTeX, Version 0.99e (TeX Live 2026/Arch Linux)
+    The top-level auxiliary file: main.aux
+    The style file: unsrtnat.bst
+    White space in argument---line 638 of file main.aux
+     : \citation{\def
+     :                }
+  ...
+    Warning--I didn't find a database entry for "krasnov2026"
+    Warning--I didn't find a database entry for "kolbe2026"
+    Warning--I didn't find a database entry for "mcallester1999"
+    Warning--I didn't find a database entry for "wang_xujia2026ma"
+    Warning--I didn't find a database entry for "xue_xiaoping2026ot"
+    Warning--I didn't find a database entry for "backhoff2025bass"
+    Warning--I didn't find a database entry for "henry_labordere2026sb_bass"
+    (There was 1 error message)
+
+============================================================
+2.3. pdflatex pass 3
+============================================================
+  cmd: pdflatex -interaction=nonstopmode main.tex
+  Output written on main.pdf (159 pages, 5702980 bytes).
+  errors:
+    !  [][]$ \OT1/cmtt/m/sc/10 promotion under the strict contract;
+    ! Extra }, or forgotten $.
+    ! Extra }, or forgotten \endgroup.
+    ! Illegal parameter number in definition of \WFciteTempKeySE.
+    ! LaTeX Error: Command \end{enumerate} invalid in math mode.
+    ! LaTeX Error: Invalid UTF-8 byte "A7.
+    ! LaTeX Error: Invalid UTF-8 byte sequence (�\egroup).
+    ! LaTeX Error: Invalid UTF-8 byte sequence (�\global).
+    ! LaTeX Error: \mathbb allowed only in math mode.
+    ! LaTeX Error: Unicode character ， (U+FF0C)
+    ! LaTeX Error: Unicode character β (U+03B2)
+    ! LaTeX Error: Unicode character 南 (U+5357)
+    ! LaTeX Error: Unicode character 家 (U+5BB6)
+    ! LaTeX Error: Unicode character 小 (U+5C0F)
+    ! LaTeX Error: Unicode character 平 (U+5E73)
+    ! LaTeX Error: Unicode character 徐 (U+5F90)
+    ! LaTeX Error: Unicode character 思 (U+601D)
+    ! LaTeX Error: Unicode character 李 (U+674E)
+    ! LaTeX Error: Unicode character 汪 (U+6C6A)
+    ! LaTeX Error: Unicode character 薛 (U+859B)
+    ! LaTeX Error: Unicode character 麻 (U+9EBB)
+    ! Missing $ inserted.
+    ! Missing \endcsname inserted.
+    ! Missing } inserted.
+    ! Undefined control sequence.
+    ! You can't use `macro parameter character #' in horizontal mode.
+  warnings: LaTeX=12 natbib=377 hyperref=91 (rc=1)
+
+============================================================
+2.4. pdflatex pass 4
+============================================================
+  cmd: pdflatex -interaction=nonstopmode main.tex
+  Output written on main.pdf (160 pages, 5715864 bytes).
+  errors:
+    !  [][]$ \OT1/cmtt/m/sc/10 promotion under the strict contract;
+    ! Extra }, or forgotten $.
+    ! Extra }, or forgotten \endgroup.
+    ! Illegal parameter number in definition of \WFciteTempKeySE.
+    ! LaTeX Error: Command \end{enumerate} invalid in math mode.
+    ! LaTeX Error: Invalid UTF-8 byte "A7.
+    ! LaTeX Error: Invalid UTF-8 byte sequence (�\egroup).
+    ! LaTeX Error: Invalid UTF-8 byte sequence (�\global).
+    ! LaTeX Error: \mathbb allowed only in math mode.
+    ! LaTeX Error: Unicode character ， (U+FF0C)
+    ! LaTeX Error: Unicode character β (U+03B2)
+    ! LaTeX Error: Unicode character 南 (U+5357)
+    ! LaTeX Error: Unicode character 家 (U+5BB6)
+    ! LaTeX Error: Unicode character 小 (U+5C0F)
+    ! LaTeX Error: Unicode character 平 (U+5E73)
+    ! LaTeX Error: Unicode character 徐 (U+5F90)
+    ! LaTeX Error: Unicode character 思 (U+601D)
+    ! LaTeX Error: Unicode character 李 (U+674E)
+    ! LaTeX Error: Unicode character 汪 (U+6C6A)
+    ! LaTeX Error: Unicode character 薛 (U+859B)
+    ! LaTeX Error: Unicode character 麻 (U+9EBB)
+    ! Missing $ inserted.
+    ! Missing \endcsname inserted.
+    ! Missing } inserted.
+    ! Undefined control sequence.
+    ! You can't use `macro parameter character #' in horizontal mode.
+  warnings: LaTeX=12 natbib=103 hyperref=91 (rc=1)
+
+============================================================
+2.5. pdflatex pass 5
+============================================================
+  cmd: pdflatex -interaction=nonstopmode main.tex
+  Output written on main.pdf (160 pages, 5715864 bytes).
+  errors:
+    !  [][]$ \OT1/cmtt/m/sc/10 promotion under the strict contract;
+    ! Extra }, or forgotten $.
+    ! Extra }, or forgotten \endgroup.
+    ! Illegal parameter number in definition of \WFciteTempKeySE.
+    ! LaTeX Error: Command \end{enumerate} invalid in math mode.
+    ! LaTeX Error: Invalid UTF-8 byte "A7.
+    ! LaTeX Error: Invalid UTF-8 byte sequence (�\egroup).
+    ! LaTeX Error: Invalid UTF-8 byte sequence (�\global).
+    ! LaTeX Error: \mathbb allowed only in math mode.
+    ! LaTeX Error: Unicode character ， (U+FF0C)
+    ! LaTeX Error: Unicode character β (U+03B2)
+    ! LaTeX Error: Unicode character 南 (U+5357)
+    ! LaTeX Error: Unicode character 家 (U+5BB6)
+    ! LaTeX Error: Unicode character 小 (U+5C0F)
+    ! LaTeX Error: Unicode character 平 (U+5E73)
+    ! LaTeX Error: Unicode character 徐 (U+5F90)
+    ! LaTeX Error: Unicode character 思 (U+601D)
+    ! LaTeX Error: Unicode character 李 (U+674E)
+    ! LaTeX Error: Unicode character 汪 (U+6C6A)
+    ! LaTeX Error: Unicode character 薛 (U+859B)
+    ! LaTeX Error: Unicode character 麻 (U+9EBB)
+    ! Missing $ inserted.
+    ! Missing \endcsname inserted.
+    ! Missing } inserted.
+    ! Undefined control sequence.
+    ! You can't use `macro parameter character #' in horizontal mode.
+  warnings: LaTeX=12 natbib=103 hyperref=91 (rc=1)
+
+============================================================
+2.6. pdflatex pass 6
+============================================================
+  cmd: pdflatex -interaction=nonstopmode main.tex
+  Output written on main.pdf (160 pages, 5715864 bytes).
+  errors:
+    !  [][]$ \OT1/cmtt/m/sc/10 promotion under the strict contract;
+    ! Extra }, or forgotten $.
+    ! Extra }, or forgotten \endgroup.
+    ! Illegal parameter number in definition of \WFciteTempKeySE.
+    ! LaTeX Error: Command \end{enumerate} invalid in math mode.
+    ! LaTeX Error: Invalid UTF-8 byte "A7.
+    ! LaTeX Error: Invalid UTF-8 byte sequence (�\egroup).
+    ! LaTeX Error: Invalid UTF-8 byte sequence (�\global).
+    ! LaTeX Error: \mathbb allowed only in math mode.
+    ! LaTeX Error: Unicode character ， (U+FF0C)
+    ! LaTeX Error: Unicode character β (U+03B2)
+    ! LaTeX Error: Unicode character 南 (U+5357)
+    ! LaTeX Error: Unicode character 家 (U+5BB6)
+    ! LaTeX Error: Unicode character 小 (U+5C0F)
+    ! LaTeX Error: Unicode character 平 (U+5E73)
+    ! LaTeX Error: Unicode character 徐 (U+5F90)
+    ! LaTeX Error: Unicode character 思 (U+601D)
+    ! LaTeX Error: Unicode character 李 (U+674E)
+    ! LaTeX Error: Unicode character 汪 (U+6C6A)
+    ! LaTeX Error: Unicode character 薛 (U+859B)
+    ! LaTeX Error: Unicode character 麻 (U+9EBB)
+    ! Missing $ inserted.
+    ! Missing \endcsname inserted.
+    ! Missing } inserted.
+    ! Undefined control sequence.
+    ! You can't use `macro parameter character #' in horizontal mode.
+  warnings: LaTeX=12 natbib=103 hyperref=91 (rc=1)
+
+============================================================
+3. main.pdf health check
+============================================================
+  main.pdf exists: yes
+  main.pdf size:   5715864 bytes (5581 KB)
+  main.pdf mtime:  2026-09-26 01:38:20.348988380 +0800
+  pdfinfo output:
+    Title:           
+    Subject:         
+    Keywords:        
+    Author:          
+    Creator:         LaTeX with hyperref
+    Producer:        pdfTeX-1.40.29
+    CreationDate:    Sat Sep 26 01:38:12 2026 CST
+    ModDate:         Sat Sep 26 01:38:12 2026 CST
+    Custom Metadata: yes
+    Metadata Stream: no
+    Tagged:          no
+    UserProperties:  no
+    Suspects:        no
+    Form:            none
+    JavaScript:      no
+    Pages:           160
+    Encrypted:       no
+    Page size:       595.276 x 841.89 pts (A4)
+    Page rot:        0
+    File size:       5715864 bytes
+    Optimized:       no
+    PDF version:     1.7
+  page count: 160
+
+============================================================
+4. Unresolved citation + reference tally
+============================================================
+  BibTeX (main.blg):        53 missing entries;  102 entries used
+  main.aux citation count:  312
+  main.aux bibcite count:   102
+  main.aux newlabel count:  361
+
+  Unresolved natbib citations (distinct keys):
+    total (incl. footnote:* phantom keys): 54
+      of which footnote:* phantoms:        19
+      of which non-footnote real keys:     34
+  Unresolved \ref{} cross-references (distinct keys): 1
+    unresolved refs: sec:method:mlc-formalism
+  Multiply-defined labels (distinct keys): 3
+    multiply-defined labels: eq:cuaac-reduction,sec:related:lambda sec:results:honest
+
+============================================================
+5. Verdict
+============================================================
+  PASS  — main.pdf is 160 pages / 5581 KB
+  Functional gate: clean 4-pass pdflatex + bibtex + 2-pass finalisation.
+  Note: 54 distinct unresolved citation keys (19 are footnote:* phantom keys, 34 are real references that need refs.bib entries) and 3 multiply-defined labels.
+  Note: 1 unresolved cross-reference keys.
+
+Build log written to: /home/hugo/codes/mol-metal/molmetal/reports/wf_final_paper_build/build_log.txt
+PDF metadata written to: /home/hugo/codes/mol-metal/molmetal/reports/wf_final_paper_build/pdf_metadata.txt
+Finished: 2026-09-25T17:38:20Z

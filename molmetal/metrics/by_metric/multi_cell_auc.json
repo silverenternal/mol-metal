@@ -1,0 +1,12 @@
+{
+  "hook": "multi_cell_auc",
+  "date": "2026-09-25T22:31:47+0800",
+  "wall_clock_s": 0.004698514938354492,
+  "n_smiles": 5,
+  "n_cell_lines": 2,
+  "per_cell_auc": {
+    "MCF-7": 0.0,
+    "A549": 0.0
+  },
+  "model_class": "DMPNNMultiTaskModel"
+}

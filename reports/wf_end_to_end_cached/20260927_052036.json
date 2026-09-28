@@ -1,0 +1,21 @@
+{
+  "end_to_end_works": true,
+  "rdkit_called_in_inner_loop": false,
+  "step_time_ms": 1107.330232480308,
+  "step_times_ms": [
+    2175.9698719833978,
+    38.69059297721833
+  ],
+  "final_loss": 43.10920333862305,
+  "grad_flow_ok": true,
+  "rdkit_mol_called": 0,
+  "rdkit_mol_to_smiles_called": 0,
+  "model_params": 199567,
+  "n_rows_used": 512,
+  "device": "cuda:0",
+  "load_ms": 118.19861299591139,
+  "run_ms": 3366.9708509696648,
+  "honest_framing_note": "GPU end-to-end smoke on a slice of 512 pre-featurized rows. mean step time 1107.3ms on cuda:0. RDKit call count in inner loop = 0 (0 expected). Gradients flowed to encoder + every metal head. The full 45 GB .pt is memory-mapped, not loaded; slicing to first 512 canonical-metal rows.",
+  "tests_pass": 3,
+  "tests_fail": 0
+}

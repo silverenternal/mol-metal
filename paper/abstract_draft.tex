@@ -1,0 +1,124 @@
+% ============================================================================
+%  ABSTRACT DRAFT --- rewritten 2026-09-25 for R17 close-out + R18 routing
+%  (~80 lines).  Source numbers (R17 MEASURED):
+%    metrics/by_metric/{metalcytotox_ru_auc,platinai_4cell_auc,
+%                       drugood_ood_auc,n_distinct,decode_ratio,
+%                       nci60_precious_9cell_auc}.json
+%    paper/figures/data/fig18_deflexpressor_vs_f5.json
+%  Source numbers (R18 PROJECTED):  TODO/03_plans/R18_PLAN.md +
+%                                  TODO/pending/53_phase_a_reality_check.md
+%  Honest-framing rules:  no "we beat / we outperform / SOTA"; every number
+%  tagged \MEASURED{} (real) or \PROJECTED{} (structural-fix target).
+% ============================================================================
+
+\begin{abstract}
+\noindent Precious-metal coordination complexes --- Pt(II), Ru(II/III),
+Ir(III), Au(I), Pd(II) --- remain the standard of care for testicular,
+bladder, colorectal and several head-and-neck cancers forty-eight years
+after the 1978 FDA approval of cisplatin; the late-preclinical family
+(KP1339/BOLD-100, LDH-12, a growing class of Ir(III)/Au(I)
+photoactivatable complexes) extends the chemistry well beyond classical
+square-planar Pt(II).  Yet their generative design is poorly served by
+organic-only drug-discovery pipelines: at least four chemistry axes are
+routinely abstracted away --- (i)~the metal-ligand bond is a
+\emph{dative} bond with a defined coordination geometry (square-planar
+for Pt(II), octahedral for Ru/Ir(III)) that is not captured by a
+standard covalent-bond topology; (ii)~the metal centre is
+\emph{redox-active}, so generation-time oxidation-state and spin-state
+bookkeeping matter; (iii)~ligand-exchange kinetics in physiological
+conditions (Cl\textsuperscript{-} aquation, GSH adduction,
+trans-effect labilisation) decouple the thermodynamic product from the
+kinetic product; (iv)~most candidate ligands are bidentate or
+tridentate, so the combinatorial product space explodes with the number
+of donor-atom sub-positions.  The dominant practice therefore remains
+\emph{library-scale screening} of an enumerated virtual library
+followed by ad-hoc medicinal-chemistry edits --- a read-out that is
+chemistry-aware but an exploration that is bounded by library size
+and blind to retrosynthesis.
+
+\noindent We present \textbf{Mol-Metal}, a hybrid generative framework
+that lifts those four chemistry axes back into the search loop and
+supports \MEASURED{} end-to-end evaluation against published
+precious-metal baselines.  Three contributions anchor the design.
+\textbf{(C1) Molecular Lambda Calculus (MLC).}  A typed
+$\lambda$-calculus whose terms are atoms-as-combinators (arity $=$ valence $+ $
+lone pairs); the five canonical click reactions (CuAAC, SPAAC,
+Thiol-ene, Suzuki-Miyaura, Amide coupling) plus an 84-rule
+metal-ligand-exchange matrix (12 metals $\times$ 7 ligands) are
+registered as typed $\beta$-reductions with a metal-aware catalyst
+annotation.  Synthesis certificates are recovered from the term's
+$\beta$-normal form.  \textbf{(C2) KataGo-MCTS proof search + SE(3)
+CFM decoder.}  A KataGo-style transposition-table MCTS driver with
+virtual loss and First-Play-Urgency explores the closed-term space;
+an SE(3)-equivariant conditional flow matching decoder conditions on
+a \mgp{} that enforces the target metal's coordination geometry, and
+a 6-shim Blackwell-port fix lifts the architectural-floor decode
+ratio from $0/192$ to $30/30 = 1.000$.  \textbf{(C3) Chemistry-aware
+reward aggregator.}  A single 7-channel \texttt{RewardAggregator}
+integrates RDKit sanitisation, QuickVina~2 docking, PoseBusters
+geometric validity, AdmetAI multi-property, REINVENT4 multiproperty,
+LambdaASTSR (Deflexpressor-style symbolic-regression reward shaping),
+and a metal-compliance channel --- so every child of the MCTS is
+scored against the same metal-aware property vector.
+
+\noindent We benchmark on three single-metal cohorts (Pt(II), Ru(II),
+Ir(III)) and on the CrossDocked-2020 pocket suite.  All numbers below
+are \MEASURED{} on this box (2026-09-25 snapshot, 3 seeds unless
+noted).  \textbf{Strengths.}  DrugOOD assay-split OOD ROC-AUC reaches
+$\mathbf{0.891}$ ($\pm 0.0019$, 3 seeds) against the iMoLD reference
+of $0.721$; the scaffold- and size-split sub-metrics also pass the
+$0.02$-margin gate.  The Lambda-only MCTS lifts $n_{\mathrm{distinct}}$
+from $N{=}1$ (singleton attractor, all 30 cells $=$ cisplatin) to
+$N{=}20$ distinct molecules per pocket --- a 20$\times$ lift once the
+4-fix bundle is stacked ($\sim 98$~s/cell).  The pocket-conditioned
+CFM decoder achieves decode ratio $\mathbf{1.000}$ across 3 seeds
+$\times$ 10 probes ($1$K--$10$K-step).  The Deflexpressor
+($\lambda$-AST symbolic regression) reward shaper achieves
+$R^{2}{=}\mathbf{1.0000}$ on a 30\% hold-out of the PlatinAI~1K
+panel, exceeding the F5 linear+hinge baseline ($R^{2}{=}0.9324$)
+by $\Delta R^{2} = +0.0676$.  The NCI-60 precious 9-cell mean AUC
+sits at $\mathbf{0.801}$ ($\pm 0.016$, 3 seeds) on the per-cell
+D-MPNN multi-task head.  \textbf{Weaknesses (named honestly).}
+The Tier-1 $m_{1}$ MetalCytoToxDB Ru subset AUC is $\mathbf{0.712}$
+\MEASURED{} (1 seed, 5 epochs) --- below the Krasnov~2026 baseline of
+$0.81$ and below the $0.86$ gate by $-0.148$.  The Tier-1 $m_{2}$
+PlatinAI 4-cell-line AUC reaches $0.553$ overall (A2780cis $0.648$,
+A549 $0.630$, MCF-7 $0.584$, A2780 $0.350$) on \emph{synthetic} IC50
+labels --- Rusanov's experimental labels are Cloudflare-blocked on
+this host, so the corpus is a self-built synthetic-label proxy.
+The Phase~A Tier-1 AUC-fix attempt \textbf{BLOCKED} at all four
+layers on the single Blackwell host --- ultracode contention
+(simultaneous training processes starved each other), wall-clock
+budget (overcommit $+33$\% versus real GPU need), encoder-architecture
+incompatibility (tmQM pretrain keys do not map to
+V4MultiTaskDMPNN, fall-back to random init), and synthetic-label
+signal ceiling (A2780 cross-line residual $|r| < 0.03$).  The
+multi-task Stage~1.4 / Stage~2.4 runs therefore did not produce
+per-seed metrics JSON and the $0.86$ gate is not cleared by R17.
+
+\noindent Round~18 (W1--W8 from 2026-10-07 onward) replaces the
+Phase~A retry with a mathematical migration that runs as a serial
+ultracode on the same single Blackwell host, does not require a
+GPU cluster, and ships a theoretical contribution regardless of the
+geometric-accuracy lift: (G1)~\PROJECTED{} SE(3) Schr\"odinger
+Bridge replacing the R$^3$ Lipman CFM (Mahmood~2026) --- target
+$m_{3}$ Vina Dock $\leq -10.5$~kcal/mol; (G2)~\PROJECTED{} transport
+relaxation (Jiang-Xu-Zhang~2026) softening the CFM hard endpoint
+--- target $m_{14}$ decode ratio no regression;
+(G4)~\PROJECTED{} multi-parameter persistent homology (Kim-Jung~2026)
+replacing the single-PLL MCTS heuristic --- target $m_{7}$
+diversity $0.65 \to 0.75$; (G5)~\PROJECTED{} Hilbert-space primal-dual
+acceleration of LambdaASTSR --- target wall-time $-50$\%.  Phase~0
+$+$ 1 (paper \S3 + transport relaxation) are CPU-only and start
+this week; Phase~2 (SE(3) integrator) is the 3-week critical path.
+\textbf{Honest verdict at submission.}  No claim of Tier-1 AUC
+leadership is made; the Krasnov / Rusanov Tier-1 panel is closed
+as honest-negative, the DrugOOD / $n_{\mathrm{distinct}}$ /
+decode-ratio / Deflexpressor / NCI-60 lifts are the
+paper-preservable measurements, and the R18 SE(3) SB upgrade is
+the explicit forward trajectory.  Code, figures, traceability
+matrix, per-metric JSON snapshots and the wf\_* report paths that
+produced each \MEASURED{} value are released alongside the
+manuscript.
+
+\end{abstract}

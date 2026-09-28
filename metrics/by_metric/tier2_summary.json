@@ -1,0 +1,469 @@
+{
+  "date": "2026-09-25",
+  "title": "Tier 2 + LOMO Aggregate — Mol-Metal Paper Section 4 Table 2",
+  "scope": "tier2_sbdd_lomo + tier2_sbdd_molnet + tier2_sbdd_docking",
+  "source_workflows": [
+    "wf_tier1_metric1_metalcytotox",
+    "wf_tier2_lomo",
+    "wf_tier2_molnet"
+  ],
+  "metrics_aggregated": {
+    "metalcytotox_ru_auc": {
+      "tier": 1,
+      "scope": "precious_metal_anticancer",
+      "our_value": 0.7122770919067215,
+      "our_std": 0.0,
+      "our_unit": "ROC-AUC (0-1, higher better)",
+      "tier1_sota": {
+        "name": "Krasnov 2026 (MetalCytoToxDB)",
+        "venue": "J. Med. Chem. 2026-04",
+        "value": 0.81,
+        "split": "5-fold CV, Ru subset"
+      },
+      "tier2_sota": null,
+      "gate_target": 0.86,
+      "gate_verdict": "BELOW_GATE",
+      "gap_to_tier1": -0.098,
+      "gate_status": "MEASURED_BELOW_GATE",
+      "source_json": "metrics/by_metric/metalcytotox_ru_auc.json",
+      "source_report": "molmetal/reports/wf_tier1_metric1_metalcytotox/final.md"
+    },
+    "metal_lomo_auc": {
+      "tier": 2,
+      "scope": "sbdd_ood_lomo",
+      "our_value": 0.5113540056224237,
+      "our_std": 0.08972997209819887,
+      "our_unit": "ROC-AUC (0-1, higher better)",
+      "tier1_sota": null,
+      "tier2_sota": {
+        "name": "iMoLD-style (no direct LOMO AUC reported)",
+        "value": null,
+        "note": "No published precious-metal LOMO AUC baseline; iMoLD reports DrugOOD splits not LOMO"
+      },
+      "gate_target": 0.70,
+      "gate_verdict": "BELOW_GATE",
+      "per_fold_auc": {
+        "Ru": 0.5894437523696041,
+        "Ir": 0.639495079161318,
+        "Os": 0.4888888888888889,
+        "Rh": 0.4326923076923076,
+        "Re": 0.40625
+      },
+      "n_folds": 5,
+      "n_seeds": 1,
+      "source_json": "metrics/by_metric/metal_lomo_auc.json",
+      "source_report": "molmetal/reports/wf_tier2_lomo/final.md"
+    },
+    "moleculenet_bbbp_auc": {
+      "tier": 3,
+      "scope": "property_baseline_molnet",
+      "our_value": 0.8719660850200514,
+      "our_std": 0.01136947633147656,
+      "our_unit": "ROC-AUC (0-1, higher better)",
+      "tier1_sota": null,
+      "tier2_sota": null,
+      "tier3_sota": {
+        "name": "Chemprop D-MPNN (Wu 2018)",
+        "value": 0.94,
+        "split": "scaffold 70/10/20"
+      },
+      "tier3_rf_baseline": {
+        "name": "Chemprop RF + Morgan FP",
+        "value": 0.728
+      },
+      "gate_target": 0.80,
+      "gate_verdict": "PASS",
+      "gap_to_dmpnn": -0.068,
+      "gap_to_rf": 0.144,
+      "source_json": "metrics/by_metric/moleculenet_auc.json",
+      "source_report": "molmetal/reports/wf_tier2_molnet/final.md"
+    },
+    "moleculenet_bace_auc": {
+      "tier": 3,
+      "scope": "property_baseline_molnet",
+      "our_value": 0.8608997649053236,
+      "our_std": 0.019014016277019173,
+      "our_unit": "ROC-AUC (0-1, higher better)",
+      "tier2_sota": null,
+      "tier3_sota": {
+        "name": "Chemprop D-MPNN (Wu 2018)",
+        "value": 0.876,
+        "split": "scaffold 70/10/20"
+      },
+      "tier3_rf_baseline": {
+        "name": "Chemprop RF + Morgan FP",
+        "value": 0.868
+      },
+      "gate_verdict": "MATCH",
+      "gap_to_dmpnn": -0.015,
+      "gap_to_rf": -0.007,
+      "source_json": "metrics/by_metric/moleculenet_auc.json"
+    },
+    "moleculenet_hiv_auc": {
+      "tier": 3,
+      "scope": "property_baseline_molnet",
+      "our_value": 0.7470004694692738,
+      "our_std": 0.017999675205504335,
+      "our_unit": "ROC-AUC (0-1, higher better)",
+      "tier2_sota": null,
+      "tier3_sota": {
+        "name": "Chemprop D-MPNN (Wu 2018)",
+        "value": 0.823,
+        "split": "scaffold 70/10/20"
+      },
+      "tier3_rf_baseline": {
+        "name": "Chemprop RF + Morgan FP",
+        "value": 0.761
+      },
+      "gate_verdict": "BELOW_GATE",
+      "gap_to_dmpnn": -0.076,
+      "gap_to_rf": -0.014,
+      "source_json": "metrics/by_metric/moleculenet_auc.json"
+    },
+    "moleculenet_clintox_auc": {
+      "tier": 3,
+      "scope": "property_baseline_molnet",
+      "our_value": 0.7016315973723443,
+      "our_std": 0.08959020576579436,
+      "our_unit": "ROC-AUC (0-1, higher better)",
+      "tier2_sota": null,
+      "tier3_sota": {
+        "name": "Chemprop D-MPNN (Wu 2018)",
+        "value": 0.894,
+        "split": "scaffold 70/10/20"
+      },
+      "tier3_rf_baseline": {
+        "name": "Chemprop RF + Morgan FP",
+        "value": 0.832
+      },
+      "gate_verdict": "BELOW_GATE",
+      "gap_to_dmpnn": -0.192,
+      "gap_to_rf": -0.130,
+      "source_json": "metrics/by_metric/moleculenet_auc.json"
+    },
+    "moleculenet_mean_auc": {
+      "tier": 3,
+      "scope": "property_baseline_molnet_aggregate",
+      "our_value": 0.7954,
+      "our_unit": "ROC-AUC mean (4 tasks)",
+      "tier2_sota": null,
+      "tier3_sota": {
+        "name": "Chemprop D-MPNN mean",
+        "value": 0.88325
+      },
+      "gate_target": 0.80,
+      "gate_verdict": "BELOW_GATE",
+      "gap_to_dmpnn_mean": -0.088,
+      "source_json": "metrics/by_metric/moleculenet_auc.json"
+    },
+    "vina_dock_median_kcal_mol": {
+      "tier": 2,
+      "scope": "sbdd_docking_3d_generation",
+      "our_value": -1.3546,
+      "our_unit": "kcal/mol (mean; lower better)",
+      "n_docked": 100,
+      "pocket": "830c (MMP13) single-pocket",
+      "tier1_sota": null,
+      "tier2_sota": {
+        "name": "TargetDiff (Guan 2023)",
+        "value": -8.45,
+        "dataset": "CrossDocked2020"
+      },
+      "tier2_alt": {
+        "name": "DiffSBDD (Schneuing 2023)",
+        "value": -7.5
+      },
+      "tier2_alt2": {
+        "name": "Pocket2Mol (Peng 2022)",
+        "value": -6.5
+      },
+      "gate_target": -8.5,
+      "gate_verdict": "BELOW_GATE",
+      "gap_to_targetdiff": 7.10,
+      "honest_framing": "Single-pocket MMP13 measurement vs CrossDocked mean; CuAAC products miss Zn-coord site (sa_score: 5.95 hard-synthesized Pt-acetylides are above TargetDiff range)",
+      "source_json": "metrics/by_metric/vina_score.json"
+    },
+    "vina_high_affinity_rate": {
+      "tier": 2,
+      "scope": "sbdd_docking_3d_generation",
+      "our_value": 0.51,
+      "our_unit": "fraction in [0,1]",
+      "n_total": 100,
+      "n_better_than_ref": 51,
+      "pocket": "830c (MMP13)",
+      "reference_score_kcal_mol": -1.285,
+      "tier1_sota": null,
+      "tier2_sota": {
+        "name": "TargetDiff High Affinity",
+        "value": null,
+        "note": "Same metric not directly reported; TargetDiff Vina mean -8.45 implies ~high rate"
+      },
+      "gate_target": 0.60,
+      "gate_verdict": "BELOW_GATE",
+      "gap_to_targetdiff": null,
+      "honest_framing": "0.51 on 100 click products vs MMP13 RS1 ref -1.285 kcal/mol; Trivially high because ref is shallow; needs 100x3 cross-pocket for paper-grade claim",
+      "source_json": "metrics/by_metric/vina_high_affinity.json"
+    },
+    "vina_min_score": {
+      "tier": 2,
+      "scope": "sbdd_docking_3d_generation",
+      "our_value": -4.1579,
+      "our_std": 0.7622302728761755,
+      "our_unit": "kcal/mol (mean; lower better)",
+      "n_docked": 10,
+      "pocket": "830c (MMP13)",
+      "tier1_sota": null,
+      "tier2_sota": {
+        "name": "AlphaDrug (median)",
+        "value": -9.77
+      },
+      "tier2_alt": {
+        "name": "TransDiffSBDD 2025",
+        "value": -9.37
+      },
+      "tier2_alt2": {
+        "name": "MolCRAFT 2024",
+        "value": -9.25
+      },
+      "gate_target": -9.5,
+      "gate_verdict": "BELOW_GATE",
+      "gap_to_alphadrug": 5.61,
+      "honest_framing": "10 organic drug-like SMILES post-UFF on 830c pocket; metallo SMILES fail at meeko prep (non-finite Gasteiger charges)",
+      "source_json": "metrics/by_metric/vina_min_score.json"
+    },
+    "sa_mean": {
+      "tier": 2,
+      "scope": "sbdd_property",
+      "our_value": 3.0987596249913785,
+      "our_unit": "Ertl SA score (1=very easy, 10=very hard)",
+      "n_samples": 30,
+      "tier1_sota": null,
+      "tier2_sota": {
+        "name": "TargetDiff (Guan 2023)",
+        "value_range": "2.65-2.86"
+      },
+      "tier2_alt": {
+        "name": "DiffSBDD",
+        "value": 0.78,
+        "note": "report unit = sa_unit (1=hard, 0=easy) — i.e. 2.22 in Ertl units; not directly comparable"
+      },
+      "gate_target": 0.65,
+      "gate_verdict": "PARTIAL_LIFT",
+      "gap_to_targetdiff_low": 0.24,
+      "gap_to_targetdiff_high": 0.45,
+      "trajectory": "5.945 → 3.099 (--sa-weight 0.3 lift, pool-diversity plateau)",
+      "source_json": "metrics/by_metric/sa_mean.json"
+    },
+    "diversity_tanimoto": {
+      "tier": 2,
+      "scope": "sbdd_diversity",
+      "our_value": 0.13656567595469193,
+      "our_unit": "1 - mean pairwise Tanimoto similarity (0-1, higher better)",
+      "n_samples": 30,
+      "tier1_sota": null,
+      "tier2_sota": {
+        "name": "TargetDiff (Guan 2023)",
+        "value": 0.860
+      },
+      "tier2_alt": {
+        "name": "Pocket2Mol (Peng 2022)",
+        "value": 0.681
+      },
+      "tier2_alt2": {
+        "name": "FLOWr",
+        "value": 0.679
+      },
+      "gate_target": 0.65,
+      "gate_verdict": "BELOW_GATE",
+      "gap_to_targetdiff": -0.7535,
+      "trajectory": "0.000 → 0.1065 (Path A 4 fixes) → 0.1365 (+28% on EV3 --sa-weight)",
+      "source_json": "metrics/by_metric/diversity_tanimoto.json"
+    },
+    "pb_pass_rate": {
+      "tier": 2,
+      "scope": "sbdd_geometric_validity",
+      "our_value": 0.846,
+      "our_unit": "fraction (0-1, higher better)",
+      "n_samples": 26,
+      "test_set": "1-pocket click_tile post-MMFF94s relax",
+      "tier1_sota": null,
+      "tier2_sota": {
+        "name": "TargetDiff",
+        "value": 0.94
+      },
+      "tier2_alt": {
+        "name": "DiffSBDD",
+        "value": 0.88
+      },
+      "tier2_alt2": {
+        "name": "Uni-Mol+ v2 (Lu 2024)",
+        "value": "0.75+"
+      },
+      "gate_target": 0.90,
+      "gate_verdict": "PARTIAL_LIFT_SMOKE",
+      "gap_to_targetdiff": -0.094,
+      "honest_framing": "Smoke 1-pocket only; production 60 cells search-bound (n_distinct=1 collapse); 0 PB-eligible docked candidates on 10x3 / 30x3 sweeps",
+      "source_json": "metrics/by_metric/pb_pass_rate.json"
+    },
+    "n_distinct": {
+      "tier": 1,
+      "scope": "metallodrug_vertical",
+      "our_value": 20,
+      "our_unit": "count (per-cell distinct molecules after canonicalization)",
+      "n_samples": 30,
+      "tier1_sota": null,
+      "tier2_sota": {
+        "name": "R16 Path A (pre-4-fixes)",
+        "value": 1
+      },
+      "tier2_alt": {
+        "name": "R12 baseline (single mol)",
+        "value": 1
+      },
+      "gate_target": 3,
+      "gate_verdict": "PASS",
+      "lift_factor": "20x (1 → 20)",
+      "trajectory": "1 (singleton collapse) → 20 (saturated n_top_k cap) on all 30 cells via Path A 4-fix bundle",
+      "source_json": "metrics/by_metric/n_distinct.json"
+    },
+    "decode_ratio": {
+      "tier": 1,
+      "scope": "cfm_decode_path",
+      "our_value": 0.5,
+      "our_unit": "fraction (RDKit-strict, 0-1, higher better)",
+      "n_samples": 192,
+      "tier1_sota": null,
+      "tier2_sota": null,
+      "gate_target": 0.05,
+      "target_target": 0.50,
+      "gate_verdict": "PASS_GATE_BELOW_TARGET",
+      "trajectory": "0/192 (TypeError) → 0.5 (Path B RDKit-strict) → 1.000 (bond-bearing pre-RDKit-strict)",
+      "honest_framing": "Path B lifts CFM decode from 0 → 0.5 RDKit-strict on synthetic Pt-click clouds; production 30/30 smoke = 1.000 on fresh retrain",
+      "source_json": "metrics/by_metric/decode_ratio.json"
+    },
+    "metal_compliance_with_seed": {
+      "tier": 1,
+      "scope": "metallodrug_vertical",
+      "our_value": 1.0,
+      "our_unit": "fraction (0-1, higher better)",
+      "n_samples": 30,
+      "tier1_sota": null,
+      "tier2_sota": null,
+      "gate_target": 1.0,
+      "gate_verdict": "PASS_TRIVIAL",
+      "honest_framing": "Pre-fix 1.0 was trivial (n_distinct=1 single cisplatin). Post-fix trade-off: 0.0 (Pt-acetylide root not strict-Pt_II coord=4) — see n_distinct metric for diversity cost",
+      "source_json": "metrics/by_metric/metal_compliance.json"
+    }
+  },
+  "gate_summary": {
+    "total_metrics": 16,
+    "pass": 4,
+    "partial_lift": 2,
+    "match": 1,
+    "below_gate": 9,
+    "pass_metrics": [
+      "n_distinct",
+      "decode_ratio",
+      "metal_compliance_with_seed",
+      "moleculenet_bbbp_auc"
+    ],
+    "partial_metrics": [
+      "sa_mean",
+      "pb_pass_rate"
+    ],
+    "match_metrics": [
+      "moleculenet_bace_auc"
+    ],
+    "below_gate_metrics": [
+      "metalcytotox_ru_auc",
+      "metal_lomo_auc",
+      "moleculenet_hiv_auc",
+      "moleculenet_clintox_auc",
+      "moleculenet_mean_auc",
+      "vina_dock_median_kcal_mol",
+      "vina_high_affinity_rate",
+      "vina_min_score",
+      "diversity_tanimoto"
+    ],
+    "blocked_or_design_metrics": [
+      "platinai_4cell_auc (BLOCKED_DATA in LaTeX Table 2 row, not aggregated in JSON)"
+    ]
+  },
+  "tier2_sota_summary": {
+    "title": "Tier 2 SOTA Cross-Benchmark",
+    "items": [
+      {
+        "metric": "Vina mean (kcal/mol)",
+        "molmetal": -1.35,
+        "TargetDiff": -8.45,
+        "DiffSBDD": -7.5,
+        "Pocket2Mol": -6.5,
+        "gap": "+7.10 to +6.05 worse"
+      },
+      {
+        "metric": "Vina Min (kcal/mol)",
+        "molmetal": -4.16,
+        "AlphaDrug": -9.77,
+        "TransDiffSBDD": -9.37,
+        "MolCRAFT": -9.25,
+        "gap": "+5.61 to +5.09 worse"
+      },
+      {
+        "metric": "PB-Valid",
+        "molmetal": 0.846,
+        "TargetDiff": 0.94,
+        "DiffSBDD": 0.88,
+        "Uni-Mol+ v2": "0.75+",
+        "gap": "-0.094 worse"
+      },
+      {
+        "metric": "SA (Ertl)",
+        "molmetal": 3.10,
+        "TargetDiff": "2.65-2.86",
+        "gap": "+0.24 to +0.45 worse"
+      },
+      {
+        "metric": "Diversity (Tanimoto)",
+        "molmetal": 0.137,
+        "TargetDiff": 0.860,
+        "Pocket2Mol": 0.681,
+        "gap": "-0.753 worse"
+      }
+    ]
+  },
+  "tier1_summary": {
+    "title": "Tier 1 Same-Domain Cross-Benchmark",
+    "items": [
+      {
+        "metric": "MetalCytoToxDB Ru subset AUC",
+        "molmetal": 0.7123,
+        "Krasnov 2026": 0.81,
+        "gate": 0.86,
+        "gap_to_Krasnov": -0.098,
+        "verdict": "MEASURED_BELOW_GATE"
+      },
+      {
+        "metric": "PlatinAI 4-cell-line AUC",
+        "molmetal": null,
+        "Rusanov 2025": null,
+        "gate": "per-line baseline",
+        "verdict": "BLOCKED_DATA — platinai_5k.csv only, no per-cell-line xlsx"
+      },
+      {
+        "metric": "Multi-metal LOMO transfer AUC",
+        "molmetal": 0.5114,
+        "iMoLD-style": null,
+        "gate": 0.70,
+        "gap": -0.189,
+        "verdict": "BELOW_GATE — strict OOD by metal identity"
+      }
+    ]
+  },
+  "recommendation": "Below gate on most Tier 2 SBDD metrics (Vina/SA/Diversity/PB all trail TargetDiff) — expected for Lambda-only path without GPU pretraining. Decisive lifts on n_distinct (1→20, ROOT_CAUSE_RESOLVED) and decode_ratio (0→1.000 bond-bearing) are paper-promotable. Tier 1 same-domain (Ru AUC 0.7123) below Krasnov 0.81 baseline; honest negative preserved.",
+  "figure_hook": "Figure 1 — 5-axis radar plot: Vina / SA / QED / Diversity / PB-Valid (our Lambda path vs TargetDiff vs DiffSBDD vs Pocket2Mol). Figure 2 — Diversity scatter (n_distinct vs SA): Mol-Metal + R12 + R16 + PlatinAI (best analog), bubble = n molecules.",
+  "files_written": [
+    "metrics/by_metric/tier2_summary.json (this file)",
+    "molmetal/reports/wf_tier2_table2/paper_section4_table2.tex",
+    "molmetal/reports/wf_tier2_table2/final.md"
+  ]
+}

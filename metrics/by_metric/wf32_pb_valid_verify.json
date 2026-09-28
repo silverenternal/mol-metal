@@ -1,0 +1,42 @@
+{
+  "recipe": "wf32_pb_valid_verify",
+  "n_evaluations": 1,
+  "pocket_id": "830c",
+  "candidate": "CCO",
+  "pb_mode": "mol",
+  "method": "se3sb",
+  "per_evaluation": [
+    {
+      "pocket_id": "830c",
+      "candidate": "CCO",
+      "candidate_name": "verify_smoke",
+      "method": "mol",
+      "trajectory_method": "se3sb",
+      "status": "passed",
+      "pb_valid": true,
+      "n_checks": 12,
+      "n_passed": 12,
+      "n_failed": 0,
+      "pass_rate": 1.0,
+      "failed_checks": [],
+      "elapsed_s": 1.114625885966234
+    }
+  ],
+  "per_pocket_per_method": {
+    "830c": {
+      "mol": {
+        "n": 1,
+        "mean_pass_rate": 1.0,
+        "std_pass_rate": 0.0,
+        "min_pass_rate": 1.0,
+        "max_pass_rate": 1.0,
+        "n_passed": 1,
+        "n_failed": 0,
+        "n_skipped": 0,
+        "n_error": 0,
+        "n_total": 1
+      }
+    }
+  },
+  "overall_pb_pass_rate": 1.0
+}

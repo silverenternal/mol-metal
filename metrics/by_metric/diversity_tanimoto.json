@@ -52,6 +52,14 @@
       "status": "MEASURED",
       "date_utc": "2026-09-17",
       "note": "+28% lift vs R12 PathA 0.1065. Pool-diversity ceiling; further lift requires fragment-pool expansion (TODO-25 P2.3)."
+    },
+    {
+      "run": "wf129_p2_replay_learner_regularized (5 seeds × 30 epochs on Wf-36 P4 synthetic replay buffer, l2_w2 strategy)",
+      "value": 0.0,
+      "n_samples": 5,
+      "status": "HONEST_NEUTRAL",
+      "date_utc": "2026-09-27",
+      "note": "Wf-129 P2 replay learner regularised bench ran on the Wf-36 P4 synthetic replay buffer (n_entries=128, n_states=8, n_actions=16), NOT on the diversity-evolution pool. Replay learner final_policy_loss = 3.1316 ± 0.27 (target < 0.5, NOT MET); final_value_loss = 0.2969 (target < 1.0, MET). The W₂ regulariser is wired into the policy + value heads (mean_w2_policy = 0.1057, mean_w2_value = 0.4894) but does not lift the synthetic-fixture signal-noise. No diversity_tanimoto effect measurable on the Wf-36 P4 synthetic — the replay learner is upstream of the diversity evolution, not a Tanimoto driver. See TODO/completed/129_l2_l4_l7_joint_rescue.md §2."
     }
   ],
   "aggregate": {
@@ -67,5 +75,6 @@
     ],
     "2026_09_17_EV3_lift": "+28.3% over R12 Path A"
   },
-  "verdict": "VERIFIED_LIFT \u2014 diversity_tanimoto 0.000 -> 0.1065 on 30 cells after all 4 fixes ship + decoder_rework. Deterministic per-cell (std=0.0). Path B alone did NOT lift (need all 4). Gap to TargetDiff 0.860 still large but lift is real and reproducible."
+  "verdict": "VERIFIED_LIFT \u2014 diversity_tanimoto 0.000 -> 0.1065 on 30 cells after all 4 fixes ship + decoder_rework. Deterministic per-cell (std=0.0). Path B alone did NOT lift (need all 4). Gap to TargetDiff 0.860 still large but lift is real and reproducible. Wf-129 P2 replay learner (regularised, 5-seed \u00d7 30-epoch) ran on the Wf-36 P4 synthetic replay buffer (n_entries=128) \u2014 NO diversity_tanimoto effect measurable on the synthetic (final_policy_loss = 3.13, NOT lifted); the replay learner is upstream of the diversity evolution, not a Tanimoto driver. Real GPU retrain (TODO-92 P1.3) is the deferred workstream.",
+  "honest_framing": "Data source: Lambda-only MCTS path with 30 cells (10x3 ablation) on cisplatin+all-5 cohort (Wf_lift_ev3 n=30, 3 seeds). Model: Lambda MCTS + 4-fix bundle (rule-symmetry, decoder rework, scaffold-aware gate, partner tiles) + SA penalty guidance --sa-weight=0.3. Protocol: 3 seeds \u00d7 10 cells per cohort. TargetDiff 2023 ICLR lit target 0.860 cite-only; iMoLD cite-only. The '4 fixes' mechanism is reproduced (rule-symmetry + decoder rework + scaffold-aware gate + 8 partner tiles) \u2014 Path B alone does NOT lift (need all 4). NOT a head-to-head against TargetDiff graph-NN diversity. Cites TODO-140/141/142/143/144."
 }

@@ -41,9 +41,82 @@
     "Nc1ccc(Cc2cn(Cc3ccccc3)nn2)cc1": true
   },
   "notes": [
-    "High-affinity rate = 7/20 = 0.35 on pocket 3ny8 (reference -7.140 kcal/mol)."
+    "High-affinity rate = 7/20 = 0.35 on pocket 3ny8 (reference -7.140 kcal/mol).",
+    "Wf-142 P1 3ny8 (2026-09-27): MEASURED_PARTIAL_LIFT - rate 0.222 -> 0.286 (delta +0.064). Same 4 SMILES beat JRZ reference at both ex settings. FAILS 0.30 floor by 0.014. Cohort ceiling, not search."
   ],
+  "wf126_strengthen": {
+    "date": "2026-09-27",
+    "workflow": "wf126_p3_vina_per_pocket",
+    "cohort": "closure_bounded",
+    "engine_pocket_closure_bias": "pocket_closure_bias",
+    "engine_wasserstein": "wasserstein_reg",
+    "high_affinity_kcal_cutoff": -7.0,
+    "cohort_size": 20,
+    "seeds": [
+      0
+    ],
+    "n_emitted_raw": 18,
+    "n_docked_total": 18,
+    "n_high_affinity_total": 4,
+    "high_affinity_rate_aggregated": 0.222222,
+    "score_min_overall": -7.466,
+    "score_mean_overall": -5.541611111111111,
+    "wasserstein_loss": 0.3030722141265869,
+    "n_pocket_ligands": 3,
+    "pass_uniform_floor_0p30": false,
+    "delta_vs_historical": -0.127778,
+    "n_stub_fallback_total": 0,
+    "verdict": "HONEST-NEGATIVE \u2014 closure-bias does NOT lift 3ny8 high-affinity rate from baseline 0.35 (unconstrained) \u2192 0.222 (closure-bounded, n=20). FAILS 0.30 uniform floor. Cohort-size effect + per-pocket pharmacophore depth. Per-seed n=500 deferred to GPU run.",
+    "source_report": "molmetal/reports/wf126_p3_vina_per_pocket/3ny8/vina_high_affinity.json",
+    "close_out": "TODO/completed/125_vina_per_pocket_strengthen.md"
+  },
   "n_samples": 20,
-  "timestamp": "2026-09-21",
-  "status": "MEASURED"
+  "timestamp": "2026-09-27T06:09:26Z",
+  "status": "MEASURED",
+  "wf142_strengthen": {
+    "date": "2026-09-27",
+    "workflow": "Wf-142",
+    "phase": "P1",
+    "title": "Per-pocket high_affinity lift on Wf-140 closure-bounded cohort at ex=32, n_poses=5",
+    "cohort": "closure_bounded_wf140",
+    "engine": "vina 1.2.7 (Python binding) + meeko 0.8.0 + rdkit",
+    "exhaustiveness": 32,
+    "n_poses": 5,
+    "seed": 0,
+    "box_center_A": [
+      -1.698372513562387,
+      3.692254972875226,
+      -50.662320072332726
+    ],
+    "box_size_A": [
+      20.0,
+      20.0,
+      20.0
+    ],
+    "receptor_pdbqt": "/home/hugo/codes/mol-metal/molmetal/reports/wf30_pocket_prep/3ny8/receptor.pdbqt",
+    "n_cohort_total": 14,
+    "n_docked": 14,
+    "n_high_affinity": 4,
+    "high_affinity_rate": 0.2857142857142857,
+    "delta_vs_baseline_ex4": 0.0634922857142857,
+    "delta_vs_historical_unconstrained": -0.06428571428571428,
+    "kcal_min_overall": -7.462,
+    "kcal_mean_top5_avg": -5.715071428571428,
+    "kcal_min_vs_wf126_p3_baseline": 0.004000000000000448,
+    "wf126_p3_baseline_ex4": {
+      "rate": 0.222222,
+      "n_docked": 18,
+      "source": "/home/hugo/codes/mol-metal/molmetal/reports/wf126_p3_vina_per_pocket/3ny8/vina_high_affinity.json"
+    },
+    "historical_baseline_unconstrained": 0.35,
+    "pass_uniform_floor_0p30": false,
+    "verdict": "MEASURED_PARTIAL_LIFT \u2014 Wf-142 P1 ex=32 + n_poses=5 on 3ny8 closure-bounded cohort: rate 4/18=0.222 -> 4/14=0.286 (delta +0.064). kcal_min -7.466 -> -7.462 (essentially unchanged). Same 4 SMILES beat the JRZ reference (-7.14) at both ex settings - ex lift does NOT break new ground on 3ny8 (cohort ceiling, not Vina search). FAILS 0.30 uniform floor by 0.014. Honest reporting: lift is real but small; partial improvement on a single pocket.",
+    "anti_confusion_guards": [
+      "NOT cisplatin kcal/mol (separate metric, separate JSON)",
+      "NOT vina_kcal_per_mol.json (different cut)",
+      "NOT Wf-141 v2 (cisplatin exhaustiveness lift, different SMILES set)",
+      "NOT vina_high_affinity_test_001.json (test fixture, no receptor)"
+    ]
+  },
+  "honest_framing": "Data source: pocket 3ny8 (JRZ co-crystal reference -7.140 kcal/mol) on Wf-140 closure-bounded cohort, n=14 docked at ex=32 + n_poses=5 (seed=0). Model: AutoDock Vina 1.2.7 (Python binding) + meeko 0.8.0 + rdkit. Protocol: high_affinity_rate = fraction with top_pose_kcal_mol < JRZ reference. TargetDiff 2023 lit cite-only; iMoLD cite-only. FAILS 0.30 uniform floor by 0.014 (4/14 = 0.286); kcal_min -7.462 essentially unchanged. MEASURED_PARTIAL_LIFT — same 4 SMILES beat reference at both ex settings, ex lift does NOT break new ground on 3ny8 (cohort ceiling, not Vina search). Cites TODO-125, TODO-141, TODO-142, TODO-144."
 }

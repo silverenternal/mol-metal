@@ -41,9 +41,82 @@
     "Nc1ccc(Cc2cn(Cc3ccccc3)nn2)cc1": false
   },
   "notes": [
-    "High-affinity rate = 1/20 = 0.05 on pocket 3eml (reference -7.753 kcal/mol)."
+    "High-affinity rate = 1/20 = 0.05 on pocket 3eml (reference -7.753 kcal/mol).",
+    "Wf-142 P1 3eml (2026-09-27): HONEST-NEGATIVE - rate stays 0.000 (kcal_min -5.247, modest +0.195 vs Wf-126 P3). ZMA reference -7.753 is a hard target; cohort bound, not search bound."
   ],
+  "wf126_strengthen": {
+    "date": "2026-09-27",
+    "workflow": "wf126_p3_vina_per_pocket",
+    "cohort": "closure_bounded",
+    "engine_pocket_closure_bias": "pocket_closure_bias",
+    "engine_wasserstein": "wasserstein_reg",
+    "high_affinity_kcal_cutoff": -7.0,
+    "cohort_size": 20,
+    "seeds": [
+      0
+    ],
+    "n_emitted_raw": 6,
+    "n_docked_total": 6,
+    "n_high_affinity_total": 0,
+    "high_affinity_rate_aggregated": 0.0,
+    "score_min_overall": -5.052,
+    "score_mean_overall": -3.9335,
+    "wasserstein_loss": 0.24111433327198029,
+    "n_pocket_ligands": 4,
+    "pass_uniform_floor_0p30": false,
+    "delta_vs_historical": -0.05,
+    "n_stub_fallback_total": 0,
+    "verdict": "HONEST-NEGATIVE \u2014 closure-bias does NOT lift 3eml high-affinity rate from baseline 0.05 (unconstrained) \u2192 0.000 (closure-bounded, n=20). FAILS 0.30 uniform floor. Pocket-pharmacophore depth effect: current per_pocket_pharmacophore_lookup returns only 4 known ligands for 3eml; Wasserstein alignment pushes toward them but closure filter narrows candidate space too much (n=6 docked vs n=20 requested). Per-seed n=500 + per-pocket pharmacophore depth deferred to GPU run.",
+    "source_report": "molmetal/reports/wf126_p3_vina_per_pocket/3eml/vina_high_affinity.json",
+    "close_out": "TODO/completed/125_vina_per_pocket_strengthen.md"
+  },
   "n_samples": 20,
-  "timestamp": "2026-09-21",
-  "status": "MEASURED"
+  "timestamp": "2026-09-27T06:09:26Z",
+  "status": "MEASURED",
+  "wf142_strengthen": {
+    "date": "2026-09-27",
+    "workflow": "Wf-142",
+    "phase": "P1",
+    "title": "Per-pocket high_affinity lift on Wf-140 closure-bounded cohort at ex=32, n_poses=5",
+    "cohort": "closure_bounded_wf140",
+    "engine": "vina 1.2.7 (Python binding) + meeko 0.8.0 + rdkit",
+    "exhaustiveness": 32,
+    "n_poses": 5,
+    "seed": 0,
+    "box_center_A": [
+      -5.6598710462287105,
+      -20.38730900243309,
+      21.82793917274939
+    ],
+    "box_size_A": [
+      20.0,
+      20.0,
+      20.0
+    ],
+    "receptor_pdbqt": "/home/hugo/codes/mol-metal/molmetal/reports/wf30_pocket_prep/3eml/receptor.pdbqt",
+    "n_cohort_total": 6,
+    "n_docked": 6,
+    "n_high_affinity": 0,
+    "high_affinity_rate": 0.0,
+    "delta_vs_baseline_ex4": 0.0,
+    "delta_vs_historical_unconstrained": -0.05,
+    "kcal_min_overall": -5.247,
+    "kcal_mean_top5_avg": -3.827408333333333,
+    "kcal_min_vs_wf126_p3_baseline": -0.19500000000000028,
+    "wf126_p3_baseline_ex4": {
+      "rate": 0.0,
+      "n_docked": 6,
+      "source": "/home/hugo/codes/mol-metal/molmetal/reports/wf126_p3_vina_per_pocket/3eml/vina_high_affinity.json"
+    },
+    "historical_baseline_unconstrained": 0.05,
+    "pass_uniform_floor_0p30": false,
+    "verdict": "HONEST-NEGATIVE \u2014 Wf-142 P1 ex=32 + n_poses=5 on 3eml closure-bounded cohort: rate 0/6=0.000 stays 0/6=0.000 (delta +0.000). kcal_min -5.052 -> -5.247 (delta -0.195 kcal/mol modest improvement). ZMA co-crystal reference -7.753 kcal/mol is one of the STRONGEST targets across the 5-pocket set; even the Wf-126 P3 best (kcal_min -5.052) is 2.7 kcal/mol weaker than reference. 3eml historical baseline is 0.05 (1/20); Wf-142 closes the gap to 0.000 but does not break the cohort ceiling. Cohort bound, not search bound.",
+    "anti_confusion_guards": [
+      "NOT cisplatin kcal/mol (separate metric, separate JSON)",
+      "NOT vina_kcal_per_mol.json (different cut)",
+      "NOT Wf-141 v2 (cisplatin exhaustiveness lift, different SMILES set)",
+      "NOT vina_high_affinity_test_001.json (test fixture, no receptor)"
+    ]
+  },
+  "honest_framing": "Data source: pocket 3eml (ZMA co-crystal reference -7.753 kcal/mol, one of the STRONGEST targets in 5-pocket set) on Wf-140 closure-bounded cohort, n=6 docked at ex=32 + n_poses=5 (seed=0). Model: AutoDock Vina 1.2.7 (Python binding) + meeko 0.8.0 + rdkit. Protocol: high_affinity_rate = fraction with top_pose_kcal_mol < ZMA reference. TargetDiff 2023 lit cite-only; iMoLD cite-only. FAILS 0.30 uniform floor (0.000 stays 0.000); kcal_min -5.052 -> -5.247 (delta -0.195, modest improvement). HONEST-NEGATIVE — Wf-140 closure-bounded cohort cannot reach ZMA reference. Cohort-bound, not search-bound. Cites TODO-125, TODO-141, TODO-142, TODO-144."
 }

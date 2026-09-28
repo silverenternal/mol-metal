@@ -21,7 +21,10 @@ from typing import Optional
 import torch
 import torch.nn as nn
 
-from molmetal.models._scatter import scatter_sum_legacy as _scatter_sum
+from molmetal.models._scatter import (
+    scatter_sum_legacy as _scatter_sum,
+    scatter_sum_direct as _scatter_sum_direct,
+)
 
 # ---------------------------------------------------------------------------
 # Triton wiring
@@ -351,3 +354,76 @@ class DirectedMPNN(nn.Module):
             pooled_list.append(pooled)
 
         return torch.stack(pooled_list, dim=0)  # (B, D)
+
+
+# ---------------------------------------------------------------------------
+# Domain-Adversarial head (Ganin et al. 2016, JMLR)
+# ---------------------------------------------------------------------------
+# Domain classifier head used for Domain-Adversarial Neural Network (DANN)
+# training.  Sits on top of the D-MPNN ``DirectedMPNN`` backbone's pooled
+# embedding; the gradient that flows from this head back into the backbone
+# is reversed by ``molmetal_lam.sbdd_env.gradient_reversal.ReverseLayerF``
+# so the backbone learns features that confuse the domain classifier while
+# still serving the per-task heads.
+#
+# TODO-143 §2.2 specifies four training domains:
+#   0 = MetalCytoToxDB,  1 = DrugOOD,  2 = NCI-60,  3 = BindingDB
+# The 4-class label is supplied by the dataset side (see train script CLI
+# flag ``--domain-id``) and is treated as a categorical index, not a one-hot.
+class DomainAdversarialHead(nn.Module):
+    """4-class domain classifier head with optional gradient reversal.
+
+    Args:
+        in_dim:    backbone embedding dimension (matches ``DirectedMPNN.hidden_dim``).
+        hidden_dim: classifier hidden width (default 128).
+        num_domains: number of domain classes (default 4 for the four Mol-Metal
+                     data sources: MetalCytoToxDB / DrugOOD / NCI-60 / BindingDB).
+        dropout:    dropout applied to the first classifier layer.
+
+    Forward signature mirrors the typical DANN pattern:
+
+        features = backbone(x)                              # (B, in_dim)
+        rev      = ReverseLayerF.apply(features, alpha)    # identity fwd, neg bwd
+        logits   = domain_head(rev)                         # (B, num_domains)
+
+    The caller (training loop) is responsible for invoking
+    ``ReverseLayerF.apply`` before passing the embedding through this head
+    so that the backward gradient is reversed; this module does NOT call the
+    GRL itself because we want the alpha schedule to live in the train loop.
+    """
+
+    def __init__(
+        self,
+        in_dim: int,
+        hidden_dim: int = 128,
+        num_domains: int = 4,
+        dropout: float = 0.0,
+    ) -> None:
+        super().__init__()
+        self.in_dim = in_dim
+        self.hidden_dim = hidden_dim
+        self.num_domains = num_domains
+
+        layers: list[nn.Module] = [nn.Linear(in_dim, hidden_dim), nn.ReLU()]
+        if dropout > 0.0:
+            layers.append(nn.Dropout(dropout))
+        layers.append(nn.Linear(hidden_dim, num_domains))
+        self.classifier = nn.Sequential(*layers)
+
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        """Compute domain logits.
+
+        Args:
+            features: (B, in_dim) backbone embedding (already passed through
+                      ``ReverseLayerF.apply`` if adversarial training is on).
+
+        Returns:
+            (B, num_domains) raw logits (caller applies cross-entropy).
+        """
+        return self.classifier(features)
+
+    def extra_repr(self) -> str:
+        return (
+            f"in_dim={self.in_dim}, hidden_dim={self.hidden_dim}, "
+            f"num_domains={self.num_domains}"
+        )

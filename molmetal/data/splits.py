@@ -28,6 +28,14 @@ Splitting strategies
                                          scaffold and assign each scaffold
                                          to exactly one of train/val/test.
                                          Strongest OOD chemistry split.
+* :class:`AssayGroupSplitter`          — group rows by ``assay_id`` column
+                                         (DrugOOD assay split; Ji 2023).
+* :class:`SizeGroupSplitter`           — group rows by ``size_split_id``
+                                         column (DrugOOD size split; Ji 2023).
+* :class:`GroupIdSplitter`             — generic group-by-column splitter
+                                         used by the assay / size variants
+                                         and the DrugOOD scaffold_split_id
+                                         when a dataset exposes that column.
 """
 
 from __future__ import annotations
@@ -376,6 +384,9 @@ __all__ = [
     "ChemicalSplitter",
     "LigandDeduplicatedSplitter",
     "ScaffoldSplitter",
+    "GroupIdSplitter",
+    "AssayGroupSplitter",
+    "SizeGroupSplitter",
 ]
 
 
@@ -650,3 +661,287 @@ class ScaffoldSplitter:
             dtype=np.int64,
         )
         return SplitResult(train_idx=train_idx, val_idx=val_idx, test_idx=test_idx)
+
+
+# ---------------------------------------------------------------------------
+# 6. DrugOOD group-id splitters (Ji 2023 ICLR — assay / size / scaffold_split_id)
+# ---------------------------------------------------------------------------
+class GroupIdSplitter:
+    """Generic group-by-column splitter for DrugOOD-style data.
+
+    The DrugOOD benchmark (Ji et al. ICLR 2023) ships three OOD split
+    columns on its rows: ``scaffold_split_id``, ``assay_id`` and
+    ``size_split_id``.  Each split enforces zero overlap of a chosen group
+    key between train and test (e.g. for ``assay`` no assay appears in
+    both train and test).  This class is the generic engine used by
+    :class:`AssayGroupSplitter`, :class:`SizeGroupSplitter` and the
+    DrugOOD-mode :class:`ScaffoldSplitter` (when the dataset exposes a
+    precomputed ``scaffold_split_id`` column).
+
+    Resolution of the group column
+    ------------------------------
+    The splitter tries, in order:
+
+    1. ``getattr(dataset, group_attr)`` — a numpy / list attribute of length
+       ``len(dataset)``.
+    2. For objects backed by ``_rows`` (the :class:`_DrugOODRows` style),
+       ``row[group_attr]`` for every ``dataset[i]``.
+
+    If neither path yields a usable key the splitter raises
+    :class:`ValueError` with a clear remediation hint (e.g. "assay_id
+    column not found; --split assay requires --data-config four-domain").
+
+    Parameters
+    ----------
+    group_attr : str
+        Attribute name on the dataset (or per-row dict key) carrying the
+        group identifier.  Examples: ``"assay_id"``, ``"size_id"``,
+        ``"scaffold_id"``, ``"scaffold_split_id"``.
+    strategy : {'largest_first', 'random'}
+        Same semantics as :class:`LigandDeduplicatedSplitter`.
+    fractions : (train, val, test)
+        Target split fractions.  Defaults to ``(0.8, 0.1, 0.1)``.
+    seed : int
+        RNG seed for the ``'random'`` strategy.
+
+    Notes
+    -----
+    * The group column is *not* deduplicated against ``smiles``: rows that
+      share the same group id but have distinct SMILES will land in the
+      same split, by design (this is the DrugOOD definition).
+    * When the group column is missing on the dataset the splitter raises
+      rather than silently fall back to scaffold-style behaviour — the
+      audit requirement is that ``--split assay`` and ``--split size`` only
+      succeed when the data has the relevant column (i.e. when used with
+      ``--data-config four-domain`` so DrugOOD rows are present).
+    """
+
+    def __init__(
+        self,
+        group_attr: str,
+        strategy: str = "largest_first",
+        fractions: Tuple[float, float, float] = DEFAULT_FRACTIONS,
+        seed: int = 42,
+    ) -> None:
+        if strategy not in ("largest_first", "random"):
+            raise ValueError(
+                f"strategy must be 'largest_first' or 'random', got {strategy!r}"
+            )
+        s = float(sum(fractions))
+        if abs(s - 1.0) > 1e-6:
+            raise ValueError(f"Fractions must sum to 1.0, got {fractions}")
+        if any(f < 0 for f in fractions):
+            raise ValueError(f"Fractions must be non-negative: {fractions}")
+        if not group_attr:
+            raise ValueError("group_attr must be a non-empty string")
+        self.group_attr = str(group_attr)
+        self.strategy = strategy
+        self.fractions = fractions
+        self.seed = int(seed)
+
+    # ------------------------------------------------------------------
+    # Group key resolution
+    # ------------------------------------------------------------------
+    # Aliases accepted transparently when the requested group_attr is
+    # ``size_id`` / ``scaffold_split_id`` (DrugOOD CSV columns vs
+    # FourDomainDataset aux keys).  Order: longer, more-specific first.
+    _ALIASES: Dict[str, Tuple[str, ...]] = {
+        "size_id": ("size_id", "size_split_id"),
+        "scaffold_split_id": ("scaffold_split_id", "scaffold_id"),
+        "assay_id": ("assay_id",),
+    }
+
+    def _resolve_groups(self, dataset) -> np.ndarray:
+        """Return a length-``len(dataset)`` array of group ids.
+
+        Resolution priority:
+
+        1. ``getattr(dataset, group_attr)`` — direct numpy/list attribute.
+        2. ``row[group_attr]`` on every ``dataset[i]`` (dict-yielding),
+           accepting the documented aliases (e.g. ``size_id`` ⇄
+           ``size_split_id``) so DrugOOD-CSV-shaped datasets and
+           FourDomainDataset ``aux``-shaped datasets both work.
+        3. ``row.aux[group_attr]`` dataclass-style aux dict.
+        """
+        n = len(dataset)
+        if n == 0:
+            return np.zeros(0, dtype=object)
+
+        aliases = self._ALIASES.get(self.group_attr, (self.group_attr,))
+
+        # (1) Direct attribute
+        for attr in aliases:
+            if hasattr(dataset, attr):
+                try:
+                    arr = np.asarray(getattr(dataset, attr))
+                except Exception as exc:
+                    raise ValueError(
+                        f"Could not read group_attr={attr!r} from "
+                        f"dataset ({type(dataset).__name__}): {exc}"
+                    ) from exc
+                if len(arr) == n:
+                    return arr
+                # Fall through if the attribute has the wrong length.
+
+        # (2) Per-row dict lookup via __getitem__
+        sample = dataset[0]
+        if isinstance(sample, dict):
+            for attr in aliases:
+                if attr in sample:
+                    return np.asarray(
+                        [int(dataset[i][attr]) for i in range(n)],
+                        dtype=object,
+                    )
+
+        # (3) dataclass-style aux
+        if hasattr(sample, "aux") and isinstance(sample.aux, dict):
+            aux = sample.aux
+            for attr in aliases:
+                if attr in aux:
+                    return np.asarray(
+                        [int(dataset[i].aux[attr]) for i in range(n)],
+                        dtype=object,
+                    )
+
+        raise ValueError(
+            f"GroupIdSplitter could not locate group_attr={self.group_attr!r} "
+            f"(aliases tried: {aliases}) on dataset "
+            f"{type(dataset).__name__!r}.  This --split requires a dataset "
+            f"that exposes the column (e.g. via --data-config four-domain "
+            f"which loads DrugOOD rows)."
+        )
+
+    @staticmethod
+    def _assign_groups(
+        groups: List[List[int]],
+        strategy: str,
+        fractions: Tuple[float, float, float],
+        seed: int,
+    ) -> Dict[int, str]:
+        """Reuse the LigandDeduplicatedSplitter assignment logic verbatim."""
+        return LigandDeduplicatedSplitter(
+            strategy=strategy,
+            fractions=fractions,
+            seed=seed,
+        )._assign_groups(groups)
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+    def __call__(self, dataset) -> SplitResult:
+        n = len(dataset)
+        if n == 0:
+            return SplitResult(
+                train_idx=np.array([], dtype=np.int64),
+                val_idx=np.array([], dtype=np.int64),
+                test_idx=np.array([], dtype=np.int64),
+            )
+
+        groups_arr = self._resolve_groups(dataset)
+        # Build group -> row-indices mapping
+        groups_dict: Dict[object, List[int]] = defaultdict(list)
+        for i, g in enumerate(groups_arr):
+            groups_dict[g].append(i)
+        groups = list(groups_dict.values())
+
+        split_assignment = self._assign_groups(
+            groups, self.strategy, self.fractions, self.seed
+        )
+        train_idx = np.array(
+            sorted([i for i, s in split_assignment.items() if s == "train"]),
+            dtype=np.int64,
+        )
+        val_idx = np.array(
+            sorted([i for i, s in split_assignment.items() if s == "val"]),
+            dtype=np.int64,
+        )
+        test_idx = np.array(
+            sorted([i for i, s in split_assignment.items() if s == "test"]),
+            dtype=np.int64,
+        )
+        return SplitResult(train_idx=train_idx, val_idx=val_idx, test_idx=test_idx)
+
+
+class AssayGroupSplitter(GroupIdSplitter):
+    """DrugOOD assay split (Ji 2023 ICLR) — group rows by ``assay_id``.
+
+    The DrugOOD paper enforces that no assay (ChEMBL bioassay identifier)
+    appears in both train and test.  This is a stronger OOD split than
+    scaffold because two unrelated scaffolds measured in the same assay
+    are still confined to a single split.  The splitter expects a
+    dataset that exposes an ``assay_id`` attribute or per-row key — e.g.
+    the DrugOOD sub-dataset of :class:`FourDomainDataset`
+    (``--data-config four-domain``).
+
+    Falls back to scaffold-style SMILES grouping only when ``assay_id``
+    is *explicitly* absent (e.g. legacy MetalCytoToxDB rows); in that
+    case the splitter raises :class:`ValueError` with a clear remediation
+    message — silent fallback would mask the audit's intent that
+    ``--split assay`` only operates on DrugOOD rows.
+
+    Parameters
+    ----------
+    strategy : {'largest_first', 'random'}
+        Same semantics as :class:`LigandDeduplicatedSplitter`.
+    fractions : (train, val, test)
+        Target split fractions.  Defaults to ``(0.8, 0.1, 0.1)``.
+    seed : int
+        RNG seed.
+    """
+
+    def __init__(
+        self,
+        strategy: str = "largest_first",
+        fractions: Tuple[float, float, float] = DEFAULT_FRACTIONS,
+        seed: int = 42,
+    ) -> None:
+        super().__init__(
+            group_attr="assay_id",
+            strategy=strategy,
+            fractions=fractions,
+            seed=seed,
+        )
+
+
+class SizeGroupSplitter(GroupIdSplitter):
+    """DrugOOD size split (Ji 2023 ICLR) — group rows by ``size_split_id``.
+
+    The DrugOOD paper bins molecules by size (heavy-atom count bucket) and
+    enforces zero overlap of size bin between train and test.  There are
+    only 277 unique size bins in the DrugOOD training set, so this split
+    is the *coarsest* of the three OOD splits but is still useful as a
+    sanity check that the model doesn't extrapolate trivially across
+    molecular size.
+
+    As with :class:`AssayGroupSplitter`, the splitter raises when the
+    dataset does not expose a ``size_id`` (or ``size_split_id``) key —
+    legacy MetalCytoToxDB rows are out of scope.
+
+    Parameters
+    ----------
+    strategy : {'largest_first', 'random'}
+        Same semantics as :class:`LigandDeduplicatedSplitter`.
+    fractions : (train, val, test)
+        Target split fractions.  Defaults to ``(0.8, 0.1, 0.1)``.
+    seed : int
+        RNG seed.
+    """
+
+    def __init__(
+        self,
+        strategy: str = "largest_first",
+        fractions: Tuple[float, float, float] = DEFAULT_FRACTIONS,
+        seed: int = 42,
+    ) -> None:
+        super().__init__(
+            group_attr="size_id",
+            strategy=strategy,
+            fractions=fractions,
+            seed=seed,
+        )
+
+
+# Backwards-compatible aliases for callers that already reference the
+# DrugOOD column names verbatim (e.g. "size_split_id" vs "size_id").  The
+# GroupIdSplitter falls back to per-row dict keys so both spellings work
+# transparently — these aliases just make the factory wiring more readable.

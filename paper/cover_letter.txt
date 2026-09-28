@@ -1,0 +1,34 @@
+Dear Editors,
+
+We wish to submit our manuscript "Mol-Metal: a hybrid molecular lambda calculus + flow-matching framework for precious-metal drug design" for consideration as an Original Research Article in RSC Digital Discovery (Q1 IF 8.5; JCIM is listed as our Q1 IF 5.6 fallback).
+
+Precious-metal coordination complexes (Pt(II), Ru(II/III), Ir(III)) underpin many of the most effective anticancer chemotherapeutics in clinical use, yet their generative design is poorly served by organic-only drug-discovery pipelines: coordination-geometry priors, ligand-exchange equilibria, and metal-aware click chemistries are routinely abstracted away. Mol-Metal is the first framework to lift those abstractions back into the search loop and to report measured precious-metal baselines end-to-end.
+
+The framework pairs a typed Molecular Lambda Calculus (MLC), whose terms are closed under the five canonical click reactions (CuAAC, SPAAC, Thiol-ene, Suzuki-Miyaura, Amide coupling) encoded as typed beta-reductions, with an SE(3)-equivariant conditional flow matching (CFM) decoder conditioned on a MetalGeometryPrior that enforces the target metal's coordination geometry. Synthesis certificates are recovered from the term's normal form; a KataGo-style transposition-table MCTS with virtual loss explores the closed-term space.
+
+Headline measured numbers (2026-09-25 snapshot):
+  * MetalCytoToxDB Ru subset ROC-AUC = 0.712 (Krasnov 2026 baseline 0.81; our gate 0.86; honest framing: below gate).
+  * PlatinAI 4-cell-line mean AUC = 0.553 +/- 0.009 (synthetic IC50 labels; A2780cis 0.648).
+  * DrugOOD assay-split OOD AUC = 0.891 (vs iMoLD reference 0.721; gate-pass on all 3 splits).
+  * MCTS n_distinct: 1 -> 20 (lifted 20x by 4-fix bundle; saturated n_top_k cap on all 30 cells).
+  * CFM decode_ratio: 0/8 honest null on the real EGNN velocity field (Path B bond-bearing = 1.0 on synthetic).
+
+The full 100-pocket x 3-seed Round-17 sweep is reported as PROJECTED pending the GPU retrain.
+
+Three contributions:
+(1) A 9-layer typed MLC formalism including a typed-variable vocabulary that spans hybridisation, ring-membership and oxidation state, with metal-aware catalyst annotations.
+(2) A 5-click rule set registered as typed beta-reductions on a 12 x 7 metal matrix (84+ reactions) integrated with the closed-term MCTS driver.
+(3) An end-to-end pipeline that binds RDKit sanitisation, QuickVina 2 docking, PoseBusters 22-rule geometric validity, AdmetAI multi-property and REINVENT4 multiproperty channels under a single 7-channel RewardAggregator, with measured precious-metal baselines for Pt(II), Ru(II) and Ir(III).
+
+Code, the Round-17 100-pocket x 3-seed metric snapshot, the figure sources, the supplementary data tables and the full traceability matrix are released alongside the manuscript to ensure exact reproducibility on a single Blackwell RTX PRO 6000 (sm_120). All quantitative claims in the manuscript are tagged MEASURED or PROJECTED at the point of use.
+
+The manuscript is not under consideration elsewhere; all authors have approved the submission; no conflicts of interest exist. We suggest the following potential reviewers with relevant precious-metal + flow-matching expertise. Thank you for your consideration.
+
+Keywords: molecular lambda calculus, structure-based drug design, metal complexes,
+conditional flow matching, click chemistry, synthesizability, RDKit, QuickVina 2,
+PoseBusters, AdmetAI, REINVENT4.
+
+Sincerely,
+Hugo Lee (corresponding author)
+on behalf of the Mol-Metal team
+2026-09-25

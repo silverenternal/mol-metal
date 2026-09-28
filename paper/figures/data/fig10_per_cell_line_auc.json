@@ -1,0 +1,48 @@
+{
+  "figure_id": "fig10",
+  "title": "PlatinAI 4-cell-line per-line AUC",
+  "description": "Per-cell-line ROC-AUC on PlatinAI 4,078 Pt 4-cell-line dataset (synthetic IC50 labels) with D-MPNN 4-cell-line multi-task (3 seeds × 50 epochs, scaffold split).",
+  "x_axis": {
+    "label": "Cell line",
+    "categories": ["MCF-7", "A549", "A2780", "A2780cis"]
+  },
+  "y_axis": {
+    "label": "ROC-AUC",
+    "range": [0.0, 1.0],
+    "gate_target": 0.85,
+    "note": "Rusanov 2025 PlatinAI per-cell baseline is PENDING (paper Tables S4-S5 supplementary xlsx, Cloudflare-blocked from this host)"
+  },
+  "series": [
+    {
+      "name": "Mol-Metal (ours)",
+      "type": "bar",
+      "values": [0.5844, 0.6302, 0.3505, 0.6476],
+      "stdev": [0.0232, 0.0300, 0.0189, 0.0065],
+      "per_seed": [
+        [0.5887, 0.6104, 0.5541],
+        [0.6032, 0.6721, 0.6154],
+        [0.3371, 0.3371, 0.3771],
+        [0.6563, 0.6458, 0.6406]
+      ]
+    },
+    {
+      "name": "Rusanov 2025 (PlatinAI)",
+      "type": "reference",
+      "values": [null, null, null, null],
+      "note": "PENDING (Cloudflare-blocked supplementary xlsx)"
+    }
+  ],
+  "legend": [
+    "Mol-Metal D-MPNN 4-cell multi-task (3 seeds, mean ± std)",
+    "Rusanov 2025 PlatinAI baseline (paper Tables S4-S5)"
+  ],
+  "summary": {
+    "overall_mean_auc": 0.5532,
+    "overall_std": 0.0093,
+    "key_cell_a2780cis_auc": 0.6476,
+    "key_cell_a2780cis_gate_target": 0.85,
+    "framing": "SYNTHETIC_IC50_LABELS — honest disclosure: dataset built with synthetic IC50 labels per build_platinai_4cell.py"
+  },
+  "source": "metrics/by_metric/platinai_4cell_auc.json (molmetal/scripts/train_platinai_4cell.py, seeds=[0,1,2], epochs=50, scaffold_split=True)",
+  "render": "paper/figures/fig10_per_cell_line_auc.py"
+}

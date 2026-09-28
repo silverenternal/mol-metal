@@ -1,0 +1,80 @@
+{
+  "metric": "per_metal_pic50_wasserstein",
+  "description": "Per-metal test-AUC + Wasserstein pIC50 final-loss from Wf-124 P3 / Wf-200 v3 chemprop v2 multi-task driver.  Plumbing-only emission (no re-training).",
+  "unit": "test_auc (0-1, higher=better); w2_final (kcal/mol surrogate)",
+  "scope": "Wf-200 v3 per-seed JSONs across metals {Ru,Ir,Os,Rh,Re}",
+  "source": "molmetal/reports/wf200_chemprop_v2_v3/{metal}/per_seed_metrics_seed{N}.json",
+  "per_metal": {
+    "Ru": {
+      "test_auc_mean": 0.7624047033464081,
+      "test_auc_std": 0.03040571494364802,
+      "w2_final_mean": 0.5176723003387451,
+      "n_runs": 2,
+      "test_aucs": [
+        0.7928104182900562,
+        0.7319989884027601
+      ],
+      "w2_finals": [
+        0.0,
+        1.0353446006774902
+      ],
+      "seeds_covered": [
+        0,
+        1
+      ]
+    },
+    "Ir": {
+      "test_auc_mean": 0.44222379689782454,
+      "test_auc_std": 0.0,
+      "w2_final_mean": 0.8618359054123179,
+      "n_runs": 1,
+      "test_aucs": [
+        0.44222379689782454
+      ],
+      "w2_finals": [
+        0.8618359054123179
+      ],
+      "seeds_covered": [
+        0
+      ]
+    },
+    "Os": {
+      "test_auc_mean": 0.3489708231813714,
+      "test_auc_std": 0.0,
+      "w2_final_mean": 1.0903851615532363,
+      "n_runs": 1,
+      "test_aucs": [
+        0.3489708231813714
+      ],
+      "w2_finals": [
+        1.0903851615532363
+      ],
+      "seeds_covered": [
+        0
+      ]
+    },
+    "Rh": {
+      "test_auc_mean": null,
+      "test_auc_std": null,
+      "w2_final_mean": null,
+      "n_runs": 0,
+      "test_aucs": [],
+      "w2_finals": []
+    },
+    "Re": {
+      "test_auc_mean": null,
+      "test_auc_std": null,
+      "w2_final_mean": null,
+      "n_runs": 0,
+      "test_aucs": [],
+      "w2_finals": []
+    }
+  },
+  "n_runs_total": 4,
+  "n_metals_with_data": 3,
+  "status": "MEASURED",
+  "timestamp": "2026-09-28",
+  "honest_framing_note": "Wf-252-Apply Fix #3 (F3-M11Emit) plumbing emission.  Reads Wf-200 v3 per-seed JSONs from /home/hugo/codes/mol-metal/molmetal/reports/wf200_chemprop_v2_v3 (no model re-training, no GPU).  4 per-seed runs across 3/5 metals.  Wf-200 v3 driver populated Ru/Ir/Os (3 metals) for seed 0; Ru seed 1 also present.  Rh/Re have no per-seed JSONs at this point (the underlying Wf-124 P3 multi-task Wasserstein training did not complete for these metals before the session budget expired).  test_auc_std is population std (pstdev), zero when n_runs=1.  w2_final is the last-epoch Wasserstein transfer loss per run; the Wf-200 driver bounded W2 to max 32 rows per metal per step as an O(N\u00b2) cost bound \u2014 these are NOT paper-grade Wasserstein distances.",
+  "wf_tag": "Wf-252-Apply Fix #3 (F3-M11Emit)",
+  "wf_design_ref": "molmetal/reports/wf252_research/fix_design.md \u00a74 Fix F3"
+}

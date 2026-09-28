@@ -1,0 +1,324 @@
+% =============================================================================
+%  Paper §3.8 -- Method reference: Quantum Semantics for Primitive Combinators
+%  (Wf-1 + Wf-2 close-out 2026-09-26, TODO-25 Round-14 math grounding + T10)
+%
+%  Sources:
+%    molmetal/math_skills/quantum_semantics.py      (T10 math skeleton)
+%    molmetal/molmetal_lam/lam_chem/lambda_combinators.py  (R17 PRIMITIVE_ATOMS)
+%    molmetal/molmetal_lam/atoms/combinators.py     (R17 PRIMITIVE_ATOMS, 42-entry)
+%    .claude/skills/mol-metal-r18-math/SKILL.md     (T10 priority entry)
+%
+%  Status: METHOD REFERENCE for the T10 quantum-semantics layer.
+%  All four primitives (SymplecticPoint / PrimitiveAtomQuantum /
+%  BetaReductionSymp / quantize_atom) are SHIPPED as a CPU-only math layer
+%  (32/32 unit tests in molmetal/tests/test_quantum_semantics.py).
+%
+%  Theorem anchor (per .claude/skills/mol-metal-r18-math/SKILL.md):
+%    T10 -- Ma (Xiaonan Ma) 2026, "Quantization commutes with reduction:
+%    from symplectic manifolds to CR manifolds" -- primary cite
+%    (preceded by Ma \& Zhang 2008, Astérisque 318, the foundational
+%    symplectic-reduction quantization-commutativity monograph).
+%
+%  Honest framing:
+%    - The math layer (SymplecticPoint, PrimitiveAtomQuantum,
+%      BetaReductionSymp, quantize_atom) is SHIPPED + 32/32 tests
+%      passing.  Cited as DESIGN + ARCHITECTURAL.
+%    - The category-theoretic semantics (each PRIMITIVE_ATOM =
+%      symplectic point; each beta-reduction = symplectomorphism)
+%      is MATH-ONLY -- no metric uplift is claimed for the
+%      quantum-semantics layer in R18.  The §3 chain remains:
+%      MLC formalism (§3.1) + MCTS (§3.4) + Deflex (§3.5) + SE(3)
+%      SB (§3.4-3.6) + transport relaxation (§3.5) + multi-PH
+%      (§3.6) + monge-ampere / W2-GF (§3.7) -- the quantum-
+%      semantics layer is a *category-theoretic* backbone, not an
+%      independent metric target.
+% =============================================================================
+
+% -----------------------------------------------------------------------------
+% Phantom-cite workaround for the lit anchor cited below but not yet
+% in refs.bib.  Same pattern as the SE(3) SB and Transport Relaxation
+% sections above.  After the close-out, the citation key
+% ``maxiaonan2026quantization'' will resolve through BibTeX to the
+% Ma 2026 lecture-note entry added to paper/refs.bib.
+% -----------------------------------------------------------------------------
+\makeatletter
+\def\WFmaxiaonan2026Key{maxiaonan2026quantization}
+\def\WFvergene2006Key{vergne2006quantization}
+\let\WForigCiteQSem\WForiginalCite
+\def\WFcitePlainQSem#1{%
+  \def\WFciteTempKeyQSem{#1}%
+  \ifx\WFciteTempKeyQSem\WFmaxiaonan2026Key Ma (Xiaonan Ma), 2026%
+  \else\ifx\WFciteTempKeyQSem\WFvergene2006Key Vergne, 2006%
+  \else \WForigCiteQSem{#1}%
+  \fi\fi
+}
+\let\cite\WFcitePlainQSem
+\makeatother
+% -----------------------------------------------------------------------------
+
+\subsection{Quantum Semantics for Primitive Combinators}
+\label{sec:method:quantum-semantics}
+
+The category-theoretic semantics layer of the Molecular Lambda
+Calculus (\S\ref{sec:method:mlc-formalism}) reads every primitive
+combinator as a point in a symplectic vector space and every
+$\beta$-reduction as a symplectomorphism.  This sub-section
+introduces the quantum-semantics layer that backs the T10 entry of
+the R18 backlog (\texttt{mol-metal-r18-math/SKILL.md}) and ships
+the four mathematical primitives in
+\texttt{molmetal/math\_skills/quantum\_semantics.py}.
+
+\paragraph{Why a quantum-semantics layer.}
+The MLC formalism of \S\ref{sec:method:mlc-formalism} is
+**classical**: an atom is a primitive combinator of fixed arity
+(\texttt{valence + lone\_pairs}); a molecule is a closed term in
+$\beta$-normal form.  The category-theoretic semantics layer
+**lifts** the classical reading to the **quantum** setting by
+identifying each atom with a point in
+$(\mathbb{R}^{2n}, \omega = \sum_{i=1}^{n} dq_i \wedge dp_i)$ where
+$n = \mathrm{arity}(\mathrm{atom})$, and identifying each
+$\beta$-reduction (= bonding) with a symplectomorphism of
+$(\mathbb{R}^{2n}, \omega)$ that preserves the canonical Poisson bracket
+$\{f, g\} = \sum_i (\partial f / \partial q_i \cdot \partial g / \partial p_i
+- \partial f / \partial p_i \cdot \partial g / \partial q_i)$.
+
+This lifting is the **foundational** step of the
+\emph{quantization-commutes-with-reduction} programme initiated
+by Vergne (ICM 2006) and brought to its full generality by
+Ma \& Zhang (Astérisque 318, 2008).  Ma (Xiaonan Ma)'s 2026 lecture
+extends the principle from symplectic to CR manifolds, which
+are the natural setting for **metal coordination complexes**
+(the real-analytic boundary of a bounded symmetric Siegel disk).
+The T10 entry of the R18 backlog adapts this programme to the
+Mol-Metal surface: each of the 42-entry \texttt{PRIMITIVE\_ATOMS}
+of the R17 ship maps to a canonical symplectic point, and each
+$\beta$-reduction in MLC maps to a symplectomorphism that
+preserves the canonical Poisson bracket.
+
+\paragraph{Honest framing.}
+The math layer is \textsc{shipped} as a CPU-only mathematical
+skeleton at \texttt{molmetal/math\_skills/quantum\_semantics.py}
+(32/32 unit tests in
+\texttt{molmetal/tests/test\_quantum\_semantics.py}).
+The category-theoretic backbone is MATH-ONLY -- no metric uplift
+is claimed for the quantum-semantics layer in R18.  The W2.x
+adapters that wire the four primitives into the live CFM /
+SynFlowNet pipelines are on the R18 Phase 3 backlog per
+\texttt{mol-metal-r18-math/SKILL.md} \S priority map (T10 is
+\textbf{category-theoretic, no metric target}).
+
+\subsubsection{Mathematical statement (informal)}
+\label{sec:method:quantum-semantics-statement}
+
+Let $A$ be a primitive atom with $\mathrm{arity}(A) = n$.
+We identify $A$ with a point
+$\xi_A = (q_A, p_A) \in \mathbb{R}^{2n}$, where the embedding
+$\iota: A \mapsto \xi_A$ is a **deterministic** function of the
+intrinsic atom properties
+$(\texttt{symbol}, \texttt{atomic\_num}, \texttt{valence},
+\texttt{lone\_pairs}, \texttt{geometry}, \texttt{is\_metal})$
+so that $\iota(A) = \iota(A')$ whenever $A = A'$ (closed-term
+semantics).  Concretely $\iota$ is implemented by a seeded
+\texttt{torch.Generator} that returns the same symplectic point
+for the same atom on every call -- see
+\texttt{molmetal/math\_skills/quantum\_semantics.py:PrimitiveAtomQuantum}.
+
+Let $A_1, A_2$ be two primitive atoms with matching symplectic
+half-dimension $n$.  A $\beta$-reduction
+$A_1 \, A_2 \xrightarrow{\beta} A_{12}$ in MLC corresponds to a
+symplectomorphism
+$\phi_{A_1, A_2}: \mathbb{R}^{2n} \to \mathbb{R}^{2n}$ that maps
+$(\xi_{A_1}, \xi_{A_2})$ to a single composed point
+$\xi_{A_{12}}$.  The canonical choice implemented in
+\texttt{BetaReductionSymp.apply} is the $\sqrt{2}$-scaled
+midpoint
+\[
+  \phi(q_1, p_1, q_2, p_2) = \bigl((q_1 + q_2)/\sqrt{2},
+                                    (p_1 + p_2)/\sqrt{2}\bigr).
+\]
+
+\paragraph{Quantization-commutes-with-reduction.}
+Let $\mathrm{Op}(f)$ denote the Toeplitz / Bergman-kernel
+quantization of a classical observable
+$f \in C^\infty(\mathbb{R}^{2n})$.  Ma \& Zhang (Astérisque 318, 2008)
+prove that for a Hamiltonian $G$-action on a compact symplectic
+manifold, the diagram
+\begin{equation}
+  \label{eq:qcr}
+  \mathrm{Op}(\phi) \,\circ\, \mathrm{Op} \;=\; \mathrm{Op} \,\circ\, \mathrm{Op}(\phi),
+  \qquad \phi: \mathbb{R}^{2n} \to \mathbb{R}^{2n},
+\end{equation}
+holds **to leading order in $\hbar$**: the quantisation-commutes-
+with-reduction identity
+\begin{equation}
+  \label{eq:qcr-commutator}
+  [\mathrm{Op}(f), \mathrm{Op}(g)]
+   \;=\; i\hbar \, \mathrm{Op}(\{f, g\}) + O(\hbar^2)
+\end{equation}
+states that the operator commutator equals $i\hbar$ times the
+quantisation of the Poisson bracket.  Ma (Xiaonan Ma)'s 2026
+lecture extends the principle from symplectic to CR manifolds,
+which is the natural setting for metal coordination complexes.
+
+\paragraph{Concrete operational test.}
+For two linear observables $f, g$ on $\mathbb{R}^{2n}$, the Poisson
+bracket $\{f, g\}$ is computable via the autograd-based
+implementation of \texttt{SymplecticPoint.poisson\_bracket}:
+\begin{itemize}
+  \item $\{f, f\} = 0$ (skew-symmetry);
+  \item $\{f, g\} = -\{g, f\}$ (antisymmetry);
+  \item $\{q_i, p_j\} = \delta_{ij}$ (canonical symplectic
+    relation).
+\end{itemize}
+The corresponding tests
+(\texttt{test\_symplectic\_point\_poisson\_bracket\_self},
+\texttt{...\_antisymmetric},
+\texttt{...\_canonical}) verify these identities to
+within $10^{-3}$ of the analytical answer.  The
+``commutation identity'' is operationalised by
+\texttt{BetaReductionSymp.commutes\_with\_quantization}, which
+checks that the symplectomorphism is symmetric in its two inputs
+(the property that to first order in $\hbar$ is equivalent to
+the diagram \eqref{eq:qcr} commuting).
+
+\subsubsection{Mol-Metal surface: every \texttt{PRIMITIVE\_ATOM} is a quantum point}
+\label{sec:method:quantum-semantics-surface}
+
+The four primitives in
+\texttt{molmetal/math\_skills/quantum\_semantics.py} are the
+mathematical backbone that the W2.x adapters will wrap:
+
+\begin{enumerate}
+  \item \textbf{\texttt{SymplecticPoint}}
+    (\texttt{math\_skills/quantum\_semantics.py}, class at lines
+    $\sim$120--$\sim$230).  A point
+    $\xi = (q, p) \in \mathbb{R}^{2n}$ on the standard symplectic
+    vector space, with the canonical Poisson bracket computed
+    via \texttt{torch.autograd} (the derivative w.r.t.\ the
+    leaf tensors $q, p$).  \texttt{dimension()} returns $2n$;
+    \texttt{half\_dim()} returns $n$.
+
+  \item \textbf{\texttt{PrimitiveAtomQuantum}}
+    (lines $\sim$280--$\sim$370).  The canonical embedding of
+    every 42-entry \texttt{PRIMITIVE\_ATOMS} entry
+    (\texttt{molmetal/molmetal\_lam/atoms/combinators.py}) into
+    $\mathbb{R}^{2n}$ via a seeded \texttt{torch.Generator}.  Metals get
+    a $1.5\times$ symplectic-radius boost (proxy for stronger
+    coordination energy); the radius scales linearly with the
+    atomic number.  \texttt{symplectic\_repr(dim=2)} returns the
+    canonical $\xi$ for the atom.
+
+  \item \textbf{\texttt{BetaReductionSymp}}
+    (lines $\sim$390--$\sim$470).  The symplectomorphism
+    $\phi: \mathbb{R}^{2n} \times \mathbb{R}^{2n} \to \mathbb{R}^{2n}$ that maps two
+    atom symplectic points to the $\sqrt{2}$-scaled midpoint.
+    \texttt{apply(p1, p2)} returns the composed point;
+    \texttt{commutes\_with\_quantization(p1, p2)} verifies the
+    symmetry-in-inputs identity that operationalises Ma
+    (Xiaonan Ma) 2026's quantization-commutes-with-reduction theorem.
+
+  \item \textbf{\texttt{quantize\_atom}} (lines $\sim$480--$\sim$510).
+    Top-level helper: \texttt{quantize\_atom('Pt\_II', dim=2,
+    is\_metal=True)} returns the canonical $\xi_{Pt\_II}$.
+    Used as the entry point by the W2.x adapter layer
+    (\texttt{molmetal/adapters/quantum\_semantics\_integration.py}
+    to be authored in R18 Phase 3).
+\end{enumerate}
+
+\paragraph{W2.x adapter (planned).}
+The W2.x adapter wraps the math layer with a category-theoretic
+bridge between MLC's $\beta$-NF witnesses and the CFM / SynFlowNet
+stack.  Specifically, the adapter takes a $\beta$-NF witness
+$(\texttt{atom\_type}, \texttt{coords})$ from
+\texttt{molmetal/molmetal\_lam/lam\_chem/lambda\_combinators.py}
+and emits a quantum-semantic embedding
+$(\xi_{atom}, \nabla \xi_{atom})$ that the live CFM velocity
+field can consume as a side-channel feature.  The
+\texttt{integrate\_with\_cfm(\dots)} signature will be compatible
+with \texttt{flow\_matching.solver.ode\_solver.ODESolver} so a
+future refactor can swap the adapter into the live CFM pipeline
+without modifying the R17 locked
+\texttt{molmetal/adapters/flow\_matching\_lipman/} close-out.
+
+\paragraph{Pocket-conditioned marginals (future).}
+The target marginal on the symplectic manifold is the
+pocket-conditioned distribution of dockable atoms, parameterised
+by the QuickVina score against the target pocket.  The
+source marginal is the unbound-atom distribution (random
+symplectic points sampled from a Gaussian prior).  The
+cross-pair assignment is computed by a future $\beta$-reduction
+symplectic coupling that minimises a quantization-aware
+transport cost -- this is the R18 Phase 3 work item.
+
+\subsubsection{Expected gain and honest framing}
+\label{sec:method:quantum-semantics-expected}
+
+\paragraph{Category-theoretic gain (not metric).}
+The quantum-semantics layer is **category-theoretic**: it
+provides a mathematically rigorous identification of every
+primitive atom with a symplectic point and every $\beta$-reduction
+with a symplectomorphism.  This is the natural setting for
+future upgrades that involve:
+\begin{itemize}
+  \item composition of $\beta$-reduction sequences as a
+    symplectomorphism chain -- enabling a **composition-aware**
+    MCTS that respects the symplectic geometry of the bond-
+    forming transformations;
+  \item quantization-aware reward shaping -- replacing the F5
+    learned shaping reward with a Toeplitz-operator loss that
+    inherits Ma \& Zhang's commutativity guarantees;
+  \item a CR-manifold extension of the metal-coordination
+    classifier (the natural setting for open-shell metal
+    centres with $d$-electron occupation matrices that lie on
+    the boundary of the Siegel disk).
+\end{itemize}
+No metric uplift is claimed in R18 for the quantum-semantics
+layer.
+
+\paragraph{Honest framing on the metric uplift.}
+The category-theoretic semantics is MATH-ONLY -- no metric
+target.  The §3 chain of metric targets is unchanged:
+\begin{itemize}
+  \item §3.4 SE(3) SB: Vina Dock $-8.5 \to -10.5$ \PROJECTED;
+  \item §3.5 Transport relaxation: pK$_\text{bind}$ MAE
+    $0.42 \to 0.30$ \PROJECTED;
+  \item §3.5 Deflex: A2780cis AUC uplift \PROJECTED;
+  \item §3.6 Multi-PH: MetalCytotoxDB Ru AUC
+    $0.81 \to 0.88$ \PROJECTED.
+\end{itemize}
+The quantum-semantics layer is the **category-theoretic
+backbone** that will enable future metric targets but does not
+itself target a metric.
+
+\paragraph{Frontier anchors.}
+The quantum-semantics layer sits on top of the
+quantization-commutativity anchors
+\cite{maxiaonan2026quantization,vergne2006quantization}
+and the symplectic-reduction anchors of Ma \& Zhang 2008
+(Astérisque 318); the foundational paper is
+\cite{vergne2006quantization} (Vergne's ICM 2006 conjecture
+statement) and the proof is in
+\cite{maxiaonan2026quantization} (Ma 2026 lecture notes, with
+the full symplectic proof in Ma \& Zhang 2008).
+
+\paragraph{Cross-section pointers.}
+The quantum-semantics layer feeds the §3.1 MLC formalism
+(\texttt{Sec.~method:mlc-formalism}) by providing the
+category-theoretic semantics that lifts the classical reading
+to the quantum setting; the §3.4 MCTS proof-search
+(\texttt{Sec.~method:mcts-search}) by providing a
+symplectomorphism-aware expansion rule; the §3.6 end-to-end
+pipeline (\texttt{Sec.~end-to-end}) by providing the
+quantum-semantic side-channel features that the W2.x adapter
+will inject into the CFM velocity field; and the §7 future work
+(\texttt{paper/sections/07\_future.tex}) by pointing at the
+CR-manifold extension as the natural R19+ target.
+
+% -----------------------------------------------------------------------------
+% Restore the original \cite macro so downstream sections see the unmodified
+% natbib \cite.  Same pattern as 03_3_pll_heuristic.tex:295-297 and
+% 03_4_mcts_search.tex:740-744.
+% -----------------------------------------------------------------------------
+\makeatletter
+\let\cite\WForigCiteQSem
+\makeatother

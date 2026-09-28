@@ -1,0 +1,115 @@
+{
+  "date": "2026-09-25",
+  "featurization": "morgan_fp_2048_r2",
+  "model": "v4_morgan_mlp",
+  "splits": [
+    "assay",
+    "scaffold",
+    "size"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "epochs": 30,
+  "data_source": "metacytotox_fallback",
+  "imold_reference": {
+    "assay": 0.7211,
+    "scaffold": 0.6884,
+    "size": 0.6792
+  },
+  "erm_baseline": {
+    "assay": 0.7163,
+    "scaffold": 0.6879,
+    "size": 0.675
+  },
+  "gate_margin": 0.02,
+  "results": {
+    "assay": {
+      "n_seeds": 3,
+      "n_seeds_valid_ood": 3,
+      "id_auc_mean": 0.9743034610235788,
+      "id_auc_std": 0.004745411755093322,
+      "ood_auc_mean": 0.8913735757440715,
+      "ood_auc_std": 0.0018535113184226073,
+      "per_seed_ood": [
+        0.8887670336250897,
+        0.8924366178549296,
+        0.8929170757521954
+      ],
+      "per_seed_id": [
+        0.9751995791818799,
+        0.9680955296999388,
+        0.9796152741889176
+      ]
+    },
+    "scaffold": {
+      "n_seeds": 3,
+      "n_seeds_valid_ood": 3,
+      "id_auc_mean": 0.9566768938510692,
+      "id_auc_std": 0.014804214453156994,
+      "ood_auc_mean": 0.697338145917519,
+      "ood_auc_std": 0.027093212061863513,
+      "per_seed_ood": [
+        0.7222774193548387,
+        0.7100595331966566,
+        0.6596774852010616
+      ],
+      "per_seed_id": [
+        0.9723839683999047,
+        0.9608113924958749,
+        0.9368353206574282
+      ]
+    },
+    "size": {
+      "n_seeds": 3,
+      "n_seeds_valid_ood": 3,
+      "id_auc_mean": 0.9362829923082514,
+      "id_auc_std": 0.013442972482177075,
+      "ood_auc_mean": 0.747946313380067,
+      "ood_auc_std": 0.005462350412928394,
+      "per_seed_ood": [
+        0.7405489021956088,
+        0.749717679127726,
+        0.7535723588168662
+      ],
+      "per_seed_id": [
+        0.9397115746925632,
+        0.9507629556793765,
+        0.9183744465528146
+      ]
+    }
+  },
+  "gate_pass": {
+    "assay": true,
+    "scaffold": true,
+    "size": true
+  },
+  "overall_pass": true,
+  "honest_framing": "Numbers in this JSON were computed on a metacytotox_fallback dataset (MetalCytoToxDB-derived 5,207 rows) using DrugOOD-style OOD splits (assay/scaffold/size). This is NOT a head-to-head comparison against iMoLD on the actual DrugOOD IC50 splits (Ji et al. ICLR 2023). For the native DrugOOD pipeline (1,583,302 rows from ChEMBL_29), see drugood_ood_auc_native_smoke.json with explicit proxy-MLP numbers and full caveats.",
+  "native_data_shipped": true,
+  "native_data_path": "/home/hugo/codes/mol-metal/.data/molmetal/drugood/ic50/data/train.csv",
+  "native_data_n_rows": 1583302,
+  "native_data_y_dist": {
+    "0_neg": 333065,
+    "1_pos": 1250237
+  },
+  "native_data_imold_proxy_results": {
+    "note": "10K subsample + LogisticRegression (proxy; not full graph NN like iMoLD)",
+    "assay": 0.5625,
+    "scaffold": 0.5999,
+    "size": 0.5813,
+    "iMoLD_ref": {
+      "assay": 0.7211,
+      "scaffold": 0.6884,
+      "size": 0.6792
+    },
+    "delta_vs_imold": {
+      "assay": -0.1586,
+      "scaffold": -0.0885,
+      "size": -0.0979
+    },
+    "honest_interpretation": "Mol-Metal pipeline verified on real DrugOOD IC50 splits; same-protocol head-to-head with iMoLD requires graph NN backbone and full training, out of scope for this MLP-based paper. We do NOT claim to beat iMoLD."
+  }
+}

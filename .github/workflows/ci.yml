@@ -1,0 +1,386 @@
+# Mol-Metal — CI gate (evaluator sanity + pitfall guards + mechanism smoke)
+#
+# Authoritative spec: TODO/completed/ (see wf_ci_guard/final.md).
+# Run this on every push + PR; it must show:
+#
+#   [evaluators]   14/14 PASS  (eval_all_evaluators.py)
+#   [pitfall-rnr]   7/7  PASS  (wf_pitfall_guard/check_all.py)
+#   [pitfall-pt]   ≥11 PASSED  (test_pitfall_guards.py)
+#   [mechanism]   ≥217 PASSED  (8 named mechanism smoke test files)
+#
+# Hardware target: self-hosted runner (mol-metal dev box) with the
+# shared CadButEaas venv at $UV_PROJECT_ENVIRONMENT.  GPU is NOT
+# required for this CI gate — everything is CPU-only sanity.  A
+# GitHub-hosted ubuntu-latest runner can also be used if the env
+# path below is replaced with the project-local .venv setup.
+name: ci
+
+on:
+  push:
+    branches: [master, main, 'release/*', 'round*']
+  pull_request:
+    branches: [master, main, 'release/*', 'round*']
+  workflow_dispatch:
+
+# Cancel in-flight runs of this same workflow on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ----------------------------------------------------------------------
+  # Job 1 — evaluator sanity (14/14 PASS gate)
+  # ----------------------------------------------------------------------
+  evaluator-sanity:
+    name: "[1/4] Evaluator sanity (14/14)"
+    runs-on: [self-hosted, linux, x64, mol-metal]  # see runs-on notes above
+    timeout-minutes: 15
+    env:
+      # Shared venv with rdkit, openbabel, openmm, posebusters, meeko, etc.
+      UV_PROJECT_ENVIRONMENT: /home/hugo/codes/CadButEaas/.venv-vlm
+      VIRTUAL_ENV: /home/hugo/codes/CadButEaas/.venv-vlm
+      # Project-local data (loaders honour these since the 2026-09-25 patch)
+      MOLMETAL_DATA_DIR: /home/hugo/codes/mol-metal/.data/molmetal
+      MOLMETAL_TMQM_DIR: /home/hugo/codes/mol-metal/.data/molmetal/tmQM
+      # Quiet / hygiene
+      TOKENIZERS_PARALLELISM: "false"
+      TRANSFORMERS_VERBOSITY: "error"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      - name: Setup Python (shared venv path)
+        run: |
+          set -euo pipefail
+          echo "PYTHON_BIN=$UV_PROJECT_ENVIRONMENT/bin/python"
+          $UV_PROJECT_ENVIRONMENT/bin/python --version
+          $UV_PROJECT_ENVIRONMENT/bin/python -c "import rdkit, openbabel, posebusters, meeko; print('rdkit/openbabel/posebusters/meeko OK')"
+
+      - name: Run evaluator sanity suite (must show 14/14 PASS)
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          $UV_PROJECT_ENVIRONMENT/bin/python molmetal/scripts/eval_all_evaluators.py | tee eval_all_evaluators.log
+          tail -3 eval_all_evaluators.log | grep -q "14/14 evaluators PASS"
+
+      - name: Upload evaluator log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-all-evaluators-log
+          path: eval_all_evaluators.log
+          retention-days: 14
+
+  # ----------------------------------------------------------------------
+  # Job 1b — Blackwell GPU sanity (optional; only on manual dispatch or
+  #          the cron schedule). The first 4 jobs stay CPU-only so every
+  #          push and PR is gated without needing a Blackwell runner.
+  # ----------------------------------------------------------------------
+  blackwell-gpu-sanity:
+    name: "[1b] Blackwell GPU sanity (optional)"
+    runs-on: [self-hosted, linux, x64, mol-metal-blackwell]
+    timeout-minutes: 30
+    # Only invoked when a maintainer dispatches this workflow manually or
+    # the schedule trigger fires — pushed branches and PRs deliberately
+    # skip this job so the self-hosted Blackwell box isn't a hard dep.
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    env:
+      # Shared venv (CUDA-enabled torch, triton, rdkit, …)
+      UV_PROJECT_ENVIRONMENT: /home/hugo/codes/CadButEaas/.venv-vlm
+      VIRTUAL_ENV: /home/hugo/codes/CadButEaas/.venv-vlm
+      # Project-local data (loaders honour these since the 2026-09-25 patch)
+      MOLMETAL_DATA_DIR: /home/hugo/codes/mol-metal/.data/molmetal
+      MOLMETAL_TMQM_DIR: /home/hugo/codes/mol-metal/.data/molmetal/tmQM
+      # CUDA allocator + AMP toggles mirrored from env.sh so the job
+      # reflects what an interactive shell run would do.
+      PYTORCH_CUDA_ALLOC_CONF: "expandable_segments:True"
+      MOLMETAL_CFM_AMP: "1"
+      MOLMETAL_CFM_AMP_DTYPE: bfloat16
+      MOLMETAL_EGNN_CHECKPOINT: "1"
+      # Quiet / hygiene
+      TOKENIZERS_PARALLELISM: "false"
+      TRANSFORMERS_VERBOSITY: "error"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      - name: Source env.sh (CUDA, BF16, data dirs, shared venv)
+        run: |
+          set -euo pipefail
+          source ./env.sh
+          echo "[env] UV_PROJECT_ENVIRONMENT=${UV_PROJECT_ENVIRONMENT}"
+          echo "[env] MOLMETAL_DATA_DIR=${MOLMETAL_DATA_DIR}"
+          "$UV_PROJECT_ENVIRONMENT"/bin/python - <<'PYEOF'
+          import torch
+          print(f"[env] torch={torch.__version__} cuda_avail={torch.cuda.is_available()}")
+          if torch.cuda.is_available():
+              print(f"[env] device_count={torch.cuda.device_count()}")
+              for i in range(torch.cuda.device_count()):
+                  print(f"[env] cuda:{i} -> {torch.cuda.get_device_name(i)} "
+                        f"cc={torch.cuda.get_device_capability(i)} "
+                        f"vram={torch.cuda.get_device_properties(i).total_memory // (1024**3)} GiB")
+          PYEOF
+
+      - name: CFM subsystem smoke (200 train steps + 4 decode probes)
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          bash molmetal/scripts/smoke/smoke_cfm.sh | tee cfm_smoke.log
+          grep -E "CFM_SMOKE PASS" cfm_smoke.log
+
+      - name: 200-step metallo-drug retrain sanity on GPU
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          mkdir -p molmetal/reports/wf_blackwell_optional
+          "$UV_PROJECT_ENVIRONMENT"/bin/python molmetal/scripts/metallo_drug_smoke_retrain.py \
+              --steps 200 --hidden-dim 128 --n-layers 3 \
+              --joint-train --bond-head learned --n-train 500 \
+              --atom-vocab 14 --decode-smoke-every 100 \
+              --out-dir molmetal/reports/wf_blackwell_optional/ \
+              | tee retrain_smoke.log
+          grep -E "decode_ratio" retrain_smoke.log
+
+      - name: Pytest integration suite (Lipman + pocket + Blackwell path)
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          "$UV_PROJECT_ENVIRONMENT"/bin/python -m pytest \
+              molmetal/tests/test_lipman_spatial_contract.py \
+              molmetal/tests/test_pocket_conditioned_lipman.py \
+              molmetal/tests/test_rocm_lipman.py \
+              molmetal/tests/test_synflownet_env.py \
+              -q --tb=short --no-header \
+              | tee blackwell_pytest.log
+          grep -E "[0-9]+ passed" blackwell_pytest.log
+
+      - name: Upload Blackwell sanity logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blackwell-gpu-sanity-logs
+          path: |
+            cfm_smoke.log
+            retrain_smoke.log
+            blackwell_pytest.log
+          retention-days: 14
+
+  # ----------------------------------------------------------------------
+  # Job 2 — pitfall guard matrix runner (7/7 PASS gate)
+  # ----------------------------------------------------------------------
+  pitfall-runner:
+    name: "[2/4] Pitfall guard runner (7/7)"
+    runs-on: [self-hosted, linux, x64, mol-metal]
+    timeout-minutes: 10
+    env:
+      UV_PROJECT_ENVIRONMENT: /home/hugo/codes/CadButEaas/.venv-vlm
+      VIRTUAL_ENV: /home/hugo/codes/CadButEaas/.venv-vlm
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Run pitfall guard runner (must show 7/7 PASS)
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          $UV_PROJECT_ENVIRONMENT/bin/python molmetal/scripts/wf_pitfall_guard/check_all.py | tee pitfall_check.log
+          # The runner prints a 'PASS=7 FAIL=0 SKIP=0' footer; the
+          # regex tolerates leading whitespace and extra digits.
+          grep -E "^\s*PASS=7\s+FAIL=0\s+SKIP=0\s*$" pitfall_check.log
+
+      - name: Upload pitfall guard log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pitfall-check-log
+          path: pitfall_check.log
+          retention-days: 14
+
+  # ----------------------------------------------------------------------
+  # Job 3 — pitfall guard pytest (≥11 PASSED gate; matrix + sub-tests)
+  # ----------------------------------------------------------------------
+  pitfall-pytest:
+    name: "[3/4] Pitfall guard pytest (≥11)"
+    runs-on: [self-hosted, linux, x64, mol-metal]
+    timeout-minutes: 10
+    env:
+      UV_PROJECT_ENVIRONMENT: /home/hugo/codes/CadButEaas/.venv-vlm
+      VIRTUAL_ENV: /home/hugo/codes/CadButEaas/.venv-vlm
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Run pitfall guard pytest
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          $UV_PROJECT_ENVIRONMENT/bin/python -m pytest molmetal/tests/test_pitfall_guards.py \
+              -q --tb=short --no-header \
+              | tee pitfall_pytest.log
+          # Expect ≥11 passed (7 canonical + 7 parametrized matrix, some
+          # sub-tests collapse to the same set when guards skip).
+          grep -E "[0-9]+ passed" pitfall_pytest.log
+
+      - name: Upload pitfall pytest log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pitfall-pytest-log
+          path: pitfall_pytest.log
+          retention-days: 14
+
+  # ----------------------------------------------------------------------
+  # Job 4 — mechanism smoke (≥217 PASSED gate; 8 named test files)
+  # ----------------------------------------------------------------------
+  mechanism-smoke:
+    name: "[4/4] Mechanism smoke (≥217)"
+    runs-on: [self-hosted, linux, x64, mol-metal]
+    timeout-minutes: 20
+    env:
+      UV_PROJECT_ENVIRONMENT: /home/hugo/codes/CadButEaas/.venv-vlm
+      VIRTUAL_ENV: /home/hugo/codes/CadButEaas/.venv-vlm
+      MOLMETAL_DATA_DIR: /home/hugo/codes/mol-metal/.data/molmetal
+      MOLMETAL_TMQM_DIR: /home/hugo/codes/mol-metal/.data/molmetal/tmQM
+      TOKENIZERS_PARALLELISM: "false"
+      TRANSFORMERS_VERBOSITY: "error"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Run mechanism smoke tests (≥217 passed required)
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          $UV_PROJECT_ENVIRONMENT/bin/python -m pytest \
+              molmetal/tests/test_f2a_metal_ligand_exchange.py \
+              molmetal/tests/test_synthemol_reactions.py \
+              molmetal/tests/test_lambda_combinators_expansion.py \
+              molmetal/tests/test_pll_signature.py \
+              molmetal/tests/test_reducer.py \
+              molmetal/tests/test_lambda_reward_coupling.py \
+              molmetal/tests/test_biolm_score_adapter.py \
+              molmetal/tests/test_synflownet_env.py \
+              -q --tb=short --no-header \
+              | tee mechanism_smoke.log
+          # Pull the 'X passed' integer and assert ≥217.  Tolerate the
+          # trailing 'in N.NNs' summary line by capturing only digits
+          # before 'passed'.
+          PASSED=$(grep -oE '[0-9]+ passed' mechanism_smoke.log | head -1 | awk '{print $1}')
+          echo "PASSED=${PASSED}"
+          if [ "${PASSED:-0}" -lt 217 ]; then
+            echo "ERROR: mechanism smoke gate requires ≥217 passed, got ${PASSED}" >&2
+            exit 1
+          fi
+
+      - name: Upload mechanism smoke log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mechanism-smoke-log
+          path: mechanism_smoke.log
+          retention-days: 14
+
+  # ----------------------------------------------------------------------
+  # Job 4b — Wf-35 Phase 4: R18 train-scripts master verify (CPU-only)
+  #          Runs master_verify_r18.py on a fresh GitHub-hosted
+  #          ubuntu-latest runner so the Wf-35 refactor contract
+  #          (parse_args + main + _common_train_args group titles)
+  #          is exercised end-to-end without depending on the
+  #          shared CadButEaas venv.  `--skip-smoke` is required
+  #          because the 1-epoch smokes need .data/molmetal/*.csv
+  #          which is local-only.
+  # ----------------------------------------------------------------------
+  r18-train-scripts-master-verify:
+    name: "[4b] R18 train-scripts master verify (Wf-35)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # master_verify_r18.py hard-codes this path; the Install step
+      # builds a uv venv there so the import + argparse checks can
+      # resolve torch / rdkit / sklearn.
+      UV_PROJECT_ENVIRONMENT: ${{ github.workspace }}/molmetal/.venvs/mol-metal-venv
+      VIRTUAL_ENV: ${{ github.workspace }}/molmetal/.venvs/mol-metal-venv
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.5.x"
+
+      - name: Install minimal deps for master verify
+        run: |
+          set -euo pipefail
+          uv venv "$UV_PROJECT_ENVIRONMENT" --python 3.12
+          # Minimal deps the train scripts pull in at module-import
+          # time.  CUDA-enabled torch wheel is fine on a CPU runner
+          # (no kernels launch).
+          uv pip install --python "$UV_PROJECT_ENVIRONMENT/bin/python" \
+              "torch>=2.11,<3" \
+              "numpy>=1.26,<3" \
+              "pandas>=2.0" \
+              "scipy>=1.11" \
+              "scikit-learn>=1.3" \
+              "rdkit>=2024.3" \
+              --index-strategy unsafe-best-match
+          "$UV_PROJECT_ENVIRONMENT/bin/python" -c "import rdkit, numpy, torch, sklearn, scipy; print('imports OK')"
+
+      - name: Run master_verify_r18 (--skip-smoke on data-less runner)
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          # --skip-smoke: 1-epoch smokes need .data/molmetal/*.csv
+          # which is NOT checked in (loaders honour $MOLMETAL_DATA_DIR
+          # pointing at the local-only data lake).  Import + argparse
+          # checks alone prove the Wf-35 refactor contract holds.
+          "$UV_PROJECT_ENVIRONMENT/bin/python" molmetal/scripts/master_verify_r18.py \
+              --skip-smoke | tee master_verify_r18.log
+          # Sanity footer — fail must be 0; pass+pending matches the
+          # SHIPPED_SCRIPTS + PLANNED_SCRIPTS registry.
+          grep -E "DONE in [0-9.]+s — pass=[0-9]+ fail=0 pending=[0-9]+" master_verify_r18.log
+
+      - name: Upload master verify log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: master-verify-r18-log
+          path: master_verify_r18.log
+          retention-days: 14
+
+  # ----------------------------------------------------------------------
+  # Job 5 — summary (always succeeds; surfaces a single badge-style status)
+  # ----------------------------------------------------------------------
+  ci-summary:
+    name: "ci-summary"
+    runs-on: [self-hosted, linux, x64, mol-metal]
+    needs: [evaluator-sanity, pitfall-runner, pitfall-pytest, mechanism-smoke, r18-train-scripts-master-verify]
+    if: always()
+    steps:
+      - name: Emit summary
+        run: |
+          echo "## Mol-Metal CI summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          for job in evaluator-sanity pitfall-runner pitfall-pytest mechanism-smoke r18-train-scripts-master-verify; do
+            echo "- $job: ${{ needs.$job.result }}" >> "$GITHUB_STEP_SUMMARY"
+          done

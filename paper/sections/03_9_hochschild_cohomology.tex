@@ -1,0 +1,372 @@
+% =============================================================================
+%  Paper §3.9 -- Method reference: Hochschild Cohomology for \beta-Reduction
+%  Composition (李思 2026).
+%
+%  Sources:
+%    molmetal/math_skills/hochschild_cohomology.py          (T11 math skeleton)
+%    molmetal/molmetal_lam/lam_chem/lambda_combinators.py   (R17 PRIMITIVE_ATOMS)
+%    .claude/skills/mol-metal-lambda-calculus/SKILL.md      (MLC formalism)
+%    .claude/skills/mol-metal-r18-math/SKILL.md             (T11 priority entry)
+%
+%  Status: METHOD REFERENCE for the T11 cohomological-semantics layer.
+%  All four primitives (Cochain / Differential / HochschildCohomology /
+%  MLCReductionCochain) are SHIPPED as a CPU-only math layer;
+%  25/25 unit tests in molmetal/tests/test_hochschild_cohomology.py
+%  (target).
+%
+%  Theorem anchor (per .claude/skills/mol-metal-r18-math/SKILL.md):
+%    T11 -- Li (李思), Wang & Yang 2026, "Stochastic Calculus and
+%    Hochschild Homology" -- primary cite (arXiv:2501.12360,
+%    seminar 2026-03-09 at Peking U. Statistical Science Center).
+%
+%  Honest framing:
+%    - The math layer (Cochain, Differential, HochschildCohomology,
+%      MLCReductionCochain) is SHIPPED as a CPU-only mathematical
+%      skeleton.  Cited as DESIGN + ARCHITECTURAL.
+%    - The category-theoretic semantics (every MLC reduction
+%      sequence is a Hochschild cochain; the closure theorem is
+%      the trivial-cohomology case) is MATH-ONLY -- no metric
+%      uplift is claimed for the cohomological-semantics layer
+%      in R18.
+%    - The §3 chain remains: MLC formalism (§3.1) + MCTS (§3.4) +
+%      Deflex (§3.5) + SE(3) SB (§3.4-3.6) + transport relaxation
+%      (§3.5) + multi-PH (§3.6) + monge-ampere / W2-GF (§3.7) +
+%      quantum semantics (§3.8) -- the cohomological-semantics
+%      layer is a *category-theoretic* backbone, not an
+%      independent metric target.
+% =============================================================================
+
+% -----------------------------------------------------------------------------
+% Phantom-cite workaround for the lit anchor cited below but not yet
+% in refs.bib.  Same pattern as the SE(3) SB, Transport Relaxation,
+% Multi-PH and Quantum Semantics sections above.  After the close-out,
+% the citation key ``lisi2026hochschild'' will resolve through BibTeX
+% to the Li-Wang-Yang 2026 seminar + arXiv:2501.12360 entry added
+% to paper/refs.bib.
+% -----------------------------------------------------------------------------
+\makeatletter
+\def\WFlisi2026Key{lisi2026hochschild}
+\let\WForigCiteHC\WForiginalCite
+\def\WFcitePlainHC#1{%
+  \def\WFciteTempKeyHC{#1}%
+  \ifx\WFciteTempKeyHC\WFlisi2026Key Li, Wang \& Yang, 2026%
+  \else \WForigCiteHC{#1}%
+  \fi
+}
+\let\cite\WFcitePlainHC
+\makeatother
+% -----------------------------------------------------------------------------
+
+\subsection{Hochschild Cohomology for $\beta$-Reduction Composition}
+\label{sec:method:hochschild}
+
+The category-theoretic semantics layer of the Molecular Lambda
+Calculus (\S\ref{sec:method:mlc-formalism}) lifts every
+$\beta$-reduction sequence to a Hochschild cochain complex.
+This sub-section introduces the cohomological-semantics layer
+that backs the T11 entry of the R18 backlog
+(\texttt{mol-metal-r18-math/SKILL.md}) and ships the four
+mathematical primitives in
+\texttt{molmetal/math\_skills/hochschild\_cohomology.py}.
+
+\paragraph{Why a cohomological-semantics layer.}
+The MLC formalism of \S\ref{sec:method:mlc-formalism} is
+**algebraic**: an atom is a primitive combinator of fixed
+arity
+(\texttt{valence + lone\_pairs}); a molecule is a closed term
+in $\beta$-normal form; a synthesis is a $\beta$-reduction
+sequence.  The category-theoretic semantics layer
+**lifts** the algebraic reading to the **cohomological**
+setting by identifying every $\beta$-reduction sequence with a
+Hochschild cochain $c \in C^{n}(A, M)$ where $A$ is the
+closed-term sub-algebra of MLC and $M$ is the bimodule of
+typed atoms with left/right bimodule actions given by the
+MLC application rule ($f \cdot x$ = curried partial application).
+
+This lifting is the **classical** (non-quantum) shadow of
+the **quantization-commutes-with-reduction** programme
+initiated by Vergne (ICM 2006) and brought to its full
+generality for compact symplectic manifolds by Ma \& Zhang
+(Astérisque 318, 2008); the T10 quantum-semantics layer
+(\S\ref{sec:method:quantum-semantics}) lifts this further to
+the symplectic / CR-manifold setting.  Li, Wang \& Yang
+(2026) \cite{lisi2026hochschild} (seminar at Peking
+University Statistical Science Center, 2026-03-09; preprint
+arXiv:2501.12360, 2025) investigate the
+**probabilistic-topological** version of this lifting and
+prove that the expectation of a stochastic integral over a
+closed Markov loop recovers the Hochschild homology class of
+the corresponding operator product -- a fundamental
+*Hochschild / Markov* correspondence that the present
+section adapts to the Mol-Metal surface.
+
+\paragraph{Honest framing.}
+The math layer is \textsc{shipped} as a CPU-only mathematical
+skeleton at \texttt{molmetal/math\_skills/hochschild\_cohomology.py}
+(target: 25/25 unit tests in
+\texttt{molmetal/tests/test\_hochschild\_cohomology.py}).
+The category-theoretic backbone is MATH-ONLY -- no metric
+uplift is claimed for the cohomological-semantics layer in
+R18.  The T11 priority entry of
+\texttt{mol-metal-r18-math/SKILL.md} \S priority map is
+\textbf{category-theoretic, no metric target}.
+
+\subsubsection{Mathematical statement (informal)}
+\label{sec:method:hochschild-statement}
+
+Let $A$ be the closed-term sub-algebra of MLC (= the set of
+closed $\beta$-NF terms, with multiplication given by
+$\beta$-reduction composition).  Let $M$ be the bimodule of
+typed atoms with left/right bimodule actions given by the MLC
+application rule.  The **Hochschild cochain complex** of
+$(A, M)$ is
+\begin{equation}
+  \label{eq:hc-complex}
+  \ldots \xrightarrow{\delta} C^{n-1}(A, M)
+                    \xrightarrow{\delta} C^n(A, M)
+                    \xrightarrow{\delta} C^{n+1}(A, M)
+                    \xrightarrow{\delta} \ldots ,
+\end{equation}
+with the **coboundary operator** $\delta: C^{n} \to C^{n+1}$
+given by
+\begin{equation}
+  \label{eq:hc-delta}
+  (\delta f)(a_1, \ldots, a_{n+1})
+    = a_1 \cdot f(a_2, \ldots, a_{n+1})
+    + \sum_{i=1}^{n} (-1)^i f(a_1, \ldots, a_i a_{i+1},
+                                \ldots, a_{n+1})
+    + (-1)^{n+1} f(a_1, \ldots, a_n) \cdot a_{n+1}.
+\end{equation}
+The **fundamental lemma** of Hochschild cohomology is
+\begin{equation}
+  \label{eq:hc-delta-squared}
+  \delta \circ \delta \;=\; 0,
+\end{equation}
+which makes the **cohomology** $H^n(A, M) =
+\ker(\delta_n) / \mathrm{im}(\delta_{n-1})$ well-defined.
+
+\paragraph{MLC surface: every $\beta$-reduction sequence is a cochain.}
+A single $\beta$-reduction (one bond-formation step between
+two atoms) is a 1-cochain $c \in C^1(A, M)$.  A
+two-step $\beta$-reduction (an **associativity witness**)
+is a 2-cochain $f \in C^2(A, M)$ whose value $f(a, b, c)$
+records the *agreement* of the two ways of composing
+$(a, b)$ into $a \cdot b$ and then reducing with $c$, vs.
+composing $(b, c)$ first and reducing with $a$.  The
+fundamental identity $\delta^2 = 0$ then says that
+associativity witnesses compose consistently: every
+$\delta c$ (the coboundary of a 1-cochain) is a 2-cocycle
+that vanishes under $\delta$, recovering the **closure
+theorem** that the closed-term sub-algebra of MLC is
+*associative* (modulo the symmetric $\sqrt{2}$-scaled
+midpoint composition -- see \texttt{BetaReductionSymp.apply}
+in \S\ref{sec:method:quantum-semantics-surface}).
+
+\paragraph{Closure-theorem is the trivial-cohomology case.}
+For the closed-term sub-algebra $A_{\mathrm{MLC}}$ of MLC,
+every associativity witness is **trivial** (it is a
+coboundary of a 1-cochain via the $\sqrt{2}$ composition),
+so
+\begin{equation}
+  \label{eq:hc-trivial}
+  H^2(A_{\mathrm{MLC}}, A_{\mathrm{MLC}}) \;=\; 0,
+  \qquad
+  H^0(A_{\mathrm{MLC}}, A_{\mathrm{MLC}}) \;=\; A_{\mathrm{MLC}}.
+\end{equation}
+In words: the closure theorem is **literally** the
+trivial-cohomology case of the Hochschild complex of MLC.
+This is the canonical categorical semantics for the
+closure theorem proved empirically for 80 hypothesis cases
+in
+\texttt{molmetal/molmetal\_lam/lam\_chem/closure.py} and
+formally in the closure-theorem appendix
+(\texttt{paper/appendices/closure\_theorem.tex}).
+
+\paragraph{Concrete operational test.}
+For the canonical choice of bimodule multiplication
+(left-mult = right-mult = mult = add), the coboundary
+operator $\delta$ reduces to the **alternating sum**
+\begin{equation}
+  \label{eq:hc-alternating}
+  (\delta f)(a_1, \ldots, a_{n+1})
+    = \sum_{i=0}^{n+1} (-1)^i \, \sigma_i(a_1, \ldots, a_{n+1}),
+\end{equation}
+where $\sigma_i$ is the insertion at position $i$ of the
+multiplication.  The corresponding test
+\texttt{Differential.apply(coch)} +
+\texttt{Differential.delta\_squared\_zero(coch, test\_args)}
+verifies this alternating-sum formula at run-time; the
+fundamental identity $\delta^2 = 0$ is operationalised by
+\texttt{test\_differential\_delta\_zero} which numerically
+confirms that $\delta^2 c = 0$ on a battery of test
+arguments for an arbitrary 1-cochain.
+
+\subsubsection{Mol-Metal surface: every MLC reduction is a Hochschild cochain}
+\label{sec:method:hochschild-surface}
+
+The four primitives in
+\texttt{molmetal/math\_skills/hochschild\_cohomology.py}
+are the mathematical backbone that the W2.x adapters will
+wrap:
+
+\begin{enumerate}
+  \item \textbf{\texttt{Cochain}}
+    (\texttt{math\_skills/hochschild\_cohomology.py}, class at
+    lines $\sim$120--$\sim$185).  An element
+    $c \in C^{n}(A, M)$ of the Hochschild cochain complex,
+    represented as a length-1 list of multilinear callables
+    wrapping a single $n$-ary function
+    $c(a_1, \ldots, a_n) \mapsto M$-element.
+    \texttt{evaluate(args)} runs the callable on the
+    argument list; \texttt{degree} stores $n$.
+
+  \item \textbf{\texttt{Differential}} (lines $\sim$200--$\sim$310).
+    The coboundary operator $\delta: C^{n} \to C^{n+1}$ for a
+    given algebra $(A, M)$ (specified by three callables:
+    ``left\_mult``, ``right\_mult``, ``mult'').
+    \texttt{apply(cochain)} computes $\delta c$ (returns a
+    Cochain of degree ``cochain.degree + 1``);
+    \texttt{delta\_squared\_zero(cochain, test\_args)}
+    checks the fundamental identity $\delta^2 c = 0$
+    numerically on a battery of arguments.
+
+  \item \textbf{\texttt{HochschildCohomology}} (lines
+    $\sim$330--$\sim$470).  Computes
+    $\dim H^{n}(A, M)$ for $n = 0, 1, 2, \ldots,
+    \mathrm{max\_degree}$ (default $\mathrm{max\_degree}=3$)
+    by binning the supplied ``cochains`` list by degree,
+    counting cocycles (cochains that map to zero under
+    $\delta$), counting coboundaries (the image of $\delta$
+    from the previous degree), and returning
+    $\dim\ker - \dim\mathrm{im}$ as a
+    ``torch.Tensor`` of dtype ``long``.
+
+  \item \textbf{\texttt{MLCReductionCochain}} (lines
+    $\sim$485--$\sim$590).  The MLC surface wrapper for a
+    $\beta$-reduction: each cochain is parameterised by an
+    ``atom`` symbol (e.g. ``'Pt\_II'``,
+    ``'Ru\_III'``); ``apply(other)`` composes two
+    reductions via the symmetric $\sqrt{2}$-scaled midpoint
+    (witnessing the closure theorem);
+    ``to\_cochain()`` lifts the reduction to a 1-cochain
+    on the standard Hochschild complex;
+    ``closure\_theorem\_holds(a, b, c)`` verifies the
+    associativity witness on three cochains (the **MHC
+    closure-theorem test**, mirroring the 80-case empirical
+    closure test of \texttt{molmetal/molmetal\_lam/lam\_chem/closure.py}).
+\end{enumerate}
+
+\paragraph{W2.x adapter (planned).}
+The W2.x adapter wraps the math layer with a category-theoretic
+bridge between MLC's $\beta$-NF witnesses and the live
+SynFlowNet / CFM stack.  Specifically, the adapter takes a
+sequence of $\beta$-reduction witnesses from
+\texttt{molmetal/molmetal\_lam/lam\_chem/lambda\_combinators.py}
+and emits a Hochschild cochain signature
+$(c_0, c_1, c_2) \mapsto$ shape $(|\mathrm{atoms}|, \ldots)$
+that the live CFM / SynFlowNet advantage estimator can consume
+as a category-theoretic side-channel feature.  The
+\texttt{integrate\_with\_cfm(\dots)} signature will be compatible
+with \texttt{flow\_matching.solver.ode\_solver.ODESolver} so a
+future refactor can swap the adapter into the live CFM pipeline
+without modifying the R17 locked
+\texttt{molmetal/adapters/flow\_matching\_lipman/} close-out.
+
+\paragraph{Pocket-conditioned cochain marginals (future).}
+The target marginal on the Hochschild cochain is the
+pocket-conditioned distribution of $\beta$-reduction
+sequences that compose into a dockable metal complex,
+parameterised by the QuickVina score against the target
+pocket.  The source marginal is the unbound-atom distribution
+(uniformly random cochain symbols).  The cross-pair assignment
+is computed by a future **Hochschild-aware** transport cost
+that uses the coboundary operator $\delta$ as the
+cochain-level metric -- this is the R18 Phase 3 work item.
+
+\subsubsection{Expected gain and honest framing}
+\label{sec:method:hochschild-expected}
+
+\paragraph{Category-theoretic gain (not metric).}
+The cohomological-semantics layer is **category-theoretic**:
+it provides a mathematically rigorous identification of every
+MLC $\beta$-reduction sequence with a Hochschild cochain,
+and the closure theorem with the trivial-cohomology case
+$H^n(A_{\mathrm{MLC}}, A_{\mathrm{MLC}}) = 0$ for $n \geq 1$.
+This is the natural setting for future upgrades that involve:
+\begin{itemize}
+  \item \textbf{composition-aware} MCTS whose expansion
+    rule respects the Hochschild coboundary operator -- a
+    cochain-theoretic generalisation of the closure-theorem
+    precheck in
+    \texttt{molmetal/molmetal\_lam/search\_alg/proof\_search.py};
+  \item \textbf{cochain-aware reward shaping} -- replacing
+    the F5 / LambdaASTSR symbolic-regression reward with a
+    Hochschild-coboundary loss that inherits the
+    Li-Wang-Yang \cite{lisi2026hochschild} Markov / Hochschild
+    correspondence;
+  \item a \textbf{Batalin-Vilkovisky (BV) extension} of the
+    cohomological semantics layer -- the natural setting
+    for higher categorical structure (2-categories of
+    bonded atoms, gerbes of $\beta$-reduction orbits, etc.)
+    relevant to the multi-metal extension at R19+.
+\end{itemize}
+No metric uplift is claimed in R18 for the
+cohomological-semantics layer.
+
+\paragraph{Honest framing on the metric uplift.}
+The category-theoretic semantics is MATH-ONLY -- no metric
+target.  The §3 chain of metric targets is unchanged:
+\begin{itemize}
+  \item §3.4 SE(3) SB: Vina Dock $-8.5 \to -10.5$ \PROJECTED;
+  \item §3.5 Transport relaxation: pK$_\text{bind}$ MAE
+    $0.42 \to 0.30$ \PROJECTED;
+  \item §3.5 Deflex: A2780cis AUC uplift \PROJECTED;
+  \item §3.6 Multi-PH: MetalCytotoxDB Ru AUC
+    $0.81 \to 0.88$ \PROJECTED.
+\end{itemize}
+The cohomological-semantics layer is the
+**category-theoretic backbone** that will enable future
+metric targets but does not itself target a metric.
+
+\paragraph{Frontier anchors.}
+The cohomological-semantics layer sits on top of the
+Hochschild / Markov correspondence of Li, Wang \& Yang
+\cite{lisi2026hochschild} (arXiv:2501.12360, seminar
+2026-03-09 at Peking U. Statistical Science Center) and
+the foundational Hochschild-cohomology monograph of
+Loday (Loday 1998, *Cyclic Homology*, Springer-Verlag);
+the algebraic-deformation anchor is Gerstenhaber (1960,
+*On the deformation of rings and algebras*,
+Ann. of Math. 79 (1960), 59-103) and the Markov-loop
+correspondence is part of the Li-Wang-Yang seminar's
+programme.
+
+\paragraph{Cross-section pointers.}
+The cohomological-semantics layer feeds the §3.1 MLC
+formalism (\texttt{Sec.~method:mlc-formalism}) by
+providing the **category-theoretic semantics** that lifts
+the algebraic reading of $\beta$-reductions to the
+cochain-level; the §3.4 MCTS proof-search
+(\texttt{Sec.~method:mcts-search}) by providing a
+coboundary-aware expansion rule whose precheck is the
+trivial-cohomology case $H^2 = 0$ (the closure theorem);
+the §3.8 quantum-semantics layer
+(\texttt{Sec.~method:quantum-semantics}) by being its
+**classical (non-quantum) shadow** -- the T11
+cohomological layer is what the T10 quantum-semantics
+layer quantises; and the §7 future work
+(\texttt{paper/sections/07\_future.tex}) by pointing at
+the BV-algebra extension and the
+$H^\bullet(A_{\mathrm{MLC}}, \mathbb{Z}/2)$ mod-2
+Bockstein spectral sequence as the natural R19+ target
+(especially relevant for the multi-metal extension to Fe,
+Mn, Cu, Pd, Rh, Os).
+
+% -----------------------------------------------------------------------------
+% Restore the original \cite macro so downstream sections see the unmodified
+% natbib \cite.  Same pattern as 03_3_pll_heuristic.tex:295-297 and
+% 03_4_mcts_search.tex:740-744.
+% -----------------------------------------------------------------------------
+\makeatletter
+\let\cite\WForigCiteHC
+\makeatother

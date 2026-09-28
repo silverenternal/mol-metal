@@ -740,6 +740,177 @@ def test_diversity_bonus_ranks_unique_first():
 
 
 # ---------------------------------------------------------------------------
+# Test 9b — Wf-180: tanimoto_distance_to_set reward
+# ---------------------------------------------------------------------------
+def test_tanimoto_distance_to_set_ranks_diverse_higher():
+    """Wf-180 — ``RewardAggregator.tanimoto_distance_to_set`` returns
+    a higher mean Morgan-ECFP4 Tanimoto distance for a candidate
+    that is *chemically* distinct from the rest of the result set
+    than for a candidate that is a near-duplicate of one of them.
+
+    The MCTS rank-time block consults this helper to add a continuous
+    diversity bonus ``w_tanimoto_distance * mean_tanimoto_distance``
+    on top of the aggregated scalar reward.  This test exercises the
+    helper end-to-end on a real RDKit-fingerprinted fixture (4
+    candidates → 1 unique + 3 near-duplicates + 1 same as the
+    duplicate).  Verifies:
+
+    (a) The unique candidate (``aspirin``) gets mean Tanimoto distance
+        ≥ 0.5 from the rest of the result set (well-separated
+        chemically).
+    (b) The near-duplicate candidate (``caffeine`` next to
+        ``1,3,7-trimethylxanthine``) gets mean Tanimoto distance
+        < 0.5 (close to its neighbours).
+    (c) The unique candidate strictly outranks the duplicate on the
+        helper score (i.e. ``unique_td > duplicate_td``).
+    (d) An empty result set returns 0.0 (no-op).
+    (e) A candidate that is identical to every other member returns a
+        Tanimoto distance close to 0.0 (singleton-mode penalty).
+    """
+    try:
+        from molmetal_lam.search_alg.proof_search import RewardAggregator
+    except Exception as exc:  # pragma: no cover
+        pytest.skip(f"RewardAggregator unavailable: {exc}")
+    try:
+        from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+    except Exception as exc:  # pragma: no cover
+        pytest.skip(f"MoleculeClosedTerm unavailable: {exc}")
+
+    agg = RewardAggregator()
+
+    # aspirin = unique; caffeine + theophylline (1,3-dimethylxanthine)
+    # + theobromine (3,7-dimethylxanthine) = three near-duplicate
+    # xanthine alkaloids with pairwise Tanimoto similarity ~0.65+ on
+    # Morgan-ECFP4.  The "main duplicate" we'll compare against is
+    # one of those three.
+    unique_smi = "CC(=O)Oc1ccccc1C(=O)O"             # aspirin
+    duplicate_smi = "CN1C=NC2=C1C(=O)N(C(=O)N2C)C"   # caffeine
+    near_dup_1 = "Cn1cnc2c1c(=O)[nH]c(=O)n2C"        # theophylline (1,3-dimethylxanthine)
+    near_dup_2 = "Cn1cnc2c1c(=O)n(C)c(=O)n2"        # theobromine (3,7-dimethylxanthine)
+
+    def _stub(smi: str):
+        # Return a stub object that the helper can call
+        # ``canonical_smiles()`` on — we already pass a real SMILES
+        # string so canonicalisation round-trips to itself.
+        class _S:
+            def __init__(self, s):
+                self._s = s
+            def canonical_smiles(self):
+                return self._s
+        return _S(smi)
+
+    unique = _stub(unique_smi)
+    main_dup = _stub(duplicate_smi)
+    result_set = [_stub(near_dup_1), _stub(near_dup_2), main_dup]
+
+    # Pre-check the candidate_smi kwarg path also works (uses real
+    # SMILES rather than re-canonicalising) — this is the production
+    # path: the search loop has already computed
+    # ``state.canonical_smiles()`` once at leaf-evaluation.
+    td_unique_pre = agg.tanimoto_distance_to_set(
+        unique, result_set, candidate_smi=unique_smi,
+    )
+    td_unique_post = agg.tanimoto_distance_to_set(unique, result_set)
+    assert td_unique_pre == td_unique_post, (
+        f"candidate_smi kwarg should be deterministic; got "
+        f"pre={td_unique_pre} post={td_unique_post}"
+    )
+
+    # (a) Unique candidate mean Tanimoto distance ≥ 0.5.
+    assert td_unique_post >= 0.5, (
+        f"aspirin must be chemically distant from the xanthine "
+        f"alkaloids (≥ 0.5 mean Tanimoto distance); got "
+        f"{td_unique_post}"
+    )
+
+    # (b) Duplicate candidate mean Tanimoto distance < 0.5.
+    td_duplicate = agg.tanimoto_distance_to_set(main_dup, result_set)
+    assert td_duplicate < 0.5, (
+        f"caffeine vs two dimethylxanthines must be chemically close "
+        f"(< 0.5 mean Tanimoto distance); got {td_duplicate}"
+    )
+
+    # (c) Unique strictly outranks the duplicate on Tanimoto distance
+    # (this is the rank-time signal that lifts m7).
+    assert td_unique_post > td_duplicate, (
+        f"Unique candidate {td_unique_post} must rank strictly above "
+        f"the near-duplicate {td_duplicate} on Tanimoto distance"
+    )
+
+    # (d) Empty result set returns 0.0.
+    td_solo = agg.tanimoto_distance_to_set(unique, [])
+    assert td_solo == 0.0, (
+        f"Empty result set must return 0.0; got {td_solo}"
+    )
+
+    # (e) Singleton-mode candidate (identical to every other member)
+    # returns Tanimoto distance close to 0.0 — the rank-time penalty.
+    singleton_self = _stub(unique_smi)
+    td_self = agg.tanimoto_distance_to_set(
+        singleton_self, [_stub(unique_smi)], candidate_smi=unique_smi,
+    )
+    # Self is excluded by identity; if there are no OTHERS the mean
+    # is 0.0 (the helper returns 0.0 when the iteration set is empty).
+    assert 0.0 <= td_self <= 0.05, (
+        f"Singleton-membership candidate must score ≈0.0 Tanimoto "
+        f"distance (no parsable neighbours); got {td_self}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Test 9c — Wf-180: w_tanimoto_distance field default + opt-in
+# ---------------------------------------------------------------------------
+def test_w_tanimoto_distance_default_is_off():
+    """Wf-180 — ``RewardAggregator.w_tanimoto_distance`` defaults to
+    ``0.0`` so the existing scalar-reward behaviour is bit-for-bit
+    unchanged when the new channel is not wired.
+
+    Asserts the dataclass default and verifies that flipping the
+    weight on (without flipping the diversity bonus weight) leaves
+    the diversity_bonus contract unchanged — the rank-time block
+    must call :meth:`tanimoto_distance_to_set` only when
+    ``w_tanimoto_distance > 0``.
+    """
+    try:
+        from molmetal_lam.search_alg.proof_search import RewardAggregator
+    except Exception as exc:  # pragma: no cover
+        pytest.skip(f"RewardAggregator unavailable: {exc}")
+
+    # (a) Default is off.
+    agg = RewardAggregator()
+    assert float(getattr(agg, "w_tanimoto_distance", -1)) == 0.0, (
+        f"w_tanimoto_distance must default to 0.0 (off); got "
+        f"{agg.w_tanimoto_distance}"
+    )
+
+    # (b) min_tanimoto_floor defaults to 0.0 (no floor).
+    assert float(getattr(agg, "min_tanimoto_floor", -1)) == 0.0, (
+        f"min_tanimoto_floor must default to 0.0 (off); got "
+        f"{agg.min_tanimoto_floor}"
+    )
+
+    # (c) Flipping on does not change the diversity_bonus contract
+    # (binary uniqueness bonus should still be 1.0 for a unique
+    # candidate).
+    agg2 = RewardAggregator(w_tanimoto_distance=0.1, min_tanimoto_floor=0.05)
+
+    class _SmiStub:
+        def __init__(self, smi):
+            self._smi = smi
+        def canonical_smiles(self):
+            return self._smi
+
+    unique = _SmiStub("UNIQUE_xyz_Wf180")
+    repeated = _SmiStub("REPEAT_Wf180")
+    result_set = [unique, repeated, _SmiStub("REPEAT_Wf180")]
+    bonus_unique = agg2.diversity_bonus(unique, result_set)
+    assert bonus_unique == 1.0, (
+        f"diversity_bonus must remain 1.0 for unique even when "
+        f"w_tanimoto_distance is on; got {bonus_unique}"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Test 10 — WF-Lambda-Fix-FullPath Fix 4: non_seed metric excludes seed
 # ---------------------------------------------------------------------------
 def test_metal_compliance_non_seed_excludes_seed():

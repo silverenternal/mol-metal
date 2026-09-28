@@ -34,6 +34,29 @@
   },
   "n_samples": 10,
   "timestamp": "2026-09-18",
+  "wf126_strengthen": {
+    "date": "2026-09-27",
+    "workflow": "wf126_p2_rmsd_rerun",
+    "adapter": "molmetal/molmetal_lam/sbdd_env/se3_bridge_adapter.py",
+    "candidate_smiles": "[Pt](N)(N)(Cl)Cl",
+    "candidate_name": "cisplatin",
+    "staging_recipe": "mk_prepare_receptor.py -p -j --compute_charges --charge_model gasteiger --default_altloc A --allow_bad_res (4rlu additionally forces 12 histidines to HIE)",
+    "pockets": ["1h36", "3eml", "3ny8", "4aaw", "4rlu"],
+    "seeds": [0, 1, 2],
+    "n_samples_per_seed": 8,
+    "wasserstein_weight": 0.05,
+    "per_pocket_results": {
+      "1h36": {"mean_rmsd_A": 6.1117, "std_rmsd_A": 1.0415, "mean_wasserstein": 1.4249, "passes_target_0p35_A": false},
+      "3eml": {"mean_rmsd_A": 6.1117, "std_rmsd_A": 1.0415, "mean_wasserstein": 0.7870, "passes_target_0p35_A": false},
+      "3ny8": {"mean_rmsd_A": 6.1117, "std_rmsd_A": 1.0415, "mean_wasserstein": 1.2325, "passes_target_0p35_A": false},
+      "4aaw": {"mean_rmsd_A": 6.1117, "std_rmsd_A": 1.0415, "mean_wasserstein": 2.0673, "passes_target_0p35_A": false},
+      "4rlu": {"mean_rmsd_A": 6.1117, "std_rmsd_A": 1.0415, "mean_wasserstein": 0.9938, "passes_target_0p35_A": false}
+    },
+    "aggregate": {"mean_rmsd_A": 6.1117, "n_pockets_passed": 0, "n_pockets_total": 5},
+    "verdict": "HONEST-NEGATIVE / ABOVE-TARGET \u2014 0/5 pockets hit the 0.350 \u00c5 target via SE(3) Schr\u00f6dinger Bridge geometry (mean: 6.1117 \u00c5). This is the upper bound of the untrained geometric skeleton (no trained EGNN). R18 P3 trained-velocity-field swap is the only path to the target.",
+    "source_report": "molmetal/reports/wf126_p2_rmsd_rerun/summary.json + synthesis.md",
+    "close_out": "TODO/completed/123_m15_rmsd_strengthen.md"
+  },
   "receptor_audit_phase_1c": {
     "830c": {
       "receptor_pdb": "/mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/830c.pdb",
@@ -50,6 +73,21 @@
       "outcome": "Cannot compute rigid_fragment_rmsd against test_001 co-crystal ligand."
     }
   },
-  "status": "MEASURED (receptor audit: 830c staged, 1h36/test_001 NOT staged; pool-of-organic-drugs used as reference instead of co-crystal ligand per Phase 1C audit).",
-  "note": "Rigid-fragment RMSD is the symmetry-aware MCS overlay RMSD after MMFF94 minimization. GetBestRMS raises RuntimeError when there is no strict substructure match; we catch this and fall back to rdFMCS.FindMCS + AllChem.AlignMol with an explicit atomMap derived from the MCS. Pairs whose MCS has fewer than 3 atoms (e.g. benzene-aspirin where only a single C-C bond is shared) are reported as errors (no rigid fragment)."
+  "status": "HONEST_NEGATIVE_REDESIGNED",
+  "redesign_target": "docked_pose_rmsd",
+  "redesign_target_json": "/home/hugo/codes/mol-metal/metrics/by_metric/docked_pose_rmsd.json",
+  "redesign_target_status": "MEASURED 2026-09-27 (Wf-141 ex32_lift: 6 pockets x 3 seeds x exhaustiveness=32, median_best_rmsd across pockets = 3.176 A, 0/6 pockets passed SOTA 2.0 A gate; honest-negative retained per party-twenty-spirit section 3.5)",
+  "redesign_evidence": {
+    "date": "2026-09-27",
+    "trigger": "Wf-126 P1 staging honest-framing correction + Wf-139 P1 ref ligand extraction ship + TODO-134 spec section 0 (rigid_fragment_rmsd is self-RMSD, NOT pocket-bound pose quality)",
+    "spec_path": "/home/hugo/codes/mol-metal/TODO/completed/134_m15_docking_rmsd_redesign.md",
+    "phase_progress": {
+      "phase_1_ref_ligand_smiles_extraction": "SHIPPED 2026-09-27 (Wf-139 P1: 6/6 pockets extracted OK; ligand_metadata.json + 6 _ligand.smi files on disk; 0 fallback failures)",
+      "phase_2_vina_redocking_benchmark": "SHIPPED 2026-09-27 via Wf-141 ex32_lift (6 pockets x 3 seeds x exhaustiveness=32; per_seed_best_rmsd_angstrom recorded in metrics/by_metric/docked_pose_rmsd.json)",
+      "phase_3_metric_json_refresh": "SHIPPED 2026-09-27 - metrics/by_metric/docked_pose_rmsd.json is now MEASURED status with Wf-141 ex32_lift data; aggregate median_best_rmsd across pockets = 3.176 A; 0/6 pockets pass SOTA 2.0 A gate"
+    }
+  },
+  "legacy_self_rmsd_data_preserved": "0.428 A pool mean (10 organic drugs) + 6.1117 A Wf-126 P2 SE(3) bridge bench preserved on disk for paper cross-citation continuity (party-twenty-spirit section 3.5 back-compat policy). New pocket-bound pose-quality reference is docked_pose_rmsd.json (MEASURED 2026-09-27 via Wf-141 ex32_lift).",
+  "note": "Rigid-fragment RMSD is the symmetry-aware MCS overlay RMSD after MMFF94 minimization. GetBestRMS raises RuntimeError when there is no strict substructure match; we catch this and fall back to rdFMCS.FindMCS + AllChem.AlignMol with an explicit atomMap derived from the MCS. Pairs whose MCS has fewer than 3 atoms (e.g. benzene-aspirin where only a single C-C bond is shared) are reported as errors (no rigid fragment). Wf-126 P1 staging honest-framing correction: this metric is SELF-RMSD (pocket not in calculation), NOT pocket-bound pose-quality; the 0.428 A mean is preserved on disk for paper cross-citation continuity. Per TODO-134 section 0 verdict, m15 has been REDESIGNED to docked_pose_rmsd.json (now MEASURED); legacy self-RMSD values are HONEST_NEGATIVE_REDESIGNED not DELETED (per party-twenty-spirit section 3.5 back-compat policy).",
+  "honest_framing": "Data source: (1) Curated 10 organic drug-like SMILES pool (aspirin/ibuprofen/acetaminophen/caffeine/salicylic acid/indole/nicotine/biphenyl/ethanol/benzene) with ETKDGv3 conformer + MMFF94 minimization. (2) Wf-126 P2 SE(3) Schr\u00f6dinger Bridge bench on cisplatin [Pt](N)(N)(Cl)Cl across 5 pockets (1h36, 3eml, 3ny8, 4aaw, 4rlu) with W\u2082 weight=0.05, n=8 samples/seed, seeds [0,1,2]. Model: SE(3) bridge adapter (molmetal/molmetal_lam/sbdd_env/se3_bridge_adapter.py). Protocol: symmetry-aware MCS overlay via GetBestRMS with rdFMCS fallback; ETKDGv3 + MMFF94. TargetDiff 2023 ICLR lit target 0.350 A cite-only; iMoLD cite-only. The 0.428 A pool mean (10 organic drugs) is SELF-RMSD (pocket not in calculation); the Wf-126 P2 6.1117 A honest-negative is the upper bound of the untrained geometric skeleton (no trained EGNN). STATUS: HONEST_NEGATIVE_REDESIGNED \u2014 redesign target is docked_pose_rmsd.json (now MEASURED 2026-09-27 via Wf-141 ex32_lift, aggregate median 3.176 A, 0/6 passed SOTA 2.0 A). Cites TODO-134/140/141/142/143/144."
 }

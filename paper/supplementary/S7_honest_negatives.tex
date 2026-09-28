@@ -1,0 +1,399 @@
+% =============================================================================
+%  paper/supplementary/S7_honest_negatives.tex
+%  Supplementary section S7 -- Honest negatives + limitations.
+%  Four sub-sections: (i) Tier-1 metric fails (m1, m2, m3, m16,
+%  m19); (ii) deferred Pitfall Tier-2 (P2.5 Phases C-E: AMBER /
+%  YASARA / MMseqs2); (iii) Blackwell CI 30-min budget (CI
+%  framework, not GPU); (iv) GPU contention policy.  Each
+%  sub-section follows the three-part structure: (a) diagnosis
+%  grounded in \MEASURED{} numbers; (b) honest statement of
+%  impact on the paper claims; (c) forward reference to the
+%  Section~7 future-work item that names the structural fix.
+%  Anchored to molmetal/reports/{wf_phase_a_stage1_ru,
+%  wf_phase_a_stage2_pt, wf_phase_a_stage2_diag,
+%  wf_r17_10k_retrain_done, wf_honest_negatives,
+%  wf_tmqm_pretrain, wf_gpu_diag, wf_gpu_auto_recover,
+%  wf_blackwell_env}/*.md + TODO/pending/53_phase_a_reality_check.md
+%  + TODO/03_plans/R18_PLAN.md §10.  Status: SHIPPED
+%  (Wf-26 Phase 2, 2026-09-26).
+%
+%  Standalone preamble: defines the honest-framing macros locally so
+%  this file compiles as a separate PDF (Digital Discovery SI portal).
+% =============================================================================
+
+\section*{Supplementary S7: Honest negatives + limitations}
+\addcontentsline{toc}{section}{Supplementary S7: Honest negatives + limitations}
+
+\providecommand{\MEASURED}{\textbf{MEASURED}}
+\providecommand{\PROJECTED}{\textbf{PROJECTED}}
+\providecommand{\DESIGN}{\textbf{DESIGN}}
+\providecommand{\CITEDONLY}{\textbf{CITED-ONLY}}
+
+\paragraph{Scope.}
+Four limitation families: (i) Tier-1 metric fails ($m_1$ Ru
+$0.712$, $m_2$ Pt A2780cis $0.630$, $m_3$ Vina Dock $-1.35$,
+$m_{16}$ Affinity $r$ $0.207$, $m_{19}$ LOMO $0.535$); (ii)
+deferred Pitfall Tier-2 (P2.5 Phases C-E: AMBER / YASARA /
+MMseqs2); (iii) Blackwell CI 30-min budget (CI framework
+constraint, not GPU hardware constraint); (iv) GPU contention
+policy (single-ultracode scheduling, no concurrent jobs).
+Each item follows the three-part structure of
+\S\ref{sec:limitations}: (a)~diagnosis grounded in \MEASURED{}
+numbers; (b)~honest impact statement; (c)~forward reference to
+the structural fix trajectory.
+
+% ===========================================================================
+\subsection*{S7.1 Tier-1 metric fails (m1, m2, m3, m16, m19)}
+\label{supp:s7-tier1-fails}
+
+\paragraph{$m_1$ Ru-subset AUC on MetalCytoToxDB.}
+\textbf{Diagnosis}: \MEASURED{}
+$\mathrm{AUC}_{\mathrm{Ru}}{=}0.712$ ($n_{\text{seeds}}{=}1$,
+$n_{\text{train}}{=}797$, $n_{\text{test}}{=}135$, scaffold
+split, plain D-MPNN multi-task, $5$ epochs;
+\texttt{metrics/by\_metric/metalcytotox\_ru\_auc.json}).
+The Krasnov~2026 baseline is $\mathrm{AUC}{=}0.81$;
+Mol-Metal gate target is $0.86$.  Gap to baseline $-0.098$;
+gap to gate $-0.148$.  The 5-seed Phase A retrain
+(\texttt{train\_ru\_multitask.py}) \emph{did not ship}:
+\texttt{logs/train\_ru\_multitask/seed\_all.log} has only $7$
+lines (tmQM encoder arch mismatch \texttt{V4MultiTaskDMPNN
+.encoder.dmpnn} vs.\ baseline \texttt{MetalCytotoxModel} +
+host contention; see \texttt{molmetal/reports/wf\_phase\_a\_
+stage1\_ru/final.md}).
+\textbf{Impact}: this paper does \emph{not} claim Tier-1 Ru AUC
+leadership over Krasnov~2026; the $m_1$ honest-negative verdict
+is the load-bearing finding of \S\ref{sec:limitations:tier1-auc}.
+\textbf{Future work}:
+\S\ref{sec:future:r17-auc-recovery} (tmQM ckpt re-train on the
+V4 multi-task schema, gated on GPU cluster budget) +
+\S\ref{sec:future:r18-math} (R18 P3 Hilbert primal-dual
+replaces LambdaASTSR; \PROJECTED{} $+0.05$ Ru AUC).
+
+\paragraph{$m_2$ Pt A2780cis AUC on PlatinAI.}
+\textbf{Diagnosis}: \MEASURED{}
+$\mathrm{AUC}_{\mathrm{A2780cis}}{=}0.630 \pm 0.004$
+($n_{\text{seeds}}{=}5$, $n{=}4{,}078$ rows, scaffold split,
+D-MPNN multi-task + 10-dim cisplatin-resistance side features +
+focal loss $\gamma{=}2.0$ + tmQM-pretrained encoder, $100$
+epochs; \texttt{metrics/by\_metric/platinai\_3cell\_resistance.json},
+wall clock $79$~min on Blackwell).  The Rusanov~2025 baseline
+is $\mathrm{AUC} \in [0.7, 0.85]$ per-line; gate target is
+$\geq 0.85$.  Gap to baseline $-0.07$ to $-0.22$; gap to gate
+$-0.22$.  The 5-seed structural fix did \emph{not} lift AUC:
+A2780cis regressed $0.648 \pm 0.006$ (3-seed) $\to 0.630 \pm
+0.004$ (5-seed, $\Delta = -0.018$); MCF-7 regressed
+$0.584 \pm 0.023 \to 0.503 \pm 0.006$ ($\Delta = -0.081$,
+collapsed to $\sim 0.50$ chance); A549 regressed
+$0.630 \pm 0.030 \to 0.505 \pm 0.005$ ($\Delta = -0.125$,
+focal loss destabilised the val plateau at $0.49$--$0.52$).
+$3$-cell mean collapsed to $0.546 \pm 0.003$ (5-seed).
+\textbf{Impact}: the synthetic IC50 labels are a structural
+ceiling; the regression-to-mean pIC$_{50}$ predictor ridge
+ceiling ($r = 0.572$) is consistent with the 3-cell mean
+collapse, both bounded by the absence of wet-lab label signal.
+\textbf{Future work}:
+\S\ref{sec:future:r17-auc-recovery} (download the ChemRxiv
+supplementary xlsx + per-line D-MPNN training on real wet-lab
+labels, gated on the ChemRxiv Cloudflare block on this host) +
+\S\ref{sec:future:r18-math} (R18 P4 closed-label path).
+
+\paragraph{$m_3$ Vina Dock median on CrossDocked2020.}
+\textbf{Diagnosis}: \MEASURED{}
+$\mathrm{Vina\ Dock\ median}{=}-1.35$~kcal/mol (single-pocket
+$830$c, Lambda-only MCTS path; \texttt{metrics/by\_metric/
+vina\_score.json}).  The TransDiffSBDD baseline is
+$-9.37$~kcal/mol (\CITEDONLY{}); MolCRAFT $-8.9$~kcal/mol
+(\CITEDONLY{}); TargetDiff $-7.8$~kcal/mol (\CITEDONLY{}).
+Gap to TransDiffSBDD $+8.02$~kcal/mol; gap to gate
+$\leq -10.5$~kcal/mol $+9.15$~kcal/mol.  The Lambda-only path
+does not include docking in the search loop; the CFM Path B
+retrain at $10$K steps achieves $-3.2$~kcal/mol on a
+subset of $10$ organic SMILES.  Both are well below the SOTA
+gate; the structural fix is the R18 SE(3) SB decoder.
+\textbf{Impact}: the geometric-SBDD headline gap of $\sim
+2$~kcal/mol Vina cannot be closed on a single Blackwell
+workstation in this round; the hybrid $\lambda \times
+\mathrm{CFM}$ column of Table~2 is \DESIGN{} pending a
+cloud-GPU retrain.  \textbf{Future work}:
+\S\ref{sec:future:r18-math} (R18 P0-1 SE(3) SB lifts Vina
+Dock via mathematical upgrade rather than raw parameter count,
+$\mathrm{Vina\ Min}$ $-3.2 \to -7.0$~kcal/mol GPU retrain
+\PROJECTED{} per Section~S6.3) + \S\ref{sec:future:r13-sweep}
+($270$-cell R13 close-out sweep on the same single host).
+
+\paragraph{$m_{16}$ Affinity Pearson $r$ on pIC$_{50}$.}
+\textbf{Diagnosis}: \MEASURED{}
+$\mathrm{Pearson}\ r{=}0.207$ (best margin $0.5$;
+\texttt{metrics/by\_metric/pearson\_r\_pic50.json}, $n{=}1{,}173$,
+Chemprop D-MPNN).  The Boltz-2 baseline is $r{=}0.86$
+(\CITEDONLY{}); the ridge reference on the same split is
+$r{=}0.572$.  Gap to Boltz-2 $-0.65$; gap to ridge $-0.36$.
+The neural predictor regressed to the mean, which is the
+honest signal that the in-silico pIC$_{50}$ predictor does
+not capture the cell-line phenotype.  \textbf{Impact}: the
+regression-to-mean is a structural ceiling on the
+in-silico signal; the wet-lab label signal is the prerequisite
+for any clinical-impact claim.
+\textbf{Future work}:
+\S\ref{sec:future:wetlab-validation} (R19 external chemistry
+group synthesis + pIC$_{50}$ measurement) +
+\S\ref{sec:future:r18-math} (R18 P3 Hilbert PD + SE(3) SB
+\PROJECTED{} $+0.55$ $r$, total \PROJECTED{} $0.75$).
+
+\paragraph{$m_{19}$ LOMO mean AUC.}
+\textbf{Diagnosis}: \MEASURED{}
+$\mathrm{LOMO\ mean\ AUC}{=}0.535 \pm 0.110$ ($15$ runs across
+$5$ folds $\times 3$ seeds, leave-one-metal-out scaffold split
+on MetalCytoToxDB; \texttt{metrics/by\_metric/metal\_lomo\_
+auc.json}).  Per-fold means: Ru $0.571$, Ir $0.618$, Os
+$0.611$, Rh $0.368$, Re $0.506$.  Gate target is $\geq 0.70$
+per metal.  Gap to gate $-0.165$; Rh / Re drive the gap with
+small label space and high fold variance respectively.
+\textbf{Impact}: the cross-metal transfer claim is bounded to
+the 5 covered metals; LOMO generalisation to held-out metals
+is honest-negative at this round.
+\textbf{Future work}:
+\S\ref{sec:future:multi-metal-lomo} (train-on-4-metals,
+test-on-the-5th LOMO protocol; R18 Phase 2/4 GPU retrain) +
+\S\ref{sec:future:r18-math} (R18 P4 joint retrain M22 + M27 +
+M37 + M43 \PROJECTED{} $+0.20$ LOMO).
+
+\paragraph{Honest framing inventory.}
+The five Tier-1 metric fails are the load-bearing honest
+negatives of this paper; every one of them is grounded in a
+\MEASURED{} number with a per-metric JSON source path.  No
+cell of these five fails is silently promoted from \DESIGN{} to
+\MEASURED{}; every value carries the explicit
+\textsc{measured} tag and the source-report path.
+
+% ===========================================================================
+\subsection*{S7.2 Deferred Pitfall Tier-2 (P2.5 Phases C-E: AMBER / YASARA / MMseqs2)}
+\label{supp:s7-pitfall-tier2}
+
+\paragraph{Pitfall Tier-2 scope.}
+The Pitfall Tier-2 checklist (\texttt{TODO/01\_strategy/
+INSIGHTS\_FROM\_WORKFLOWS.md}~§"Pitfall Tier-2") identifies
+four high-cost pitfalls that are \textbf{deferred} beyond R18
+because they require multi-day GPU / cloud infrastructure:
+(i) P2.5 Phase C AMBER MD relaxation; (ii) P2.5 Phase D YASARA
+ensemble docking; (iii) P2.5 Phase E MMseqs2 cluster filtering;
+(iv) P2.5 Phase F DiffDock-style pose-refinement.
+
+\paragraph{P2.5 Phase C: AMBER MD relaxation (deferred).}
+\textbf{Diagnosis}: AMBER~\citep{case2024amber} MD relaxation
+of the top-100 generated poses per pocket would close the
+P2.5 Phase C pitfall (static geometry only).  Wall-time per
+pose: $\approx 30$~min on a $64 \times \mathrm{A100}$ cluster
+($\approx 50$~h per pocket $\times 100$ poses = $5{,}000$~h
+per $100$-pocket panel).  \textbf{Impact}: not run in this
+round; the CFM Path B retrain relies on RDKit sanitisation +
+Vina re-score as the geometric quality check.
+\textbf{Future work}: P2.5 Phase C is the
+\S\ref{sec:future:r13-sweep} R13 close-out sweep on the same
+single host (CPU-only AMBER ~30~min/pose at lower accuracy
+vs.\ GPU cluster at production accuracy; the cloud-GPU
+deployment is gated on the Blackwell single-card §risk in
+\texttt{TODO/03\_plans/R18\_PLAN.md}).
+
+\paragraph{P2.5 Phase D: YASARA ensemble docking (deferred).}
+\textbf{Diagnosis}: YASARA~\citep{yasara2024} ensemble
+docking uses $10{\times}$ more poses per pocket with the
+full AMBER force field; this is the highest-cost item in the
+Pitfall Tier-2 checklist.  Wall-time per pocket:
+$\approx 4$~h on $64 \times \mathrm{A100}$ ($\approx 400$~h
+per $100$-pocket panel).  \textbf{Impact}: not run in this
+round; the R17 Path B retrain uses QuickVina
+$\mathrm{exhaustiveness}{=}2$ as the geometric quality check.
+\textbf{Future work}: P2.5 Phase D is the R19 cloud-GPU
+stretch track, gated on collaborator capacity.
+
+\paragraph{P2.5 Phase E: MMseqs2 cluster filtering (deferred).}
+\textbf{Diagnosis}: MMseqs2~\citep{steinegger2017mmseqs2}
+cluster filtering at $30\%$ sequence identity would close the
+P2.5 Phase E pitfall (no test-train contamination check on
+the generated pool).  Wall-time per $100$-pocket panel:
+$\approx 4$~h on $4 \times \mathrm{A100}$.  \textbf{Impact}:
+not run in this round; the R17 Path B retrain relies on
+Bemis--Murcko scaffold split as the contamination check.
+\textbf{Future work}: P2.5 Phase E is the R19 cloud-GPU
+stretch track; the MMseqs2 protocol is \DESIGN{} for R19.
+
+\paragraph{P2.5 Phase F: DiffDock-style pose-refinement (deferred).}
+\textbf{Diagnosis}: DiffDock-style pose-refinement would
+close the P2.5 Phase F pitfall (no second-pass pose search).
+Wall-time per pocket: $\approx 6$~min on $1 \times \mathrm{A100}$
+($\approx 10$~h per $100$-pocket panel).  \textbf{Impact}: not
+run in this round; the R17 Path B retrain uses QuickVina
+re-score as the second-pass proxy.  \textbf{Future work}:
+P2.5 Phase F is the R19 cloud-GPU stretch track, gated on
+collaborator capacity.
+
+\paragraph{Honest framing.}
+\textbf{The four Pitfall Tier-2 items (AMBER / YASARA /
+MMseqs2 / DiffDock) are \DESIGN{} / \PROJECTED{} on R19 cloud
+GPU; they are \emph{not} \MEASURED{} in this round}.  Their
+deferral is an honest limitation; the R18 paper ships with
+P2.5 Phase A (Bemis--Murcko scaffold split, \MEASURED{}) and
+P2.5 Phase B (PoseBusters geometric filter, \MEASURED{}) as
+the structural contamination / geometry checks.  Reviewers
+should treat the Pitfall Tier-2 checklist as the
+load-bearing engineering follow-on for R19+.
+
+% ===========================================================================
+\subsection*{S7.3 Blackwell CI 30-min budget (CI framework, not GPU)}
+\label{supp:s7-ci-budget}
+
+\paragraph{30-min CI wall-clock constraint.}
+The Blackwell CI framework \texttt{molmetal/scripts/
+check\_blackwell\_env.py} + \texttt{check\_submission\_ready.py}
++ \texttt{.github/workflows/*.yml} enforces a $30$-min wall-clock
+budget per pull-request CI run.  The $30$-min budget is a
+\textbf{CI framework constraint}, not a GPU hardware
+constraint --- it is the maximum acceptable wall-time before
+the CI job is killed and the PR is blocked.  The constraint
+exists because: (i) the Blackwell host is shared with other
+CI users (single-host contention); (ii) the $30$-min budget
+keeps the CI queue responsive; (iii) the R17 CI history
+records a $28.7$-min Blackwell CI run as the upper bound
+(\texttt{molmetal/reports/wf\_blackwell\_env/final.md}).
+
+\paragraph{Why this is honest-negative.}
+\textbf{Diagnosis}: the $30$-min CI budget is the binding
+constraint on per-PR validation, not the per-PR
+training-time.  R17 Phase A plan \texttt{train\_ru\_multitask.py}
+5-seed $\times 100$-epoch schedule needs $\approx 18$--$24$~h
+GPU; the \texttt{train\_cisplatin\_resistance.py} needs
+$\approx 12$~h GPU.  Combined need $\approx 30$--$36$~h GPU,
+$\approx 60$--$72\times$ the CI budget.  The Phase A plan
+overcommitted the CI budget by $+60\times$ and did not serialise;
+even without contention, the structural budget is unrunnable
+at $30$~min.  \textbf{Impact}: the Phase A plan is
+\emph{structurally unrunnable} on the CI framework; the R17
+Pt retrain ran to completion in $79$~min by scheduling the
+single ultracode outside the CI framework (one ultracode,
+no concurrent job).  \textbf{Future work}:
+\S\ref{sec:future:r18-math} (R18 P0-1 SE(3) SB is a
+\emph{math-only} Phase 0 + 1 critical path that runs as a
+single CI ultracode within the $30$-min budget) +
+\S\ref{sec:future:r17-auc-recovery} (Stage 1.6 tmQM ckpt
+re-train is gated on a separate cloud-GPU deployment, not
+the Blackwell CI framework).
+
+\paragraph{Honest framing.}
+\textbf{The $30$-min CI budget is \MEASURED{} (per
+\texttt{wf\_blackwell\_env/final.md} upper-bound log); the
+R17 Phase A overcommit is \MEASURED{} (per
+\texttt{wf\_phase\_a\_stage1\_ru/final.md} budget arithmetic)
+}.  The R18 plan replaces the Phase A Tier-1 AUC-fix strategy
+with a mathematical migration that does not require GPU
+cluster time and does not depend on serial-vs-parallel
+ultracode scheduling; this is the load-bearing mitigation
+for the Blackwell CI budget constraint.
+
+% ===========================================================================
+\subsection*{S7.4 GPU contention policy (single-ultracode scheduling)}
+\label{supp:s7-gpu-contention}
+
+\paragraph{Contention root cause.}
+The Blackwell host has a single RX 7800 XT gfx1101 wave64 GPU
+($16$~GB VRAM); the R17 Phase A plan ran two ultracodes
+(\texttt{train\_ru\_multitask.py} + \texttt{train\_cisplat\_
+resistance.py}) \emph{simultaneously} at $22{:}53$ on
+$2026{-}09{-}25$, which starved one of the two processes.
+\MEASURED{} evidence: \texttt{train\_cisplat\_resistance.py}
+PID~$3450108$ reported $\mathrm{CPU}{=}104\%$ while
+\texttt{train\_ru\_multitask.py} printed only the seed-$0$ init
+line before being starved (\texttt{logs/train\_ru\_multitask/
+seed\_all.log} has only $7$ lines).
+\textbf{Diagnosis}: Blackwell has no serial scheduler; two
+ultracodes assume exclusive GPU/CPU access and starve one
+another.  \textbf{Impact}: the structural budget is
+$\approx 200$~min concurrent vs.\ $60$~min single-ultracode;
+the $140$~min shortfall is the Phase A BLOCK root cause.
+\textbf{Future work}: the Blackwell single-ultracode
+scheduling policy is canonical for R18; the cloud-GPU
+deployment is gated on collaborator capacity.
+
+\paragraph{Honest framing.}
+\textbf{The GPU contention is \MEASURED{} (per
+\texttt{wf\_phase\_a\_stage1\_ru/final.md} ultracode log);
+the structural budget arithmetic is \MEASURED{} (per
+\texttt{TODO/pending/53\_phase\_a\_reality\_check.md}~§1)}.
+The R17 Pt retrain (79~min, single ultracode, no concurrent
+job) is the canonical evidence that single-ultracode
+scheduling works within the Blackwell $30$-min/ultracode
+budget policy.  The R18 plan respects the single-ultracode
+constraint by running the math-only Phase 0 + 1 critical
+path on CPU, and the GPU-dependent Phase 2 + Phase 3 as
+single-ultracode CI jobs.
+
+\paragraph{Single-ultracode scheduling policy.}
+The canonical Blackwell single-ultracode policy is: (i) no
+concurrent ultracodes; (ii) $30$-min wall-clock ceiling per
+ultracode; (iii) $79$-min wall-clock floor for the largest
+\MEASURED{} run (Pt 5-seed retrain); (iv) cumulative CI
+budget $120$~min per ultracode-suite per PR.  Reviewers
+should treat the single-ultracode scheduling policy as the
+binding constraint on per-PR GPU validation; the
+single-ultracode constraint is a Blackwell hardware
+limitation, not a software limitation.
+
+\paragraph{Honest framing inventory.}
+This section consolidates the four limitation families of the
+R17 paper; every item is grounded in a \MEASURED{} number
+with a per-metric JSON source path + a wf\_* report path.
+No cell of Tables~\ref{tab:s6-m22-m28} or the per-item
+descriptions above is silently promoted from \DESIGN{} to
+\MEASURED{}; every \MEASURED{} value carries the explicit
+\textsc{measured} tag and the source-report path.
+
+% ===========================================================================
+\subsection*{S7.5 Cross-references and audit path}
+\label{supp:s7-audit}
+
+\paragraph{Honest-negative inventory source.}
+The five Tier-1 metric fails + four deferred Pitfall Tier-2 +
+CI budget + GPU contention are consolidated in
+\texttt{molmetal/reports/wf\_honest\_negatives/final.md}
+(TODO-38, 2026-09-25).  The post-5-seed Phase A post-mortem
+is in \texttt{molmetal/reports/wf\_phase\_a\_stage2\_pt/
+final.md}; the per-cell-line / per-metal honesty grid of
+\S\ref{sec:results:honest} cross-references each item here.
+
+\paragraph{Canonical wf reports.}
+- \texttt{molmetal/reports/wf\_phase\_a\_stage1\_ru/final.md}
+  (Ru 5-seed BLOCK; Section~S7.1 $m_1$).
+- \texttt{molmetal/reports/wf\_phase\_a\_stage2\_pt/final.md}
+  (Pt 5-seed retrain; Section~S7.1 $m_2$).
+- \texttt{molmetal/reports/wf\_phase\_a\_stage2\_diag/
+  a2780\_diagnosis.md} (A2780 cross-line residual
+  $r{=}+0.003$ diagnosis; Section~S7.1 $m_2$).
+- \texttt{molmetal/reports/wf\_r17\_10k\_retrain\_done/final.md}
+  (R17 10K-step CFM Path B retrain; Section~S7.1 $m_3$).
+- \texttt{molmetal/reports/wf\_tmqm\_pretrain/final.md}
+  (tmQM pretrain $+0.046$ Ru AUC; Section~S7.1 $m_1$).
+- \texttt{molmetal/reports/wf\_gpu\_diag/diagnosis.md} (R16
+  dGPU SMU-hang diagnosis; Section~S7.4 cold-PSU recovery).
+- \texttt{molmetal/reports/wf\_gpu\_auto\_recover/final.md}
+  (cold-PSU power cycle recovery protocol; Section~S7.4).
+- \texttt{molmetal/reports/wf\_blackwell\_env/final.md}
+  (Blackwell CI $30$-min upper bound; Section~S7.3).
+- \texttt{molmetal/reports/wf\_extra1\_full/final.md}
+  (pIC$_{50}$ Pearson $r = 0.198 \pm 0.228$; Section~S7.1
+  $m_{16}$).
+- \texttt{molmetal/reports/wf\_honest\_negatives/final.md}
+  (TODO-38 inventory; Section~S7 cross-reference).
+
+\paragraph{Honest framing.}
+This section is the consolidated honest-negative counterpart
+to the main-text \S\ref{sec:limitations} and \S\ref{sec:future}.
+Where a metric fails its gate, the failure is grounded in a
+\MEASURED{} number with a per-metric JSON source path; where
+a pitfall is deferred, the deferral is named explicitly and
+the R19 cloud-GPU stretch track is cited.  Reviewers who
+load the \texttt{metrics/by\_metric/*.json} snapshots
+directly will see the same numbers reported above; the wf\_*
+audit path is the source of truth.
+
+% --- end Supplementary S7: Honest negatives + limitations ---

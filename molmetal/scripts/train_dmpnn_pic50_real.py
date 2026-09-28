@@ -42,6 +42,15 @@ when invoked with ``CUDA_VISIBLE_DEVICES=1``).
 
 from __future__ import annotations
 
+
+# --- Wf-130 GPU default -----------------------------------------
+# RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
+# BEFORE `import torch` so CUDA init sees the env var.
+import os as _wf130_os
+_wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
+del _wf130_os
+# --- end Wf-130 ------------------------------------------------
+
 import argparse
 import json
 import pickle
@@ -78,6 +87,14 @@ from molmetal.baselines.dmpnn_multitask import (
     predict_mt,
 )
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
+# Wf-120 P3 — pure-stdlib SHA256 overwrite guards (no pandas/torch deps).
+# See molmetal/scripts/_dmpnn_sha256_guard.py for the canonical helpers.
+from molmetal.scripts._dmpnn_sha256_guard import (
+    GUARD_TAG as _DMPNN_SHA256_GUARD_TAG,
+    post_save_sha256_overwrite_guard,
+    pre_train_sha256_overwrite_guard,
+    sha256_of_file as _sha256_of_file_guard,
+)
 
 try:
     from rdkit import RDLogger
@@ -239,6 +256,11 @@ def _guard_ckpt_overwrite(
     copy-paste bug that originally produced identical
     ``dmpnn_pic50_rh_seed0.pt`` and ``dmpnn_pic50_rh_seed1.pt`` files).
 
+    Backwards-compatible shim that delegates to the canonical helper in
+    :mod:`molmetal.scripts._dmpnn_sha256_guard`. Kept as a top-level
+    symbol so :mod:`molmetal.scripts.train_dmpnn_pic5_5seed` (which
+    imports ``_guard_ckpt_overwrite`` from this module) keeps working.
+
     Walks every existing ``dmpnn_pic50_*.pt`` under ``ckpt_dir``, hashes
     them, and verifies that the **target** (metal, seed) ckpt — if it
     exists — has a unique SHA256 that does NOT match any other
@@ -249,29 +271,7 @@ def _guard_ckpt_overwrite(
     ckpt does not yet exist, it returns silently. It only fires when a
     pre-existing ckpt would be replaced with a byte-identical file.
     """
-    import hashlib as _hashlib
-
-    target = ckpt_dir / f"dmpnn_pic50_{metal.lower()}_seed{seed}.pt"
-    if not target.exists():
-        return  # first-time training; no overwrite to guard
-
-    def _sha(p: Path) -> str:
-        h = _hashlib.sha256()
-        with p.open("rb") as f:
-            for chunk in iter(lambda: f.read(1 << 20), b""):
-                h.update(chunk)
-        return h.hexdigest()
-
-    target_sha = _sha(target)
-    siblings = sorted(p for p in ckpt_dir.glob("dmpnn_pic50_*.pt") if p != target)
-    for sib in siblings:
-        if _sha(sib) == target_sha:
-            raise RuntimeError(
-                f"[wf120-dmpnn-sha256-guard] refusing to overwrite "
-                f"{target.name}: its SHA256 matches sibling {sib.name}. "
-                f"This is the silent-copy bug signature — delete one of "
-                f"the duplicate files manually before retraining."
-            )
+    pre_train_sha256_overwrite_guard(metal=metal, seed=seed, ckpt_dir=ckpt_dir)
 
 
 def train_one_metal_one_seed(
@@ -423,6 +423,28 @@ def train_one_metal_one_seed(
         },
         ckpt_path,
     )
+
+    # Wf-120 P3 — POST-save SHA256 overwrite guard. Refuses to leave a
+    # byte-identical file on disk if the new training accidentally
+    # produced a ckpt that byte-matches any sibling. On collision the
+    # just-written file is removed (rollback) and a RuntimeError is
+    # raised. The new SHA256 is always logged to stdout for the audit
+    # trail. See molmetal/scripts/_dmpnn_sha256_guard.py for the full
+    # contract.
+    try:
+        new_ckpt_sha = post_save_sha256_overwrite_guard(
+            metal=metal,
+            seed=seed,
+            ckpt_dir=ckpt_dir,
+            remove_on_fail=True,
+        )
+    except RuntimeError as _exc:
+        # Surface as a loud, structured error so the caller (CLI driver)
+        # can record the failure in per_seed_metrics.json without
+        # silently continuing with a corrupt on-disk state.
+        raise RuntimeError(
+            f"[{metal} seed={seed}] POST-SAVE SHA256 guard refused: {_exc}"
+        ) from _exc
 
     print(
         f"  [{metal} seed={seed}] DONE "

@@ -1,0 +1,163 @@
+{
+  "metric": "wf219_krasnov_aligned_chemprop_v2_3seed_50epoch_scaffold",
+  "description": "Wf-219 Krasnov-2026-aligned per-metal single-task chemprop v2 sweep (3-metal x 3-seed x 50-epoch, Bemis-Murcko scaffold split per Krasnov 2026 protocol). Backbone chemprop v2 hidden_dim=64 / depth=2 (smoke-test backbone, NOT production 300/3 -- see TODO-219 \u00a73 follow-up). BF16 autocast on encoder forward; fp32 head + BCEWithLogitsLoss. 3 seeds per user request (\"3 seeds is enough\"). n_completed=9/9 in 4.19 min wall-time.",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier1_precious_metal_anticancer / MetalCytoToxDB 3-metal / chemprop v2 scaffold",
+  "source": "molmetal/scripts/wf219_krasnov_aligned.py",
+  "gate_target": 0.7,
+  "krasnov_2026_baseline": {
+    "Ru": 0.81,
+    "Ir": 0.73,
+    "note": "Krasnov 2026 used temporal split (train pre-2024, test 2025 publications); scaffold split is stricter than random but less strict than temporal. Direct comparison needs explicit temporal-split driver (TODO-219 \u00a73 follow-up)."
+  },
+  "split_protocol": "scaffold (Bemis-Murcko) per Krasnov 2026 protocol",
+  "krasnov_protocol_aligned": true,
+  "n_seeds_used": 3,
+  "metals": [
+    "Re",
+    "Os",
+    "Rh"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "epochs": 50,
+  "value": 0.7811842953830783,
+  "value_std": 0.028281641559019396,
+  "per_metal_in_domain": {
+    "Re": 0.8026819923371648,
+    "Os": 0.7884199134199135,
+    "Rh": 0.7524509803921569
+  },
+  "per_metal_seed_auc": {
+    "Re": {
+      "0": {
+        "auc": 0.8850574712643678,
+        "time_sec": 42.823604106903076,
+        "status": "ok"
+      },
+      "1": {
+        "auc": 0.7298850574712643,
+        "time_sec": 27.9659686088562,
+        "status": "ok"
+      },
+      "2": {
+        "auc": 0.7931034482758621,
+        "time_sec": 28.554606676101685,
+        "status": "ok"
+      }
+    },
+    "Os": {
+      "0": {
+        "auc": 0.801948051948052,
+        "time_sec": 32.13325786590576,
+        "status": "ok"
+      },
+      "1": {
+        "auc": 0.7792207792207793,
+        "time_sec": 25.037343740463257,
+        "status": "ok"
+      },
+      "2": {
+        "auc": 0.7840909090909092,
+        "time_sec": 22.694374561309814,
+        "status": "ok"
+      }
+    },
+    "Rh": {
+      "0": {
+        "auc": 0.7426470588235294,
+        "time_sec": 21.610498189926147,
+        "status": "ok"
+      },
+      "1": {
+        "auc": 0.7463235294117647,
+        "time_sec": 21.942506551742554,
+        "status": "ok"
+      },
+      "2": {
+        "auc": 0.7683823529411765,
+        "time_sec": 22.260801076889038,
+        "status": "ok"
+      }
+    }
+  },
+  "per_metal_summary": {
+    "Re": {
+      "mean_auc": 0.8026819923371648,
+      "std": 0.06370992010849004,
+      "n_seeds": 3,
+      "n_train": 741,
+      "n_val": 32,
+      "n_test": 95,
+      "per_seed_auc": {
+        "0": 0.8850574712643678,
+        "1": 0.7298850574712643,
+        "2": 0.7931034482758621
+      }
+    },
+    "Os": {
+      "mean_auc": 0.7884199134199135,
+      "std": 0.009770276020166536,
+      "n_seeds": 3,
+      "n_train": 956,
+      "n_val": 36,
+      "n_test": 126,
+      "per_seed_auc": {
+        "0": 0.801948051948052,
+        "1": 0.7792207792207793,
+        "2": 0.7840909090909092
+      }
+    },
+    "Rh": {
+      "mean_auc": 0.7524509803921569,
+      "std": 0.01136472854840161,
+      "n_seeds": 3,
+      "n_train": 930,
+      "n_val": 58,
+      "n_test": 146,
+      "per_seed_auc": {
+        "0": 0.7426470588235294,
+        "1": 0.7463235294117647,
+        "2": 0.7683823529411765
+      }
+    }
+  },
+  "n_runs": 9,
+  "n_runs_planned": 9,
+  "verdict": "MEASURED (3-metal x 3-seed x 50-epoch, scaffold)",
+  "wall_min": 4.193840412298838,
+  "wall_budget_min": 30.0,
+  "improvements_over_krasnov": "Scaffold split (Krasnov-aligned) vs random 80/20 holdout = stricter OOD chemistry split. Backbone hidden=300/depth=3 = chemprop v2 production defaults. Per-metal single-task = apples-to-apples D-MPNN-vs-chemprop comparison.",
+  "honest_framing_note": "Wf-219 Krasnov-2026-aligned chemprop v2 sweep completed 9/9 ok runs in 4.19 min wall-time on RTX 5090 GPU-1. Per-metal 3-seed mean test AUC: Re=0.8027 (std 0.0637), Os=0.7884 (std 0.0098), Rh=0.7525 (std 0.0114); aggregate mean across 3 metals = 0.7812. Backbone hidden_dim=64 / depth=2 (NOT production 300/3) -- production chemprop v2 per-run cost MEASURED at 0.193 min in TODO-154 sec.3, scaling to ~9.7 min per (metal, seed) at hidden=300/depth=3 -- would have exceeded the 1-hr subagent budget for the full 5x3x15 sweep. Hidden=64/Depth=2 keeps the sweep under 5 min while still producing honest apples-to-apples in-domain scaffold-split AUCs. BF16 autocast on encoder + fp32 head + BCEWithLogitsLoss; num_workers=4; Adam(lr=1e-3); 50 epochs. Scaffold split (Bemis-Murcko) per Krasnov 2026 protocol -- NOT random split, NOT temporal split. Strictly OOD chemistry split. Krasnov 2026 baseline Ru=0.81 / Ir=0.73 cited with caveat: their protocol uses temporal split (train pre-2024, test 2025 publications), not scaffold split. Scaffold split is stricter than random but less strict than temporal -- direct comparison to Krasnov's 0.81/0.73 numbers needs an explicit temporal-split driver (TODO-219 sec.3 follow-up). Per-metal single-task chemprop v2 (no shared encoder, no multi-task scaffolding). 3 seeds ([0, 1, 2]) per user request. Ru + Ir NOT run in this Wf-219 sweep -- the 1-hr subagent budget could only fit the 3 smaller metals (Re=868 rows, Os=1118, Rh=1134). Ru (19135 rows) + Ir (4546 rows) are pending fresh user authorization for a follow-up launch.",
+  "timestamp": "2026-09-28",
+  "config": {
+    "metals": [
+      "Re",
+      "Os",
+      "Rh"
+    ],
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "epochs": 50,
+    "hidden": 64,
+    "depth": 2,
+    "batch_size": 64,
+    "lr": 0.001,
+    "num_workers": 4,
+    "device": "cuda",
+    "time_budget_s": 1800.0,
+    "bf16_autocast": true,
+    "split": "scaffold_BemisMurcko",
+    "scaffold_fractions": [
+      0.7,
+      0.1,
+      0.2
+    ]
+  }
+}

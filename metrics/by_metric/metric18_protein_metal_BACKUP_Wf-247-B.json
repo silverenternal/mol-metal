@@ -1,0 +1,27 @@
+{
+  "metric": "metric18_protein_metal_binding_auc",
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "epochs": 50,
+  "test_auc_mean": 0.7435730745526251,
+  "test_auc_std": 0.009216035837632744,
+  "test_auc_per_seed": [
+    0.7561679280404878,
+    0.7343721629963946,
+    0.7401791326209931
+  ],
+  "test_pr_auc_mean": 0.5694781872338304,
+  "test_pr_auc_per_seed": [
+    0.5859596099576352,
+    0.591607838584695,
+    0.5308671131591609
+  ],
+  "verdict": "baseline",
+  "elapsed_sec": 376.6,
+  "n_rows": 5257,
+  "n_cell_lines": 209,
+  "n_metals": 5
+}

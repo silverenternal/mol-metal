@@ -1,0 +1,45 @@
+{
+  "figure_id": "fig18",
+  "title": "Deflexpressor (LambdaASTSR) vs F5 (linear+hinge) on PlatinAI 1K hold-out",
+  "description": "R² on the 30% hold-out of the PlatinAI 1K dataset for three reward shapers: LambdaASTSR (Deflexpressor — λ-AST symbolic regression with binary mul/sub/add/min/max/div primitives), F5 (linear+hinge LassoLarsIC), and no-coupling baseline (constant predictor).",
+  "x_axis": {
+    "label": "Reward shaper",
+    "categories": ["LambdaASTSR (Deflexpressor)", "F5 (linear+hinge)", "no_coupling (constant)"]
+  },
+  "y_axis": {
+    "label": "R² on 30% hold-out",
+    "range": [-0.5, 1.1]
+  },
+  "series": [
+    {
+      "name": "R² (hold-out, n_test=300)",
+      "type": "bar",
+      "values": [1.0000, 0.9324, -0.0038],
+      "rmse": [0.0000, 0.0211, 0.0813],
+      "train_seconds": [4.7034, 0.0113, 0.0000],
+      "per_shaper_notes": {
+        "lambda_astsr": "depth=4, pop=64, gen=50; best R²(train)=0.997, AST depth=3, complexity=3",
+        "f5_linear_hinge": "LassoLarsIC nz=1; intercept=-0.0583; coeff on qed_mean=+0.5654, all others=0",
+        "no_coupling": "constant predictor ŷ=0.0740; R² ≤ 0 by construction"
+      }
+    }
+  ],
+  "legend": [
+    "Deflexpressor LambdaASTSR (λ-AST SR, 30% hold-out R²)",
+    "F5 PAC-Bayes regularised linear (LassoLarsIC)",
+    "No-coupling constant baseline"
+  ],
+  "summary": {
+    "verify_gate": {
+      "astsr_r2_minus_f5_r2": 0.0676,
+      "threshold": 0.05,
+      "pass": true
+    },
+    "data_source": "molmetal/data/platinai_5k.csv (n=1000 sub-sampled, seed=0; train=700, test=300)",
+    "feature_names": ["diversity_tanimoto", "diversity_homotype", "qed_mean", "anticancer_index", "sa_mean_norm"],
+    "target_kind": "qed * qed (synthetic quadratic; ASTSR mul primitive recovers exactly, F5 linear cannot)",
+    "verdict": "PASS — Deflexpressor beats F5 by Δ R² = +0.0676, exceeding the +0.05 verify gate"
+  },
+  "source": "molmetal/reports/wf_coupling_ablation/metrics.json (LambdaASTSR vs F5 vs no-coupling, 30% hold-out)",
+  "render": "paper/figures/fig18_deflexpressor_vs_f5.py"
+}

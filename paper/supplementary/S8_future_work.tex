@@ -1,0 +1,329 @@
+% =============================================================================
+%  paper/supplementary/S8_future_work.tex
+%  Supplementary section S8 -- Future work + R19+ roadmap.  Three
+%  sub-sections: (i) GPU training plan (Blackwell + RTX 5090);
+%  (ii) wet-lab cooperation plan (R19 external-collaboration
+%  track); (iii) paper v3 timeline (target journal + submission
+%  window).  Anchored to TODO/03_plans/{R18_PLAN,
+%  R18_MATH_MIGRATION_PLAN, R17_AUC_RECOVERY_PLAN}.md +
+%  TODO/01_strategy/PROJECT_STATEMENT.md +
+%  paper/SUBMISSION_CHECKLIST.md +
+%  molmetal/reports/wf_e2e_pipeline/final.md +
+%  molmetal/scripts/{benchmark_r18_end_to_end,
+%  benchmark_r18_metalcytotox, benchmark_r18_platinai}.py.
+%  Status: SHIPPED (Wf-26 Phase 2, 2026-09-26).
+%
+%  Standalone preamble: defines the honest-framing macros locally so
+%  this file compiles as a separate PDF (Digital Discovery SI portal).
+% =============================================================================
+
+\section*{Supplementary S8: Future work + R19+ roadmap}
+\addcontentsline{toc}{section}{Supplementary S8: Future work + R19+ roadmap}
+
+\providecommand{\MEASURED}{\textbf{MEASURED}}
+\providecommand{\PROJECTED}{\textbf{PROJECTED}}
+\providecommand{\DESIGN}{\textbf{DESIGN}}
+\providecommand{\CITEDONLY}{\textbf{CITED-ONLY}}
+
+\paragraph{Scope.}
+Three forward-looking sub-sections: (i) GPU training plan
+(Blackwell + RTX 5090 cluster) for R18 Phase 2--4; (ii)
+wet-lab cooperation plan (R19 external-collaboration track)
+for the in-silico-to-experimental loop; (iii) paper v3
+timeline (target journal + submission window + review
+expectations).  Each sub-section names: (a) target metric;
+(b) estimated effort; (c) reference paper; (d) status legend
+(\textbf{Defer} / \textbf{Future} / \textbf{Open} /
+\textbf{Out-of-scope}).
+
+\paragraph{Status legend.}
+\textbf{Defer} --- the item is on the published roadmap but
+explicitly postponed by a sequencing dependency (e.g.\ R17
+AUC recovery, GPU scheduling, or R18 Phase-2 dependency).
+\textbf{Future} --- the item is in scope for a later round
+(R19 or beyond) and has no immediate driver.
+\textbf{Open} --- the item is a research question with no
+committed timeline.  \textbf{Out-of-scope} --- the item lies
+outside the computational scope of this paper (e.g.\
+wet-lab synthesis).
+
+% ===========================================================================
+\subsection*{S8.1 GPU training plan (Blackwell + RTX 5090)}
+\label{supp:s8-gpu-plan}
+
+\paragraph{Current Blackwell single-host envelope.}
+The R17 close-out measures the Blackwell single-host envelope
+at $79$~min wall-clock for the largest \MEASURED{} run
+(5-seed Pt retrain; \texttt{molmetal/reports/wf\_phase\_a\_
+stage2\_pt/final.md}).  This is a $2.6\times$ overshoot of
+the per-ultracode $30$-min CI budget, but a $1.3\times$
+undershoot of the cumulative $120$-min CI budget when the
+host contention is resolved (single ultracode, no concurrent
+job).  The R17 Pt retrain is the \emph{largest} \MEASURED{}
+Blackwell run to date; the next-largest is the R17 10K-step
+CFM Path B retrain ($5$~h wall-clock, $30$-cell subset).
+
+\paragraph{R18 Phase 2: GPU retrain plan (Blackwell).}
+The R18 Phase 2 retrain plan consumes the R17 Blackwell
+envelope at three checkpoints:
+\begin{itemize}
+  \item \textbf{W1 (math only, CPU)}: P0-1 SE(3) SB math paper
+        + P0-3 Monge-Amp\`ere regularity + P0-4 Wasserstein
+        gradient flow; no GPU time.
+  \item \textbf{W2 (transport relaxation, CPU)}: P1 Sinkhorn
+        + KL soft endpoint; no GPU time.
+  \item \textbf{W3 (SE(3) SB decoder retrain, Blackwell)}:
+        P2-1 SE(3) SB Lie-group velocity field + 100-pocket
+        rerun; estimated $30$~min $\times 1$ ultracode $\times
+        1$ CI run = $30$~min Blackwell wall-clock.
+\end{itemize}
+The Phase 2 Blackwell retrain is the load-bearing evidence
+that the SE(3) SB decoder lifts the geometric-accuracy
+headline metric; the cumulative Blackwell wall-time for W3
+is $\approx 30$~min, well within the per-ultracode $30$-min
+CI budget.
+
+\paragraph{R18 Phase 3: Hilbert PD + Multi-PH GPU retrain (RTX 5090).}
+The R18 Phase 3 GPU retrain consumes the Hilbert primal-dual
++ multi-PH + Score-Repellent MC primitives on a single RTX
+$5090$ host (estimated Blackwell-class equivalent at $1.7\times$
+throughput on FP16 / FP32 mixed-precision).  Estimated
+wall-time: $\approx 8$~h for the full $100 \times 3$ sweep
+(matching the R17 Lambda-only $\sim 8$~h envelope on the same
+panel).  The Phase 3 retrain is the load-bearing evidence
+that M24 (Multi-PH), M25 (Hilbert PD), M26 (Score-Rep MC)
+lift the diversity / success-rate / ASTSR $R^{2}$ headlines.
+
+\paragraph{R18 Phase 4: Joint retrain + LOMO + 9-cell.}
+The R18 Phase 4 GPU retrain consumes the joint
+M22 + M24 + M27 + M37 + M43 mechanisms on the multi-metal
+LOMO + 9-cell NCI-60 panel.  Estimated wall-time:
+$\approx 24$~h on the RTX $5090$ host; the wall-time is the
+binding constraint on the R18 Phase 4 schedule.
+
+\paragraph{RTX 5090 cluster plan (R18 stretch, R19+).}
+For R19+, the canonical GPU plan is a $4 \times \mathrm{RTX\
+5090}$ cluster ($\approx \$12$~K capital expense); this
+cluster provides $\approx 7\times$ the Blackwell single-host
+throughput at production accuracy, and unlocks the
+Pitfall Tier-2 checklist (AMBER / YASARA / MMseqs2 /
+DiffDock-style pose-refinement; cf.\ Section~S7.2).
+\textbf{Target metric}: Phase 4 LOMO mean AUC $0.535 \to
+0.70$; Phase 2 Vina Dock median $-1.35 \to -10.5$~kcal/mol;
+Phase 3 Diversity $0.137 \to 0.75$.
+\textbf{Estimated effort}: $4 \times \mathrm{RTX\ 5090}$
+procurement (2 weeks) + cluster bring-up (1 week) + R19
+stretch integration (4 weeks); net R19 budget $\approx 7$
+weeks.  \textbf{Reference papers}: \citet{krasnov2026metalcytotoxdb,
+rusanov2025platinai, transdiffsbdd2025, molcraft2024,
+alphadrug2024, imold2024}.
+
+\paragraph{Status legend.}  Blackwell single-host retrain:
+\textbf{Future} (R18 Phase 2 / Phase 3 deliverable).
+$4 \times \mathrm{RTX\ 5090}$ cluster: \textbf{Future}
+(R19+ capital expense).
+
+\paragraph{Honest framing.}
+\textbf{The Blackwell single-host envelope is \MEASURED{};
+the R18 Phase 2--4 GPU retrain is \PROJECTED{}; the RTX 5090
+cluster is \PROJECTED{} (R19 stretch)}.  The R18 plan
+respects the single-ultracode scheduling policy per
+Section~S7.4 by running the math-only Phase 0 + 1 critical
+path on CPU and the GPU-dependent Phase 2 + Phase 3 as
+single-ultracode CI jobs.
+
+% ===========================================================================
+\subsection*{S8.2 Wet-lab cooperation plan (R19 external collaboration)}
+\label{supp:s8-wetlab}
+
+\paragraph{R19 external-collaboration track scope.}
+The R19 external-collaboration track (\textbf{Out-of-scope}
+for this paper; \textbf{Future} for R19) consumes the top-5
+list emitted by the R13 close-out sweep + the R18
+geometric-accuracy upgrade.  The track is structured as
+three sub-tracks: (i) synthesis of the top-5 candidates; (ii)
+in-vitro pIC$_{50}$ measurement on the HeLa + A549 + A2780cis
+cell-line panels; (iii) measured-vs-predicted comparison +
+write-up.
+
+\paragraph{Sub-track 1: top-5 candidate synthesis.}
+\textbf{Diagnosis}: the R13 close-out sweep
+(\S\ref{sec:future:r13-sweep}) emits a top-5 list ranked by
+an aggregate of Vina + PoseBusters + ADMET + REINVENT4 +
+homotype-diversity scores; the natural next step is to
+\emph{synthesise} those five candidates via the PlatinAI
+\citep{rusanov2025platinai} protocol (20/20 predictions
+synthesised, strong predicted-vs-observed agreement).  The
+estimated effort: 6 weeks external chemistry-group synthesis
+(gated on collaborator capacity).
+\textbf{Target metric}: 5/5 candidates synthesised; identity
+confirmed by NMR + HRMS.
+
+\paragraph{Sub-track 2: pIC$_{50}$ measurement.}
+\textbf{Diagnosis}: pIC$_{50}$ measurement on the HeLa +
+A549 + A2780cis cell-line panels (3 lines $\times 5$
+candidates $\times 3$ replicates = $45$ wells; $\approx 4$
+weeks wet-lab work).  The estimated effort: 4 weeks
+external-collaborator wet-lab time.  \textbf{Target metric}:
+45/45 wells measured; $\mathrm{GI}_{50}$ reported per cell-line
+per candidate.
+
+\paragraph{Sub-track 3: measured-vs-predicted comparison.}
+\textbf{Diagnosis}: comparison of measured pIC$_{50}$ to the
+in-silico PlatinAI 4-cell-line prediction +
+the R18 geometric-accuracy upgrade prediction.  Estimated
+effort: 2 weeks write-up + external-collaborator review.
+\textbf{Target metric}: Measured-vs-predicted Pearson
+$r \geq 0.50$ on the top-5 (current regression-to-mean
+$r = 0.198 \pm 0.228$ on $n = 1{,}173$, ridge reference
+$r = 0.572$; cf.\ Section~S7.1 $m_{16}$ honest-negative).
+
+\paragraph{Wet-lab cooperation candidate list.}
+The PlatinAI experimental validation in \citep{rusanov2025platinai}
+(which calibrates the PlatinAI-channel oracle in
+\S\ref{sec:evaluation}) is the external chemistry group's
+work and is the closest published experimental anchor.
+External collaborators on the PlatinAI experimental
+validation are the natural candidate for the R19 track; the
+R19 plan is to re-engage the same group for the top-5
+synthesis + pIC$_{50}$ measurement.  The R19 track is
+\textbf{Out-of-scope} for this paper (computational scope
+only); the collaboration track is explicitly named as a
+\textbf{Future} item for R19+.
+
+\paragraph{Honest framing.}
+\textbf{The R19 wet-lab cooperation plan is \PROJECTED{} on
+collaborator capacity; the $r \geq 0.50$ target is the
+expected outcome from the PlatinAI protocol}.  No cell of
+the R19 track is \MEASURED{} in this round; the wet-lab
+label signal is the prerequisite for any clinical-impact
+claim, and the R19 plan is the structural commitment to
+closing the in-silico-to-experimental loop.
+
+% ===========================================================================
+\subsection*{S8.3 Paper v3 timeline (target journal + submission window)}
+\label{supp:s8-paper-v3}
+
+\paragraph{Target journal.}
+The paper v3 submission target is \emph{Digital Discovery}
+(RSC, Q1 IF $8.5$) or \emph{J. Chem. Inf. Model.} (ACS, Q1
+IF $5.6$) per the SUBMISSION_CHECKLIST target list.  The
+target journal for v3 is Digital Discovery (RSC) given the
+R18 mathematical upgrade path + the open-data + open-source
+mandate that Digital Discovery enforces; the secondary
+fallback is J. Chem. Inf. Model. if the Digital Discovery
+reviewer-comment thread requires multi-paper expansion.
+
+\paragraph{Submission window.}
+The paper v3 submission window is \emph{Q1 2027}
+(January--March 2027) per the R18 plan §15 ship + the
+$8$-week R18 timeline (W1--W8 from 2026-10-07 onward).
+The submission window is gated on: (i) R18 Phase 2 GPU
+retrain completion ($\approx$ W5, 2026-11-04); (ii) R18
+Phase 3 GPU retrain completion ($\approx$ W7, 2026-11-18);
+(iii) R18 Phase 4 joint retrain completion ($\approx$ W8,
+2026-11-25); (iv) paper v3 final write-up + skills update
+($\approx$ W10, 2026-12-09); (v) R18 close-out + paper
+final ($\approx$ W12, 2026-12-23).  The submission window
+slips to Q2 2027 if the GPU retrain hits Blackwell single-card
+contention or cloud-GPU deployment delays.
+
+\paragraph{Review expectations.}
+The R18 paper v3 reviewer-comment thread will likely focus on
+three threads: (i) the geometric-accuracy headline lift on
+$m_3$ Vina Dock (the $-10.5$~kcal/mol target); (ii) the
+Tier-1 AUC lift on $m_1$ Ru + $m_2$ Pt A2780cis (the $0.86$
++ $0.85$ gate targets); (iii) the wet-lab validation gap
+(the in-silico-to-experimental loop).  All three threads are
+honestly addressed in \S\ref{sec:limitations} +
+\S\ref{sec:future}; the v3 paper submission package
+includes the R18 Phase 2--4 GPU retrain numbers + the R19
+wet-lab cooperation plan as the structural response.
+
+\paragraph{Paper v3 structural commitments.}
+Paper v3 commits to the following structural changes vs.\ v2:
+(i) the geometric-accuracy headline replaces the
+precious-metal anticancer headline as the load-bearing
+contribution; (ii) the R18 mathematical upgrade (M22 + M23 +
+M24 + M25 + M26 + M27 + M28) is the §3 contribution; (iii)
+the Tier-1 AUC lift is \emph{projected} on the R18 Phase 4
+joint retrain + the wet-lab label fetch; (iv) the wet-lab
+validation gap is named as the R19 external-collaboration
+track.  All four commitments are honest-negative framing of
+the R17 v2 paper's limitations; the v3 paper ships with
+each one addressed by a structural fix trajectory.
+
+\paragraph{Paper v3 timeline.}
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Paper v3 timeline (target journal: Digital
+  Discovery).  Each row lists the phase, the expected
+  completion date, the responsible work item, and the
+  status (projected / measured).}
+  \label{tab:s8-paper-v3}
+  \begin{tabular}{llll}
+    \toprule
+    \textbf{Phase} & \textbf{Date} & \textbf{Work item} &
+      \textbf{Status} \\
+    \midrule
+    R18 W1 (math only, CPU) & 2026-10-13 & P0-1 + P0-3 + P0-4 & \PROJECTED{} \\
+    R18 W2 (transport relaxation, CPU) & 2026-10-20 & P1 Sinkhorn + KL & \PROJECTED{} \\
+    R18 W3 (SE(3) SB Blackwell retrain) & 2026-11-04 & P2-1 Lie-group decoder & \PROJECTED{} \\
+    R18 W4 (MCTS + W-Flow) & 2026-11-11 & M26 + M27 & \PROJECTED{} \\
+    R18 W5 (Multi-PH + MacroGuide) & 2026-11-18 & M24 + M28 & \PROJECTED{} \\
+    R18 W6 (Hilbert PD + joint retrain) & 2026-11-25 & M25 + Phase 4 & \PROJECTED{} \\
+    R18 W7 (LOMO + 9-cell GPU retrain) & 2026-12-02 & Phase 4 LOMO & \PROJECTED{} \\
+    R18 W8 (paper §3 final + skills update) & 2026-12-09 & §3 + 5 skills & \PROJECTED{} \\
+    R18 W10 (paper v3 final write-up) & 2026-12-23 & paper final + bbl & \PROJECTED{} \\
+    R18 W12 (R18 close-out + paper final) & 2027-01-06 & R18 close + submit & \PROJECTED{} \\
+    Submission window Q1 2027 & 2027-01-15 & Digital Discovery submit & \PROJECTED{} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Honest framing.}
+\textbf{All paper v3 timeline entries are \PROJECTED{}; the
+R17 paper v2 is \MEASURED{} on this stack}.  The v3 timeline
+is a structural commitment to the R18 plan §15 ship + the
+R19 wet-lab cooperation plan; the timeline slips to Q2 2027
+if the Blackwell single-card contention or cloud-GPU
+deployment delays materialise.  Reviewers should treat the
+paper v3 timeline as the load-bearing forward reference for
+the R18 / R19 work, not as a guarantee.
+
+\paragraph{Cross-references and audit path.}
+This section is the consolidated future-work counterpart to
+the main-text \S\ref{sec:limitations} and \S\ref{sec:future}.
+Where an item is \PROJECTED{}, the R18 phase responsible for
+the projection is cited (per the M22--M44 mechanism map of
+\texttt{TODO/02\_metrics/MECHANISM\_METRIC\_MAPPING.md} +
+the R18 plan §15 ship timeline); where an item is
+\textbf{Out-of-scope}, the rationale is named explicitly
+(computational paper scope only).
+
+\paragraph{Canonical plans + reports.}
+- \texttt{TODO/03\_plans/R18\_PLAN.md}~§15 (R18 ship timeline;
+  Section~S8.3 timeline).
+- \texttt{TODO/03\_plans/R18\_MATH\_MIGRATION\_PLAN.md}~§3
+  (mathematical migration plan; Section~S8.1 GPU plan).
+- \texttt{TODO/03\_plans/R17\_AUC\_RECOVERY\_PLAN.md}~§3
+  (Phase A plan + Blackwell budget; Section~S8.1 Blackwell
+  envelope).
+- \texttt{paper/SUBMISSION_CHECKLIST.md} (target journal list;
+  Section~S8.3 target journal).
+- \texttt{molmetal/reports/wf\_e2e\_pipeline/final.md}
+  (R18 e2e CPU integration test, success rate $0.742$;
+  Section~S8.1 Blackwell envelope).
+
+\paragraph{Honest framing.}
+This section is the structural forward-looking counterpart to
+the honest-negative framing of Section~S7 + the
+limitations of main-text \S\ref{sec:limitations}.  No cell
+of Tables~\ref{tab:s8-paper-v3} or the per-item descriptions
+above is silently promoted from \DESIGN{} to \MEASURED{};
+every \PROJECTED{} value carries the explicit R18 phase
+responsible for the projection.
+
+% --- end Supplementary S8: Future work + R19+ roadmap ---

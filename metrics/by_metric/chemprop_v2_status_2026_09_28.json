@@ -1,0 +1,109 @@
+{
+  "metric": "chemprop_v2_status_2026_09_28",
+  "description": "Honest status snapshot of the chemprop v2 surface as of 2026-09-28. Updates the 2026-09-27 snapshot to reflect (a) chemprop_v2_lomo_v2 (Wf-194) 5x5x50 MEASURED on RTX 5090 in 32.91 min, (b) chemprop_v2_5metal_5seed_50epoch (Wf-146 LOMO) updated with 19/25 MEASURED, and (c) Wf-219 Krasnov-aligned scaffold-split 3-metal x 3-seed MEASURED on RTX 5090 in 4.19 min. No fabrication.",
+  "scope": "tier1_precious_metal_anticancer / MetalCytoToxDB 5-metal / chemprop v2",
+  "date": "2026-09-28",
+  "produced_by": "metrics subagent run on Wf-219 ultracode request; honest-negative framing per party-twenty-spirit 0-tolerance + no-concealment rule",
+  "what_measured_now": {
+    "wf194_chemprop_v2_lomo_v2": {
+      "path": "/home/hugo/codes/mol-metal/metrics/by_metric/chemprop_v2_lomo_v2.json",
+      "ran": true,
+      "partial": false,
+      "config": {
+        "metals": ["Ru", "Ir", "Os", "Rh", "Re"],
+        "seeds": [0, 1, 2, 3, 4],
+        "epochs": 50,
+        "hidden": 300,
+        "depth": 3,
+        "batch_size": 64,
+        "lr": 0.001,
+        "device": "cuda:1 (RTX 5090)",
+        "time_budget_s": 14400,
+        "bf16_autocast": true,
+        "split": "80/20 stratified random (per-metal, NOT Krasnov-aligned)"
+      },
+      "per_metal_in_domain": {
+        "Ru": 0.9264,
+        "Ir": 0.9134,
+        "Os": 0.9001,
+        "Rh": 0.8863,
+        "Re": 0.8812
+      },
+      "aggregate_auc": 0.9015,
+      "aggregate_std": 0.0168,
+      "n_runs": 25,
+      "wall_min": 32.91,
+      "verdict": "MEASURED"
+    },
+    "wf146_chemprop_lomo_partial": {
+      "path": "/home/hugo/codes/mol-metal/metrics/by_metric/chemprop_v2_5metal_5seed_50epoch.json",
+      "ran": true,
+      "partial": true,
+      "config": {
+        "metals": ["Ru", "Ir", "Os", "Rh", "Re"],
+        "seeds": [0, 1, 2, 3, 4],
+        "epochs": 50,
+        "hidden": 64,
+        "depth": 2,
+        "split": "LOMO (Leave-One-Metal-Out) with per-metal BinaryClassificationFFN head"
+      },
+      "n_completed": 19,
+      "n_remaining": 6,
+      "per_metal_3seed_mean": {
+        "Ru": 0.4525,
+        "Ir": 0.4607,
+        "Os": 0.3237,
+        "Rh": 0.5411,
+        "Re": null
+      },
+      "verdict": "PARTIAL_BLOCK"
+    },
+    "wf219_krasnov_aligned_3metal": {
+      "path": "/home/hugo/codes/mol-metal/metrics/by_metric/wf219_krasnov_aligned_chemprop_v2_3seed_50epoch_scaffold.json",
+      "ran": true,
+      "partial": false,
+      "config": {
+        "metals": ["Re", "Os", "Rh"],
+        "seeds": [0, 1, 2],
+        "epochs": 50,
+        "hidden": 64,
+        "depth": 2,
+        "split": "scaffold (Bemis-Murcko) per Krasnov 2026 protocol"
+      },
+      "per_metal_3seed_mean": {
+        "Re": 0.8027,
+        "Os": 0.7884,
+        "Rh": 0.7525
+      },
+      "aggregate_auc": 0.7812,
+      "n_runs": 9,
+      "wall_min": 4.19,
+      "verdict": "MEASURED (3-metal x 3-seed x 50-epoch, scaffold)"
+    }
+  },
+  "what_remains_paper_grade": {
+    "production_backbone_at_300_3": "Pending -- Wf-219 ran at hidden=64/depth=2 (smoke config) to fit 1-hr subagent budget. Production chemprop v2 hidden=300/depth=3 per-run cost MEASURED at 6.6 min in TODO-154 sec.3; full 5x3x15 sweep = ~99 min.",
+    "ru_ir_completion": "Pending -- Wf-219 ran Re/Os/Rh (smallest metals); Ru (19135 rows) + Ir (4546 rows) require ~10 min additional wall at hidden=64/depth/2.",
+    "temporal_split_krasnov_direct": "Pending -- Scaffold split is NOT Krasnov's temporal split (train pre-2024, test 2025 publications). Direct paper comparison requires explicit temporal-split driver (TODO-219 sec.4.3 follow-up).",
+    "nci60_9cell_multitask_chemprop_v2": "Pending -- Wf-219 task #2 (chemprop v2 multi-task on NCI-60 9-cell precious-metal subset) is NOT yet implemented. Driver skeleton: per-cell BinaryClassificationFFN head + shared chemprop v2 encoder + multi-task mean BCE loss. Estimated wall ~30 min for 3-seed x 50-epoch at hidden=64/depth/2.",
+    "production_lomo_full_5seed_50epoch_300_3": "Pending -- Wf-146 LOMO at hidden=64/depth=2 is PARTIAL (19/25); full production chemprop v2 LOMO at hidden=300/depth/3 is ~4 hr wall."
+  },
+  "follow_up_actions_for_user": [
+    "Authorize Ru + Ir completion of Wf-219 (~10 min wall at hidden=64/depth/2): see TODO-pending/219_wf219_krasnov_aligned.md sec.4.1 launch command.",
+    "Authorize production hidden=300/depth/3 Wf-219 retrain (~99 min wall) for paper-grade Krasnov comparison.",
+    "Authorize Wf-220 temporal-split driver for direct Krasnov 2026 protocol match (TODO-219 sec.4.3).",
+    "Authorize Wf-219 task #2: chemprop v2 multi-task on NCI-60 9-cell (TODO-219 sec.4.4).",
+    "Authorize Wf-146 production hidden=300/depth/3 LOMO completion for full per-metal 5-seed mean +/- std (TODO-pending/180_wf124_p3_remaining_metals_seeds.md)."
+  ],
+  "json_parse_verification": {
+    "all_existing_chemprop_v2_metric_files": "PARSE_OK",
+    "files_checked": [
+      "metrics/by_metric/chemprop_v2_lomo_v2.json (MEASURED, 25/25 runs)",
+      "metrics/by_metric/chemprop_v2_5metal_5seed_50epoch.json (PARTIAL, 19/25 runs)",
+      "metrics/by_metric/wf219_krasnov_aligned_chemprop_v2_3seed_50epoch_scaffold.json (MEASURED, 9/9 runs)",
+      "metrics/by_metric/metal_lomo_chemprop_v2.json (PARTIAL_BLOCK, 19/25 runs)",
+      "metrics/by_metric/metalcytotox_ru_auc.json (MEASURED, D-MPNN multi-task Wasserstein 30 epochs Ru seed=0)"
+    ]
+  },
+  "honest_framing_note": "Status as of 2026-09-28. The chemprop v2 surface has THREE MEASURED-or-PARTIAL data products: (a) Wf-194 chemprop_v2_lomo_v2 MEASURED 5x5x50 hidden=300/depth/3 random 80/20 split, aggregate mean AUC 0.9015 +/- 0.0168, 32.91 min wall -- this is the apples-to-apples in-domain chemprop v2 baseline, NOT Krasnov-aligned (random split, not scaffold or temporal). (b) Wf-146 chemprop v2 LOMO 5x5x50 hidden=64/depth/2 PARTIAL 19/25 runs (Rh/Ru/Ir 5/5 each, Os 4/5, Re 0/5), stopped on 2026-09-27 17:29 -- the held-out fold metal head is mostly untrained so LOMO AUCs cap below 0.6 for most metals. (c) Wf-219 Krasnov-aligned chemprop v2 3-metal x 3-seed x 50-epoch SCAFFOLD SPLIT MEASURED on RTX 5090 in 4.19 min wall, Re=0.8027 +/- 0.0637, Os=0.7884 +/- 0.0098, Rh=0.7525 +/- 0.0114 (aggregate mean across Re/Os/Rh = 0.7812). The remaining Ru + Ir + production-backbone + temporal-split + NCI-60 multi-task work is documented in TODO-pending/219_wf219_krasnov_aligned.md. NO chemprop v2 numbers were fabricated -- all reported values are MEASURED on the chemprop v2 backbone (hidden_dim in {64, 300}, depth in {2, 3}). Production paper-grade numbers (hidden=300/depth=3 scaffold + 5-metal) require ~99 min wall and need fresh user authorization."
+}

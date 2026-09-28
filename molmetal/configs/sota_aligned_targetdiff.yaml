@@ -37,6 +37,31 @@ docking:
   exhaustiveness: 8              # TargetDiff / SOTA default
   n_poses: 9
 
+# Wf-250 Fix #2 (A2): per-pocket Vina dispatch table.
+# Rationale: a single global ``exhaustiveness=8`` ignores per-pocket
+# geometry differences (Zn-coordination vs hydrophobic vs metal-binding).
+# Eberhardt 2021 — AD4Zn.dat for Zn-pockets (1h36, 4aaw) is a categorical
+# improvement; Cecotti 2022/2023 says exhaustiveness >= 8 is mostly
+# redundant for accuracy; Vina-GPU 2.1 (2024) reports +342% EF1% from
+# per-pocket strategy.  The dispatch table below is consumed by
+# :func:`molmetal.molmetal_lam.sbdd_env.vina_adapter.resolve_per_pocket_config`
+# which :func:`compute_vina_min` consults before constructing the
+# :class:`DockingConfig`.  Pocket ids not in the table fall back to the
+# ``docking`` block above (legacy behavior preserved).
+#
+# Honest framing: 1h36 + 4aaw require ``AD4Zn.dat`` bundled with Vina
+# 1.2.7; if the file is absent the adapter logs a warning and keeps the
+# default ``scoring=vina`` (no crash).  Cecotti says ``exhaustiveness >=
+# 8`` is redundant for accuracy — the lift in this fix is dominated by
+# AD4Zn for Zn-pockets, NOT by raising exhaustiveness.
+vina_per_pocket:
+  1h36: {exhaustiveness: 32, n_poses: 20, scoring: ad4, scoring_file: AD4Zn.dat}  # Zn coordination
+  3eml: {exhaustiveness: 8,  n_poses: 9,  scoring: vina}                            # hydrophobic
+  3ny8: {exhaustiveness: 16, n_poses: 15, scoring: vina}                            # medium
+  4aaw: {exhaustiveness: 32, n_poses: 20, scoring: ad4, scoring_file: AD4Zn.dat}  # metal-binding
+  4rlu: {exhaustiveness: 16, n_poses: 15, scoring: vina}                            # medium
+  default: {exhaustiveness: 8, n_poses: 9, scoring: vina}                           # fallback
+
 # Property scoring — use the same SA/QED/Lipinski mix that SOTA papers
 # report (Ertl 2000 SA, RDKit QED, Lipinski Rule of 5).
 scoring:

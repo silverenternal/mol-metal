@@ -1,0 +1,197 @@
+{
+  "meta": {
+    "n_compounds": 5,
+    "n_seeds": 1,
+    "seeds": [
+      0
+    ],
+    "epochs": 2,
+    "cell_lines": [
+      "MCF7",
+      "A549",
+      "A2780",
+      "A2780cis"
+    ],
+    "pic50_std_gate": 0.15,
+    "auc_gate": 0.73,
+    "model": "4-cell-line multi-task D-MPNN (from-scratch, CPU-friendly)",
+    "training_data": "/home/hugo/codes/mol-metal/molmetal/tests/fixtures/wf58_dmpnn_top20/platinai_4cell_min.csv",
+    "top20_source": "/home/hugo/codes/mol-metal/molmetal/tests/fixtures/wf58_dmpnn_top20/top20_min.csv",
+    "timestamp": "2026-09-27T13:47:45",
+    "framing": "honest-negative: synthetic IC50 labels + cross-metal transfer for non-Pt candidates"
+  },
+  "compounds": [
+    {
+      "rank": 1,
+      "compound_id": "test_001",
+      "metal": "Pt",
+      "seed": 0,
+      "per_cell_pic50": {
+        "MCF7": 0.4822654724121094,
+        "A549": 0.36128848791122437,
+        "A2780": 0.3077714145183563,
+        "A2780cis": -0.12801708281040192
+      },
+      "mean_pic50": 0.25582706928253174,
+      "n_cells_valid": 4
+    },
+    {
+      "rank": 2,
+      "compound_id": "test_002",
+      "metal": "Pd",
+      "seed": 0,
+      "per_cell_pic50": {
+        "MCF7": 0.5237189531326294,
+        "A549": 0.36215898394584656,
+        "A2780": 0.34490248560905457,
+        "A2780cis": -0.18423934280872345
+      },
+      "mean_pic50": 0.26163527369499207,
+      "n_cells_valid": 4
+    },
+    {
+      "rank": 3,
+      "compound_id": "test_003",
+      "metal": "Ir",
+      "seed": 0,
+      "per_cell_pic50": {
+        "MCF7": 0.7743763327598572,
+        "A549": 0.4755428731441498,
+        "A2780": 0.4019448757171631,
+        "A2780cis": -0.22691428661346436
+      },
+      "mean_pic50": 0.3562374413013458,
+      "n_cells_valid": 4
+    },
+    {
+      "rank": 4,
+      "compound_id": "test_004",
+      "metal": "Ru",
+      "seed": 0,
+      "per_cell_pic50": {
+        "MCF7": 0.6432066559791565,
+        "A549": 0.4302635192871094,
+        "A2780": 0.36049824953079224,
+        "A2780cis": -0.1288418173789978
+      },
+      "mean_pic50": 0.3262816071510315,
+      "n_cells_valid": 4
+    },
+    {
+      "rank": 5,
+      "compound_id": "test_005",
+      "metal": "Au",
+      "seed": 0,
+      "per_cell_pic50": {
+        "MCF7": 0.6492969989776611,
+        "A549": 0.4325615167617798,
+        "A2780": 0.36595040559768677,
+        "A2780cis": -0.12955597043037415
+      },
+      "mean_pic50": 0.3295632600784302,
+      "n_cells_valid": 4
+    }
+  ],
+  "per_compound_std": [
+    {
+      "rank": 1,
+      "compound_id": "test_001",
+      "metal": "Pt",
+      "per_cell_mean": {
+        "MCF7": 0.4822654724121094,
+        "A549": 0.36128848791122437,
+        "A2780": 0.3077714145183563,
+        "A2780cis": -0.12801708281040192
+      },
+      "per_cell_std": {
+        "MCF7": 0.0,
+        "A549": 0.0,
+        "A2780": 0.0,
+        "A2780cis": 0.0
+      },
+      "std_pooled_log_units": 0.0,
+      "gate_pass": true,
+      "n_seeds": 1
+    },
+    {
+      "rank": 2,
+      "compound_id": "test_002",
+      "metal": "Pd",
+      "per_cell_mean": {
+        "MCF7": 0.5237189531326294,
+        "A549": 0.36215898394584656,
+        "A2780": 0.34490248560905457,
+        "A2780cis": -0.18423934280872345
+      },
+      "per_cell_std": {
+        "MCF7": 0.0,
+        "A549": 0.0,
+        "A2780": 0.0,
+        "A2780cis": 0.0
+      },
+      "std_pooled_log_units": 0.0,
+      "gate_pass": true,
+      "n_seeds": 1
+    },
+    {
+      "rank": 3,
+      "compound_id": "test_003",
+      "metal": "Ir",
+      "per_cell_mean": {
+        "MCF7": 0.7743763327598572,
+        "A549": 0.4755428731441498,
+        "A2780": 0.4019448757171631,
+        "A2780cis": -0.22691428661346436
+      },
+      "per_cell_std": {
+        "MCF7": 0.0,
+        "A549": 0.0,
+        "A2780": 0.0,
+        "A2780cis": 0.0
+      },
+      "std_pooled_log_units": 0.0,
+      "gate_pass": true,
+      "n_seeds": 1
+    },
+    {
+      "rank": 4,
+      "compound_id": "test_004",
+      "metal": "Ru",
+      "per_cell_mean": {
+        "MCF7": 0.6432066559791565,
+        "A549": 0.4302635192871094,
+        "A2780": 0.36049824953079224,
+        "A2780cis": -0.1288418173789978
+      },
+      "per_cell_std": {
+        "MCF7": 0.0,
+        "A549": 0.0,
+        "A2780": 0.0,
+        "A2780cis": 0.0
+      },
+      "std_pooled_log_units": 0.0,
+      "gate_pass": true,
+      "n_seeds": 1
+    },
+    {
+      "rank": 5,
+      "compound_id": "test_005",
+      "metal": "Au",
+      "per_cell_mean": {
+        "MCF7": 0.6492969989776611,
+        "A549": 0.4325615167617798,
+        "A2780": 0.36595040559768677,
+        "A2780cis": -0.12955597043037415
+      },
+      "per_cell_std": {
+        "MCF7": 0.0,
+        "A549": 0.0,
+        "A2780": 0.0,
+        "A2780cis": 0.0
+      },
+      "std_pooled_log_units": 0.0,
+      "gate_pass": true,
+      "n_seeds": 1
+    }
+  ]
+}

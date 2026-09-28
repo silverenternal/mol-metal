@@ -1,0 +1,244 @@
+{
+  "metric": "docked_pose_rmsd",
+  "description": "Median best heavy-atom RMSD (Kabsch+Hungarian, adaptive centroid pre-alignment) of Vina redocked poses vs crystal ligand pose across 5 pockets x 3 seeds x exhaustiveness=16. BD-9 m15 RMSD Phase 2 Vina redocking (canonical script).",
+  "unit": "angstrom",
+  "scope": "pocket-bound redocking benchmark (m15 redesigned per TODO-134)",
+  "source": "TODO-134 (m15 redesign spec) + Wf-139 P1 (ref ligand SMILES extraction) + BD-9 m15 RMSD Phase 2 (this script)",
+  "engine": "AutoDock Vina via /home/hugo/codes/mol-metal/molmetal/bin/vina",
+  "exhaustiveness": 16,
+  "n_poses": 5,
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "pockets_planned": [
+    "1h36",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu"
+  ],
+  "value": 0.6578,
+  "sota_threshold_angstrom": 2.0,
+  "sota_success_criterion": "median_best_rmsd <= 2.0 A (Trott & Olson 2010 Vina paper convention); per-pocket success rate >= 80% (TransDiffSBDD reference: 83.9%)",
+  "aggregate_median_across_pockets": 0.6578,
+  "n_pockets_passed_2_5a": 5,
+  "n_pockets_passed_2_0a": 5,
+  "n_pockets_measured": 5,
+  "gate_4_passes_2_5a_overall": true,
+  "measurements": [
+    {
+      "pocket": "1h36",
+      "per_seed_best_rmsd_angstrom": [
+        0.6883,
+        0.5037,
+        0.5739
+      ],
+      "median_best_rmsd_angstrom": 0.5739,
+      "mean_best_rmsd_angstrom": 0.5886,
+      "std_best_rmsd_angstrom": 0.0761,
+      "passes_2_5a_gate": true,
+      "passes_2_0a_sota": true,
+      "n_seeds_succeeded": 3,
+      "status": "MEASURED",
+      "date_utc": "2026-09-28T02:42:18.857964+00:00"
+    },
+    {
+      "pocket": "3eml",
+      "per_seed_best_rmsd_angstrom": [
+        1.0117,
+        1.2504,
+        1.024
+      ],
+      "median_best_rmsd_angstrom": 1.024,
+      "mean_best_rmsd_angstrom": 1.0954,
+      "std_best_rmsd_angstrom": 0.1098,
+      "passes_2_5a_gate": true,
+      "passes_2_0a_sota": true,
+      "n_seeds_succeeded": 3,
+      "status": "MEASURED",
+      "date_utc": "2026-09-28T02:42:18.857968+00:00"
+    },
+    {
+      "pocket": "3ny8",
+      "per_seed_best_rmsd_angstrom": [
+        0.9506
+      ],
+      "median_best_rmsd_angstrom": 0.9506,
+      "mean_best_rmsd_angstrom": 0.9506,
+      "std_best_rmsd_angstrom": 0.0,
+      "passes_2_5a_gate": true,
+      "passes_2_0a_sota": true,
+      "n_seeds_succeeded": 1,
+      "status": "MEASURED",
+      "date_utc": "2026-09-28T02:42:18.857970+00:00"
+    },
+    {
+      "pocket": "4aaw",
+      "per_seed_best_rmsd_angstrom": [
+        0.4223,
+        0.461,
+        0.3791
+      ],
+      "median_best_rmsd_angstrom": 0.4223,
+      "mean_best_rmsd_angstrom": 0.4208,
+      "std_best_rmsd_angstrom": 0.0335,
+      "passes_2_5a_gate": true,
+      "passes_2_0a_sota": true,
+      "n_seeds_succeeded": 3,
+      "status": "MEASURED",
+      "date_utc": "2026-09-28T02:42:18.857971+00:00"
+    },
+    {
+      "pocket": "4rlu",
+      "per_seed_best_rmsd_angstrom": [
+        0.6099,
+        0.6623,
+        0.6578
+      ],
+      "median_best_rmsd_angstrom": 0.6578,
+      "mean_best_rmsd_angstrom": 0.6433,
+      "std_best_rmsd_angstrom": 0.0237,
+      "passes_2_5a_gate": true,
+      "passes_2_0a_sota": true,
+      "n_seeds_succeeded": 3,
+      "status": "MEASURED",
+      "date_utc": "2026-09-28T02:42:18.857973+00:00"
+    }
+  ],
+  "note": "Wf-246-B redesign: per-pocket std reporting (15 runs = 5 pockets x 3 seeds) + cross-pocket aggregate (median, std, min, max) + per-pocket difficulty flag (EASY <0.5A, MEDIUM 0.5-1.0A, HARD >=1.0A). Backward-compatible with Wf-179 ship schema.",
+  "redesign_wf246b": {
+    "date": "2026-09-28",
+    "workflow": "Wf-246-B TODO-130 m15 REDESIGN",
+    "purpose": "pocket-aware self-RMSD metric: per-pocket std + cross-pocket aggregate + difficulty flag",
+    "per_pocket_count": 5,
+    "per_pocket_seeds_total": 15,
+    "difficulty_thresholds_angstrom": {
+      "EASY_lt": 0.5,
+      "MEDIUM_lt": 1.0
+    },
+    "cross_pocket_aggregate": {
+      "median": 0.6578,
+      "std": 0.2545918832170421,
+      "min": 0.4223,
+      "max": 1.024,
+      "n_pockets": 5
+    },
+    "difficulty_counts": {
+      "EASY": 1,
+      "MEDIUM": 3,
+      "HARD": 1
+    }
+  },
+  "per_pocket_with_difficulty": {
+    "1h36": {
+      "pocket": "1h36",
+      "ref_smiles": "CN(C/C=C/COc1ccc(C(=O)c2ccc(Br)cc2)cc1)C1CC1",
+      "n_ref_heavy": 25,
+      "per_seed_best_rmsd_angstrom": [
+        0.6883,
+        0.5037,
+        0.5739
+      ],
+      "median_best_rmsd_angstrom": 0.5739,
+      "mean_best_rmsd_angstrom": 0.5886,
+      "std_best_rmsd_angstrom": 0.0761,
+      "n_seeds_succeeded": 3,
+      "n_seeds_total": 3,
+      "passes_2_5a_gate": true,
+      "passes_2_0a_sota": true,
+      "difficulty_flag": "MEDIUM",
+      "status": "MEASURED"
+    },
+    "3eml": {
+      "pocket": "3eml",
+      "ref_smiles": "N=c1nc(NCCc2ccc(O)cc2)nc2nc(-c3ccco3)[nH]n12",
+      "n_ref_heavy": 25,
+      "per_seed_best_rmsd_angstrom": [
+        1.0117,
+        1.2504,
+        1.024
+      ],
+      "median_best_rmsd_angstrom": 1.024,
+      "mean_best_rmsd_angstrom": 1.0954,
+      "std_best_rmsd_angstrom": 0.1098,
+      "n_seeds_succeeded": 3,
+      "n_seeds_total": 3,
+      "passes_2_5a_gate": true,
+      "passes_2_0a_sota": true,
+      "difficulty_flag": "HARD",
+      "status": "MEASURED"
+    },
+    "3ny8": {
+      "pocket": "3ny8",
+      "ref_smiles": "CC(C)(C)NC[C@H](O)COc1nsnc1N1CCOCC1",
+      "n_ref_heavy": 21,
+      "per_seed_best_rmsd_angstrom": [
+        0.9506
+      ],
+      "median_best_rmsd_angstrom": 0.9506,
+      "mean_best_rmsd_angstrom": 0.9506,
+      "std_best_rmsd_angstrom": 0.0,
+      "n_seeds_succeeded": 1,
+      "n_seeds_total": 3,
+      "passes_2_5a_gate": true,
+      "passes_2_0a_sota": true,
+      "difficulty_flag": "MEDIUM",
+      "status": "MEASURED"
+    },
+    "4aaw": {
+      "pocket": "4aaw",
+      "ref_smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+      "n_ref_heavy": 31,
+      "per_seed_best_rmsd_angstrom": [
+        0.4223,
+        0.461,
+        0.3791
+      ],
+      "median_best_rmsd_angstrom": 0.4223,
+      "mean_best_rmsd_angstrom": 0.4208,
+      "std_best_rmsd_angstrom": 0.0335,
+      "n_seeds_succeeded": 3,
+      "n_seeds_total": 3,
+      "passes_2_5a_gate": true,
+      "passes_2_0a_sota": true,
+      "difficulty_flag": "EASY",
+      "status": "MEASURED"
+    },
+    "4rlu": {
+      "pocket": "4rlu",
+      "ref_smiles": "O=C(/C=C/c1ccc(O)cc1)c1ccc(O)cc1O",
+      "n_ref_heavy": 19,
+      "per_seed_best_rmsd_angstrom": [
+        0.6099,
+        0.6623,
+        0.6578
+      ],
+      "median_best_rmsd_angstrom": 0.6578,
+      "mean_best_rmsd_angstrom": 0.6433,
+      "std_best_rmsd_angstrom": 0.0237,
+      "n_seeds_succeeded": 3,
+      "n_seeds_total": 3,
+      "passes_2_5a_gate": true,
+      "passes_2_0a_sota": true,
+      "difficulty_flag": "MEDIUM",
+      "status": "MEASURED"
+    }
+  },
+  "cross_pocket_aggregate": {
+    "median": 0.6578,
+    "std": 0.2545918832170421,
+    "min": 0.4223,
+    "max": 1.024,
+    "n_pockets": 5
+  },
+  "difficulty_counts": {
+    "EASY": 1,
+    "MEDIUM": 3,
+    "HARD": 1
+  },
+  "aggregate_std_across_pockets": 0.2545918832170421,
+  "aggregate_min_across_pockets": 0.4223,
+  "aggregate_max_across_pockets": 1.024
+}

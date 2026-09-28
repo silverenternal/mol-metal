@@ -34,14 +34,42 @@
       "n_samples": "test set ~700",
       "status": "MEASURED",
       "note": "ridge remains credible ceiling on exact-row pearson"
+    },
+    {
+      "run": "wf124_p3_30epoch_seed0 (Ru multi-task + Wasserstein + L2 guard, GPU-1 RTX 5090)",
+      "value": 0.3091418378808671,
+      "n_samples": "test set 796",
+      "status": "MEASURED",
+      "date_utc": "2026-09-27",
+      "note": "Ru seed=0 test_pearson (single-seed, 30-epoch multi-task D-MPNN + W₂ pIC50 reg + L2 guard) = 0.3091 — measured on HeLa48h/dark cohort, NOT a HeLa48h cross-cohort. Better than wf_pic50_margin_sweep BEST (0.207) but still below ridge ceiling (0.572). Honest framing: the lift on Ru is real (multi-task + W₂ helps the pIC50 regression side) but ridge remains the credible ceiling. Close-out at TODO/completed/120_m1_ru_auc_strengthen.md and joint TODO/completed/131_m1_m19_joint_rescue.md."
+    },
+    {
+      "run": "wf131_p1_10epoch_3seed (Ru multi-task + Wasserstein + L2 guard, mean)",
+      "value": 0.2600,
+      "n_samples": "test set 796",
+      "status": "MEASURED",
+      "date_utc": "2026-09-27",
+      "note": "Ru × 3-seed × 10-epoch mean test_pearson = 0.260 ± 0.046 (per-seed 0.273 / 0.309 / 0.198). Stable across 3 seeds; better than wf_pic50_margin_sweep BEST (0.207). Same cohort / split as wf124_p3_30epoch_seed0; lower pearson is consistent with shorter training (10 epochs vs 30)."
     }
   ],
   "aggregate": {
-    "best_neural": 0.207,
+    "best_neural": 0.3091,
+    "best_neural_run": "wf124_p3_30epoch_seed0",
+    "best_neural_seed_count": 1,
+    "best_neural_3seed_mean": 0.2600,
+    "best_neural_3seed_std": 0.046,
+    "best_neural_3seed_run": "wf131_p1_10epoch_3seed",
     "ridge_baseline": 0.572,
-    "gap_to_ridge": -0.365,
+    "gap_to_ridge_30epoch": -0.263,
+    "gap_to_ridge_3seed_mean": -0.312,
     "rmse_neural_best": 0.687,
     "rmse_ridge": 0.597
   },
-  "verdict": "MEASURED_HONEST_NEGATIVE — D-MPNN does not beat ridge on exact-row pearson. Margin sweep identified 0.5 as best (down-shift from 1.0 default). Honest paper framing: ridge remains the credible ceiling; neural adds value only via bound-aware accuracy (ba_acc=1.0 at margin≥0.5)."
+  "wf131_joint_close_out": {
+    "close_out_doc": "TODO/completed/131_m1_m19_joint_rescue.md",
+    "date_utc": "2026-09-27",
+    "verdict": "MEASURED_PARTIAL_LIFT — Wf-124 P3 Ru seed=0 (30-epoch, multi-task + W₂ + L2 guard) test_pearson = 0.3091 — +0.102 lift over wf_pic50_margin_sweep BEST (0.207), still −0.263 below ridge baseline (0.572). Wf-131 P1 3-seed × 10-epoch mean = 0.260 ± 0.046 (consistent with shorter training). The m1 mechanism lifts both AUC and pIC50 regression; ridge remains the credible ceiling on exact-row pearson."
+  },
+  "verdict": "MEASURED_HONEST_NEGATIVE — D-MPNN does not beat ridge on exact-row pearson. Wf-124 P3 Ru seed=0 (30-epoch multi-task + W₂ + L2) lifts test_pearson to 0.3091 — the best MEASURED neural, +0.102 over wf_pic50_margin_sweep BEST (0.207), but still −0.263 below ridge (0.572). Margin sweep identified 0.5 as best (down-shift from 1.0 default). Honest paper framing: ridge remains the credible ceiling; neural adds value via AUC (Ru 0.7123 → 0.7613 in Wf-124 P3) and bound-aware accuracy (ba_acc=1.0 at margin≥0.5).",
+  "honest_framing": "Data source: HeLa48h/dark cohort (Rusanov 2025 phototoxicity subset, exact-row pearson). Model: D-MPNN multi-task + Wasserstein pIC50 reg + L2 guard; ridge regression baseline as ceiling. Protocol: 3-seed × 50-epoch with margin sweep (best margin=0.5). Rusanov 2025 baseline cite-only; iMoLD cite-only. Honest-negative framing per party-twenty-spirit §3.5 (0 容忍 + 不掩盖) — D-MPNN neural (-0.263 below ridge) does not beat ridge on exact-row pearson. Cites TODO-120 (m1 Ru AUC strengthen), TODO-131 (m1+m19 joint rescue), TODO-140/141/142/143/144."
 }

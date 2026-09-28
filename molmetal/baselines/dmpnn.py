@@ -28,10 +28,13 @@ from rdkit.Chem import rdMolDescriptors
 from molmetal.baselines.eval_utils import compute_metrics, per_cell_line_auc
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 from molmetal.data.splits import (
+    AssayGroupSplitter,
     ChemicalSplitter,
+    GroupIdSplitter,
     LigandDeduplicatedSplitter,
     RandomSplitter,
     ScaffoldSplitter,
+    SizeGroupSplitter,
     TemporalSplitter,
 )
 
@@ -543,6 +546,14 @@ SPLITTER_FACTORIES: Dict[str, callable] = {
     ),
     "temporal": lambda seed: TemporalSplitter(cutoff_year=2024),
     "chemical": lambda seed: ChemicalSplitter(threshold=0.7, seed=seed),
+    # DrugOOD paper (Ji 2023 ICLR) group-key splits.  These expect a
+    # dataset that exposes the corresponding ``assay_id`` / ``size_id`` /
+    # ``scaffold_split_id`` column (e.g. via --data-config four-domain
+    # which loads DrugOOD rows).  When run against a plain
+    # MetalCytoToxDataset the splitter raises a clear remediation hint
+    # (see GroupIdSplitter._resolve_groups).
+    "assay": lambda seed: AssayGroupSplitter(strategy="largest_first", seed=seed),
+    "size": lambda seed: SizeGroupSplitter(strategy="largest_first", seed=seed),
 }
 
 

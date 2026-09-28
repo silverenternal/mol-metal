@@ -1,0 +1,26 @@
+{
+  "recipe": "wf30_dock_verify_smoke_summary",
+  "n_evaluations": 4,
+  "n_docked": 4,
+  "n_failed": 0,
+  "aggregate": {
+    "830c|se3sb": {
+      "n": 2,
+      "mean": -7.702433464794831,
+      "std": 0.2502801252423952,
+      "min": -7.952713590037226,
+      "max": -7.452153339552436,
+      "n_docked": 2,
+      "n_failed": 0
+    },
+    "830c|baseline": {
+      "n": 2,
+      "mean": -7.70243347040875,
+      "std": 0.2502801308563143,
+      "min": -7.9527136012650645,
+      "max": -7.452153339552436,
+      "n_docked": 2,
+      "n_failed": 0
+    }
+  }
+}

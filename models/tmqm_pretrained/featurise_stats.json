@@ -1,0 +1,10 @@
+{
+  "n_total": 20000,
+  "n_valid_graphs": 19997,
+  "featurise_seconds": 17.812546730041504,
+  "split": {
+    "train": 18000,
+    "val": 1000,
+    "test": 1000
+  }
+}

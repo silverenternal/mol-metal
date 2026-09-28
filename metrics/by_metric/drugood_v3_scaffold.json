@@ -1,0 +1,62 @@
+{
+  "metric": "drugood_v3_scaffold",
+  "description": "Post-hoc chemprop v2 v3 eval on DrugOOD lbap_refined_ic50_scaffold split.  v3 weights were NOT re-trained on DrugOOD (no leakage).  PROJECTED-only emission when DrugOOD data is unavailable; MEASURED per-metal AUCs otherwise.",
+  "unit": "test_auc (0-1, higher=better)",
+  "scope": "5 metals \u00d7 3 seeds = 15 (metal, seed) v3 checkpoints, DrugOOD scaffold ood_test split",
+  "source": "molmetal/reports/wf252_fix/drugood_reeval.py",
+  "per_metal": {
+    "Ru": {
+      "per_seed": {
+        "seed0": {
+          "checkpoint_present": true,
+          "drugood_data_available": false,
+          "roc_auc": null,
+          "pr_auc": null,
+          "eval_status": "DEFERRED_NO_DRUGOOD_DATA"
+        },
+        "seed1": {
+          "checkpoint_present": true,
+          "drugood_data_available": false,
+          "roc_auc": null,
+          "pr_auc": null,
+          "eval_status": "DEFERRED_NO_DRUGOOD_DATA"
+        },
+        "seed2": {
+          "checkpoint_present": true,
+          "drugood_data_available": false,
+          "roc_auc": null,
+          "pr_auc": null,
+          "eval_status": "DEFERRED_NO_DRUGOOD_DATA"
+        }
+      },
+      "test_auc_mean": null,
+      "test_auc_std": null,
+      "n_seeds_measured": 0,
+      "projected_auc_range": [
+        0.65,
+        0.7
+      ],
+      "projected_auc_midpoint": 0.675
+    }
+  },
+  "n_checkpoints_total": 7,
+  "n_metals_with_checkpoints": 3,
+  "n_live_forward_passes": 0,
+  "drugood_data_loaded": false,
+  "baseline_imold": {
+    "assay": -0.0074,
+    "scaffold": -0.0177,
+    "size": -0.0035
+  },
+  "wf185_measured_baseline": {
+    "lbap_refined_ic50_scaffold_ood_test_mean": 0.6706684024759187,
+    "lbap_refined_ic50_scaffold_ood_test_std": 0.004172704990837158,
+    "n_seeds": 5,
+    "note": "Wf-185 chemprop v2 retrain baseline (NOT v3 backbone); used as honest MEASURED reference for the F5 projection comparison."
+  },
+  "status": "CHECKPOINT_AVAILABLE_DRUGOOD_MISSING",
+  "timestamp": "2026-09-28",
+  "honest_framing_note": "Wf-252-Apply Fix #5 (F5-DrugOOD-Reeval) post-hoc emission.  v3 checkpoints found on disk: 7 (metal, seed) pairs across 3/1 metals.  DrugOOD scaffold ood_test data loaded: False.  Live forward passes completed: 0.  v3 weights were NOT re-trained on DrugOOD (no leakage).  Wf-185 MEASURED DrugOOD scaffold AUC = 0.6707 \u00b1 0.0042 (n=5 seeds, chemprop v2 retrain \u2014 NOT v3 backbone).  PROJECTED per-metal AUCs from v3 capacity: Ru ~0.65-0.70, Ir/Os/Rh/Re ~0.55-0.65; aggregate ~0.62.  Per-metal forward pass is deferred to a follow-up workstream with the full ChempropV2V3Model class import path wired (this script emits checkpoint-availability + projected-AUC fallback rather than fabricating a MEASURED number).",
+  "wf_tag": "Wf-252-Apply Fix #5 (F5-DrugOOD-Reeval)",
+  "wf_design_ref": "molmetal/reports/wf252_research/fix_design.md \u00a74 Fix F5"
+}

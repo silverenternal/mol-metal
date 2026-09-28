@@ -1,0 +1,104 @@
+{
+  "metric": "wf30_m3_vina_dock_median",
+  "description": "m3 Vina Dock median across 10 pockets (830c, 1h36, 3eml, 3ny8, 4aaw, 4rlu, 1g9v, 2hnx, 4rn0, 1fmc). For each pocket the per-pocket best (most negative) kcal/mol across the 5-candidate x 5-seed sweep is taken; m3 is the median of those 10 per-pocket best values.",
+  "unit": "kcal/mol",
+  "scorer": "stub",
+  "use_real_vina": false,
+  "n_pockets": 10,
+  "n_evaluations_per_method": 250,
+  "n_candidates_per_pocket": 5,
+  "n_seeds_per_pocket": 5,
+  "pockets": [
+    "1fmc",
+    "1g9v",
+    "1h36",
+    "2hnx",
+    "3eml",
+    "3ny8",
+    "4aaw",
+    "4rlu",
+    "4rn0",
+    "830c"
+  ],
+  "generated_utc": "2026-09-26T04:51:43+0000",
+  "se3sb_median_kcal_mol": -9.657403509940762,
+  "baseline_median_kcal_mol": -9.657403522903886,
+  "lift_kcal_mol_se3sb_minus_baseline": 1.2963123907638874e-08,
+  "se3sb_per_pocket_best_kcal_mol": {
+    "1fmc": -9.657403436981172,
+    "1g9v": -9.65740344640684,
+    "1h36": -9.657403625438317,
+    "2hnx": -9.657403379743068,
+    "3eml": -9.65740339707071,
+    "3ny8": -9.657403567084836,
+    "4aaw": -9.657403647221242,
+    "4rlu": -9.657403558631179,
+    "4rn0": -9.657403461250345,
+    "830c": -9.657403612872766
+  },
+  "baseline_per_pocket_best_kcal_mol": {
+    "1fmc": -9.65740352601651,
+    "1g9v": -9.657403462724789,
+    "1h36": -9.657403705794051,
+    "2hnx": -9.657403429335696,
+    "3eml": -9.657403476728344,
+    "3ny8": -9.657403567161483,
+    "4aaw": -9.657403830553749,
+    "4rlu": -9.657403519791261,
+    "4rn0": -9.657403403014145,
+    "830c": -9.657403613414973
+  },
+  "per_pocket_delta_se3sb_minus_baseline": {
+    "1fmc": 8.903533910142869e-08,
+    "1g9v": 1.6317947881816508e-08,
+    "1h36": 8.035573451081746e-08,
+    "2hnx": 4.959262867032521e-08,
+    "3eml": 7.965763515471735e-08,
+    "3ny8": 7.664624490644201e-11,
+    "4aaw": 1.8333250650925947e-07,
+    "4rlu": -3.883991794850772e-08,
+    "4rn0": -5.823619986244921e-08,
+    "830c": 5.422062798743355e-10
+  },
+  "se3sb_aggregate_stats_kcal_mol": {
+    "median": -9.657403509940762,
+    "mean": -9.657403513270047,
+    "min": -9.657403647221242,
+    "max": -9.657403379743068,
+    "std": 9.984848497987687e-08
+  },
+  "baseline_aggregate_stats_kcal_mol": {
+    "median": -9.657403522903886,
+    "mean": -9.6574035534535,
+    "min": -9.657403830553749,
+    "max": -9.657403403014145,
+    "std": 1.3242066404392106e-07
+  },
+  "r17_reference_baseline_kcal_mol": {
+    "value": -1.2885,
+    "source": "metrics/by_metric/vina_score.json (R17, 830c, 100 Lambda click products, real Vina 1.2.7, exhaustiveness=8)",
+    "comparability": "NOT_DIRECTLY_COMPARABLE",
+    "reason": "Phase 3 stub scorer differs from R17 real Vina; pocket cohort differs (10 vs 1); candidate pool differs (metal-drugs vs CuAAC click products). R17 reference is shown for context only."
+  },
+  "sota_target_kcal_mol": {
+    "transdiffsbdd_crossdocked": -9.37,
+    "source": "TransDiffSBDD (Guan 2024); TargetDiff CrossDocked lit -8.45"
+  },
+  "ship_gate_target_kcal_mol": -8.5,
+  "gate_passed": true,
+  "honest_negative": {
+    "stub_scorer_dominance": true,
+    "finding": "Per-pocket best kcal/mol for se3sb and baseline are identical to floating-point noise (lift_kcal_mol_se3sb_minus_baseline = 1.296312e-08). The stub scorer's deterministic jitter bottom-out at the same -2.0 kcal/mol lower bound for every pocket, so the per-pocket best is the same constant (~-9.6574 kcal/mol) for both methods across all 10 pockets.",
+    "implication": "No quantitative lift can be claimed from this Phase 3 sweep. The se3sb-vs-baseline lift is consistent with zero (within stub determinism). To measure a real lift we need either (a) the trained W2.1 EGNN velocity field so the SE(3) SB initial pose is biased toward a real sub-pocket, or (b) lower Vina exhaustiveness so the initial pose matters more, plus a meeko extension / non-meeko PDBQT writer that handles Pt/Au/Ru so the real Vina path can run on the metal-drug cohort.",
+    "stub_vs_real_vina_organic_cohort": "Real Vina on the 5-organic-molecule cohort (CCO/benzene/toluene/TEA/benzamide) returned identical 830c x method kcal/mol means (-3.915) at exhaustiveness=4 (see real_vina_organic/summary.json and notes.md). The SE(3) SB initial pose does not pre-bias Vina at this exhaustiveness, so even a real-Vina sweep at this exhaustiveness would not show lift."
+  },
+  "verdict": "MEASURED_BUT_STUB \u2014 both methods yielded identical per-pocket best to floating-point noise; no quantitative lift. Ship gate (\u2264 -8.5 kcal/mol) is technically met by both methods because the stub floor is -9.66 kcal/mol, but this is a property of the stub, not of the methods. Reported honestly as a Phase-3 negative.",
+  "sources": {
+    "per_pocket_metrics": "molmetal/reports/wf30_dock/per_pocket_metrics.json",
+    "se3sb_metrics": "molmetal/reports/wf30_dock/se3sb/metrics.json",
+    "baseline_metrics": "molmetal/reports/wf30_dock/baseline/metrics.json",
+    "best_m3_summary": "molmetal/reports/wf30_dock/best_m3_summary.json",
+    "phase3_notes": "molmetal/reports/wf30_dock/notes.md",
+    "r17_baseline": "metrics/by_metric/vina_score.json"
+  }
+}

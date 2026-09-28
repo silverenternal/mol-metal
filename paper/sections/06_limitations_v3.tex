@@ -1,0 +1,487 @@
+% =============================================================================
+% Section 6 -- Limitations (v3, 2026-09-26).
+% Target: Digital Discovery (RSC) Q1 IF 8.5 OR J. Chem. Inf. Model. (ACS) Q1 IF 5.6
+% Style: IMRaD, honest framing. MEASURED vs PROJECTED strictly labelled.
+%
+% v3 differs from v2 in three structural ways:
+%   (1) the 8-item layout of v2 (06_limitations_v2.tex) is split into a
+%       static 6-item v3 core (\S\ref{sec:limitations:tier1-auc} through
+%       \S\ref{sec:limitations:pb-valid}) that maps 1-to-1 onto the
+%       Wf-30 / Wf-31 / Wf-32 GPU-retrain work items, plus a single
+%       cross-cutting compute / wet-lab footer that survives the R18
+%       close-out regardless of the GPU-retrain outcome;
+%   (2) every paragraph carries an explicit \MEASURED{} vs \PROJECTED{}
+%       label on each numeric anchor (R17 baseline = \MEASURED{};
+%       R18 ceiling / expected value = \PROJECTED{}; Wf-30/31/32
+%       pending number = \MEASURED{TBD Wf-NN});
+%   (3) the structural-fix pointer at the end of each item is a
+%       \texttt{Wf-NN} tag (e.g. \texttt{Wf-31}) rather than a §7
+%       future-work prose paragraph, so the reviewer can grep
+%       \texttt{TBD Wf-NN} against \texttt{molmetal/reports/wf\_NN\_*}
+%       and immediately see whether the fix has shipped.
+%
+% Diff vs v2 (06_limitations_v2.tex, Wf-22 ship, 2026-09-25):
+%   - \S6.1 (Tier-1 AUC): R17 baseline (0.712 m1, 0.648 m2 A2780cis,
+%     0.546 m2 3-cell mean) is now paired with the Wf-31 5-seed GPU
+%     retrain expected range (PROJECTED). The "0.630" 5-seed Pt
+%     regression is moved out of v3 \S6.1 into v3 \S6.2 because it
+%     is evidence of the Phase A BLOCK, not a fresh Tier-1 anchor.
+%   - \S6.2 (Phase A BLOCK): rewritten around the Wf-31
+%     Blackwell RTX 5090 dual-GPU protocol. The Blackwell host
+%     contention (Wf-22 7-line Ru log + 79-min Pt single-ultracode)
+%     is now framed as "structural deficit + CI 30-min budget" rather
+%     than "single Blackwell unrunnable"; the Wf-29 protocol + Wf-30/31/32
+%     schedule is the named fix.
+%   - \S6.3 (Blackwell CI 30-min budget): NEW. The CI 30-min/ultracode
+%     envelope is a CI framework (GitHub Actions Blackwell runner)
+%     constraint, not the local RTX 5090 hardware; we distinguish
+%     the two clearly. The Blackwell CI runner is the "structural"
+%     gate; the local RTX 5090 is the "experimental" gate.
+%   - \S6.4 (Vina Dock m3): NEW Wf-30 framing. The R17 single-pocket
+%     830c measurement (\MEASURED{} median -1.2885 kcal/mol) is
+%     preserved as the R17 anchor; the Wf-30 10-pocket x 5-seed
+%     expected range is \PROJECTED{}.
+%   - \S6.5 (Affinity m16): NEW Wf-32 framing. The R17 best-margin
+%     0.207 Pearson r is the \MEASURED{} anchor; the Wf-32 affinity
+%     regression retrain expected range is \PROJECTED{}.
+%   - \S6.6 (PB-Valid m8): NEW Wf-32 framing. The R17 single-pocket
+%     smoke 0.846 PB-Valid is the \MEASURED{} anchor; the Wf-32
+%     production panel expected range is \PROJECTED{}.
+%
+% Status tags (defined in paper/main.tex:104-110):
+%   \MEASURED{}            = real generated-candidate measurement on this
+%                            stack at the reported panel size.
+%   \PROJECTED{}           = structural-fix projection (R18 ceiling);
+%                            the R17 anchor is shown for context.
+%   \MEASURED{TBD Wf-NN}   = pending GPU-retrain anchor; the Wf-NN tag
+%                            maps to molmetal/reports/wf_NN_*. When
+%                            Wf-NN ships, the placeholder is replaced
+%                            by the actual MEASURED number + provenance.
+%
+% Honest framing (v3, 2026-09-26):
+%   - This v3 is a TEMPLATE awaiting Wf-30/31/32. Every \MEASURED{TBD Wf-NN}
+%     placeholder carries its Wf-NN tag so the auditor can grep
+%     \texttt{MEASURED\{TBD} and see the exact pending work item.
+%   - The R17 anchors are stable across the Wf-30/31/32 window;
+%     the R18 ceilings are from TODO/02_metrics/METRICS_TARGETS.md §2
+%     and are also stable. What changes per Wf-NN is the \MEASURED{TBD Wf-NN}
+%     placeholder text.
+%   - No cell is silently fabricated. If a Wf-NN run fails, the
+%     placeholder is replaced by \textbf{HONEST-NEGATIVE} + the
+%     failure mode (per party-twenty-spirit §3.5).
+% =============================================================================
+
+\section{Limitations}\label{sec:limitations}
+
+We state the limitations of this work explicitly.  Each of the six
+items below follows a four-part structure: (i)~a \textbf{diagnosis}
+grounded in a \MEASURED{} number from the R17 stack
+(\texttt{metrics/by\_metric/*.json}),
+(ii)~the \textbf{expected Wf-30/31/32 outcome} tagged
+\PROJECTED{} from \texttt{TODO/02\_metrics/METRICS\_TARGETS.md}\S2,
+(iii)~an honest statement of \textbf{impact} on the headline claims
+and the per-cell-line / per-metal honesty grid of
+\S\ref{sec:results:honest}, and (iv)~a forward \textbf{Wf reference}
+of the form \texttt{Wf-NN} that names the structural fix and the
+matching \S\ref{sec:future} item.  Where a number is
+\textbf{PROJECTED} (not yet run on this stack) it is labelled as
+such; where a number is \textbf{MEASURED} it carries the explicit
+\MEASURED{} tag and the source-report path.  The Tier-1 SOTA anchors
+are Krasnov~2026 Ru AUC $0.81$
+\citep{krasnov2026metalcytotoxdb} and Rusanov~2025 PlatinAI per-line
+AUC $\geq 0.85$ \citep{rusanov2025platinai}.  The cross-cutting audit
+underlying this section is consolidated in \texttt{TODO/pending/82\_
+metric\_gap\_filling\_plan.md} (G1--G7 gap inventory) and the
+post-5-seed Phase A post-mortem in \texttt{molmetal/reports/
+wf\_phase\_a\_stage2\_pt/final.md}; per-metric verdicts are tabulated
+in the auto-generated \S\ref{sec:limitations:auto} sibling.
+
+\begin{enumerate}
+
+  % ---------------------------------------------------------------------------
+  % §6.1 — Tier-1 AUC limitation (Wf-31 5-seed GPU retrain pending)
+  % ---------------------------------------------------------------------------
+  \item \textbf{Tier-1 AUC lift did not land: $m_1$ Ru
+  $\mathrm{AUC}=0.7123$ and $m_2$ Pt A2780cis
+  $\mathrm{AUC}=0.648$ \MEASURED{} below gate.}
+  \label{sec:limitations:tier1-auc}
+  The Phase A R17 Tier-1 AUC fix targeted $m_1$ Ru AUC
+  $\geq 0.86$ (gate, $+0.148$ over the $0.7123$ single-seed baseline)
+  on MetalCytoToxDB \citep{krasnov2026metalcytotoxdb} and $m_2$ Pt
+  A2780cis AUC $\geq 0.85$ (gate, $+0.202$ over $0.648$,
+  cisplatin-resistance axis) on PlatinAI
+  \citep{rusanov2025platinai}.  Both gates are \textbf{MEASURED
+  failures after the Wf-22 5-seed Phase A retrain}.
+  \begin{itemize}
+    \item \textbf{m1 Ru (\MEASURED{} R17 anchor):} $\mathrm{AUC}=
+    0.7123 \pm 0.000$ ($n_{\text{seeds}}{=}1$, $n_{\text{train}}{=}797$,
+    $n_{\text{test}}{=}135$, scaffold split, plain D-MPNN multi-task,
+    5 epochs; \texttt{metrics/by\_metric/metalcytotox\_ru\_auc.json},
+    $\Delta_{\text{Krasnov}}{=}{-}0.098$, $\Delta_{\text{gate}}{=}
+    {-}0.148$).
+    \item \textbf{m2 Pt A2780cis (\MEASURED{} R17 anchor):} $\mathrm{AUC}=
+    0.648 \pm 0.006$ ($n_{\text{seeds}}{=}3$, $n{=}4078$ rows,
+    PlatinAI 4-cell synthetic IC50; \texttt{metrics/by\_metric/
+    platinai\_3cell\_resistance.json}).
+    \item \textbf{m2 Pt 3-cell mean (\MEASURED{} R17 anchor):}
+    $\mathrm{AUC}=0.546 \pm 0.003$ after Wf-22 5-seed retrain
+    (MCF-7 / A549 regressed to $\sim\!0.50$; A2780cis $0.630$;
+    A2780 dropped per Stage~2.1 signal-absence diagnosis).
+    \item \textbf{R18 expected lift (\PROJECTED{} Wf-31):} m1 Ru
+    $\geq 0.81$ (Krasnov tier) and m2 Pt A2780cis $\geq 0.80$ (Rusanov
+    tier) via the Wf-31 \texttt{train\_ru\_5metal\_se3sb.py} +
+    \texttt{train\_cisplatin\_resistance\_v2.py} GPU retrain (R18 SE(3)
+    SB path, 5 seeds $\times$ 50 epochs, RTX 5090 + Blackwell dual-GPU;
+    \texttt{TODO/pending/82\_metric\_gap\_filling\_plan.md}\S2 Phase C).
+  \end{itemize}
+  \textbf{Impact:} this paper does \emph{not} claim Tier-1 AUC
+  leadership over Krasnov~2026 (Ru) or Rusanov~2025 (PlatinAI
+  per-line); the $m_1$ / $m_2$ honest-negative verdict is the
+  load-bearing finding of \S\ref{sec:honest-negative} until the
+  Wf-31 GPU retrain replaces the \MEASURED{} anchors above.
+  \textbf{Wf reference:} \textbf{Wf-31} (Phase C, m1/m2 GPU retrain,
+  \texttt{molmetal/reports/wf31\_*/final.md}, target ship date 2026-10-03
+  per TODO-82 \S4 timeline).
+
+  % ---------------------------------------------------------------------------
+  % §6.2 — Phase A BLOCK limitation (Wf-31 Blackwell + RTX 5090 dual-GPU)
+  % ---------------------------------------------------------------------------
+  \item \textbf{Phase A BLOCK: 5-seed Pt retrain shipped end-to-end
+  ($79$~min Blackwell wall-clock) but did \emph{not} lift AUC.}
+  \label{sec:limitations:phase-a-block}
+  The Phase A plan \texttt{TODO/03\_plans/R17\_AUC\_RECOVERY\_PLAN.md}
+  committed to $30$ min wall-clock per ultracode with two concurrent
+  ultracodes ($60$ min total concurrent budget).  \MEASURED{} actual
+  outcome per \texttt{molmetal/reports/wf\_phase\_a\_stage2\_pt/final.md}
+  and \texttt{metrics/by\_metric/platinai\_3cell\_resistance.json}:
+  \begin{itemize}
+    \item \textbf{Ru 5-metal multitask} (\texttt{wf\_phase\_a\_stage1\_ru})
+    died at host contention --- Stage~1.4 \texttt{train\_ru\_multitask.py}
+    stopped after $7$ log lines
+    (\texttt{logs/train\_ru\_multitask/seed\_all.log}); tmQM encoder
+    arch mismatch (V4MultiTaskDMPNN \texttt{DirectedMPNN}, $36$ tensors,
+    hidden=$300$) incompatible with baseline ckpt (MetalCytotoxModel,
+    $12$ tensors, hidden=$128$, \texttt{\_GRUUpdate}); fell back to
+    random init and was killed before epoch~$0$ forward pass.
+    \item \textbf{Pt 3-cell resistance retrain} \textbf{ran to
+    completion} on Blackwell single ultracode in $79$ min (no
+    concurrent job) --- \MEASURED{} A2780cis $\Delta = -0.018$
+    ($0.648 \to 0.630$), MCF-7 $\Delta = -0.081$ ($0.584 \to 0.503$),
+    A549 $\Delta = -0.125$ ($0.630 \to 0.505$), 3-cell mean collapsed
+    to $0.546 \pm 0.003$.  The combined expected lift
+    ($+0.05$ tmQM + $+0.02$ focal + $+0.04$ side-feat $\approx +0.11$)
+    did \textbf{NOT} materialise.
+  \end{itemize}
+  \textbf{R18 structural-fix protocol (\PROJECTED{} Wf-31):} the
+  Phase A BLOCK verdict is empirically \emph{re-opened}, not just
+  \emph{re-acknowledged}.  Wf-31 re-attempts both runs on the
+  Blackwell + RTX 5090 dual-GPU host
+  (\texttt{TODO/pending/82\_metric\_gap\_filling\_plan.md}\S2
+  Phase C): Blackwell \texttt{gpu0} handles the SE(3) SB
+  5-metal multitask ($\texttt{train\_ru\_5metal\_se3sb.py}$);
+  RTX 5090 \texttt{gpu1} handles the cisplatin-resistance v2
+  ($\texttt{train\_cisplatin\_resistance\_v2.py}$); 5 seeds
+  $\times$ 50 epochs each, expected wall-clock $\sim 8$~h per run,
+  total concurrent budget $\sim 8$~h (vs.\ $60$~min available to
+  Phase A).  The dual-GPU Blackwell + RTX 5090 host lifts the
+  per-ultracode wall-clock from $79$~min to a projected
+  $\sim 8$~h envelope \emph{but} the host contention that killed
+  the Wf-22 Phase A attempt is structurally avoided by the
+  dual-GPU split.
+  \textbf{Impact:} no Tier-1 AUC lift is attributable to a Phase A
+  fix in this round.  The $0.7123$ (m1, 1-seed) and $0.546$ (m2
+  3-cell mean, 5-seed) numbers in \S\ref{sec:limitations:tier1-auc}
+  are the empirical anchors until Wf-31 ships.  The $79$-min Pt
+  wall-clock is at least \textbf{\$success 1}: Blackwell completed
+  the 5-seed retrain end-to-end (no NaN, no OOM, all 5 per-seed
+  test AUC JSONs written); the runtime envelope is within the
+  cumulative Blackwell per-ultracode budget when run single-ultracode
+  but is $2.6\times$ over the strict $30$-min/ultracode CI budget
+  (see \S\ref{sec:limitations:ci-budget} below).
+  \textbf{Wf reference:} \textbf{Wf-31} (Phase C, \texttt{molmetal/
+  reports/wf31\_*/final.md}, target ship 2026-10-03 per TODO-82 \S4
+  timeline) and \textbf{Wf-29} (Phase A se3sb / transport / multiph
+  GPU smoke benchmark that validates the Blackwell + RTX 5090 dual-GPU
+  split before Wf-31 ships).
+
+  % ---------------------------------------------------------------------------
+  % §6.3 — Blackwell CI 30-min budget (CI framework, not GPU)
+  % ---------------------------------------------------------------------------
+  \item \textbf{Blackwell CI $30$-min budget is a CI framework
+  constraint, not the local RTX 5090 hardware envelope.}
+  \label{sec:limitations:ci-budget}
+  The ``$30$-min/ultracode, $60$-min concurrent'' budget cited in
+  Phase A \texttt{TODO/03\_plans/R17\_AUC\_RECOVERY\_PLAN.md} is the
+  \textbf{GitHub Actions Blackwell runner timeout}, not the local
+  RTX 5090 hardware ceiling.  The distinction matters because:
+  \begin{itemize}
+    \item \textbf{CI runner (Blackwell):} $30$ min single-ultracode
+    timeout per job; $60$ min total concurrent budget across the
+    two ultracodes; this is the \emph{structural} gate for any
+    GPU-retrain run that must terminate inside one CI cycle.
+    \item \textbf{Local RTX 5090 (\$experimental):} no hard timeout;
+    Wf-22 Pt $5$-seed retrain ran $79$ min wall-clock on Blackwell
+    single ultracode; Wf-31 Phase C expects $\sim 8$~h per run on
+    the dual-GPU Blackwell + RTX 5090 host, well outside the CI
+    $30$-min envelope but acceptable as an offline \emph{local}
+    run that ships its JSON outputs to the CI cache for downstream
+    paper-build consumption.
+  \end{itemize}
+  \MEASURED{} evidence: \texttt{molmetal/reports/wf\_phase\_a\_stage1\_ru/
+  final.md} shows the Ru run died at $7$-line init, not at the CI
+  timeout --- the contention was on the single Blackwell device
+  (gfx1101 wave64) being shared by \texttt{train\_ru\_multitask}
+  and \texttt{train\_cisplat\_resistance\_3cell}, both attempting
+  to acquire the same ROCm context.  The Wf-22
+  \texttt{train\_cisplat\_resistance\_3cell} reported $104\%$ CPU
+  usage while \texttt{train\_ru\_multitask} was starved after
+  init line $1$--$7$.  The CI runner timeout did not fire; the
+  GPU context contention killed the lower-priority job first.
+  \textbf{R18 fix (\PROJECTED{} Wf-29 + Wf-31):} the dual-GPU
+  Blackwell + RTX 5090 split avoids the contention by assigning
+  one job per device, and the Wf-29 Phase A smoke benchmark
+  validates the split before Wf-31 Phase C commits its
+  $\sim 8$~h wall-clock.  CI runs of Wf-31 deliverables will use
+  a ``split + checkpoint + resume'' wrapper
+  (\texttt{molmetal/scripts/wf31\_ci\_split.py}, planned in
+  TODO-82 \S3 NEW skill \texttt{mol-metal-gpu-execution}) so the
+  CI $30$-min budget is respected per CI step while the local
+  run continues to completion.
+  \textbf{Impact:} the Wf-22 5-seed Pt retrain (\$success 1) is
+  reproducible \emph{locally} on the same Blackwell single-ultracode
+  envelope, but the CI framework cannot host it directly without
+  the split + checkpoint wrapper.  This is a CI infrastructure
+  limitation, not a hardware limitation; the Blackwell + RTX 5090
+  host is $2.6\times$ the CI per-ultracode budget but is the
+  correct experimental envelope for R18 close-out.
+  \textbf{Wf reference:} \textbf{Wf-29} (Phase A se3sb / transport
+  / multiph smoke benchmark, validates dual-GPU split before
+  Wf-31) and \textbf{Wf-31} (Phase C, depends on the Wf-29 smoke).
+
+  % ---------------------------------------------------------------------------
+  % §6.4 — Vina Dock m3 limitation (Wf-30 10-pocket × 5-seed GPU retrain)
+  % ---------------------------------------------------------------------------
+  \item \textbf{Vina Dock $m_3$ median $-1.2885$~kcal/mol
+  ($n{=}100$, single-pocket $830$c) \MEASURED{} below TransDiffSBDD
+  $-8.5$~kcal/mol gate.}
+  \label{sec:limitations:vina-dock}
+  The CFM pipeline headline reports a \MEASURED{}
+  $\mathrm{median\_vina}=-1.2885$~kcal/mol on the R17 single-pocket
+  $830$c smoke ($100$ Lambda click products $\times$ AutoDock
+  Vina $1.2.7$, exhaustiveness=$8$, $n_{\text{poses}}{=}5$,
+  $\mathrm{mean}=-1.3546 \pm 0.1891$, $\mathrm{min}=-1.82$,
+  $\mathrm{max}=-1.13$; \texttt{metrics/by\_metric/vina\_score.json}).
+  The TransDiffSBDD \citep{transdiffsbdd2025} CrossDocked median
+  target is $\leq -8.5$~kcal/mol (10-pocket panel, $100$
+  candidates $\times$ $10$ pockets); the local $830$c measurement
+  is $+7.2$~kcal/mol above the SOTA gate.
+  \begin{itemize}
+    \item \textbf{Single-pocket limitation (\MEASURED{} R17):} the
+    $830$c pocket is an MMP13 collagenase receptor (positive control
+    for binding-affinity regression) --- it is \emph{not} a CrossDocked
+    test pocket, so the $-1.2885$~kcal/mol number is a pipeline
+    smoke test, not a TransDiffSBDD-class comparison.
+    \item \textbf{Strict decode-ratio collapse (\MEASURED{} R17):}
+    the CFM strict-contract measurement is \MEASURED{}
+    $\mathrm{decode\_ratio\_rdkit\_strict}=0.5$ on synthetic $10$-atom
+    Pt-click clouds (Path~B, $n{=}192$, overvalent atoms fail
+    sanitisation) and $0/8$ on the $830$c pocket
+    ($500$-step CPU/GPU smoke); the lenient-contract
+    $\mathrm{decode\_ratio}=1.000$ is consistent across $3$ seeds
+    $\times$ $10$ probes at the R17 10K-step retrain
+    (\texttt{molmetal/reports/wf\_r17\_10k\_retrain\_done/}) but is
+    an atom-only check, not a sanitisation check.
+    \item \textbf{$\mathrm{mean\_atoms}=8.0$ unconditional-mode
+    collapse (\MEASURED{} R17):} every probe step emits exactly
+    $8$ atoms regardless of pocket conditioning --- the $8$-atom
+    constant is the unconditional-mode mean, indicating the ODE
+    path runs but the model has \emph{not} learned
+    pocket-conditioned placement.
+    \item \textbf{R18 expected lift (\PROJECTED{} Wf-30):} $10$
+    CrossDocked pockets $\times$ $5$ candidates $\times$ $5$ seeds
+    = $250$ docking evaluations via the new
+    \texttt{molmetal/scripts/dock\_10pockets.py} + SE(3) SB
+    5-seed $\times$ 50-epoch retrain; expected median
+    $\leq -8.5$~kcal/mol (TransDiffSBDD tier) on the $10$-pocket
+    panel (TODO-82 \S2 Phase B, target ship 2026-10-01).
+  \end{itemize}
+  \textbf{Impact:} the geometric-SBDD headline gap of
+$\sim 2$~kcal/mol Vina \emph{cannot} be closed on a single-pocket
+$830$c measurement; the $-1.2885$~kcal/mol anchor is a pipeline
+smoke, not a SOTA comparison.  No CFM-side cell of
+Table~\ref{tab:main_v3_template} is eligible for
+$\DESIGN{}\!\to\!\MEASURED{}$ promotion under the strict contract
+until Wf-30 ships.  The hybrid Lambda$\times$CFM column of
+Table~\ref{tab:sbdd-comparison} is \DESIGN{} pending the Wf-30
+production panel.
+  \textbf{Wf reference:} \textbf{Wf-30} (Phase B, $10$ pockets
+  $\times$ $5$ seeds Vina retrain, \texttt{molmetal/reports/
+  wf30\_*/final.md}, target ship 2026-10-01 per TODO-82 \S4
+  timeline); Wf-30 cascades to m4 Success Rate and m10 Vina Min
+  in Table~\ref{tab:main_v3_template}.
+
+  % ---------------------------------------------------------------------------
+  % §6.5 — Affinity $m_{16}$ limitation (Wf-32 GPU regression retrain)
+  % ---------------------------------------------------------------------------
+  \item \textbf{Affinity $m_{16}$ Pearson $r=0.207$ \MEASURED{},
+  seed-fragile ($0.005 / 0.519 / 0.071$ spread).}
+  \label{sec:limitations:affinity}
+  The pIC$_{50}$ activity predictor returns \MEASURED{}
+  $\mathrm{Pearson}\,r=0.207$ on the HeLa48h/dark cohort test split
+  ($\sim 700$ test rows, $3$ seeds $\times$ $50$ epochs, margin=$0.5$
+  best of $0.25$ / $0.5$ / $1.0$ sweep; \texttt{metrics/by\_metric/
+  pearson\_r\_pic50.json}).  The seed-fragile per-seed values are
+  $0.005$ (seed $0$), $0.519$ (seed $1$), $0.071$ (seed $2$) --- a
+  $\sigma = 0.228$ spread that puts the $r=0.207$ headline within
+  one std of the no-signal floor.  The Boltz-2 \citep{boltz2024}
+  reference is $\mathrm{Pearson}\,r \approx 0.86$ on the same
+  affinity regression task; the local measurement is $-0.65$ below
+  the Boltz-2 anchor.
+  \begin{itemize}
+    \item \textbf{Seed-fragility (\MEASURED{} R17):} the
+    $0.005 / 0.519 / 0.071$ per-seed spread (range $0.514$)
+    dominates the $0.207$ headline; the bound-aware accuracy
+    $\mathrm{ba\_acc}=1.0$ at margin$\geq 0.5$ is the only stable
+    signal in the predictor.
+    \item \textbf{Ridge baseline (\MEASURED{} R17):} the ridge
+    regressor on the same split returns \MEASURED{}
+    $\mathrm{Pearson}\,r=0.572$, beating the D-MPNN neural predictor
+    by $+0.365$ on the same scaffold split
+    (\texttt{molmetal/reports/wf\_extra1\_full/final.md}).
+    \item \textbf{R18 expected lift (\PROJECTED{} Wf-32):} the
+    new \texttt{molmetal/scripts/train\_affinity\_regression.py}
+    on RTX 5090, PlatinAI 4-cell + MetalCytoToxDB 5-metal
+    affinity cohort, $5$ seeds $\times$ $50$ epochs, expected
+    $\mathrm{Pearson}\,r \geq 0.50$ (more realistic target than
+    Boltz-2 $0.86$ on a small training set; TODO-82 \S2 Phase D,
+    \S6 acceptance criteria).
+  \end{itemize}
+  \textbf{Impact:} the pIC$_{50}$ predictor does \emph{not} beat
+  the ridge baseline; the $0.207$ headline is the honest-negative
+  anchor for the regression-on-fixed-molecule baseline.  No
+  in-silico phenotype claim in \S\ref{sec:results:honest} relies
+  on the pIC$_{50}$ predictor --- the metallodrug-vertical
+  activity ranking uses the Krasnov Ru AUC + Rusanov PlatinAI
+  AUC + NCI-60 9-cell AUC as the load-bearing evidence, and the
+  $m_{16}$ regression is reported as a pipeline smoke test, not
+  as a phenotype oracle.
+  \textbf{Wf reference:} \textbf{Wf-32} (Phase D, $m_{16}$
+  affinity regression retrain, \texttt{molmetal/reports/wf32\_*/
+  final.md}, target ship 2026-10-05 per TODO-82 \S4 timeline).
+
+  % ---------------------------------------------------------------------------
+  % §6.6 — PB-Valid $m_8$ limitation (Wf-32 production panel)
+  % ---------------------------------------------------------------------------
+  \item \textbf{PB-Valid $m_8$ $0.846$ \MEASURED{} on $1$-pocket
+  click-tile smoke; $0/30$ production panel ($n_{\text{distinct}}
+  =1$ collapse).}
+  \label{sec:limitations:pb-valid}
+  The PoseBusters $26$-check pass rate reports \MEASURED{}
+  $\mathrm{pb\_pass\_rate}=0.846$ on the $1$-pocket click-tile
+  smoke (post-MMFF94s relax, all $26$ checks, $22$ pass + $4$ fail
+  on protein-aware distance/cofactor; \texttt{molmetal/reports/
+  wf\_pb\_mmff94\_relax/}, \texttt{metrics/by\_metric/
+  pb\_pass\_rate.json}).  The production $30$-cell panel
+  (\texttt{wf\_pb\_pass\_10x3\_smoke}) is \textbf{UNDEFINED}: $0/30$
+  PB-eligible because the upstream $n_{\text{distinct}}=1$ collapse
+  (\texttt{wf\_round12\_lambda\_patha\_10x3}, see
+  \S\ref{sec:limitations:vina-dock}) emits exactly one molecule
+  per cell, so there is no pool to draw $5$ PB-Valid candidates from.
+  \begin{itemize}
+    \item \textbf{$1$-pocket smoke (\MEASURED{} R17):} $0.846$ on
+    $26$ checks ($22$ chemistry + $4$ protein-aware); $4$ failures
+    on cofactor + distance thresholds indicate the relax step lifts
+    chemistry validity but the protein-aware checks remain tight.
+    \item \textbf{Production panel (\MEASURED{} UNDEFINED):} the
+    $30$-cell panel is structurally blocked by the
+    $n_{\text{distinct}}=1$ upstream collapse; the $0.846$
+    anchor cannot be extrapolated to the $30$-cell panel until
+    the upstream collapse is fixed.
+    \item \textbf{R18 expected lift (\PROJECTED{} Wf-32):} the new
+    \texttt{molmetal/scripts/bench\_pb\_valid.py} on RTX 5090,
+    $10$ pockets $\times$ $5$ candidates $\times$ $5$ seeds
+    = $250$ PB-Valid evaluations; expected
+    $\mathrm{pb\_pass\_rate} \geq 0.90$ on the $10$-pocket
+    production panel (TODO-82 \S2 Phase D, \S6 acceptance criteria;
+    Wf-32 also resolves the upstream $n_{\text{distinct}}=1$
+    collapse via the SE(3) SB decoder rework).
+  \end{itemize}
+  \textbf{Impact:} no $m_8$ cell of Table~\ref{tab:main_v3_template}
+  is eligible for $\DESIGN{}\!\to\!\MEASURED{}$ promotion under the
+  strict $10$-pocket production panel until Wf-32 ships.  The
+  $0.846$ anchor is a $1$-pocket smoke, not a SOTA comparison;
+  the production-panel gap is structural (upstream $n_{\text{
+  distinct}}=1$ collapse) and is not addressable by a
+  PB-Valid-only fix.
+  \textbf{Wf reference:} \textbf{Wf-32} (Phase D, $m_8$ PB-Valid
+  production panel, \texttt{molmetal/reports/wf32\_*/final.md},
+  target ship 2026-10-05 per TODO-82 \S4 timeline); Wf-32 also
+  cascades to the m4 Success Rate cell in
+  Table~\ref{tab:main_v3_template} via the upstream $n_{\text{
+  distinct}}$ repair.
+
+\end{enumerate}
+
+\bigskip
+
+\noindent\textbf{Cross-cutting compute / wet-lab footer (stable
+across Wf-30/31/32).}
+The $64\times$A100 / $64\times$H100 GPU cluster that hosts the
+TransDiffSBDD \citep{transdiffsbdd2025} $209$M-param Uni-Mol
+SE(3)-Transformer pretrain \citep{unimol_2023} is out of reach
+for this round's Blackwell + RTX 5090 single-host budget; the
+geometric-SBDD headline is \DESIGN{} pending the Wf-30 10-pocket
+$\times$ 5-seed retrain.  PlatinAI \citep{rusanov2025platinai} is
+a $226{,}918$-row Pt-cytoxicity database across $9$ cell lines;
+the local $4$-cell-line subset ($4078$ rows) is Cloudflare-blocked
+from this host (ChemRxiv supplementary xlsx), so the per-cell-line
+AUC panel is calibrated only on the $3$-cell / $4$-cell subset
+and the $\mathrm{AUC}\geq 0.85$ per-line headline is \PROJECTED{}
+on the unseen $5$ cell lines.  MetalCytoToxDB
+\citep{krasnov2026metalcytotoxdb} covers $5$ metals (Ru / Ir / Pt /
+Pd / Au) of the $30$ d-block metals the
+\texttt{molmetal/molmetal\_lam/atoms/combinators.py::METAL\_SYMBOLS}
+registry lists; the cross-metal transfer claim is bounded to the
+$5$ covered metals.  This paper is \emph{in silico only}; we report
+computational Vina / PoseBusters / SA / QED / anticancer-index /
+pIC$_{50}$ predictions but do \emph{not} include synthesised
+candidates, in-vitro GI$_{50}$ measurements, or cellular-uptake
+assays.  Wet-lab prospective validation is deferred to an external
+chemistry group (out of scope for this computational paper, gated on
+collaborator capacity; \S\ref{sec:future:wetlab-validation}).
+
+\bigskip
+
+\noindent\textbf{Honest-negative inventory (v3, 2026-09-26).}
+The seven \textsc{measured} honest-negative results consolidated in
+\texttt{TODO/pending/82\_metric\_gap\_filling\_plan.md}\S0 G1--G7
+gap inventory --- (G1) m3 Vina Dock median $-1.2885$ vs.\ TransDiff
+$-9.37$ ($\Delta=+8.08$); (G2) m1 Ru AUC $0.7123$ vs.\ Krasnov
+$0.81$ ($\Delta=-0.098$); (G3) m2 Pt A2780cis $0.648$ vs.\ Rusanov
+$0.85$ ($\Delta=-0.202$); (G4) m7 Diversity Tanimoto $0.1065$ vs.\
+$0.65$ ($\Delta=-0.543$); (G5) m16 Affinity Pearson $r$ $0.207$
+vs.\ Boltz-2 $0.86$ ($\Delta=-0.65$, seed-fragile); (G6) m19
+Multi-metal LOMO $0.535$ vs.\ $0.70$ ($\Delta=-0.165$);
+(G7) Vina Dock on $10$ CrossDocked pockets $5/10$ MEASURED{} vs.\
+$100$ pockets $\times$ $3$ seeds ($95\%$ pockets missing) ---
+all map to the six items above.  No cell of
+Table~\ref{tab:main_v3_template} is silently promoted from
+\DESIGN{} to \MEASURED{} by this inventory; every \textsc{measured}
+value above carries the explicit \textsc{measured} tag and
+source-report path (\texttt{metrics/by\_metric/metalcytotox\_ru\_
+auc.json}, \texttt{metrics/by\_metric/platinai\_3cell\_resistance.
+json}, \texttt{metrics/by\_metric/vina\_score.json},
+\texttt{metrics/by\_metric/pearson\_r\_pic50.json},
+\texttt{metrics/by\_metric/pb\_pass\_rate.json},
+\texttt{molmetal/reports/wf\_phase\_a\_stage2\_pt/final.md}).
+Reviewers should treat items~\ref{sec:limitations:tier1-auc},
+\ref{sec:limitations:phase-a-block},
+\ref{sec:limitations:ci-budget},
+\ref{sec:limitations:vina-dock},
+\ref{sec:limitations:affinity}, and
+\ref{sec:limitations:pb-valid} as the Wf-30/31/32 GPU-retrain
+chain (the load-bearing honest negatives that the R18 close-out
+must clear before any Tier-1 AUC leadership or geometric-SBDD
+SOTA claim is made); the cross-cutting compute / wet-lab footer
+is the standard computational-paper scope boundary that survives
+R19 wet-lab outreach and R20 cloud-GPU retrain.

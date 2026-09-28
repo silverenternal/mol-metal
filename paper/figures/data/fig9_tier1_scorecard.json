@@ -1,0 +1,37 @@
+{
+  "title": "Tier-1 precious-metal scorecard",
+  "description": "5-axis Tier-1 scorecard on precious-metal anticancer",
+  "cards": [
+    {
+      "metric_key": "metalcytotox_ru_auc",
+      "label": "Ru subset AUC",
+      "value": 0.7122770919067215,
+      "status": "MEASURED_BELOW_GATE"
+    },
+    {
+      "metric_key": "platinai_4cell_auc",
+      "label": "Pt 4-cell mean AUC",
+      "value": 0.5531726597598308,
+      "status": "MEASURED_SYNTHETIC_LABELS"
+    },
+    {
+      "metric_key": "metal_lomo_auc",
+      "label": "Multi-metal LOMO",
+      "value": 0.5346340730251975,
+      "status": "MEASURED_BELOW_GATE"
+    },
+    {
+      "metric_key": "nci60_precious_9cell_auc",
+      "label": "NCI-60 9-cell mean",
+      "value": 0.80072017249287,
+      "status": "MEASURED"
+    },
+    {
+      "metric_key": "n_distinct",
+      "label": "$n_{\\mathrm{distinct}}$ metal-ligand pairs",
+      "value": 20,
+      "status": "PENDING"
+    }
+  ],
+  "render": "paper/figures/fig9_tier1_scorecard.py"
+}

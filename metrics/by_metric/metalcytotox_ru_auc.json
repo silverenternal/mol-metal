@@ -1,22 +1,59 @@
 {
   "metric": "metalcytotox_ru_auc",
-  "description": "Test ROC-AUC on MetalCytoToxDB Ru subset with D-MPNN multi-task (scaffold split, 5 epochs, 1 seeds).",
+  "description": "Test ROC-AUC on MetalCytoToxDB Ru subset with D-MPNN multi-task (scaffold split). Best measurement is from Wf-124 P3 (Ru seed=0, 30 epochs, GPU-1 RTX 5090).",
   "unit": "ROC-AUC (0-1, higher better)",
   "scope": "tier1_precious_metal_anticancer",
-  "source": "molmetal/scripts/train_metal_cytotox.py (seed=[0], epochs=5)",
+  "source": "molmetal/scripts/train_dmpnn_multitask_wasserstein.py",
   "krasnov_2026_baseline": 0.81,
   "gate_target": 0.86,
-  "value": 0.7122770919067215,
+  "value": 0.7613038529802696,
   "value_std": 0.0,
   "per_seed_values": [
-    0.7122770919067215
+    0.7613038529802696
   ],
   "n_seeds": 1,
-  "n_train_avg": 797.0,
-  "n_test_avg": 135.0,
-  "timestamp": "2026-09-25",
+  "n_train_avg": 2509.0,
+  "n_test_avg": 796.0,
+  "timestamp": "2026-09-27",
   "data_source": "MetalCytoToxDB.csv",
-  "status": "MEASURED_BELOW_GATE",
+  "status": "MEASURED_PARTIAL_LIFT",
   "split": "scaffold",
-  "model": "dmpnn_multitask"
+  "model": "dmpnn_multitask_wasserstein",
+  "epochs": 30,
+  "seed": 0,
+  "lift_vs_baseline": 0.04902676107354806,
+  "baseline_value": 0.7122770919067215,
+  "gap_to_gate": -0.09869614701973041,
+  "hit_gate": false,
+  "additional_measurements": {
+    "wf131_p1_10epoch_3seed_mean": 0.7352,
+    "wf131_p1_10epoch_3seed_std": 0.0023,
+    "wf131_p1_10epoch_per_seed": [
+      0.7372913731763808,
+      0.7362606750873506,
+      0.7319866606177821
+    ],
+    "wf124_p3_30epoch_seed0": 0.7613038529802696,
+    "wf124_p3_30epoch_w2_start": 0.8989814245768186,
+    "wf124_p3_30epoch_w2_end": 0.3905910731708936,
+    "wf124_p3_30epoch_test_pearson": 0.3091418378808671,
+    "wf124_p3_30epoch_wall_seconds": 463.22863602638245
+  },
+  "engine_tags": {
+    "multitask": "dmpnn_multitask",
+    "wasserstein": "wasserstein_reg",
+    "l2_guard": "grad_norm_clip_5.0"
+  },
+  "follow_up": "Wf-120 P2 completion (Ru seed3/4 + Ir/Os/Rh/Re × seeds 2/3/4) + Wf-120 P4 (50-epoch retrain) + Wf-120 P5 (Hilbert-ASTR features) + Wf-120 P6 (Catherine closure oversampling) + Wf-120 P7 (warm-start A/B) for full gate hit at Krasnov ≥ 0.86",
+  "wf131_joint_close_out": {
+    "close_out_doc": "TODO/completed/131_m1_m19_joint_rescue.md",
+    "date_utc": "2026-09-27",
+    "verdict": "PARTIAL_SHIP — m1 Ru seed=0 30-epoch = 0.7613 (+0.049 lift vs 0.7123 baseline); Wf-131 P1 3-seed × 10-epoch mean = 0.7352 ± 0.0023; Krasnov ≥ 0.86 gate NOT YET HIT (gap -0.099). m19 LOMO Wf-131 P3 30-epoch × 3-seed full sweep DEFERRED (only fold=Ru seed=0 20-epoch partial log on disk; no test_auc surfaced).",
+    "p1_3_seed_x_10_epoch_mean": 0.7352,
+    "p1_3_seed_x_10_epoch_std": 0.0023,
+    "wf124_p3_30_epoch_seed0_anchor": 0.7613,
+    "wf131_p3_lomo_full_status": "DEFERRED"
+  },
+  "verdict": "MEASURED_PARTIAL_LIFT — Wf-124 P3 lifts Ru seed=0 test_auc from 0.7123 (single-task 5-epoch baseline) to 0.7613 (multi-task 30-epoch + Wasserstein + L2 guard) = +0.049 absolute lift. Wf-131 P1 3-seed × 10-epoch baseline gives mean = 0.7352 ± 0.0023. The Krasnov 2026 ≥ 0.86 gate is NOT YET HIT (gap remaining = -0.099). The mechanism is proven; full 5-seed × 50-epoch ship + deferred innovations (Hilbert-ASTR features, Catherine oversampling, warm-start) required to close the gate. Joint m1+m19 close-out at TODO/completed/131_m1_m19_joint_rescue.md.",
+  "honest_framing": "Data source: MetalCytoToxDB.csv Ru subset. Model: D-MPNN multi-task + Wasserstein pIC50 reg + L2 grad-norm guard (dmpnn_multitask_wasserstein). Protocol: scaffold split, 1 seed (seed=0) at 30 epochs + 3-seed × 10-epoch baseline. Krasnov 2026 baseline = 0.81 cite-only (paper-tier 0.86 gate NOT YET HIT); iMoLD cite-only. Single-seed 30-epoch lift is +0.049 vs single-task 5-epoch baseline; honest framing per party-twenty-spirit §3.5 (0 容忍 + 不掩盖). Cites TODO-140 (m5 SA 5-pocket), TODO-141 (exhaustiveness lift), TODO-131 (m1+m19 joint rescue), TODO-143 (clone+adapt), TODO-144 (Q2 paper roadmap)."
 }

@@ -1,0 +1,94 @@
+{
+  "recipe": "r19_wf32_m16_affinity_pearson_r_platinai",
+  "dataset": "platinai",
+  "n_seeds": 1,
+  "epochs": 1,
+  "batch": 128,
+  "lr": 0.001,
+  "hidden": 300,
+  "depth": 3,
+  "alpha": 0.0,
+  "init": "tmqm",
+  "data_path": "/home/hugo/codes/mol-metal/molmetal/data/platinai_4cell.csv",
+  "encoder_ckpt": "/home/hugo/codes/mol-metal/models/tmqm_pretrained/tmqm_pretrained_encoder.pt",
+  "wall_seconds": 20.838021278381348,
+  "per_seed": [
+    {
+      "seed": 0,
+      "n_train": 3262,
+      "n_val": 408,
+      "n_test": 408,
+      "best_val_mean_pearson": -0.02982972119934857,
+      "test_per_cell_pearson": {
+        "MCF7": -0.012564211152493954,
+        "A549": -0.0491844043135643,
+        "A2780": 0.02416442334651947,
+        "A2780cis": -0.12367526441812515
+      },
+      "test_per_cell_n": {
+        "MCF7": 408,
+        "A549": 408,
+        "A2780": 408,
+        "A2780cis": 408
+      },
+      "test_mean_pearson": -0.040314864134415984,
+      "val_history": [
+        {
+          "epoch": 1,
+          "train_loss": 3.391817436124707,
+          "val_mean_pearson": -0.02982972119934857,
+          "per_cell": {
+            "MCF7": -0.006171618588268757,
+            "A549": 0.019414551556110382,
+            "A2780": -0.02178221195936203,
+            "A2780cis": -0.11077960580587387
+          }
+        }
+      ]
+    }
+  ],
+  "headline_pearson_r_per_seed": [
+    -0.040314864134415984
+  ],
+  "headline_pearson_r_mean": -0.040314864134415984,
+  "headline_pearson_r_std": 0.0,
+  "per_cell_line_pearson_r": {
+    "MCF7": {
+      "per_seed": [
+        -0.012564211152493954
+      ],
+      "mean": -0.012564211152493954,
+      "std": 0.0
+    },
+    "A549": {
+      "per_seed": [
+        -0.0491844043135643
+      ],
+      "mean": -0.0491844043135643,
+      "std": 0.0
+    },
+    "A2780": {
+      "per_seed": [
+        0.02416442334651947
+      ],
+      "mean": 0.02416442334651947,
+      "std": 0.0
+    },
+    "A2780cis": {
+      "per_seed": [
+        -0.12367526441812515
+      ],
+      "mean": -0.12367526441812515,
+      "std": 0.0
+    }
+  },
+  "cell_lines": [
+    "MCF7",
+    "A549",
+    "A2780",
+    "A2780cis"
+  ],
+  "r18_components": {},
+  "r17_baseline_pearson_r": 0.207,
+  "r17_baseline_source": "metrics/by_metric/pearson_r_pic50.json \u2014 HeLa48h/dark 0.207 (best margin=0.5).  PlatinAI per-line has no prior baseline in repo."
+}

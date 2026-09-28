@@ -1,0 +1,183 @@
+{
+  "config": {
+    "csv": "/home/hugo/codes/mol-metal/molmetal/data/metallo_drugs_500_train.csv",
+    "n_train_loaded": 449,
+    "n_train_embedded": 358,
+    "n_skipped": 91,
+    "steps_planned": 1000,
+    "steps_executed": 1000,
+    "batch_size": 4,
+    "lr": 0.0001,
+    "lr_warmup_steps": 200,
+    "hidden_dim": 128,
+    "n_layers": 3,
+    "joint_train": true,
+    "bond_head": "learned",
+    "vocab_size": 20,
+    "bond_head_in_dim": 265,
+    "device": "cuda",
+    "cuda_available": true,
+    "torch_version": "2.14.0+cu130",
+    "seed": 0
+  },
+  "wall_clock_s": 82.08136105537415,
+  "loss_curves_summary": {
+    "cfm": {
+      "n": 1000,
+      "first": 18.538455963134766,
+      "last": 11.804268836975098,
+      "min": 4.914706707000732,
+      "max": 2364.3671875,
+      "delta_first_to_last": -6.734187126159668
+    },
+    "atom": {
+      "n": 1000,
+      "first": 2.995732307434082,
+      "last": 1.7256529331207275,
+      "min": 1.0396947860717773,
+      "max": 24.46807289123535,
+      "delta_first_to_last": -1.2700793743133545
+    },
+    "bond": {
+      "n": 1000,
+      "first": 27.684694290161133,
+      "last": 1.2081629037857056,
+      "min": 0.961837649345398,
+      "max": 30.89590072631836,
+      "delta_first_to_last": -26.476531386375427
+    },
+    "total": {
+      "n": 1000,
+      "first": 46.52272415161133,
+      "last": 13.18499755859375,
+      "min": 6.275877475738525,
+      "max": 2365.982177734375,
+      "delta_first_to_last": -33.33772659301758
+    }
+  },
+  "lr_curve_summary": {
+    "n": 1000,
+    "first": 5.000000000000001e-07,
+    "last": 0.0001,
+    "min": 5.000000000000001e-07,
+    "max": 0.0001,
+    "delta_first_to_last": 9.95e-05,
+    "target_lr": 0.0001,
+    "warmup_steps_requested": 200,
+    "lr_at_step_1": 5.000000000000001e-07,
+    "lr_at_end_of_warmup": 0.0001,
+    "lr_at_final_step": 0.0001
+  },
+  "decode_summary": {
+    "decode_ratio_at_200": null,
+    "decode_ratio_at_500": 1.0,
+    "decode_ratio_at_1000": 1.0,
+    "max_decode_ratio": 1.0,
+    "first_decode_ratio_nonzero_step": 250,
+    "all_probes": [
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 1.2357321083545685,
+        "step": 250,
+        "wall_s": 1.3071036338806152
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 1.1244354248046875,
+        "step": 500,
+        "wall_s": 0.4981517791748047
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 1.2878116071224213,
+        "step": 750,
+        "wall_s": 0.49121618270874023
+      },
+      {
+        "decode_ratio": 1.0,
+        "n_decoded": 16,
+        "mean_atoms": 8.0,
+        "disconnected_count": 0,
+        "lap_p95": 1.177582710981369,
+        "step": 1000,
+        "wall_s": 0.3699774742126465
+      }
+    ]
+  },
+  "p0_fixes_active": {
+    "F1_bond_aware_decoder_wired": true,
+    "F2_bond_head_in_dim_correct": true,
+    "F3_vocab_mask_in_loss": true,
+    "F4_hidden_dim_64_plus": true,
+    "F5_no_bonds_zeros_placeholder": true
+  },
+  "p1_fixes_active": {
+    "P1_1_hidden_dim_128": true,
+    "P1_2_learnable_vel_scale": true,
+    "P1_3_pcgrad_multi_task": false,
+    "P1_4_connectivity_aware_decoder": true
+  },
+  "lambda_reward_active": {
+    "lambda_reward_enabled": false,
+    "lambda_reward_samples_requested": 64,
+    "lambda_dataset_size": 0,
+    "lambda_dataset_after_zero_filter": 0,
+    "lambda_zero_weight_dropped": 0,
+    "lambda_mix_ratio": 0.25,
+    "lambda_reweight_alpha": 1.0,
+    "lambda_pocket_id": "metallo_drug_smoke",
+    "lambda_loss_is_weighted": false
+  },
+  "raw_log_tail": [
+    {
+      "step": 991,
+      "loss": 18.690322875976562
+    },
+    {
+      "step": 992,
+      "loss": 29.094722747802734
+    },
+    {
+      "step": 993,
+      "loss": 18.831392288208008
+    },
+    {
+      "step": 994,
+      "loss": 19.393402099609375
+    },
+    {
+      "step": 995,
+      "loss": 8.258992195129395
+    },
+    {
+      "step": 996,
+      "loss": 8.644407272338867
+    },
+    {
+      "step": 997,
+      "loss": 8.124723434448242
+    },
+    {
+      "step": 998,
+      "loss": 16.060543060302734
+    },
+    {
+      "step": 999,
+      "loss": 19.799217224121094
+    },
+    {
+      "step": 1000,
+      "loss": 13.18499755859375
+    }
+  ],
+  "checkpoint_path": "logs/yuelbond_p1_shim_fix/seed_0/ckpt.pt"
+}

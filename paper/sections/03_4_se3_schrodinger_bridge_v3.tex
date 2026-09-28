@@ -1,0 +1,68 @@
+% =============================================================================
+%  Paper §3.4 -- Pocket-conditioned SE(3) Schroedinger Bridge (v3 TEMPLATE).
+%  (Wf-33 Phase 3, 2026-09-26, awaits Wf-30 10-pocket x 5-seed Vina retrain)
+%
+%  Source-of-truth (when filled):
+%    - Section body: paper/sections/03_4_se3_schrodinger_bridge.tex (Wf-3
+%      ship, 2026-09-26, R17 / Wf-3 close-out -- DO NOT MODIFY)
+%    - R18 MEASURED row: TODO/pending/82_metric_gap_filling_plan.md G1
+%                        (Wf-30 Phase B 10-pocket x 5-seed Vina retrain,
+%                        molmetal/reports/wf30_*/final.md, target ship
+%                        2026-10-01)
+%    - R18 PROJECTED ceiling: TODO/02_metrics/METRICS_TARGETS.md §2 per-
+%                        metric gate target for m3 (TransDiffSBDD tier
+%                        <= -8.5 kcal/mol on the 10-pocket panel)
+%
+%  Diff vs Wf-3 ship (03_4_se3_schrodinger_bridge.tex):
+%    (a) Single paragraph added below the existing §3.4 body, carrying
+%        the Wf-30 R18 MEASURED row for the G1 Vina Dock gap. The
+%        existing body is preserved verbatim (R17 / Wf-3 version is
+%        the load-bearing §3.4 reference; this v3 is the Wf-30
+%        fill-target).
+%    (b) \MEASURED{TBD Wf-30} placeholder is replaced by the actual
+%        10-pocket x 5-seed median + (n_seeds x epochs) provenance
+%        string once Wf-30 ships. The R17 anchor -1.2885 kcal/mol
+%        and the R18 PROJECTED ceiling <= -8.5 kcal/mol are stable
+%        across the Wf-30 window.
+%    (c) No cell is silently fabricated. If Wf-30 fails, the
+%        placeholder is replaced by \textbf{HONEST-NEGATIVE} + the
+%        failure mode (per party-twenty-spirit §3.5).
+%
+%  Status tags (defined in paper/main.tex:104-110):
+%    \MEASURED{}            = real generated-candidate measurement on
+%                             this box at the reported panel size.
+%    \PROJECTED{}           = structural-fix projection (R18 ceiling).
+%    \MEASURED{TBD Wf-30}   = pending GPU-retrain anchor; the Wf-30
+%                             tag maps to molmetal/reports/wf30_*/
+%                             (TODO-82 §2 Phase B).
+%
+%  Honest framing (v3, 2026-09-26):
+%    - This v3 is a SHELL ONLY. The R18 MEASURED row for m3 Vina
+%      Dock is a \MEASURED{TBD Wf-30} placeholder pending the Wf-30
+%      Phase B 10-pocket x 5-seed GPU retrain.
+%    - The R17 anchor -1.2885 kcal/mol (single-pocket 830c smoke,
+%      metrics/by_metric/vina_score.json) and the R18 PROJECTED
+%      ceiling <= -8.5 kcal/mol (TransDiffSBDD tier) are stable.
+%    - The existing Wf-3 §3.4 body is the load-bearing method
+%      reference and is NOT modified by this v3 addendum.
+% =============================================================================
+
+\paragraph{Expected SE(3) SB lift on Vina Dock (v3 placeholder,
+Wf-30 pending).}
+The R18 backlog projects a Vina Dock $m_3$ median lift of
+$-1.2885 \to \leq -8.5$\,kcal/mol (\textsc{P0-1} of
+\texttt{mol-metal-r18-math/SKILL.md} priority map, G1 of
+\texttt{TODO/pending/82\_metric\_gap\_filling\_plan.md}\S0).  The
+R17 anchor $-1.2885$\,kcal/mol \MEASURED{} is the single-pocket
+$830$c smoke (median over $100$ Lambda click products, AutoDock
+Vina $1.2.7$, exhaustiveness=$8$, $n_{\text{poses}}=5$; see
+\texttt{metrics/by\_metric/vina\_score.json}).  The R18 ceiling
+$\leq -8.5$\,kcal/mol \PROJECTED{} is the TransDiffSBDD
+10-pocket tier.  The Wf-30 \MEASURED{TBD Wf-30} replacement is
+the Phase B $10$ CrossDocked pockets $\times$ $5$ candidates
+$\times$ $5$ seeds = $250$ docking evaluations via
+\texttt{molmetal/scripts/dock\_10pockets.py} + the SE(3) SB
+$5$-seed $\times$ $50$-epoch retrain (TODO-82 \S2 Phase B,
+target ship 2026-10-01).  When Wf-30 ships, this placeholder is
+replaced by the actual $10$-pocket median + (n\_seeds $\times$
+epochs) provenance string.

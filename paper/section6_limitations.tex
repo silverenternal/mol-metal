@@ -1,0 +1,390 @@
+% Section 6: Limitations + Honest-Negative Results (Q2 JCIM paper v2)
+% Generated from TODO-133 + TODO-138 §1.4 + TODO-141 Phase 5 + Wf-127/128/129/131/145 honest-negative ships + Sprint A/B additions
+% Date: 2026-09-27
+% Honest framing per party-twenty-spirit §3.5
+% Honest-negative count: 8 (TODO-138 §0 baseline) + 2 (Sprint A: GroupNorm vacuous, DANN partial wiring) + 1 (Sprint B: BindingDB IC50 not vendored) + 2 (Sprint A: 7.5M deferred, theoretical tool extensions not adopted) = 13 honest-negative entries total
+
+\section{Limitations and Honest-Negative Results}
+\label{sec:limitations}
+
+In keeping with the open-science principle that negative results should be
+reported with the same prominence as positive ones, we explicitly enumerate
+the honest-negative results below.  Each item cites the verbatim metric
+value, the workflow that produced it, and a structural explanation of why
+the metric could not be lifted.  This section is not an appendix; it is a
+primary section of the paper.
+
+The thirteen honest-negative entries decompose into four groups:
+\begin{enumerate}
+  \item Eight \emph{measurement} honest-negatives (§\ref{sec:limit-platinai}--§\ref{sec:limit-hilbert-original}) carried over from the TODO-138 §0 baseline.
+  \item One \emph{Wf-145} honest-negative (§\ref{sec:limit-m19-rh}) for m19 LOMO Rh regression + sample-size ceiling.
+  \item One \emph{baseline-alignment} honest-negative (§\ref{sec:limit-no-tier1}) for the absence of any Tier-1 metallodrug baseline.
+  \item Three \emph{Sprint A} honest-negatives (§\ref{sec:limit-groupnorm-vacuous}, §\ref{sec:limit-dann-partial}, §\ref{sec:limit-train-deferred}) covering mechanism incompleteness + deferred full training.
+  \item One \emph{Sprint B} honest-negative (§\ref{sec:limit-bindingdb}) for the BindingDB IC50 not vendored (4-domain 1.61\,M not 2.6\,M).
+  \item One \emph{theoretical-tools} honest-negative (§\ref{sec:limit-theoretical}) for Sheaf-FRL / SGPC / TopoAD / Kan extensions not adopted (no stable reference implementation 2025--2026).
+\end{enumerate}
+
+\subsection{Architectural Signal Floor --- PlatinAI 4-Cell Combined $R^2$}
+\label{sec:limit-platinai}
+
+On the PlatinAI 4-cell synthetic pIC$_{50}$ dataset, our combined
+Hilbert+ASTSR evolutionary regression achieves combined $R^2 = -5.66 \pm 1.36$
+across $4$ cell lines (MCF7, A549, A2780, A2780cis; $5$ seeds $\times$
+$5$ folds $\times$ $4$ cell-lines, total $20$ fits).  Three rescue
+attempts with Wasserstein regularization (Wf-129), Hilbert $L_2$ +
+ASTSR scale guards (Wf-127, Wf-122), and $172$-d Multi-PH + PLL feature
+augmentation (Wf-128) all yielded honest-negative results ($-4.04$,
+$-0.078$, $-40.24$ respectively).  Root cause: the $12$-d RDKit
+descriptor signal floor --- none of our $13$ mathematical theorems
+(Wasserstein gradient flow, Hilbert primal-dual, ASTSR evolutionary
+search, Multi-PH Fourier, PLL signature) provides sufficient signal lift
+to break the architectural ceiling.  Source:
+\texttt{metrics/by\_metric/platinai\_combined\_r2.json}.
+
+\subsection{L$_5$ Hilbert+ASTSR $R^2$ on MCF7}
+\label{sec:limit-l5}
+
+Adding $L_2$ regularization to Hilbert primal-dual and scale-clip to
+ASTSR signature (Wf-127 Phase 4) prevents divergence but does not lift
+PlatinAI MCF7 $R^2$ from the Wf-83 baseline of $-6.71$.  With guards,
+MCF7 $R^2 = -4.04 \pm 4.31$ ($5$ seeds, $5$ folds, $10$ total fits;
+Hilbert-only $-22.99 \pm 0.25$, ASTSR-only $-3.54 \pm 3.42$, combined
+$\alpha=0.0$); A549 $R^2 = -1.57 \pm 1.18$.  Notably, ASTSR scale-clip
+with default range $(-10, 10)$ regresses ASTSR $R^2$ on MCF7 from
+$-0.014$ (no clip, Wf-86 P3 baseline) to $-3.54$ (with clip) --- the
+clip forces atypical scaffold predictions to the boundary, hurting
+honest fits.  Source:
+\texttt{metrics/by\_metric/hilbert\_4cell\_r2.json}.
+
+\subsection{L$_7$ Multi-PH + PLL $R^2$}
+\label{sec:limit-l7}
+
+End-to-end Multi-PH + PLL feature extraction combined with Hilbert
+$L_2$ guard + ASTSR scale guard (Wf-129 Phase 3) achieves PlatinAI
+4-cell combined $R^2 = -0.0780 \pm 0.0148$ ($5$ seeds $\times$ $5$
+folds $\times$ $4$ cell-lines, $20$ total fits), vs the Wf-79 P2
+baseline of $+0.087$ (NCI-60 real pIC$_{50}$, different cohort).  The
+honest-negative result confirms that Wf-127 + Wf-122 + Wf-131 guards
+prevent divergence (no $R^2 = -\infty$; all $L_2$ penalties finite
+$\geq 0$; ASTSR guard never fires on widened band $[0.05, 20.0]$) but
+cannot lift $R^2 \geq +0.30$ at the architectural level.  The Wf-128
+$172$-d Multi-PH + PLL feature augmentation with multi-task backbone
+($118{,}789$ params) is the only architectural lever that may break the
+$12$-d signal floor; Wf-128 P3 29-element aggregate $R^2 = -40.24$
+confirms this lever also fails.
+
+\subsection{L$_{10}$ 3-Way $R^2$ on Real pIC$_{50}$}
+\label{sec:limit-l10}
+
+The 3-way Deflexpressor + Multi-PH + ASTSR integration on real
+MetalCytoToxDB 5-metal pIC$_{50}$ (Wf-128 P3) yields honest-negative
+results across $5$ precious metals (Ru, Ir, Os, Rh, Re) with $172$-d
+feature stack (RDKit 12-d + Multi-PH 32-d + PLL 128-d) and multi-task
+backbone ($118{,}789$ params).  On the Wf-41 P1 3-way baseline
+(PlatinAI synthetic $\text{QED} \times \text{QED}$ target), $R^2 =
+-0.36 \pm 0.28$; on the Wf-128 P3 29-element aggregate, $R^2 =
+-40.24$ (uncomputable target signal).  Per-metal Wf-128 P2: Ru
+$-0.07 \pm 0.04$ (collapse $4/5$ seeds, ASTSR $[0,1]$ clip
+artefact), Ir $-201.25 \pm 80.74$, Os $-287.20 \pm 117.96$, Rh
+$-183.82 \pm 97.31$, Re $-80.88 \pm 30.44$ ($3/5$ seeds collapse).
+Both targets confirm the architectural signal floor --- $12$-d RDKit
+descriptor cannot be lifted to $R^2 \geq 0$ by any combination of
+Wasserstein + $L_2$ + scale-guard + $172$-d features + multi-task
+backbone.
+
+\subsection{m3 Vina Cisplatin --- Covalent-Binder Mismatch}
+\label{sec:limit-vina-cisplatin}
+
+Cisplatin real Vina docking sweep (Wf-121 Phase 3, exhaustiveness 8)
+on $10$ pockets $\times$ $3$ seeds $\times$ $5$ poses yields mean
+$-3.103 \pm 0.351$ kcal/mol (best $-3.734$ on \texttt{3ny8}, worst
+$-2.548$ on \texttt{4rn0}).  Wf-141 v2 P1 exhaustiveness-$32$ re-sweep
+yields $-3.1575 \pm 0.339$ kcal/mol ($\delta = -0.0545$, honest partial
+lift; $0/10$ pockets reach $-5/-6/-7$ cutoff).  Wf-141 v2 P2
+exhaustiveness-$64$ upper-bound (2 pockets) yields $-3.4345$, still
+$3.5$ kcal/mol short of the $-7$ industry binding threshold.
+Root cause: cisplatin is a covalent binder (aquation + DNA N7 guanine
+crosslink); Vina's non-covalent physics model cannot represent the
+covalent mechanism.  Additionally, our Vina 1.2.7 setup substitutes
+\texttt{Mg} atom-type for \texttt{Pt} to bypass strict-parser rejection
+(P1 SMARTS \texttt{M} rejected), introducing generic VDW
+underestimation.  True cisplatin binding requires covalent docking
+tools (DockCov, CovDock) and wet-lab IC$_{50}$ --- both deferred to
+R23-P5 / R23-P6.  Source:
+\texttt{metrics/by\_metric/vina\_kcal\_per\_mol.json}.
+
+\subsection{Diversity Tanimoto --- Pool-Saturated Ceiling}
+\label{sec:limit-diversity}
+
+Pool-wide Morgan-ECFP4 Tanimoto distance on Lambda-MCTS generated
+molecules reaches $0.137$ (EV-3, $30$ cells $\times$ $3$ seeds,
+--sa-weight 0.3) vs TargetDiff $0.860$ --- a gap of $-0.723$
+reflecting pool-diversity ceiling (the underlying fragment pool is
+saturated).  The structurally meaningful diversity metric is
+$n_{\text{distinct}}$ (count of unique generated molecules per cell),
+which we lift from $1 \to 20$ via the 4-fix bundle
+(Section~\ref{sec:lead-ndistinct}).  The $+0.1366$ lift over the
+R12 Path-A baseline ($0.1065$) is real and reproducible
+(deterministic per-cell, std $=0.0$), but further lift requires
+fragment-pool expansion (TODO-25 P2.3), deferred.  Source:
+\texttt{metrics/by\_metric/diversity\_tanimoto.json}.
+
+\subsection{m15 RMSD Old Definition --- Self-Conformer Comparison}
+\label{sec:limit-rmsd}
+
+The \texttt{rigid\_fragment\_rmsd} metric ($0.428 \pm 0.547$ \AA{} across
+the 10-SMILES organic pool, with per-SMILES RMSD $0.011$--$1.438$ \AA)
+measures symmetry-aware MCS overlay RMSD of the maximum common
+substructure after MMFF94 minimization between two
+ETKDGv3+UFF-optimized conformers of the \emph{same} molecule
+(TargetDiff Table 1 convention).  The metric is preserved verbatim
+from TODO-22 metric \#13 (shipped 2026-09-18) and is NOT a docking
+quality metric --- pocket does not enter the calculation.  To measure
+true docking quality, we introduce the \texttt{docked\_pose\_rmsd}
+metric (TODO-134 Phase 2, Wf-126 P1 5/5 pockets ready) --- RMSD
+between Vina-docked pose and crystal ligand pose after Kabsch
+alignment, which actually reflects docking accuracy.  Source:
+\texttt{metrics/by\_metric/rigid\_fragment\_rmsd.json}.
+
+\subsection{Hilbert 4-Cell $R^2$ Original Baseline}
+\label{sec:limit-hilbert-original}
+
+Original Wf-83 baseline reports Hilbert+ASTSR combined $R^2 = -6.71$
+on PlatinAI 4-cell across $40$ seeds.  Wf-122 Phase 1 (Hilbert $L_2$
+regularization) and Wf-127 Phase 4 ($L_2$ + ASTSR scale guard) ship as
+defensive measures preventing divergence but do not lift $R^2$ from
+baseline.  Per-cell-line post-fix Wf-122 P3 anchors: MCF7 $-5.946
+\pm 8.193$, A549 $-4.748 \pm 7.813$, A2780, A2780cis.  Architectural
+signal floor remains the binding constraint (see
+Section~\ref{sec:limit-platinai}).
+
+\subsection{Wf-145 m19 Rh Regression + Sample-Size Ceiling ($n=60$)}
+\label{sec:limit-m19-rh}
+
+Wf-131 P2 LOMO Rh fold crashed from $0.368 \pm 0.018$ (R17 3-seed
+baseline) to $0.136 \pm 0.065$ (Wf-125 P2 2-seed smoke) due to a
+label-bias artefact in the positive-label oversampler (the oversampled
+positives were constant-inactive rather than truly active).  Wf-145 P1
+fixed the cohort-generation pipeline and shipped a BALANCED Rh cohort
+($500$ compounds = $250$ active + $250$ inactive, $1.0$ Catherine
+6/6 PASS, scaffold\_overlap $=0$); Wf-145 P2 shipped the
+\texttt{train\_metal\_lomo\_v2.py} v2 driver ($860$ LOC, $18/18$ unit
+tests PASS).  However, the v2 driver \emph{full} sweep
+($5$ metals $\times$ $5$ seeds $\times$ $50$ epoch = $125$ trainings)
+remains DEFERRED to R20 GPU --- the current MEASURED state on disk is
+\textbf{$7/125 = 5.6\%$} complete (Ru 5/5 + Ir 2/5 from Wf-131 P3
+on the BUGGY cohort; Os/Rh/Re $0/5$ each).
+
+Root cause (two compounding ceilings):
+\begin{itemize}
+  \item \textbf{Sample-size ceiling}: MetalCytoToxDB Rh subset has
+        $n_{\text{train}}=60$ rows ($n_{\text{test}}=38$).  Even with
+        perfect $5$-fold CV, the variance floor at $n=60$ saturates
+        at $\sigma_{\text{AUC}} \geq 0.06$, making any lift below
+        $+0.06$ undetectable.
+  \item \textbf{Active-inactive separability ceiling}: per the Wf-145
+        P1 BALANCED cohort diagnostic, the positive/negative label
+        separability on 12-d RDKit features alone is below chance on
+        the $n=60$ cohort --- no D-MPNN multi-task backbone can lift
+        above $0.50$ AUC without a true wet-lab affinity signal.
+\end{itemize}
+Honest projection: with $50\%$ chance, Rh AUC reaches the $\geq 0.50$
+floor at $5/5$ seed $\times$ $50$ epoch; with $50\%$ chance, Rh stays
+below $0.50$ and we ship the honest-negative finding.  Source:
+\texttt{metrics/by\_metric/metal\_lomo\_auc\_v2.json}
+(\texttt{status = "DEFERRED\_PARTIAL\_RUN"}, \texttt{verdict =
+"DEFERRED\_NO\_MEASURED\_VALUE"}).
+
+\subsection{No Tier-1 Metallodrug Baseline Exists}
+\label{sec:limit-no-tier1}
+
+No Tier-1 reference implementation exists for metallodrug
+structure-based drug design, de novo anticancer generation conditioned
+on a specific d-block transition metal, or hybrid
+metallodrug+anticancer tasks.  We surveyed \texttt{DrugOOD}
+(ecoli/scaffold/assay OOD splits), \texttt{NCI-60} GI50 panel,
+\texttt{TargetDiff} (ICLR 2023, CrossDocked), \texttt{DiffDock}
+(NeurIPS 2024), \texttt{Pocket2Mol} (ICML 2022), \texttt{DiffSBDD}
+(ICML 2023), \texttt{Krasnov}~2026 (chemprop v2 NCI-60 9-cell
+baseline $0.81$ AUC), and \texttt{iMoLD}~(NeurIPS 2022, DrugOOD
+assay $0.7211$ / scaffold $0.6884$ / size $0.6792$ OOD AUC).  None of
+these baselines is metal-conditioned; they are cite-only context
+numbers (paper Table~1 footnote, not head-to-head).  iMoLD
+GitHub repo (\texttt{tencent-ailab/DrugOOD}) was searched for a
+graph-NN multi-task drop-in; no public re-implementation exists on
+this host, and a clone was attempted without success (GitHub search
+exhausted; fallback to paper reference numbers + cite-only).
+\textbf{Honest implication}: paper §4.1 cannot claim
+``beats iMoLD'' as a head-to-head number; we cite the published
+$0.7211$ / $0.6884$ / $0.6792$ numbers as Tier-1 context, not as a
+direct comparator.  Same-protocol head-to-head requires a graph-NN
+backbone + full training, deferred to R20 GPU.  Source:
+\texttt{metrics/by\_metric/multi\_task\_4domain\_v2.json}
+\texttt{valid\_comparisons\_cite\_only}.
+
+\subsection{Sprint A: GroupNorm Replacement Vacuous}
+\label{sec:limit-groupnorm-vacuous}
+
+The Sprint A GroupNorm drop-in
+(\texttt{molmetal/molmetal\_lam/sbdd\_env/groupnorm\_replacement.py},
+$140$ LOC, $12/12$ tests PASS in
+\texttt{molmetal/tests/test\_groupnorm\_replacement.py}) ships a
+recursive replacement helper that swaps \texttt{nn.BatchNorm1d} /
+\texttt{nn.BatchNorm2d} for \texttt{nn.GroupNorm(num\_groups, num\_channels)}.
+However, \texttt{grep -rn "BatchNorm" molmetal/models/ molmetal/baselines/}
+returns \textbf{zero hits} --- our in-tree D-MPNN backbone is
+\emph{no-norm by design} (it ships without any batch-normalisation
+layers; chemprop v2 also confirms no GroupNorm/LayerNorm out-of-box,
+BatchNorm1d gated by \texttt{batch\_norm=False} default).  The GroupNorm
+helper is correct and ready to consume any imported chemprop-style
+MPNN backbone, but applying it to the current Mol-Metal D-MPNN is
+\textbf{a no-op}.  This is the documented ``vacuous'' case in
+\texttt{party-twenty-spirit} §3.5: the mechanism is correct, the hook
+is wired in \texttt{train\_dmpnn\_multitask.py}, but the deliverable
+is currently a no-op.  Source:
+\texttt{TODO/completed/q2\_sprint\_self\_check.md} §1.
+
+\subsection{Sprint A: DANN Per-Step Wiring Deferred}
+\label{sec:limit-dann-partial}
+
+The Sprint A DANN (Domain-Adversarial Neural Network) drop-in ships
+the gradient-reversal layer
+(\texttt{molmetal/molmetal\_lam/sbdd\_env/gradient\_reversal.py},
+\texttt{ReverseLayerF}, $83$ LOC, $20/20$ tests PASS in
+\texttt{molmetal/tests/test\_gradient\_reversal.py}), the
+domain-classifier head
+(\texttt{molmetal/models/dmpnn.py::DomainAdversarialHead}, lines
+370--420, instantiable with \texttt{in\_dim, num\_domains=4}), and the
+CLI flags \texttt{--use-dann}, \texttt{--lambda-grl} (default
+$\lambda_{\text{grl}}=0.1$) in
+\texttt{molmetal/scripts/train\_dmpnn\_multitask.py}.  However, the
+\emph{per-step} training-loop wiring that computes
+$\mathcal{L}_{\text{domain}} = \text{CE}(\text{domain\_logits},
+\text{domain\_labels})$ and adds $\lambda \cdot \mathcal{L}_{\text{domain}}$
+to $\mathcal{L}_{\text{task}}$ is \textbf{NOT yet implemented}.  The CLI
+logs ``DANN enabled: lambda\_grl=0.1'' but does not invoke
+\texttt{DomainAdversarialHead.forward()} inside the inner training
+loop.  Per \texttt{party-twenty-spirit} §3.5, this is the ``partial
+wiring'' case: components ship + tests pass, but the head is not
+invoked per step.  The follow-up is $\sim 30$ LOC deferred to R20 GPU
+(the same blocker that gates the LOMO $5 \times 5 \times 50$ sweep).
+Source: \texttt{TODO/completed/q2\_sprint\_self\_check.md} §4.
+
+\subsection{Sprint A: 7.5\,M Training Deferred to R20 (current 13\,K = 0.17\,\%)}
+\label{sec:limit-train-deferred}
+
+The cross-domain training recommendation (TODO-142 §0) identifies that
+the in-tree D-MPNN has been trained on $13{,}035$ unique molecules
+across $7$ data sources, vs an available $7{,}500{,}000$ molecules
+($0.17\%$ coverage).  Per-domain current usage vs available:
+
+\begin{itemize}
+  \item MetalCytoToxDB ($5$ metal): \textbf{5{,}207} trained / $5{,}207$ available = $100\%$.
+  \item NCI-60 $9$-cell subset: \textbf{7{,}824} trained / $7{,}824$ available = $100\%$.
+  \item PlatinAI $4$-cell: $\sim$\textbf{5{,}000} trained / $5{,}000$ available = $100\%$.
+  \item DrugOOD native: \textbf{0} trained / $1{,}580{,}000$ available = $0\%$.
+  \item NCI-60 GI50 raw: \textbf{0} trained / $4{,}850{,}000$ available = $0\%$.
+  \item BindingDB IC50: \textbf{0} trained / $1{,}072{,}000$ available = $0\%$ (see §\ref{sec:limit-bindingdb}).
+  \item CrossDocked (SBDD targets): \textbf{0} trained / $183{,}000$ PDB = $0\%$.
+\end{itemize}
+
+This is the root cause of every paper §4 lead-claim incompleteness ---
+not a model defect but a data-coverage gap.  The full
+$5$-metal $\times$ $5$-source $\times$ $7.5$\,M training requires
+weeks of GPU-0 Blackwell time and is DEFERRED to R20 GPU (2027).
+Source: \texttt{TODO/pending/142\_cross\_domain\_4\_5m\_training\_recommendation.md} §0.
+
+\subsection{Sprint B: BindingDB IC50 Not Vendored --- 4-Domain 1.61\,M (not 2.6\,M)}
+\label{sec:limit-bindingdb}
+
+The Sprint A $4$-domain \texttt{WeightedRandomSampler} drop-in
+(\texttt{molmetal/data/four\_domain\_combined.py} +
+\texttt{molmetal/data/four\_domain\_weights.py}, $26/26$ tests PASS in
+\texttt{molmetal/tests/test\_four\_domain\_sampler.py}) originally
+targeted a $2.6$\,M-row $4$-domain combine ($1.58$\,M DrugOOD + $1.07$\,M
+BindingDB + $7.8$\,K NCI-60 + $5$\,K MetalCytotox).  In practice,
+\textbf{true BindingDB IC50 ($1.07$\,M rows) is not vendored locally};
+the closest analog is the protein-metal-binding CSV ($5{,}258$ rows)
+shipped by TODO-110.  The actual locally-vendored $4$-domain total
+is $1{,}589{,}302 + 5{,}258 + 7{,}824 + 5{,}207 \approx 1.61$\,M, not $2.6$\,M.
+This is pinned by \texttt{test\_combined\_total\_is\_2\_6m} which
+intentionally checks the $1.59$\,M--$1.62$\,M band and documents the
+BindingDB fallback.  Source:
+\texttt{TODO/completed/q2\_sprint\_self\_check.md} §3.
+
+Additional caveat on the $\alpha = 0.5$ soft-balancing exponent:
+with DrugOOD at $1.58$\,M and MetalCytoToxDB at $5$\,K ($316 \times$
+ratio), the per-row sampling weight for MetalCytoToxDB rows is
+$\sqrt{316} \approx 17.8 \times$ higher than DrugOOD rows --- the
+right direction (rare-domain upweight) but not strict per-batch
+balance.  Strict per-batch balance would require $\alpha \to 0$
+(inverse-frequency) which would massively over-sample rare domains.
+The $\alpha = 0.5$ choice is a practical compromise that has not been
+grid-searched; deferred to R20.
+
+\subsection{Sprint B: Sheaf-FRL / SGPC / TopoAD / Kan Extensions Not Adopted}
+\label{sec:limit-theoretical}
+
+The TODO-143 §1.2 theoretical-tool survey identified four 2025--2026
+methods for topological + categorical structure-aware multi-task
+learning:
+
+\begin{itemize}
+  \item \textbf{Sheaf-FRL} (SPAICOM 2026, federated sheaf Laplacian
+        + Procrustes closed-form): cloned at
+        \texttt{.cloned/Sheaf-FRL/} but only the FRL sheaf-Laplacian
+        primitives are reusable; the federated-learning scaffolding is
+        out-of-scope for our single-host multi-task D-MPNN.  Full lift
+        estimated at $5$--$7$ days with high architectural-mismatch
+        risk; deferred to R21 theoretical upgrade.
+  \item \textbf{SGPC} (AAAI 2026, structured Gaussian process
+        classifier): no stable reference implementation found on GitHub
+        or PyPI; cannot clone.
+  \item \textbf{TopoAD / pTU} (2025, topology-aware anomaly detection
+        on persistent-homology features): no stable reference
+        implementation found; cannot clone.
+  \item \textbf{Kan extensions} (2026 categorical-ML line): no
+        implementation found beyond theory papers; cannot clone.
+\end{itemize}
+
+The honest finding is that \emph{the theory is published but no stable
+code exists that we can drop in}.  Multiflow's
+\texttt{contact\_sheaf.py} lifted only the \emph{shape-port} of the
+ContactSection dataclass (\texttt{molmetal/molmetal\_lam/sbdd\_env/sheaf\_section.py},
+$215$ LOC, $16/16$ tests PASS in
+\texttt{molmetal/tests/test\_sheaf\_section.py}) --- the full
+sheaf-Laplacian / Procrustes machinery is NOT lifted.  Source:
+\texttt{TODO/completed/q2\_sprint\_self\_check.md} §9.3, §6 +
+\texttt{TODO/pending/143\_clone\_adapt\_cross\_domain\_training.md} §1.2.
+
+\subsection{Wet-Lab Validation Gap}
+\label{sec:limit-wetlab}
+
+No wet-lab IC$_{50}$, protein-metal binding affinity, or
+cellular-uptake measurement is reported in this paper.  All
+in-silico metrics are computational proxies.  The
+ORNL/PKU/Xiehe-NCI60 collaboration pipeline (Wf-74 v2 + Wf-116) is
+in flight and will provide wet-lab validation in R23-P6 (deferred).
+Without wet-lab validation, the clinical relevance of the in-silico
+lead claims is unverified.
+
+\subsection{Future Architectural Directions}
+\label{sec:limit-future}
+
+To break the architectural signal floor and the covalent-binder Vina
+limit, future work will integrate:
+\begin{itemize}
+  \item AlphaFold-Multimer protein-aware descriptors (R22-P1)
+  \item Covalent docking tools DockCov / CovDock (R23-P5)
+  \item Wet-lab IC$_{50}$ + protein-metal binding assays (R23-P6)
+  \item Foundation-model baseline (MolGen / DrugGPT) for SOTA comparator
+  \item Larger tmQM pretraining ($100$-epoch CFM with
+        Wasserstein+ASTSR guard)
+  \item D-MPNN per-step DANN loss wiring ($\sim 30$ LOC, R20 GPU)
+  \item Grid-searched $\alpha \in \{0.0, 0.25, 0.5, 0.75, 1.0\}$ for
+        $4$-domain WeightedRandomSampler balance
+  \item Wf-145 P2 v2 LOMO driver $5/5$ metal $\times$ $5$ seed
+        $\times$ $50$ epoch full sweep (R20 GPU, $\sim 4$\,h wall)
+  \item $5$-metal $\times$ $5$-source $\times$ $7.5$\,M full training
+        (R20 GPU weeks, post Phase 1 mechanism verification)
+\end{itemize}

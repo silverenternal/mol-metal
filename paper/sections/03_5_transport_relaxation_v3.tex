@@ -1,0 +1,74 @@
+% =============================================================================
+%  Paper §3.5 -- Transport Relaxation for Reward Shaping (v3 TEMPLATE).
+%  (Wf-33 Phase 3, 2026-09-26, awaits Wf-31 m1/m2 GPU retrain)
+%
+%  Source-of-truth (when filled):
+%    - Section body: paper/sections/03_5_transport_relaxation.tex (Wf-3
+%      ship, 2026-09-26, R17 / Wf-3 close-out -- DO NOT MODIFY)
+%    - R18 MEASURED rows: TODO/pending/82_metric_gap_filling_plan.md
+%                        G2 (m1 Ru AUC) + G3 (m2 Pt A2780cis AUC),
+%                        Wf-31 Phase C 5-seed x 50-epoch retrain via
+%                        molmetal/scripts/train_ru_5metal_se3sb.py +
+%                        train_cisplatin_resistance_v2.py
+%                        (molmetal/reports/wf31_*/final.md,
+%                        target ship 2026-10-03)
+%    - R18 PROJECTED ceilings: TODO/02_metrics/METRICS_TARGETS.md §2
+%                        per-metric gate targets (m1 Ru >= 0.81
+%                        Krasnov tier; m2 Pt A2780cis >= 0.80
+%                        Rusanov tier)
+%
+%  Diff vs Wf-3 ship (03_5_transport_relaxation.tex):
+%    (a) Single paragraph added below the existing §3.5 body, carrying
+%        the Wf-31 R18 MEASURED rows for the G2 (m1 Ru AUC) and G3
+%        (m2 Pt A2780cis AUC) gaps. The existing body is preserved
+%        verbatim (R17 / Wf-3 version is the load-bearing §3.5
+%        reference; this v3 is the Wf-31 fill-target).
+%    (b) \MEASURED{TBD Wf-31} placeholders are replaced by the actual
+%        5-seed x 50-epoch AUC numbers + (n_seeds x epochs)
+%        provenance strings once Wf-31 ships. The R17 anchors
+%        (0.7123 m1 Ru, 0.648 m2 Pt A2780cis) and the R18 PROJECTED
+%        ceilings (>= 0.81 m1, >= 0.80 m2) are stable across the
+%        Wf-31 window.
+%    (c) No cell is silently fabricated. If Wf-31 fails, the
+%        placeholders are replaced by \textbf{HONEST-NEGATIVE} +
+%        the failure mode (per party-twenty-spirit §3.5).
+%
+%  Status tags (defined in paper/main.tex:104-110):
+%    \MEASURED{}            = real measurement on this box at the
+%                             reported seed/panel size.
+%    \PROJECTED{}           = structural-fix projection (R18 ceiling).
+%    \MEASURED{TBD Wf-31}   = pending GPU-retrain anchor; the Wf-31
+%                             tag maps to molmetal/reports/wf31_*/
+%                             (TODO-82 §2 Phase C).
+%
+%  Honest framing (v3, 2026-09-26):
+%    - This v3 is a SHELL ONLY. The R18 MEASURED rows for m1 Ru
+%      and m2 Pt A2780cis are \MEASURED{TBD Wf-31} placeholders
+%      pending the Wf-31 Phase C GPU retrain.
+%    - The R17 anchors 0.7123 (m1 Ru, 1-seed D-MPNN multi-task
+%      scaffold split) and 0.648 (m2 Pt A2780cis, 3-seed) are
+%      stable; the R18 PROJECTED ceilings >= 0.81 (Krasnov tier)
+%      and >= 0.80 (Rusanov tier) are also stable.
+%    - The existing Wf-3 §3.5 body is the load-bearing method
+%      reference and is NOT modified by this v3 addendum.
+% =============================================================================
+
+\paragraph{Expected Transport-Relaxation lift on $m_1$ Ru AUC and
+$m_2$ Pt A2780cis AUC (v3 placeholder, Wf-31 pending).}
+The R18 backlog projects a Tier-1 AUC lift via the transport-
+relaxation reward-shaping chain: $m_1$ Ru AUC
+$0.7123 \to \geq 0.81$ (G2, Krasnov tier, \textsc{P0-2} of
+\texttt{mol-metal-r18-math/SKILL.md} priority map) and
+$m_2$ Pt A2780cis AUC $0.648 \to \geq 0.80$ (G3, Rusanov
+tier).  Both R17 anchors are \MEASURED{}; the R18 ceilings are
+\PROJECTED{} per \texttt{TODO/02\_metrics/METRICS\_TARGETS.md}\S2.
+The Wf-31 replacements are \MEASURED{TBD Wf-31} placeholders for
+the Phase C $5$-seed $\times$ $50$-epoch GPU retrain via
+\texttt{train\_ru\_5metal\_se3sb.py} (MetalCytoToxDB $5$-metal
+multitask, Blackwell \texttt{gpu0}) and
+\texttt{train\_cisplatin\_resistance\_v2.py} (PlatinAI $4$-cell
+synthetic IC$_{50}$, RTX $5090$ \texttt{gpu1}); per-run wall-
+clock $\sim 8$\,h, total concurrent budget $\sim 8$\,h
+(TODO-82 \S2 Phase C, target ship 2026-10-03).  When Wf-31
+ships, these placeholders are replaced by the actual per-seed
+AUC means + (n\_seeds $\times$ epochs) provenance strings.

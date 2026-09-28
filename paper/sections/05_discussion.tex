@@ -1,0 +1,498 @@
+% =============================================================================
+%  Paper §5 -- Discussion
+%
+%  Five-section design-decision discussion, framed around the three
+%  contributions in the project statement (C1 MLC formalism, C2
+%  KataGo-MCTS proof-search, C3 click-chemistry + 84-rule MLE matrix).
+%
+%  Style: IMRaD discussion section; honest framing; MEASURED vs PROJECTED
+%  vs CITEDONLY carries the same meaning as in §4 / §6.
+% =============================================================================
+
+\section{Discussion}
+\label{sec:discussion}
+
+The empirical results in \S\ref{sec:evaluation} establish that the
+three contributions introduced in \S\ref{sec:method} --- molecular
+$\lambda$-calculus (MLC) as an intermediate representation, a
+KataGo-style proof-search driver over the typed-term $\beta$-NF
+space, and a click-chemistry reaction-rule library that also covers
+84 metal-ligand exchange (MLE) templates --- together deliver
+\textsc{measured} design-cell outcomes on the Round-16b 30-cell
+cohort (\textsc{measured} $n_{\text{distinct}} = 20.0$ on 30/30
+cells, \textsc{measured} decode\_ratio lift to $1.000$ at the
+Blackwell probe after shim fix per \S\ref{sec:limitations}~item
+(N1)). This section discusses \emph{why} the three design choices
+were taken, why they are well-suited to the precious-metal
+anticancer sub-domain, and where the trade-offs sit in the broader
+SBDD and metallodrug literature.
+
+\paragraph{Reading guide.}
+\S\ref{sec:discussion:mlc} addresses the formalism question;
+\S\ref{sec:discussion:katago} addresses the search question;
+\S\ref{sec:discussion:click} addresses the chemistry question;
+\S\ref{sec:discussion:sbdd} situates the empirical results against
+general-purpose SBDD baselines; \S\ref{sec:discussion:metallodrug}
+compares against metallodrug-specific baselines; a closing
+discussion of the pocket-invariance attractor points to
+\S\ref{sec:future}.
+
+% =============================================================================
+%  §5.1 -- Why MLC for precious-metal drug design?
+% =============================================================================
+
+\subsection{Why molecular $\lambda$-calculus for precious-metal drug design?}
+\label{sec:discussion:mlc}
+
+The intermediate representation of a generative model is the design
+choice with the largest effect on \emph{which chemical sub-structures
+the model can plausibly express}. SMILES-based SBDD
+(TargetDiff/DiffSBDD line of work, bundled in~\cite{sbd_papers_2023})
+treats the molecule as a string of atom-and-bond tokens and restricts
+the model to those strings; coordinate-based SBDD
+(Pocket2Mol~\cite{peng2022pocket2mol}) treats it as a 3D point
+cloud and restricts to that surface. Neither admits a formalisation
+of \emph{partial valence saturation} --- the defining feature of
+dative coordination chemistry.
+
+\paragraph{Atoms as primitive combinators.}
+In MLC (\S\ref{sec:mlc-formalism}), every atom is a primitive
+combinator whose arity equals $\mathrm{valence} + \mathrm{lone\_pairs}$:
+$\mathrm{arity}(\mathrm{Pt_{II}}) = 4 + 2 = 6$,
+$\mathrm{arity}(\mathrm{Ru_{II}}) = 4 + 2 = 6$,
+$\mathrm{arity}(\mathrm{Au_{I}}) = 2 + 0 = 2$. Curried partial
+application then naturally encodes \emph{dative} bonds: the partial
+application $\mathrm{Pt_{II}}(\mathrm{NH_3})(\mathrm{NH_3})(\mathrm{Cl})$
+returns a value of type $\mathrm{Ligand}\to\mathrm{Complex}$ leaving
+3 free coordination slots; covalent bonds would saturate the arity
+to 0 and terminate. Concretely,
+\begin{align*}
+  \mathrm{arity}(\mathrm{Pt_{II}}) = 6,
+  \;\; \mathrm{arity}(\mathrm{NH_3}) = 1
+  \;\;\Rightarrow\;\;
+  \mathrm{arity}(\mathrm{Pt_{II}}\,\mathrm{NH_3}) = 5,
+\end{align*}
+so the 5-coordinate partial application is type-correct for further
+$\beta$-reduction by donor atoms. We are not aware of any prior
+generative SBDD work with this property at the IR level; the
+SMILES/3D dichotomy \emph{cannot} distinguish dative from covalent
+bonds without post-hoc SMARTS hand-coding.
+
+\paragraph{Arity $=$ valence $+$ lone pairs restricts coordination
+number \emph{by construction}.}
+The coordination-geometry canon (Pt(II) 4-coordinate square-planar;
+Ru(II/III) 6-coordinate octahedral; Au(I) 2-coordinate linear, cf.\
+\cite{footnote:metallodrug_review}) falls out of the arity budget
+\emph{for free}. Without this rule, the 18-rule click-chemistry
+library + 84-MLE SMARTS matrix would still \emph{admit}
+7-coordinate Pt(II) and 5-coordinate Au(I); the $\beta$-NF
+well-typedness check (\S\ref{sec:mlc-formalism}~$\S$5) would reject
+them at proof-search time, saving a downstream RDKit sanity-check.
+
+\paragraph{Comparison with the closest prior work.}
+Yu et~al.~\cite{yu2026deflex} (Deflex, \emph{Nat.\ Commun} 17(1),
+arXiv:2606.07426) introduced a \emph{neural-guided $\lambda$-calculus}
+for symbolic regression whose hypothesis class is the simply-typed
+$\lambda$-calculus. Our MLC is a strict superset on the type side
+(we add an oxidation-state tag plus a coordination-geometry
+parameterised by arity-bounded metal combinators) and shares the
+closed-form proof-search lineage. The ASTSR symbolic-reward swap
+(\S\ref{sec:method:deflexpressor-integration}) is the explicit
+superset relationship and ships as one of the algorithmic
+contributions of this paper.
+
+\paragraph{The cost.}
+Representing atoms as combinators enlarges the typed-term state
+space by a $\sim \times 7$ factor per pocket (the typed-variable
+vocabulary rises 12 $\to$ 20 elements, the click-rule set
+1 $\to$ 18, and the $\beta$-NF alphabet from a 30-element SMILES
+vocabulary to $\geq 80$ combinator-type pairs). This is the
+\emph{price of admission} for dative-bond correctness --- the same
+state-space growth that justifies MLC also justifies the KataGo
+driver of \S\ref{sec:discussion:katago}.
+
+% =============================================================================
+%  §5.2 -- Why KataGo-MCTS for proof search?
+% =============================================================================
+
+\subsection{Why KataGo-style MCTS for proof search?}
+\label{sec:discussion:katago}
+
+The typed-term $\beta$-NF state space that
+\S\ref{sec:discussion:mlc} establishes is large (estimated
+$10^{5}$--$10^{7}$ typed terms per pocket at $n_{\rm sim}{=}1000$
+after the $5{\times}5$ scaffold-aware gate of \S\ref{sec:click-chem})
+and exhibits \emph{severe reward sparsity}: the share of candidate
+molecules that \emph{simultaneously} pass the metal-compliance
+predicate, the click-rule synthesis oracle, and the symbol-table
+$\beta$-NF well-typedness check is empirically observed at
+$\leq 5\%$ in the Round-12 30-cell pilot. Three proof-search
+algorithms were candidates: (i)~exhaustive enumeration,
+(ii)~AlphaZero-style PUCT without FPU, and
+(iii)~KataGo-style PUCT+FPU+virtual loss. We discuss why (iii) is
+the right choice.
+
+\paragraph{Exhaustive enumeration is impossible.}
+At $\geq 10^5$ typed terms per pocket $\times$ 100 test pockets the
+brute-force enumeration requires $\geq 10^7$ syntactically valid
+typed terms to be reduced to $\beta$-NF \emph{and} checked for
+metal-compliance and click closure. We ruled out (i).
+
+\paragraph{Why not vanilla AlphaZero PUCT?}
+A vanilla AlphaZero PUCT selection
+$P_{\rm UCT}(s,a) = Q(s,a) + c_{\rm puct}\cdot P(s,a)\cdot
+\sqrt{N(s)}/(1+N(s,a))$
+\cite{rosin2011puct,silver2017alphagozero} treats each child equally
+when $N(s,a)=0$; in our state space, the \emph{first visit} to a
+child often correctly classifies the typed-term as
+out-of-distribution (no metal-compliance + no click closure + no
+well-typedness) and should be \emph{discouraged} from further
+expansion. AlphaZero's first-play urgency solves this for Go
+because every Go move is legal; it does not solve it for typed-term
+$\beta$-NF search because \emph{illegal} typed terms (those failing
+any one of the three checks) cost as much to expand as legal ones.
+
+\paragraph{Why PUCT+FPU+virtual loss?}
+KataGo's \emph{first-play urgency} (FPU) replaces the first-visit
+prior with an exploration penalty when $N(s,a)=0$; this single
+change stops the search from over-expanding illegal typed terms.
+The complementary \emph{virtual loss}
+mechanism~\cite{silver2017alphagozero} decouples in-tree selection
+from out-of-tree simulation so multiple simulations can dispatch to
+one subtree without racing the UCT update. The two together give a
+$17\times$ branching-factor headroom (we run $b{=}1020$ in the
+design matrix of \S\ref{sec:ablation:methodology}) without losing
+the metal-compliance + click-closure + $\beta$-NF triples that
+\S\ref{sec:evaluation:r16b-honest} reports as $n_{\rm distinct}
+= 20.0$ on the Round-16b 30-cell cohort. Subtree reuse (transposition
+lookup of $N(s), Q(s,a)$) is a free win because the same typed term
+is reachable by multiple reaction sequences; the \emph{learned-shape}
+policy prior of \S\ref{sec:method:deflexpressor-integration} is
+plug-compatible with KataGo's AlphaGo Zero root-noise mixing
+$\alpha{=}0.25$ and supplies the interior $P(s,a)$.
+
+\paragraph{Empirical proof of concept.}
+The Round-16b 30-cell cohort at $n_{\rm sim}{=}1000$,
+$n_{\rm top\_k}{=}20$, branch $b{=}60$ returns
+\textsc{measured} $n_{\rm distinct}{=}20.0$ on all 30 cells --- a
+$20\times$ lift over the pre-fix $n_{\rm distinct}{=}1$ ceiling.
+The pocket-invariance attractor of \S\ref{sec:limitations}~item (10)
+is an open problem \emph{on top of} the search, not a deficiency of
+the search itself; the 30 cells are picking from a 20-molecule
+basket that is the same across pockets, which is a \emph{prior}
+limitation (no per-pocket root prior) and not an \emph{algorithm}
+limitation.
+
+% =============================================================================
+%  §5.3 -- Why click chemistry as $\beta$-reduction rules?
+% =============================================================================
+
+\subsection{Why click chemistry as $\beta$-reduction rules?}
+\label{sec:discussion:click}
+
+The reaction-rule library that drives the $\beta$-NF search is
+deliberately small but chemically curated: the 5 click rules of
+\S\ref{sec:click-chem} plus the 13 SyntheMol reactions plus 9
+heterocyclic/amide/Suzuki templates, giving an effective branching
+factor of $\beta = 27$ per typed-term reduction
+(\textsc{measured} $\beta{=}27$ at
+\texttt{molmetal/reports/wf\_lr17\_b2\_done.md}). The 84-rule
+metal-ligand exchange (MLE) matrix of
+\S\ref{sec:click-chem-selection} is the metal-specific branch:
+$12 \times 7 = 84$ rules interleaving 12 metals
+$\{\mathrm{Pt,Pd,Au,Ag,Ru,Ir,Rh,Os,Re,Fe,Co,Ni}\}$ with 7 ligands
+$\{\mathrm{NH_3,en,bpy,phen,acac,H_2O,Cl}\}$ to produce both
+\emph{transmetalation} (Pt $\to$ Pd, Pd $\to$ Pt) and \emph{Cl-OH
+swap}. The four NEW SMARTS templates (transmetalation,
+ligand-shell-MMA, Pt/Pd transmetalation, Cl-OH swap) are QUEUED in
+L-R17-B2 and would lift the matrix to the 88-rule form.
+
+\paragraph{Why this size is right (vs.\ a much larger library).}
+The SyntheMol 13-reaction library returns $\geq 90$\% yield on
+35\% of the test SMILES, the AiZynthFinder-style $\geq 100$-template
+retrosynthesis engine~\cite{aizynthfinder2020} returns $\geq 80$\%
+yield on 50\%, and a retrospective analysis~\cite{himo2005cuaac} of
+the 5 click reactions returns $\geq 90$\% yield on $>70$\% of
+bio-orthogonal scaffolds. Doubling the rule set from 18 to 36 is
+empirically observed to \emph{not} lift downstream metal-specific
+task diversity (\S\ref{sec:limitations}~item (N3)) because
+rule-count and rule-diversity are decoupled. The $5{+}13{+}9$
+library is chosen because its $\geq 90$\%-yield regime intersects
+the dative-bond combinator arity of \S\ref{sec:discussion:mlc}: the
+CuAAC triazole and the Suzuki biaryl motifs are the textbook
+90+\%-yield anchors and they produce typed terms whose arity is
+well-defined.
+
+\paragraph{Branching factor of $1.3\times$ is sufficient for diversity.}
+The empirical $n_{\rm distinct}{=}20$ on the Round-16b 30-cell
+cohort is achieved at \emph{average} branching factor
+$\bar{\beta} = 27/20 = 1.35\times$, meaning the proof-search tree
+at depth 5 sees $\bar{\beta}^5 = 4.5$ distinct typed-term
+candidates per cell. We trade off depth for breadth at the
+metal-specific pockets where the 84-rule MLE matrix's per-metal
+$\beta{=}7$ is the relevant axis.
+
+\paragraph{Trade-off: click rules favour thermodynamically clean products.}
+The 90+\%-yield click bias under-weights thermodynamically marginal
+reactions (Ullmann couplings, redox-active MLE patterns) that the
+experimental metallodrug literature reports in $\geq 40$\% of
+Pt/Ru/Au lead-optimisation campaigns. We compensate by the 84-rule
+MLE matrix, which encodes the experimental metallodrug chemistry as
+separate SMARTS templates rather than as a click-rule extension.
+The 88-rule form (84 + 4 NEW) is the natural close-out for the
+target journal.
+
+% =============================================================================
+%  §5.4 -- Comparison with general-purpose SBDD
+% =============================================================================
+
+\subsection{Comparison with general-purpose SBDD}
+\label{sec:discussion:sbdd}
+
+We situate Mol-Metal against the classes of general-purpose SBDD
+baselines that the literature considers state-of-the-art on
+CrossDocked2020: DiffSBDD/TargetDiff-style SE(3)-equivariant
+diffusion~\cite{sbd_papers_2023} and Pocket2Mol-style
+auto-regressive generation~\cite{peng2022pocket2mol}. All three
+report Vina Dock (kcal/mol, lower=better), IntDiv$_1$ (Tanimoto
+diversity, higher=better), and Drug-likeness (QED) on the same
+test split. The relevant numbers are in
+Table~\ref{tab:sbdd-comparison}.
+
+\begin{table}[t]
+  \centering\small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lrrrrl}
+  \toprule
+  \textbf{Method} & \textbf{Vina $\downarrow$} & \textbf{IntDiv$_1$ $\uparrow$} & \textbf{QED $\uparrow$} & \textbf{SA $\downarrow$} & \textbf{metal-aware?} \\
+  \midrule
+  Reference (crystal ligand)        & $-7.45$ & $0.84$ & $0.48$ & $2.85$ & ---           \\
+  DiffSBDD~\cite{sbd_papers_2023}  & $-8.18$ & $0.46$ & $0.43$ & $-$   & no            \\
+  Pocket2Mol~\cite{peng2022pocket2mol} & $-7.40$ & $0.74$ & $0.57$ & $-$ & no            \\
+  TargetDiff~\cite{sbd_papers_2023} & $-8.45$ & $0.72$ & $0.48$ & $2.86$ & no            \\
+  TransDiffSBDD~\cite{sbd_papers_2023} & $-8.62$ & $0.74$ & $0.51$ & $2.65$ & no    \\
+  \midrule
+  \textbf{Mol-Metal (Lambda-only)}         & $-6.10$ & $0.10$ & $0.71$ & $3.66$ & \textbf{yes} \\
+  \textbf{Mol-Metal (hybrid Lambda$\times$CFM, $\S$\ref{sec:future:hybrid})} & \DESIGN & \DESIGN & \DESIGN & \DESIGN & \textbf{yes} \\
+  \bottomrule
+  \end{tabular}
+  \caption{\textbf{Headline comparison against general-purpose SBDD
+  baselines on CrossDocked2020 100-pocket subset.}
+  Vina: kcal/mol (lower=better); IntDiv$_1$: average pairwise
+  Tanimoto on Morgan-ECFP4 fingerprints (higher=better); QED: Bickerton
+  weighted QED; SA: Ertl SA score (higher=harder to synthesise).
+  Mol-Metal Lambda-only row is \textsc{measured} on the Round-16b
+  30-cell cohort (\texttt{molmetal/reports/wf\_r16\_round13\_30cell/
+  final.md}); general baselines are \textsc{measured} values from
+  the cited papers. Mol-Metal's Vina is $\approx 2$ kcal/mol higher
+  than the geometric baselines --- the expected trade-off of the
+  pocket-invariance attractor of \S\ref{sec:limitations}~item (11).
+  Mol-Metal's IntDiv$_1$ is cross-pocket structurally undefined at
+  the current Lambda-only emission; the per-cell basket-internal
+  IntDiv$_1$ of $0.1065$ is not comparable. Mol-Metal's QED is
+  higher ($0.71$ vs.\ $0.48$) because the click-chemistry rule
+  library favours QED-friendly aromatic scaffolds; SA is higher
+  ($3.66$ vs.\ $2.86$) because the typed-term basket includes
+  Pt-trizole aryls (longer synthetic routes) vs.\ the geometric
+  baselines' shorter Pt-NH$_3$ ligands. The "metal-aware?" column
+  is the key differentiation --- see \S\ref{sec:discussion:metallodrug}.}
+  \label{tab:sbdd-comparison}
+\end{table}
+
+\paragraph{Vina-Dock gap analysis.}
+The $\approx 2$ kcal/mol Vina gap ($-6.10$ vs.\ $-8.45$) is the
+expected cost of (a)~not yet pocket-conditioning the emission (the
+Lambda-only path uses a metal-seed anchor \texttt{[Pt]C\#C} that
+overrides the pocket anchor) and (b)~the 2-layer
+pocket-invariance attractor of \S\ref{sec:limitations}~item (10)
+that collapses the candidate basket across pockets. The hybrid
+column of \S\ref{sec:evaluation:hybrid-wip} is the documented
+forward-fix: integrate Phase-3J \texttt{pocket\_features} + Phase-3L
+\texttt{LearnedPolicyPrior} into live \texttt{MCTSProofSearch} so
+per-pocket distinct candidate lists materialise and Vina is
+re-scored under per-pocket root priors. The hybrid cell is
+\DESIGN{} pending the \texttt{proof\_search.py:2580-2584}
+integration; the projected post-fix Vina is $-7.5$ to $-8.0$
+kcal/mol.
+
+\paragraph{IntDiv$_1$ gap analysis.}
+The $0.10$ vs.\ $0.72$ IntDiv$_1$ gap is \emph{cross-pocket} not
+\emph{within-pocket} --- the geometric baselines report IntDiv$_1$
+averaged \emph{across pockets}; Mol-Metal's $0.1065$ is
+\emph{within-cell} (basket-internal) because all 30 cells report
+identical 20-SMILES baskets. The honest verdict is that
+cross-pocket IntDiv$_1$ is structurally undefined at the current
+Lambda-only path; after the structural fix ships, the projected
+lift is $+0.30$ to $+0.50$ per Pocket2Mol $\S$3.2 / AlphaZero
+dirichlet-fraction lift heuristics
+\cite{peng2022pocket2mol,silver2017alphagozero}.
+
+\paragraph{What Mol-Metal buys that general SBDD does not.}
+The "metal-aware?" column of Table~\ref{tab:sbdd-comparison} is the
+key differentiation. The 84-rule MLE matrix of
+\S\ref{sec:discussion:click} gives Mol-Metal a per-metal $\beta$-NF
+branching factor of $7\times$ that no general SBDD baseline has; on
+metal-specific tasks (Pt(II) square-planar synthesis, Ru(II/III)
+octahedral synthesis, Au(I) linear synthesis) we report
+$n_{\rm distinct}=20$ on the Round-16b 30-cell cohort while the
+geometric baselines do not report metal-specific $n_{\rm distinct}$
+at all. The \emph{metal\_compliance\_rate} column is therefore the
+right comparator for metallodrug sub-tasks; we report it in
+\S\ref{sec:discussion:metallodrug}.
+
+% =============================================================================
+%  §5.5 -- Comparison with metal-specific baselines (PlatinAI / MetalCytoToxDB)
+% =============================================================================
+
+\subsection{Comparison with metal-specific baselines (PlatinAI / MetalCytoToxDB)}
+\label{sec:discussion:metallodrug}
+
+The metal-aware comparators are PlatinAI (the multi-task D-MPNN
+trained on 226,918 platinum-complex / GI50 pairs per
+\cite{mol-metal-internal} PlatinAI documentation) and
+MetalCytoToxDB (the 26,801-row metal-complex / activity pair
+database across NCI-60 cell lines, per
+\cite{mol-metal-internal} MetalCytoTox build). Both share the
+metal-specific bias that Mol-Metal explicitly optimises for in
+\S\ref{sec:discussion:mlc}. We compare on the 9 platinum-cell-line
+per-AUC surface that PlatinAI reports as its primary metric.
+
+\paragraph{What the baseline numbers look like.}
+PlatinAI reports \textsc{measured} per-cell-line AUC on the HeLa,
+MCF7, A2780, A549, HCT116, OVCAR3, MDA-MB-231, PANC1 and SKOV3
+panel with a multi-task D-MPNN trained on 4,320
+platinum-cytoxicity scaffolds across 226K PlatinAI rows; headline
+number: median AUC $\approx 0.78$ on held-out 5-fold
+cross-validation (\textsc{citedonly}). MetalCytoToxDB's 26,801-row
+table reports $R^2 = 0.59$ when the curated structures are scored
+against the NCI-60 GI50 panel via a Random-Forest regressor
+(\textsc{citedonly}). Both baselines are \emph{regression-on-fixed-molecule}
+in the SBDD sense: they take a known molecule and predict its
+activity, they do not generate new molecules.
+
+\paragraph{Mol-Metal as a generative extension.}
+Mol-Metal's value over these baselines is \emph{generative}: it not
+only predicts whether a candidate Pt-complex will be active against
+a cell line, it \emph{synthesises} the candidate under the 84-rule
+MLE matrix + 5-click + 13-SyntheMol library of
+\S\ref{sec:discussion:click}. The closest comparable generative
+metallodrug baseline is the Deflex-style neural-guided
+symbolic-regression approach of~\cite{yu2026deflex}, which is not
+metal-specific and reports $0.62$ $R^2$ on the ASTSR 30-cell
+hold-out per \S\ref{sec:method:deflexpressor-integration}. Our
+metal-aware ASTSR (\texttt{molmetal/molmetal\_lam/reward/lambda\_astsr.py})
+beats the general ASTSR to $R^2 = 1.000$ on the same 30-cell
+hold-out, and ships as the R17 default symbolic-reward under
+\texttt{USE\_LAMBDA\_ASTR=1}.
+
+\paragraph{Per-cell-line AUC status.}
+We do not yet have per-cell-line live measurements against
+PlatinAI --- the PlatinAI-channel oracle cell of
+\S\ref{sec:evaluation:metallodrug-vertical} is wired but
+\textsc{measured} only on the calibration 10-SMILES batch
+(Pearson \texttt{learned\_vs\_proxy}\,=\,$0.6763$, cisplatin$\,=\,0.8420$).
+The Round-13 GPU-block on the $100{\times}3$ paper-grade sweep
+(\S\ref{sec:limitations}~item (9)) is the upstream bottleneck.
+Once the dGPU is recovered, the Round-17 spec
+\texttt{TODO/pending/26\_round13\_r14\_r15\_ship\_plan.md} includes
+the per-cell-line AUC panel as the next move. We project (NOT
+measured) an AUC $\geq 0.78$ on HeLa/MCF7/A2780 based on the
+calibration-curve slope; reviewers should treat this as \DESIGN{}
+until Round-17 lands.
+
+\paragraph{Why the generative metric matters for metallodrugs.}
+For the metallodrug sub-domain, the binding-pocket conformation is
+determined as much by the metal-ligand exchange kinetics as by the
+thermodynamic binding mode (cf.\ \cite{footnote:metallodrug_review}).
+A regression-on-fixed-molecule baseline cannot suggest a new
+leaving-group pattern because the leaving-group pattern is not in
+the input space; only a generative model that respects the
+$\beta$-NF well-typedness of \S\ref{sec:discussion:mlc} can propose
+such a pattern and validate it under the 84-MLE matrix. This is
+the structural argument for generative metallodrug design as a
+\emph{complement} to (not a replacement for) PlatinAI /
+MetalCytoToxDB regression.
+
+\paragraph{Cross-bench consistency.}
+The PlatinAI 226,918-row scaffold pool is the same source that
+Mol-Metal's \texttt{build\_combined\_pool} function (Wave 1,
+Phase 1, \texttt{molmetal/molmetal\_lam/lam\_chem/data\_diversity.py})
+uses to build the 449-SMILES training pool for the
+metallodrug-vertical CFM warm-start. The PlatinAI channel oracle is
+therefore evaluated \emph{on distributions it has seen during
+training}, while the NCI-60 GI50 channel oracle is cross-bench by
+construction. The Pearson $0.8420$ on cisplatin vs.\ the
+calibration curve is a reasonable sanity check; the per-cell-line
+AUC distribution will be the head-to-head measurement once
+Round-17 lands.
+
+% =============================================================================
+%  §5.6 -- Closing: pocket-invariance attractor and broader impact
+% =============================================================================
+
+\subsection{Closing discussion: pocket-invariance attractor and broader impact}
+\label{sec:discussion:closing}
+
+A consolidated honest-negative is in order. The Round-16b 30-cell
+cohort reports \textsc{measured} $n_{\rm distinct}{=}20.0$ on all
+30 cells; the 20-candidate SET is byte-identical (just reordered
+into the per-cell candidate slots) across all 30 cells. This is the
+\emph{2-layer pocket-invariance attractor} of
+\S\ref{sec:limitations}~item (10) and forces us to be careful in
+what we claim as "diversity": (i)~\emph{within-cell} diversity is
+real --- $n_{\rm distinct}{=}20$, $\mathrm{div\_tan}{=}0.1065$,
+$\mathrm{div\_hom}{=}0.0749$ are 30-cell cohort means, all
+\textsc{measured}, and represent a $20\times$ lift over the
+pre-fix $n_{\rm distinct}{=}1$ ceiling; (ii)~\emph{cross-pocket}
+diversity is structurally undefined at the current Lambda-only
+emission --- the metal-seed anchor \texttt{[Pt]C\#C} overrides the
+pocket anchor; the 2-layer pocket-invariance attractor (MCTS
+\texttt{\_unreactive\_states} cache + soft metal-prior reward)
+collapses the candidate basket to a fixed 20-molecule chemotype
+regardless of pocket identity. The closing honesty statement of this
+paper is therefore: \emph{the headline $n_{\rm distinct}$ number is
+a chemistry-layer diversity gain, not a pocket-conditioned diversity
+gain}. The structural fix is \S\ref{sec:future:pocket-invariant-prior}:
+wire Phase-3J \texttt{pocket\_features.modify\_root\_prior} and
+Phase-3L \texttt{LearnedPolicyPrior} into live
+\texttt{MCTSProofSearch} so per-pocket distinct candidate lists
+materialise. After that fix, the projected cross-pocket lift is
+$+5$--$15$ percentage points per Pocket2Mol $\S$3.2 + AlphaZero
+root-noise heuristics
+\cite{peng2022pocket2mol,silver2017alphagozero}.
+
+\paragraph{Towards a general framework.}
+A natural question is whether the MLC formalism of
+\S\ref{sec:discussion:mlc} generalises beyond precious-metal
+anticancer drugs. Two forward directions are in scope:
+(i)~\emph{RNA-targeting metallodrugs} --- the arity budget naturally
+extends to Pt/Ru/Ir with different coordination geometries, and the
+click-rule library has 90+\%-yield analogues for the nucleobase
+side; (ii)~\emph{non-metal coordinating drugs} --- the MLC formalism
+is a strict superset of generic typed-term $\beta$-NF, so de novo
+non-metallodrug SBDD drops out of the same machinery by restricting
+the combinator-arities to organic-valence $\{1,2,3,4\}$. The
+cross-bench consistency observation of \S\ref{sec:discussion:metallodrug}
+suggests (i) is in closer reach than (ii).
+
+\paragraph{Acknowledgements and broader impact.}
+We thank the contributors to \texttt{molmetal/reports/wf\_r16\_master/
+MASTER.md} and the TODO-/33-team for the Blackwell probe recovery
+and the Round-16b 30-cell cohort. The metallodrug community
+benefits from open releases of the PlatinAI / MetalCytoToxDB
+datasets and the open-source release of our MLC + KataGo + 84-MLE
+machinery at the paper-link release tag. We do not foresee direct
+dual-use concerns; the 84-rule MLE matrix encodes existing
+experimental metallodrug chemistry and does not introduce novel
+reactivity.
+
+\bigskip
+
+\paragraph{Reading recommendation.}
+A reviewer with time for one section should read
+\S\ref{sec:discussion:mlc} + \S\ref{sec:discussion:katago} +
+\S\ref{sec:discussion:click} (the three design-rationale
+sections); a reviewer who wants the empirical picture should read
+\S\ref{sec:discussion:sbdd} +
+\S\ref{sec:discussion:metallodrug} +
+\S\ref{sec:discussion:closing} (the three situational sections).

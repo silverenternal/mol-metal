@@ -1,0 +1,45 @@
+{
+  "metric": "m6_kappa",
+  "description": "Shape Kappa Index \u2014 mean of normalised RDKit Kappa1/2/3 in [0, 1] (ChemAxon PMC11387870 convention).  Wf-252-Apply Fix #2 (F2-M6Kappa) additive metric, complementing RDKit Bickerton 2012 QED for metallodrugs.",
+  "unit": "ratio (0-1, higher = more branched kappa shape)",
+  "scope": "drug-likeness panel (metrics_v2 Wf-252 F2 add-on)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:m6_kappa_from_smiles",
+  "value": 0.4719079955824899,
+  "std": 0.15883008562234383,
+  "n_samples": 449,
+  "n_parsed": 449,
+  "n_failed": 0,
+  "data_source": "metallo_drugs_500_train.csv",
+  "timestamp": "2026-09-28",
+  "status": "MEASURED",
+  "wf_tag": "Wf-252-Apply Fix #2 (F2-M6Kappa)",
+  "wf_design_ref": "molmetal/reports/wf252_research/fix_design.md \u00a74 Fix F2",
+  "qed_comparison": {
+    "qed_value": 0.6123,
+    "qed_path": "metrics/by_metric/qed.json",
+    "honest_framing": "Shape Kappa Index is a normalised topological index, NOT a learned metallodrug score.  Paper \u00a73 shows it side-by-side with QED.  Validation against MetalCytoToxDB labelled pIC50 deferred to a follow-up workstream."
+  },
+  "honest_framing_note": "Wf-252-Apply Fix #2 (F2-M6Kappa) Shape Kappa Index emission.  449/449 SMILES parsed (0 parse failures, gracefully skipped).  Mean = 0.4719079955824899.  Std = 0.15883008562234383.  This is the side-by-side complement to RDKit Bickerton 2012 QED; do NOT claim it as a learned metallodrug score without validation against MetalCytoToxDB labelled pIC50.",
+  "_per_smiles_preview": [
+    {
+      "smiles": "c1ccc([P](c2ccccc2)(c2ccccc2)[Pt]([P](c2ccccc2)(c2ccccc2)c2ccccc2)([P](c2ccccc2)",
+      "value": 0.6728274121539269
+    },
+    {
+      "smiles": "O=C1[O-]->[Pt+2]2(<-[NH2][C@@H]3CCCC[C@H]3[NH2]->2)<-[O-]C1=O",
+      "value": 0.16148626946383118
+    },
+    {
+      "smiles": "[NH3]->[Pt+2]1(<-[NH3])<-[O-]CC(=O)[O-]->1",
+      "value": 0.10212789189532555
+    },
+    {
+      "smiles": "[Cl-].c1ccc(P(c2ccccc2)c2ccccc2)cc1.c1cn[nH]c1.c1cnn(C(n2cccn2)n2cccn2)c1",
+      "value": 0.5893475023900772
+    },
+    {
+      "smiles": "CC(C)c1cccc(C(C)C)c1[N]1=Cc2c3ccccc3n3CC4CCC[O]4->[Y+3]<-1(<-[CH2-][Si](C)(C)C)(",
+      "value": 0.493554268541924
+    }
+  ]
+}

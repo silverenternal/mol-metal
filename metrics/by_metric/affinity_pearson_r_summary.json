@@ -1,0 +1,18 @@
+{
+  "recipe": "r19_wf32_m16_affinity_pearson_r_platinai_summary",
+  "dataset": "platinai",
+  "n_seeds": 1,
+  "headline_pearson_r_per_seed": [
+    -0.040314864134415984
+  ],
+  "headline_pearson_r_mean": -0.040314864134415984,
+  "headline_pearson_r_std": 0.0,
+  "per_cell_line_mean": {
+    "MCF7": -0.012564211152493954,
+    "A549": -0.0491844043135643,
+    "A2780": 0.02416442334651947,
+    "A2780cis": -0.12367526441812515
+  },
+  "init": "tmqm",
+  "wall_seconds": 20.838021278381348
+}

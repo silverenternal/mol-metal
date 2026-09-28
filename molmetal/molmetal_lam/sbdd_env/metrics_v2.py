@@ -47,6 +47,31 @@ from __future__ import annotations
 
 from typing import Iterable, List, Optional, Sequence
 
+
+# ---------------------------------------------------------------------------
+# Local AdapterUnavailable exception (Wf-43 / Wf-119 contract)
+# ---------------------------------------------------------------------------
+# The four Phase-4A external scorers (coord_geometry_proxy,
+# phototherapy_activity, ptiv_reduction_potential, metalloprotein_affinity)
+# were marked MOCK_DELETED in Wf-43 Phase 2 because the
+# ``molmetal_lam.sbdd_env.external_scorers`` module does not exist on disk.
+# Wf-119 Phase 3 closes the silent-None anti-pattern: callers must now
+# explicitly catch ``AdapterUnavailable`` rather than silently receiving
+# ``None`` and propagating a fabricated reading into the metrics panel.
+#
+# Mirrors ``molmetal.scoring.score_any.AdapterUnavailable`` so callers can
+# catch either class interchangeably (they are intentionally distinct
+# classes — this module may not import the scoring router to keep the
+# panel headless-friendly).
+class AdapterUnavailable(RuntimeError):
+    """Raised when a Phase-4A external scorer has no live tool available.
+
+    This is the *only* failure mode the panel functions in this module
+    permit for the four MOCK_DELETED scorers. Silent ``None`` returns
+    were the Wf-43 anti-pattern that Wf-119 Phase 3 eliminates.
+    """
+
+
 # ---------------------------------------------------------------------------
 # Optional RDKit import — soft-degrade to None returns when unavailable.
 # ---------------------------------------------------------------------------
@@ -515,6 +540,69 @@ def ring_size_distribution_mean(candidates: Sequence[str]) -> Dict[str, float]:
 
 
 # ---------------------------------------------------------------------------
+# Metric 10: m6_kappa — Shape Kappa Index from RDKit Kappa1/2/3 (Wf-252 F2)
+# ---------------------------------------------------------------------------
+#: RDKit Kappa-shape-index normalisation range.  Empirical observation:
+#: drug-like metallodrugs cluster in [0, 30] across Kappa1/2/3; the
+#: ChemAxon Shape Kappa Index (PMC11387870) normalises by max-min into
+#: [0, 1].  We use a generous range to avoid saturation while keeping
+#: the metric interpretable (higher = more branched / larger kappa shape).
+_KAPPA_NORM_LO: float = 0.0
+_KAPPA_NORM_HI: float = 30.0
+
+
+def _normalise_kappa(k_value: float) -> float:
+    """Linear-min-max clip of *k_value* into ``[0, 1]`` using fixed bounds.
+
+    Matches the ChemAxon Shape Kappa Index normalisation
+    (PMC11387870): ``kappa_norm = clip((kappa - lo) / (hi - lo), 0, 1)``.
+    """
+    if k_value != k_value:  # NaN
+        return 0.0
+    if k_value <= _KAPPA_NORM_LO:
+        return 0.0
+    if k_value >= _KAPPA_NORM_HI:
+        return 1.0
+    return float(k_value - _KAPPA_NORM_LO) / float(_KAPPA_NORM_HI - _KAPPA_NORM_LO)
+
+
+def m6_kappa_from_smiles(smiles: str) -> Optional[float]:
+    """Shape Kappa Index — mean of normalised Kappa1/2/3 in ``[0, 1]``.
+
+    **Wiring (Wf-252-Apply Fix #2 F2-M6Kappa):** the Shape Kappa Index is
+    a normalised aggregate of RDKit's three Kappa-shape indices
+    (:func:`rdkit.Chem.Descriptors.Kappa1/2/3`); same as the ChemAxon
+    Shape Kappa Index described in PMC11387870 normalised to ``[0, 1]``
+    by linear-min-max clip.  Returned value is ``mean(kappa1_norm,
+    kappa2_norm, kappa3_norm)``, which lives in ``[0, 1]``.
+
+    **Honest framing (party-twenty-spirit §3.5):** this is a *normalised
+    topological index*, NOT a learned metallodrug score.  It is shown
+    side-by-side with RDKit Bickerton 2012 QED in paper §3 so reviewers
+    can compare the two distributions on the same 449-SMILES cohort.
+    Validation against MetalCytoToxDB labelled pIC50 is deferred to a
+    follow-up workstream.
+
+    Returns ``None`` on RDKit parse failure (matches the silent-fallback
+    convention used by other metrics in this module when
+    ``_RDKIT_AVAILABLE`` is False).
+    """
+    mol = _safe_mol(smiles)
+    if mol is None:
+        return None
+    try:
+        k1 = float(Descriptors.Kappa1(mol))
+        k2 = float(Descriptors.Kappa2(mol))
+        k3 = float(Descriptors.Kappa3(mol))
+    except Exception:
+        return None
+    n1 = _normalise_kappa(k1)
+    n2 = _normalise_kappa(k2)
+    n3 = _normalise_kappa(k3)
+    return float((n1 + n2 + n3) / 3.0)
+
+
+# ---------------------------------------------------------------------------
 # Batch mean helpers (parallel to ``metric_*_mean`` in r4_lambda_only_run.py)
 # ---------------------------------------------------------------------------
 def _mean(values: List[float]) -> float:
@@ -623,6 +711,26 @@ def plasma_protein_binding_mean(candidates: Sequence[str]) -> float:
         if v == v:
             vals.append(v)
     return _mean(vals)
+
+
+def m6_kappa_mean(candidates: Sequence[str]) -> Optional[float]:
+    """Mean of :func:`m6_kappa_from_smiles` across *candidates*.
+
+    Returns the float mean, or ``None`` when every input failed to
+    parse (matches the silent-fallback convention used by other
+    metrics in this module when ``_RDKIT_AVAILABLE`` is False).
+    """
+    vals: List[float] = []
+    for s in candidates:
+        try:
+            v = m6_kappa_from_smiles(s)
+        except Exception:
+            continue
+        if isinstance(v, float) and v == v:
+            vals.append(v)
+    if not vals:
+        return None
+    return float(sum(vals) / len(vals))
 
 
 # ---------------------------------------------------------------------------
@@ -759,10 +867,13 @@ def all_metrics_one(
     external_scorers_enabled : bool, default ``False``
         When ``True`` the panel also computes the three Phase-4A
         external scorers (``ptiv_reduction_potential``,
-        ``coord_geometry_proxy``, ``phototherapy_activity``).  Each
-        returns ``None`` when its dependency stack is missing —
-        ``False`` keeps the panel lightweight and skips the heavy
-        model load.
+        ``coord_geometry_proxy``, ``phototherapy_activity``).  As of
+        Wf-119 Phase 3 these scorers are MOCK_DELETED — invoking them
+        with ``external_scorers_enabled=True`` raises
+        :class:`AdapterUnavailable` (no silent ``None``).  ``False``
+        keeps the panel lightweight and skips the heavy model load
+        (returns ``None`` for the three keys without ever importing
+        the external adapter module).
     """
     panel = {
         "logp7_4": logp7_4(smiles),
@@ -819,7 +930,10 @@ def all_metrics_mean(
         Phase-4A external scorers
         (``ptiv_reduction_potential``,
         ``coord_geometry_proxy``, ``phototherapy_activity``).
-        Each returns ``None`` when its dependency stack is missing.
+        As of Wf-119 Phase 3 these are MOCK_DELETED — invoking them
+        with ``external_scorers_enabled=True`` raises
+        :class:`AdapterUnavailable` (no silent ``None``).  ``False``
+        keeps the panel lightweight (returns ``None`` for the three keys).
     """
     seq = list(candidates)
     panel = {
@@ -857,31 +971,87 @@ def all_metrics_mean(
 # ---------------------------------------------------------------------------
 # Phase-4A optional external scorers
 # ---------------------------------------------------------------------------
-# Thin wrappers around the three adapters in
-# :mod:`molmetal_lam.sbdd_env.external_scorers`.  Each returns ``None``
-# when the underlying adapter cannot import its dependencies, so
-# callers can drop these into the metrics panel without guarding the
-# import.
-def _safe_external_score(adapter_name: str, scorer_name: str, smiles: str) -> Optional[float]:
-    """Best-effort call into one external scorer; returns ``None`` on failure."""
+# Thin wrappers around the adapters in
+# :mod:`molmetal_lam.sbdd_env.external_scorers`. As of Wf-119 Phase 3,
+# this helper RAISES :class:`AdapterUnavailable` when the underlying
+# adapter module is missing or any score() call fails. Silent ``None``
+# returns were removed because they propagated a fabricated "no data"
+# reading into the metrics panel — the Wf-43 anti-pattern that the
+# scoring-router's score_any() already prevents (see
+# ``molmetal.scoring.score_any:1050-1100`` for the correct contract).
+#
+# Callers that genuinely want a panel-without-external-scorers should
+# leave ``external_scorers_enabled=False`` in :func:`all_metrics_one` /
+# :func:`all_metrics_mean` rather than rely on silent ``None``.
+def _safe_external_score(adapter_name: str, scorer_name: str, smiles: str) -> float:
+    """Call one external scorer; raise :class:`AdapterUnavailable` on any failure.
+
+    Parameters
+    ----------
+    adapter_name : str
+        Attribute name on ``molmetal_lam.sbdd_env.external_scorers``.
+    scorer_name : str
+        Metric identifier — selects the post-processing path for the
+        adapter's return value (currently only ``"coord_geometry_proxy"``
+        unpacks the ``validity_score`` field; everything else returns the
+        adapter score verbatim).
+    smiles : str
+        Non-empty SMILES string.
+
+    Returns
+    -------
+    float
+        The adapter's score for *smiles*.
+
+    Raises
+    ------
+    AdapterUnavailable
+        If the ``external_scorers`` module cannot be imported (the
+        Wf-43 MOCK_DELETED state — the module does not exist on disk),
+        the named adapter is missing from that module, or the
+        ``score()`` call raises / returns ``None``.
+    """
     if not isinstance(smiles, str) or not smiles.strip():
-        return None
+        raise AdapterUnavailable(
+            f"{scorer_name}: empty / non-string SMILES input"
+        )
     try:
         from molmetal_lam.sbdd_env import external_scorers as _es
-    except Exception:
-        return None
+    except Exception as exc:
+        raise AdapterUnavailable(
+            f"{scorer_name}: external_scorers module is unavailable "
+            f"(Wf-43 MOCK_DELETED state — module does not exist on disk; "
+            f"underlying import error: {exc!r}). Set "
+            f"external_scorers_enabled=False to skip these panel entries."
+        ) from exc
     adapter = getattr(_es, adapter_name, None)
     if adapter is None:
-        return None
+        raise AdapterUnavailable(
+            f"{scorer_name}: adapter {adapter_name!r} not found in "
+            f"molmetal_lam.sbdd_env.external_scorers (Wf-43 MOCK_DELETED state)."
+        )
     try:
         if scorer_name == "coord_geometry_proxy":
             rec = adapter.score(smiles)
             if rec is None:
-                return None
+                raise AdapterUnavailable(
+                    f"{scorer_name}: adapter.score() returned None for "
+                    f"smiles={smiles!r}"
+                )
             return float(rec.get("validity_score", 0.0))
-        return adapter.score(smiles)
-    except Exception:
-        return None
+        out = adapter.score(smiles)
+    except AdapterUnavailable:
+        raise
+    except Exception as exc:
+        raise AdapterUnavailable(
+            f"{scorer_name}: adapter.score() raised {type(exc).__name__}: {exc}"
+        ) from exc
+    if out is None:
+        raise AdapterUnavailable(
+            f"{scorer_name}: adapter.score() returned None for "
+            f"smiles={smiles!r}"
+        )
+    return float(out)
 
 
 def ptiv_reduction_potential(smiles: str) -> Optional[float]:
@@ -946,6 +1116,9 @@ __all__ = [
     "hepatotox_index_mean",
     "aqueous_solubility_logS_mean",
     "plasma_protein_binding_mean",
+    # Wf-252 F2: Shape Kappa Index (normalised RDKit Kappa1/2/3)
+    "m6_kappa_from_smiles",
+    "m6_kappa_mean",
     # MD-relax wrappers
     "md_relax_energy",
     "md_relax_pool",

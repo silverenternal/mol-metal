@@ -1,0 +1,40 @@
+{
+  "n_rows": 4078,
+  "n_target": 4078,
+  "seed": 42,
+  "sources": {
+    "platinai_5k_pt": 874,
+    "known_pt_drugs": 7,
+    "tmQM_pt": 7854,
+    "unique_after_dedup": 7432
+  },
+  "cell_lines": [
+    "MCF7",
+    "A549",
+    "A2780",
+    "A2780cis"
+  ],
+  "cell_offsets_log10_nm": {
+    "MCF7": 0.0,
+    "A549": 0.15,
+    "A2780": -0.3,
+    "A2780cis": 0.4
+  },
+  "base_log10_ic50_nm": 3.95,
+  "sigma": 0.45,
+  "active_threshold_nm": 10000.0,
+  "n_active_per_cell_line": {
+    "MCF7": 2229,
+    "A549": 1672,
+    "A2780": 3194,
+    "A2780cis": 1535
+  },
+  "ic50_columns": [
+    "ic50_mcf7_nm",
+    "ic50_a549_nm",
+    "ic50_a2780_nm",
+    "ic50_a2780cis_nm"
+  ],
+  "framing": "synthetic IC50 labels for pipeline test; NOT directly comparable to Rusanov 2025 Table S4-S5",
+  "timestamp": "2026-09-25T16:11:45"
+}
