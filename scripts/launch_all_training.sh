@@ -26,7 +26,7 @@ fi
 P0_LAUNCHES=(
   "configs/cfm_per_innovation_ablation_p1.4.yaml"     # Wf-299 Wave A (m14 + m17 + m3)
   "configs/training/platinai_pt_4cell_5seed_50ep_v1.yaml"  # Wf-125 CONTROLD PAIR (m1 + m21)
-  "configs/training/m2_r2_per_cohort.yaml"              # Wf-390 Path A (m2 R2)
+  "molmetal/configs/m2_r2_per_cohort.yaml"             # Wf-390 Path A (m2 R2)
 )
 P1_LAUNCHES=(
   "configs/cfm_full_retrain.yaml"                       # Wf-380 SCAFFOLD-loss (m7 + m4 + m15)
