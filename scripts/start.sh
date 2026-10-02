@@ -354,12 +354,12 @@ fi
 
 echo "[start.sh] launching trainer (PID will be reported)..."
 TRAINER_PID=""
-# Wf-A8 (2026-10-03) — use `eval` so that $PYTHON and other shell
-# variables embedded in the yaml's entry.command template (e.g.
-# "$PYTHON {script} ...") are properly interpolated. `bash -c "..."`
-# would NOT expand variables embedded in $TRAINER_CMD (verified by
-# direct test); `eval` does.
-nohup eval "$TRAINER_CMD >> $LOG_FILE 2>&1" &
+# Use `bash -c` to properly interpret $TRAINER_CMD (which may contain
+# shell variables + yaml-template substitutions like {yaml_path}).
+# `nohup eval ...` fails because `eval` is a shell builtin not an
+# external executable; `nohup` searches PATH for `eval` and fails.
+# Per user voice 2026-10-03 '还是和之前一样有图标但是gpu上进程没启动'.
+nohup bash -c "$TRAINER_CMD >> $LOG_FILE 2>&1" &
 TRAINER_PID=$!
 echo "[start.sh][OK] trainer spawned PID=$TRAINER_PID"
 
