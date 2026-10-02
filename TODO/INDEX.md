@@ -836,3 +836,30 @@ Cross-references: TODO/completed/A8_m17_yaml_rewrite.md + TODO/completed/A8_othe
 
 **Standing directives re-confirmed**: AGENTS.md §1 + §5.1 (USER_OK gating honored) + §5.2 (honest framing — failures EXPECTED) + §5.3 (no paper work per TODO-84) + §5.4 (no wet-lab per §10) + §5.5 (filesystem-truth verified before this INDEX entry) + §5.6 (atomic_write_file applied) + §5.7 (smoke discipline applied to 4 NEW gates) + §5.10 (OmegaFold-gap-fill rule) + §10 (wetlab deprecation).
 
+## §22.149 Wf-A8c yaml 3-fix closeout (final verify)
+
+**Wave**: Wf-A8c final-verify sub-wave of Wf-A8 yaml-alignment gate ship surface.
+
+**Status**: 1 SHIPPED on disk per AGENTS.md §5.5 filesystem-truth rule + §5.6 atomic-write + §5.7 trainer-flag-smoke.
+
+**MEASURED-vs-PROJECTED ledger**:
+- Pre-flight chemprop_v2_v3 MEASURED: 15 PASS / 3 FAIL / 0 SKIP / 18 TOTAL wall 61.0 s per `/tmp/wf_a8c_final.json` (4 NEW yaml gates active: yaml_dataset_authorized FAIL + yaml_split_matches_baseline FAIL + yaml_target_in_baseline_range PASS + yaml_no_inline_cli FAIL)
+- 4 of 8 yamls PASS all 4 yaml gates (50% pass rate; FAILs EXPECTED per §1.4 pre-flight-as-mandatory principle)
+- launch_all_training.sh DRY_RUN MEASURED: 2 of 5 yamls pre-flight PASSED (cfm_per_innovation_ablation_p1.4 + platinai_pt_4cell_5seed_50ep_v1); 3rd yaml ABORTS due to PATH MISMATCH (m2_r2_per_cohort.yaml location)
+
+**SHIPPED files per §5.5 filesystem-truth rule**:
+1. `TODO/completed/A8c_yaml_3fix_closeout.md` (~7 KB mode 0600 → 0644 per §5.5 rule #4; 10 sections: §1 pre-flight summary + §2 4 yaml gates table + §3 launch script output + §4 filesystem-truth evidence + §5 atomic-write compliance + §6 §5.7 cross-ref + §7 standing directives + §8 residual gaps + §9 cross-references + §10 user voice answer)
+
+**Cross-references**:
+- Wf-A8b closeout §2 (4 NEW yaml gates added at lines 5343/5400/5458/5603)
+- Wf-A8 other_yamls_unify.md §0 (BLOCKER E + F closure per yaml)
+- Wf-A8 m17_yaml_rewrite.md §0 (cfm_full_retrain.yaml + cfm_per_innovation_ablation_p1.4.yaml update)
+- Wf-A8 platinai_loader.md §0 (platinai_pt_4cell_5seed_50ep_v1.yaml update)
+- Wf-A8 yaml_smoke_fix_closeout.md §0 (BLOCKER G + H + I closure)
+
+**Residual gaps** (forward-looking USER_OK-gated):
+- 5 yamls still FAIL 4 yaml gates (cfm_real_decode_lift_p1.3 + default + wf124_p3_50epoch_full_sweep_g5 + wf124_p3_per_innovation_ablation_g6 + wf124_p3_remaining_metals_g4) — closure = add data.dataset + data.split + restructure entry.command_template (~50 LOC CPU total)
+- m2_r2_per_cohort.yaml PATH MISMATCH in launch script line 29 (1 LOC)
+- Wf-A8 BLOCKER E + F trainer flag port deferred to Wf-A9+ (~70 LOC CPU)
+
+**Standing directives re-confirmed**: AGENTS.md §1 + §5.1 + §5.2 + §5.3 + §5.4 + §5.5 + §5.6 + §5.7 + §5.8 + §5.9 + §5.10 + §10.
