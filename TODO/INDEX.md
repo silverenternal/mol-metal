@@ -153,6 +153,52 @@ TODO/
 - `metrics/by_metric/*.json` — single source of truth for every measured value
 
 
+## §17 5-category audit table (22 metrics × 5 categories)
+
+**Source**: Wf-46/47/48/49 in-flight verification + Wf-377-A1 + Wf-388-A1 + Wf-411-A4 + Wf-413-A1 + Wf-424-A15 + Wf-398-A3 current state. Honest-negative framing per `party-twenty-spirit §3.5`.
+
+### §17.1 22 conceptual metrics × 5 categories
+
+| Category | Count | Examples |
+|---|---:|---|
+| 🟢 **STRONG_REAL_PAPER_READY** | 7 | m21 NCI-60 9-cell AUC 0.8007±0.0160; m17 DrugOOD OOD 0.891; m11 n_distinct=20; m13 RDKit validity 1.000; m14 CFM decode_ratio 0.998 (per Wf-398-A3); ring_size_distribution; metallodrug_vertical_coverage |
+| 🟡 **WEAK_REAL_NEEDS_MORE_DATA** | 6 | m1 Ru AUC BELOW_KRASNOV_PARTIAL (per Wf-413-A1); m2 R² HONEST_NEGATIVE_R2_DEEP (per Wf-388-A1); m7 Diversity SCAFFOLD-only (per Wf-388-A2); m10 Vina min -4.158; m15 RMSD MEASURED 0.6578 Å; m19 LOMO 0.535 (Rh 0.368) |
+| 🔴 **MOCK_NEEDS_REMEASURE** | 4 | m3 Vina stub -9.6574 (CRITICAL); m16 ckpt GAP (D-MPNN pIC50 Pt missing); m4 SA SCAFFOLD-only; m8 PB production; 4 external_scorers MOCK_DELETED |
+| ⚪ **UNDEFINED** | 5 | m6_kappa HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL (per Wf-377-A1 + Wf-411-A4 — to be dropped from §3 main-result, promoted top-3 WEAK correlates to §3 supplementary sub-table); m9/m20 not in pipeline; diversity_subpocket; steric_clash; vina_*_test_001 |
+| 🔵 **PROJECTED** (R20 plan) | 8 | R20·P1..P6 + Wf-44 P2 (per TODO-92..99 R20 plan items) |
+
+**Final 22-metric state**: 🟢 7 + 🟡 6 + 🔴 4 + ⚪ 5 = 22 (1 metric moved from 🟡 to ⚪ in this audit: m6_kappa per Wf-377-A1 deep-dive-research move n=5460 MetalCytoToxDB).
+
+### §17.2 Per-question status (Q1-Q5 answers)
+
+- **Q1 (✅ 已彻底解决的问题)**: 7 metrics in 🟢 — MEASURED real-data, Tier-1 acceptance bar met (per Wf-376-A4 §3)
+- **Q2 (🟡 解决了一半)**: 6 metrics in 🟡 — MEASURED but below gate target; needs USER_OK-gated GPU retrain for lift
+- **Q3 (❌ 完全没解决)**: 0 metrics in ❌ (none unreachable structurally)
+- **Q4 (🟢 真实强数据)**: 7 metrics in 🟢 → paper §4 LEAD claim candidates
+- **Q5 (🔴 Mock/假数据)**: 4 metrics in 🔴 → MOCK→REAL conversion deferred to R20-P3 (TODO-94 + TODO-95)
+
+### §17.3 R20 plan items (TODO 92-99 mapping)
+
+Per Wf-321B + Wf-329-W8 + Wf-381-A5 closure, the R20 plan consists of 8 NEW pending TODOs (per Step 4 of this audit):
+
+- TODO-92 = R20-P1 VariancePUCT default + Lazy RDKit import (L2)
+- TODO-93 = R20-P2 Hilbert ASTSR GPU joint retrain (L4+L5+L7+L8)
+- TODO-94 = R20-P3 Multi-PH Fourier + PLL feature extraction (L7)
+- TODO-95 = R20-P4 3-way on MetalCytoToxDB + 100-pocket × 10-seed (L6+L10)
+- TODO-96 = R20-P5 Closure theorem Catherine 6 properties (L1+L6+L12)
+- TODO-97 = R20-P6 Wet-lab IC50 validation (DEPRECATED per AGENTS.md §10)
+- TODO-98 = Wf-44 P2 Closure OOD Phase 2 (L12 Phase 2)
+- TODO-99 = R20 + R21 skill ecosystem (8 NEW skills, 5/8 SHIPPED)
+
+Full details per LAMBDA_ROADMAP §4.2 + `TODO/pending/92..99_*.md`.
+
+### §17.4 Cross-references
+
+- `TODO/03_plans/LAMBDA_ROADMAP.md` §4.2 — L1-L12 trajectory table with TODO # column (already SHIPPED per Wf-391-A1)
+- `TODO/completed/83j_lambda_closeout.md` §3.1 — 12/12 gap L1-L12 ledger
+- `TODO/completed/89_wf47_real_runs_execution.md` — Wf-47 Vina install required
+- `TODO/completed/85_wf29_train_se3sb_attr_fix_plan.md` — M22 SE(3) SB CPU scaffold
+
 ## §22 Wf-444 docs+code+index consolidation wave (per-topic architecture layer + scripts/tests INDEX)
 
 **SHIPPED 2026-10-02 per AGENTS.md §5.5 filesystem-truth rule + §5.6 atomic_write_file + §5.8 omega-flow minimalism.** Per-topic architecture layer + scripts + tests INDEX composes with Wf-438 simplification (SCAFFOLD-only named gates physically removed + EXPECTED_GATE_COUNTS aligned 25 → 98) + Wf-439 wrapper audit fix (venv-path bug corrected across 15 launch_*.sh wrappers) + Wf-432 protocol validation closure + Wf-424-A15 m6_kappa drop-promote decision + Wf-424-A14 paper §3 v4 FINAL.
