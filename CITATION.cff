@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: >-
+  If you use Mol-Metal in academic work, please cite the Tier-2 paper
+  (forthcoming) and acknowledge the framework per AGENTS.md §0.4. Citation
+  metadata below is for software use; the paper will carry the canonical
+  Tier-2 journal reference once published.
+type: software
+title: "Mol-Metal"
+abstract: >-
+  Hybrid molecular λ-calculus + flow-matching framework for precious-metal
+  anticancer drug design (Pt/Ru/Ir/Au/Pd) on top of Flow Matching + Structure-
+  Based Drug Design + Lambda Calculus MCTS proof-search. Tier-2 computational
+  ship surface per AGENTS.md §5.4 (no wet-lab planning).
+keywords:
+  - flow-matching
+  - molecular-lambda-calculus
+  - structure-based-drug-design
+  - precious-metal
+  - anticancer
+  - drug-design
+license: MIT
+authors:
+  - family-names: Lee
+    given-names: Hugo
+    orcid: https://orcid.org/0000-0000-0000-0000
+repository-code: "https://github.com/Hugo-Lee/mol-metal"
+url: "https://github.com/Hugo-Lee/mol-metal"
+date-released: "2026-09-25"
+version: "0.1.0"

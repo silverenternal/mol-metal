@@ -1,0 +1,42 @@
+# Mol-Metal .editorconfig (matches CONTRIBUTING.md §3 coding conventions + Wf-385-A2 §5.7 wiring hygiene)
+# OmegaFold/kataCAD minimalism: keep root marker + 4 core rules + 1 file-type override.
+root = true
+
+[*]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+max_line_length = 100
+
+# Python: 4-space + PEP 8 already in CONTRIBUTING.md; override max_line_length to 100 (CI lint floor)
+[*.py]
+indent_size = 4
+max_line_length = 100
+
+# Markdown: looser wrap (sentences are not code) + allow long headings + tables
+[*.md]
+max_line_length = off
+trim_trailing_whitespace = false
+
+# YAML/TOML: 2-space is friendlier for nested configs; CI lint tolerates
+[*.{yml,yaml,toml}]
+indent_size = 2
+
+# Shell: hard wrap helps `set -e` pipelines spot wrap artefacts
+[*.sh]
+max_line_length = 100
+
+# CSV / TSV data files: never trim trailing whitespace (data row semantics)
+[*.{csv,tsv}]
+trim_trailing_whitespace = false
+
+# LaTeX: preserve trailing whitespace (line breaks)
+[*.tex]
+trim_trailing_whitespace = false
+
+# JSON: 2-space; CI tolerates
+[*.json]
+indent_size = 2

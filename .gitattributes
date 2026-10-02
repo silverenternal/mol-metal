@@ -1,0 +1,48 @@
+# Mol-Metal .gitattributes (10 LOC OmegaFold minimalism per Wf-446 license-cleanup)
+# git log --all --diff-filter=D --summary shows 0 files via linguist + 1 .gitignore per repo
+# Linguist overrides: keep `paper/*` outside "what's in this repo" per AGENTS.md §5.3 user boundary
+# Line-ending guards per OmegaFold + kataCAD minimalism: lock to LF; CI's check_linguist.sh fails on CR
+
+* text=auto eol=lf
+
+# Python: enforce LF + avoid CRLF mismatches per Wf-446 license-cleanup §3.1
+*.py text eol=lf python-encoding=ascii
+
+# Shell: preserve executable bit + LF
+*.sh text eol=lf
+
+# Markdown + JSON + YAML + TOML: LF
+*.md text eol=lf
+*.json text eol=lf
+*.{yml,yaml,toml} text eol=lf
+
+# LaTeX: LF + avoid CRLF per CONTRIBUTING.md §3.5
+*.tex text eol=lf
+
+# CSVs: keep diffs readable (no auto-conversion)
+*.{csv,tsv} text eol=lf
+
+# Lock files: no diff noise
+*.lock -diff
+poetry.lock -diff
+uv.lock -diff
+
+# Large data artefacts: linguist-vendored (per AGENTS.md §5.3 user repo boundary)
+paper/* linguist-vendored
+**/*.bib linguist-vendored
+
+# Python wheel/sdist builds: ignore
+*.egg-info/ linguist-vendored
+build/ linguist-vendored
+dist/ linguist-vendored
+
+# Shell launchers: preserve +x bit
+launch_wf*.sh  linguist-language=Shell
+scripts/launch_wf*.sh linguist-language=Shell
+
+# Checkpoints + reports: vendor (kept in-repo for trace, no diffs)
+checkpoints/** linguist-vendored
+molmetal/reports/** linguist-vendored
+
+# Atomic-write backup markers (per AGENTS.md §5.6): never merge via Git
+*.bak.wf* linguist-vendored

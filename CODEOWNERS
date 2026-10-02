@@ -1,0 +1,24 @@
+# Mol-Metal CODEOWNERS (GitHub default syntax; per AGENTS.md §5.5 single-maintainer workflow)
+# Default reviewer: Hugo Lee @Huggerwa
+# PRs touching any path trigger review on the listed owner (single-owner repo for now).
+
+*                                @Huggerwa
+
+# Per-directory primary owner (single-owner, but tag intent):
+/scripts/                       @Huggerwa   # Wf-405/Wf-355/Wf-294/Wf-355 launch wrapper family
+/molmetal/                       @Huggerwa   # core lib: cfm_lipman/ + sbdd_env/ + lam_chem/ + adapters/
+/molmetal/scripts/                @Huggerwa   # trainer entry points (cfm + dmpnn + chemprop)
+/docs/                           @Huggerwa   # HONEST_NEGATIVE_CATALOG.md + PAPER_SECTION_*_v4_*.md
+/TODO/decisions/                  @Huggerwa   # decisions.md + ADR-style splits per Wf-443
+/TODO/03_plans/                   @Huggerwa   # LAMBDA_ROADMAP + R17/18/19/20/21 plan files
+/TODO/02_metrics/                  @Huggerwa   # METRICS_TARGETS + MECHANISM_METRIC_MAPPING + EVALUATORS_MIGRATED
+/molmetal/tests/                  @Huggerwa   # pytest + per-Wf regression-guard families
+/paper/                          @Huggerwa   # READ-only per TODO-84 + AGENTS.md §5.3
+
+# Convention: Wf-baked closeout docs always tagged to @Huggerwa (single-owner):
+/TODO/completed/                 @Huggerwa
+
+# .github/ + CI workflows:
+/.github/                        @Huggerwa
+
+# Onboarding note: add a new owner here AND bump AGENTS.md §3.1 to track their domain.
