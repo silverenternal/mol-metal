@@ -18,8 +18,12 @@ train:
   ema_decay: 0.999
   edge_cutoff: 6.0
 data:
-  dataset: qm9
-  split: train
+  dataset: metalcytotox_5metal  # Wf-A8c FIX: rename qm9 to metalcytotox_5metal per Tier-1 allowed list
+  split:  # Wf-A8c FIX: convert split string to block with type
+    type: scaffold_split  # Krasnov 2026 baseline
+    train_frac: 0.7
+    val_frac: 0.1
+    test_frac: 0.2
   target_index: null
 device: cuda
 seed: 42
@@ -39,3 +43,7 @@ protocol:
     min_lr: 1.0e-06
   weight_decay: 1.0e-05
   max_norm: 5.0
+
+# Wf-A8c FIX: add entry block (yaml drives config)
+entry:
+  command_template: python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path}

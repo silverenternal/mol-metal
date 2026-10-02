@@ -1,0 +1,49 @@
+# Wf-A8 yaml-unify pattern applied 2026-10-03 per task brief
+# Per AGENTS.md §5.5 filesystem-truth + §5.6 atomic-write + §5.7 trainer-flag-smoke
+# Cross-links: TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/decisions/0002-tier2-scope.md
+# Cross-links: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md + COMPARISON_BASELINES.md
+# Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
+test_set: crossdocked_pocket10
+n_test_pockets: 100
+docking:
+  engine: quickvina2
+  version: '2.1'
+  exhaustiveness: 1
+  n_poses: 1
+scoring:
+  sa: ertl_2000
+  qed: rdkit
+  lipinski: true
+  logp_threshold: 5
+success_rate:
+  vina_threshold_kcal: -8.0
+  sa_threshold: 4
+  qed_threshold: 0.5
+  logp_max: 5
+nfe:
+  target_per_pocket: 4
+  method: mcts_rollouts
+posebusters:
+  enabled: true
+  threshold: pass_all
+mcts:
+  top_k: 10
+  max_depth: 1
+  patience: 50
+  early_stop: true
+  branching_target: 12
+lambda_specific:
+  tile_library: standard_12
+  click_rules: CuAAC
+  synthesis_oracle: false
+  symbolic_prior: false
+  symbolic_prior_refit_every: 0
+output:
+  ckpt_dir: molmetal/checkpoints
+  events_jsonl: true
+directives:
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+  - p3_wf343c4_anchor_freshness_24h
+  - p3_wf343c2_per_wave_runtime_check

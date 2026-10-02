@@ -1,0 +1,148 @@
+# Wf-A8 yaml-unify pattern applied 2026-10-03 per task brief
+# Per AGENTS.md §5.5 filesystem-truth + §5.6 atomic-write + §5.7 trainer-flag-smoke
+# Cross-links: TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/decisions/0002-tier2-scope.md
+# Cross-links: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md + COMPARISON_BASELINES.md
+# Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
+version: '1.0'
+cohort_size_thresholds:
+- 300
+- 1000
+tiers:
+  n_lt_300:
+    features: rdkit_12d
+    model: ridge
+    alpha: 1.0
+    n_features_expected: 12
+    description: 'n=200 cohort (platinai_4cell, hilbert): 12-d RDKit + Ridge alpha=1.0 (strong regularization to prevent overfit
+      on n=200 cohorts).
+
+      '
+    honest_framing: 'Per Wf-367-B1 OVERFIT finding — 50+ features on n=200 cohorts produce negative R² via bias-variance inflation.
+      Reducing to 12-d for n<300 cohorts is the remediation path documented in TODO-201 §4.1.
+
+      '
+  n_lt_1000:
+    features: rdkit_24d_chemprop_v3
+    model: ridge
+    alpha: 0.5
+    n_features_expected: 24
+    description: 'n=500 intermediate cohort: 24-d RDKit + chemprop v3 + Ridge alpha=0.5 (medium regularization). Chemprop
+      v3 contributes 12-d graph features on top of the 12-d RDKit baseline.
+
+      '
+    honest_framing: 'At n=500 the chemprop v3 12-d augmentation is feasible without overfitting. Ridge alpha=0.5 reduces L2
+      penalty vs the n<300 tier.
+
+      '
+  n_gte_1000:
+    features: rdkit_50d_chemprop_v3_hilbert
+    model: ensemble
+    alpha: 0.1
+    n_features_expected: 50
+    description: 'n>=1000 cohort (metalcytotox_combined): 50-d RDKit + chemprop v3 + Hilbert ensemble + Ridge alpha=0.1 (weak
+      regularization; ensemble).
+
+      '
+    honest_framing: 'At n=2000 the bias-variance trade-off favors a richer feature set + ensemble. This tier already achieved
+      CEILING_BREAK at Wf-335-M2 with R²=+0.2227; the per-cohort config adds Hilbert spectral features for a +0.0773 lift
+      to target R²=+0.30.
+
+      '
+per_cohort_targets:
+  platinai_4cell:
+    cohort_size: 200
+    baseline_r2: -0.1251
+    baseline_source: Wf-335-M2 12d_baseline (single-seed 5-fold CV; result.json)
+    target_r2: 0.1
+    target_source: TODO-201 §4.1 — 12-d RDKit + Ridge alpha=1.0 (PROJECTED)
+    projected_lift: 0.2251
+    tier: n_lt_300
+    config:
+      features: rdkit_12d
+      model: ridge
+      alpha: 1.0
+      n_features_expected: 12
+  hilbert:
+    cohort_size: 200
+    baseline_r2: -0.1268
+    baseline_source: Wf-335-M2 12d_baseline seed_offset=10
+    target_r2: 0.1
+    target_source: TODO-201 §4.2 — same as platinai_4cell (PROJECTED)
+    projected_lift: 0.2268
+    tier: n_lt_300
+    config:
+      features: rdkit_12d
+      model: ridge
+      alpha: 1.0
+      n_features_expected: 12
+  metalcytotox_combined:
+    cohort_size: 2000
+    baseline_r2: 0.2227
+    baseline_source: Wf-335-M2 CEILING_BREAK on multi-seed CV
+    target_r2: 0.3
+    target_source: TODO-201 §4.3 — 50-d ensemble + chemprop v3 + Hilbert (PROJECTED)
+    projected_lift: 0.0773
+    tier: n_gte_1000
+    config:
+      features: rdkit_50d_chemprop_v3_hilbert
+      model: ensemble
+      alpha: 0.1
+      n_features_expected: 50
+  intermediate_n500:
+    cohort_size: 500
+    baseline_r2: 0.05
+    baseline_source: synthetic placeholder (no real-cohort anchor yet)
+    target_r2: 0.2
+    target_source: TODO-201 §2.1 — 24-d RDKit + chemprop v3 + Ridge alpha=0.5 (PROJECTED)
+    projected_lift: 0.15
+    tier: n_lt_1000
+    config:
+      features: rdkit_24d_chemprop_v3
+      model: ridge
+      alpha: 0.5
+      n_features_expected: 24
+cross_references:
+  upstream:
+  - TODO/pending/201_m2_r2_per_cohort_feature_engineering.md
+  - TODO/completed/335_final_synthesis.md §3
+  - TODO/completed/367b1_m2_r2.md
+  - TODO/completed/369a2_m2_r2_verdict.md
+  downstream:
+  - molmetal/scripts/wf335m2_r2_w2_chemprop.py
+  - molmetal/scripts/wf367b1_m2_r2_recovery.py
+  - molmetal/scripts/wf380a2_m2_r2_per_cohort.py
+  honest_framing_refs:
+  - AGENTS.md §5.2 — honest framing mandate
+  - party-twenty-spirit §3.5 — MEASURED-vs-PROJECTED tag discipline
+  - AGENTS.md §5.1 — GPU launch authorization (PENDING for real-cohort validation)
+validation:
+  synthetic_seed: 42
+  n_splits: 5
+  n_seeds: 5
+  noise_scale: 0.5
+  target_signal: 0.3
+  expected_synthetic_r2_above_zero_all_tiers: true
+  pre_flight_preserved: 89/2/3/94 PRESERVED per AGENTS.md §5.1 + Wf-370-B1 baseline
+self_test:
+  tests:
+  - test_per_cohort_config_match
+  - test_12d_ridge_no_overfit
+  - test_24d_intermediate
+  expected_tests_pass: 3
+  expected_wall_seconds_max: 5.0
+output:
+  ckpt_dir: molmetal/checkpoints
+  events_jsonl: true
+directives:
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+  - p3_wf343c4_anchor_freshness_24h
+  - p3_wf343c2_per_wave_runtime_check
+protocol:
+  scheduler:
+    type: cosine
+    warmup_epochs: 5
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0

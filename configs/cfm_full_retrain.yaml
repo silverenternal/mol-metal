@@ -4,6 +4,7 @@
 # Cross-links: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md + COMPARISON_BASELINES.md
 # Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
 data:
+  dataset: metalcytotox_5metal  # Wf-A8c FIX A: add data.dataset per PROTOCOL_ALIGNMENT_MATRIX.md §1 (Krasnov 2026 baseline)
   csv: .data/molmetal/metalcytotox_5metal_multitask_v2.csv
   n_rows_expected: 26632
   expected_columns_subset:
@@ -51,6 +52,12 @@ data:
     - 79
     - 77
     - 44
+  split:  # Wf-A8c FIX B: add data.split block per PROTOCOL_ALIGNMENT_MATRIX.md §3 (Krasnov 2026 MetalCytoToxDB Bemis-Murcko 70/10/20)
+    type: scaffold_split  # Krasnov 2026 baseline anchor
+    train_frac: 0.7
+    val_frac: 0.1
+    test_frac: 0.2
+    seed: 261  # Wf-261 strict Bemis-Murcko scaffold split RNG seed (0 leak verified)
 model:
   backbone: chemprop_v2_mt
   hidden_dim: 128
@@ -141,10 +148,16 @@ directives:
   - p3_wf343c2_per_wave_runtime_check
 entry:
   script: molmetal/scripts/metallo_drug_smoke_retrain.py
-  command: "CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\\\\n  molmetal/scripts/metallo_drug_smoke_retrain.py\
-    \ \\\\\n  --csv .data/molmetal/metalcytotox_5metal_multitask_v2.csv \\\\\n  --n-train 26632 \\\\\n  --steps 5000 \\\\\n\
-    \  --batch-size 16 \\\\\n  --lr 1e-4 \\\\\n  --hidden-dim 128 \\\\\n  --n-layers 3 \\\\\n  --joint-train \\\\\n  --bond-head\
-    \ learned \\\\\n  --decode-smoke-every 500 \\\\\n  --decode-smoke-samples 16 \\\\\n  --seed {seed} \\\\\n  --out-dir {out_dir}\n"
+  # Wf-A8c FIX C: replace inline CLI flags with yaml-driven --config pattern
+  # Per AGENTS.md §5.5 + §5.7 + user voice "never use CLI again always yaml"
+  # All retrain hyperparameters live in yaml sections above (data + model + flow + train + protocol);
+  # trainer applies via wfA2_config_loader.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/metallo_drug_smoke_retrain.py --config {yaml_path} --seed {seed} --out-dir {out_dir}
+  # FIX C: yaml-driven config + only debug/seed/out-dir CLI flags remain (per task brief DEBUG_FLAG_OVERRIDES)
+  warm_start_checkpoint: molmetal/checkpoints/cfm_yuelbond_wasserstein.pt
+  # Original inline-CLI command preserved as legacy_inline_command for backward-compat rollback only
+  # NOT used by start.sh per AGENTS.md §5.8 + §5.5 filesystem-truth
+  legacy_inline_command: "CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\n  molmetal/scripts/metallo_drug_smoke_retrain.py\\n  --csv .data/molmetal/metalcytotox_5metal_multitask_v2.csv \\n  --n-train 26632 \\n  --steps 5000 \\n  --batch-size 16 \\n  --lr 1e-4 \\n  --hidden-dim 128 \\n  --n-layers 3 \\n  --joint-train \\n  --bond-head learned \\n  --decode-smoke-every 500 \\n  --decode-smoke-samples 16 \\n  --seed {seed} \\n  --out-dir {out_dir}\n"
 honest_framing:
   claims:
   - CFM full retrain on MetalCytoToxDB 5-metal v2 corpus (26632 rows, Wf-261 strict Bemis-Murcko scaffold 70/10/20, 0 leak)

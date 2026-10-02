@@ -1,0 +1,121 @@
+# Wf-A8 yaml-unify pattern applied 2026-10-03 per task brief
+# Per AGENTS.md §5.5 filesystem-truth + §5.6 atomic-write + §5.7 trainer-flag-smoke
+# Cross-links: TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/decisions/0002-tier2-scope.md
+# Cross-links: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md + COMPARISON_BASELINES.md
+# Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
+dry_run: true
+user_ok_required: true
+data:
+  csv: .data/molmetal/metalcytotox_5metal_multitask_v2.csv
+  n_rows_expected: 26632
+  expected_columns_subset:
+  - smiles
+  - metal
+  - pic50
+  - source
+  cohort_filter:
+    metals:
+    - Ru
+    - Ir
+    - Os
+    - Rh
+    - Re
+    scaffold_split: true
+model:
+  backbone: chemprop_v2_mt
+  hidden_dim: 128
+  n_layers: 3
+  atom_vocab_size: 14
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  wasserstein_weight: 0.1
+  closure_bounded: true
+  use_yuelbond: true
+flow:
+  n_steps: 100
+  method: rk4
+  ot_solver: w_flow
+protocol:
+  n_seeds: 1
+  seeds:
+  - 0
+  epochs: 3
+  batch_size: 16
+  lr: 0.0001
+  warmup_steps: 50
+  grad_clip_norm: 1.0
+  ema_decay: 0.999
+  edge_cutoff: 6.0
+  bf16: true
+  scheduler:
+    type: cosine
+    warmup_epochs: 5
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
+eval:
+  primary_metric: decode_ratio
+  secondary_metrics:
+  - catherine_pass_rate
+  - wasserstein_loss
+  - dock_rmsd
+  target_decode_ratio: 0.5
+output:
+  base_dir: results/cfm_real_decode_lift_p1.3
+  per_seed_dir: results/cfm_real_decode_lift_p1.3/seed{seed}
+  metrics_json: results/cfm_real_decode_lift_p1.3/decode_lift_metrics.json
+  log_master: results/cfm_real_decode_lift_p1.3/master.log
+  ckpt_dir: molmetal/checkpoints
+  events_jsonl: true
+waves:
+  total_waves: 1
+  wave_a:
+    description: Full 3-innovation CFM smoke, 1 seed x 3 epochs
+    seeds:
+    - 0
+    epochs: 3
+    wall_time_estimate: 0.5
+compute:
+  gpu: cuda:0
+  cpu_workers: 4
+  bf16: true
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  user_ok_required: true
+  user_ok_granted: pending — DRY-RUN only
+  per_wave_user_ok_required: true
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+  - p3_wf343c4_anchor_freshness_24h
+  - p3_wf343c2_per_wave_runtime_check
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command: "CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\\\\n  molmetal/scripts/train_cfm_yuelbond_wasserstein.py\
+    \ \\\\\n  --epochs {epochs} \\\\\n  --use-yuelbond \\\\\n  --pocket-id {pocket_id} \\\\\n  --seed {seed} \\\\\n  --out-dir\
+    \ {out_dir}\n"
+  warm_start_checkpoint: molmetal/checkpoints/cfm_yuelbond_wasserstein.pt
+honest_framing:
+  claims:
+  - Real-CFM decode_ratio lift smoke on 26632-row MetalCytoToxDB 5-metal v2 (Wf-261 strict Bemis-Murcko scaffold split, 0
+    leak)
+  - 'Full 3-innovation stack: YuelBond + W2 + Catherine closure-bounded'
+  - 1 seed x 3 epochs, ~30 min on PRO 6000 (small smoke per TODO-119 P1.3)
+  do_not_claim:
+  - Wf-181 / Wf-188 0.9980 / 0.9958 as P1.3 result (those are ad-hoc, not P1.3)
+  - Synthetic Pt click cloud decode_ratio 1.000 (that is decoder smoke only)
+  - Aggregate lift before per-cohort ablation
+  deferred:
+  - PlatinAI 4-cell full-batch run (P1.3 cohort 1)
+  - DrugOOD assay/scaffold/size full-batch run (P1.3 cohort 2)
+  - Cross-cohort aggregation + MEASURED-vs-PROJECTED audit
+  - Vina dock_rmsd eval (m15) — separate hardware pathway
+cross_references:
+- molmetal/reports/wf258_audit/cfm_todo_gap_audit.md
+- TODO/completed/119_decode_ratio_strengthen.md
+- molmetal/reports/wf257_research/cfm_potential.md
+- configs/cfm_full_retrain.yaml
+- molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+- molmetal/checkpoints/cfm_yuelbond_wasserstein.pt

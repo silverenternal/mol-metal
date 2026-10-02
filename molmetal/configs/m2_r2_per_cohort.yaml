@@ -1,9 +1,25 @@
 # Wf-A8 yaml-unify pattern applied 2026-10-03 per task brief
+# Wf-A8c yaml-alignment fix applied 2026-10-03 (this commit)
 # Per AGENTS.md §5.5 filesystem-truth + §5.6 atomic-write + §5.7 trainer-flag-smoke
+# Per user voice 2026-10-03 verbatim simple scientific fix for alignment-not-reproduction
 # Cross-links: TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/decisions/0002-tier2-scope.md
 # Cross-links: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md + COMPARISON_BASELINES.md
 # Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
+# Pre-patch backup: .bak.wfa8c (per AGENTS.md §5.6 safe_overwrite_check contract)
+# NOTE: this yaml is a per-cohort feature config (not a trainer launch config); FIX C not applicable (no entry block)
+# FIX A: add data.dataset = metalcytotox_5metal (Krasnov 2026 baseline anchor)
+# FIX B: add data.split.type = scaffold_split (Krasnov 2026 Bemis-Murcko 70/10/20)
 version: '1.0'
+data:
+  dataset: metalcytotox_5metal  # Wf-A8c FIX A: add data.dataset per PROTOCOL_ALIGNMENT_MATRIX.md §1 (Krasnov 2026 baseline)
+  split:
+    type: scaffold_split  # Wf-A8c FIX B: Krasnov 2026 baseline split (Bemis-Murcko 70/10/20)
+    train_frac: 0.7
+    val_frac: 0.1
+    test_frac: 0.2
+    seed: 261
+  cohort_filter:
+    metals: [Ru, Ir, Os, Rh, Re]  # Wf-388 cohort (5-metal subset)
 cohort_size_thresholds:
 - 300
 - 1000

@@ -1,0 +1,165 @@
+# Wf-A8 yaml-unify pattern applied 2026-10-03 per task brief
+# Per AGENTS.md §5.5 filesystem-truth + §5.6 atomic-write + §5.7 trainer-flag-smoke
+# Cross-links: TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/decisions/0002-tier2-scope.md
+# Cross-links: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md + COMPARISON_BASELINES.md
+# Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
+data:
+  csv: .data/molmetal/metalcytotox_5metal_multitask_v2.csv
+  n_rows_expected: 26632
+  expected_columns_subset:
+  - smiles
+  - metal
+  - pic50
+  - source
+  cohort_filter:
+    metals:
+    - Ru
+    - Ir
+    - Os
+    - Rh
+    - Re
+    scaffold_split: true
+    heavy_atom_min: 8
+    heavy_atom_max: 38
+    vocab_required:
+    - C
+    - N
+    - O
+    - F
+    - S
+    - P
+    - Cl
+    - Br
+    - I
+    - Pt
+    - Pd
+    - Au
+    - Ir
+    - Ru
+    vocab_atom_indices:
+    - 6
+    - 7
+    - 8
+    - 9
+    - 16
+    - 15
+    - 17
+    - 35
+    - 53
+    - 78
+    - 46
+    - 79
+    - 77
+    - 44
+model:
+  backbone: chemprop_v2_mt
+  hidden_dim: 128
+  n_layers: 3
+  atom_vocab_size: 14
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  learnable_vel_scale: true
+  pcgrad_multi_task: false
+flow:
+  n_steps: 100
+  method: rk4
+  ot_solver: w_flow
+  se3_sb: false
+  bass_martingale: false
+  monge_ampere: false
+  multi_ph: false
+train:
+  optimizer: adam
+  batch_size: 16
+  lr: 0.0001
+  warmup_steps: 200
+  grad_clip_norm: 1.0
+  ema_decay: 0.999
+  wasserstein_weight: 0.1
+  closure_bounded: true
+  use_yuelbond: true
+  edge_cutoff: 6.0
+protocol:
+  n_seeds: 5
+  epochs: 50
+  n_seeds_min: 3
+  full_protocol:
+    description: Full retrain per Wf-243 / Wf-244 / Wf-250 / Wf-251 / Wf-252 spec
+    wall_time_target: 60
+    ablate_flags:
+    - --no-multi-task
+    - --no-wass
+    - --no-kendall
+    - --no-dann
+    - --no-click-aug
+    - --use-master-wass
+    - --use-master-cath
+  scheduler:
+    type: cosine
+    warmup_epochs: 5
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
+eval:
+  decode_smoke_every: 200
+  decode_smoke_samples: 16
+  eval_pockets:
+  - 1h36
+  - 3eml
+  - 3ny8
+  - 4aaw
+  - 4rlu
+  eval_metrics:
+  - decode_ratio
+  - catherine_pass_rate
+  - dock_rmsd
+  - diversity_tanimoto
+  - auroc_per_metal
+  target_decode_ratio: 0.8
+  sota_dock_rmsd: 2.0
+output:
+  base_dir: results/cfm_full_retrain_v2
+  per_pocket_dir: results/cfm_full_retrain_v2/{pocket}/seed{seed}
+  log_master: results/cfm_full_retrain_v2/master.log
+  orchestrator: results/cfm_full_retrain_v2/launch_loop.sh
+  ckpt_dir: molmetal/checkpoints
+  events_jsonl: true
+compute:
+  gpu: cuda:0
+  cpu_workers: 4
+  bf16: true
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  user_ok_required: true
+  user_ok_granted: 10h budget + PRO 6000 + project root results/ + GPU util ≥90% check (2026-09-28)
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+  - p3_wf343c4_anchor_freshness_24h
+  - p3_wf343c2_per_wave_runtime_check
+entry:
+  script: molmetal/scripts/metallo_drug_smoke_retrain.py
+  command: "CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\\\\n  molmetal/scripts/metallo_drug_smoke_retrain.py\
+    \ \\\\\n  --csv .data/molmetal/metalcytotox_5metal_multitask_v2.csv \\\\\n  --n-train 26632 \\\\\n  --steps 5000 \\\\\n\
+    \  --batch-size 16 \\\\\n  --lr 1e-4 \\\\\n  --hidden-dim 128 \\\\\n  --n-layers 3 \\\\\n  --joint-train \\\\\n  --bond-head\
+    \ learned \\\\\n  --decode-smoke-every 500 \\\\\n  --decode-smoke-samples 16 \\\\\n  --seed {seed} \\\\\n  --out-dir {out_dir}\n"
+honest_framing:
+  claims:
+  - CFM full retrain on MetalCytoToxDB 5-metal v2 corpus (26632 rows, Wf-261 strict Bemis-Murcko scaffold 70/10/20, 0 leak)
+  - CFM uses SAME data + scaffold split as chemprop v2 v3 → strict Krasnov head-to-head parity (no synthetic Pt click clouds,
+    no 449-mol metallo_drugs_500_train subset)
+  - 5 seeds × 5 pockets × 50 epochs, paper-grade protocol
+  - GPU util ≥90% on PRO 6000 Blackwell (or honest-negative)
+  do_not_claim:
+  - Synthesized Pt click clouds (this is a decoder smoke, not full retrain)
+  - Aggregate lift before per-lever ablation (Wf-256 honest-negative BCa CI)
+  - Best-seed selection (per Wf-245 n-seeds-min + Wf-126 §7)
+  - Beat TargetDiff 0.86 m7 diversity (long-standing honest-negative)
+  deferred:
+  - F5_RDKIT_2D 32-d integration into CFM training (CPU code done, GPU run pending)
+  - Per-lever ablation paper-grade (5-seed × 30-epoch GPU, requires explicit user OK)
+  - M1/M2 master module full retrain (Wf-250 fix shipped, GPU run pending)
+  - W₂ pic50 as GRADIENT (Wf-246 wired as diagnostic only)
+  - m17 DrugOOD forward pass (Wf-256 deferred)

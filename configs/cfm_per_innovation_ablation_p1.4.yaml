@@ -1,11 +1,15 @@
 # Wf-A8 yaml-unify pattern applied 2026-10-03 per task brief
+# Wf-A8c yaml-alignment fix applied 2026-10-03 (this commit)
 # Per AGENTS.md §5.5 filesystem-truth + §5.6 atomic-write + §5.7 trainer-flag-smoke
+# Per user voice 2026-10-03 verbatim simple scientific fix for alignment-not-reproduction
 # Cross-links: TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/decisions/0002-tier2-scope.md
 # Cross-links: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md + COMPARISON_BASELINES.md
 # Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
+# Pre-patch backup: .bak.wfa8c (per AGENTS.md §5.6 safe_overwrite_check contract)
 dry_run: true
 user_ok_required: true
 data:
+  dataset: metalcytotox_5metal  # Wf-A8c FIX A: rename cfm_per_innovation_ablation_p1.4 → metalcytotox_5metal (Krasnov 2026 baseline anchor per PROTOCOL_ALIGNMENT_MATRIX.md §1)
   csv: .data/molmetal/metalcytotox_5metal_multitask_v2.csv
   n_rows_expected: 26632
   expected_columns_subset:
@@ -21,6 +25,12 @@ data:
     - Rh
     - Re
     scaffold_split: true
+  split:  # Wf-A8c FIX B: add data.split block per PROTOCOL_ALIGNMENT_MATRIX.md §3 (Krasnov 2026 MetalCytoToxDB Bemis-Murcko 70/10/20 scaffold split)
+    type: scaffold_split  # Krasnov 2026 baseline anchor
+    train_frac: 0.7
+    val_frac: 0.1
+    test_frac: 0.2
+    seed: 261  # Wf-261 strict Bemis-Murcko scaffold split RNG seed (0 leak verified)
 model:
   backbone: chemprop_v2_mt
   hidden_dim: 128
@@ -149,10 +159,16 @@ directives:
   - p3_wf343c2_per_wave_runtime_check
 entry:
   script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
-  command: "CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\\\\n  molmetal/scripts/train_cfm_yuelbond_wasserstein.py\
-    \ \\\\\n  --epochs {epochs} \\\\\n  {flags_joined} \\\\\n  --pocket-id {pocket_id} \\\\\n  --seed {seed} \\\\\n  --out-dir\
-    \ {out_dir}\n"
+  # Wf-A8c FIX C: replace inline CLI flags with yaml-driven --config pattern
+  # Per AGENTS.md §5.5 + §5.7 + user voice "never use CLI again always yaml"
+  # All retrain hyperparameters live in yaml sections above (data + model + flow + train + protocol);
+  # trainer applies via wfA2_config_loader.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --flags "{flags_joined}" --seed {seed} --out-dir {out_dir}
+  # FIX C: yaml-driven config + only debug/seed/out-dir CLI flags remain (per task brief DEBUG_FLAG_OVERRIDES)
   warm_start_checkpoint: molmetal/checkpoints/cfm_yuelbond_wasserstein.pt
+  # Original inline-CLI command preserved as legacy_inline_command for backward-compat rollback only
+  # NOT used by start.sh per AGENTS.md §5.8 + §5.5 filesystem-truth
+  legacy_inline_command: "CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\n  molmetal/scripts/train_cfm_yuelbond_wasserstein.py\\n  --epochs {epochs} \\n  {flags_joined} \\n  --pocket-id {pocket_id} \\n  --seed {seed} \\n  --out-dir {out_dir}\n"
 honest_framing:
   claims:
   - 'Per-innovation CFM ablation: YuelBond / W2 / Catherine / all-combined'

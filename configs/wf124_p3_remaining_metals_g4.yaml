@@ -6,6 +6,9 @@
 dry_run: true
 user_ok_required: true
 data:
+  dataset: metalcytotox_5metal  # Wf-A8c FIX
+  split:
+    type: scaffold_split  # Krasnov 2026 baseline
   csv: .data/molmetal/metalcytotox_5metal_multitask_v2.csv
   n_rows_expected: 26632
   expected_columns_subset:
@@ -14,6 +17,9 @@ data:
   - pic50
   - source
   cohort_filter:
+  dataset: metalcytotox_5metal  # Wf-A8c FIX
+  split:
+    type: scaffold_split  # Krasnov 2026 baseline
     metals:
     - Ru
     - Ir
@@ -143,7 +149,7 @@ directives:
   - p3_wf343c2_per_wave_runtime_check
 entry:
   script: molmetal/scripts/train_dmpnn_multitask_wasserstein.py
-  command: "CUDA_VISIBLE_DEVICES=1 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\\\\n  molmetal/scripts/train_dmpnn_multitask_wasserstein.py\
+  command_template: python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path}
     \ \\\\\n  --metals {metal} \\\\\n  --seeds {seed} \\\\\n  --epochs 30 \\\\\n  --batch-size 64 \\\\\n  --lr 1e-3 \\\\\n\
     \  --alpha 0.5 \\\\\n  --wasserstein-weight 0.05 \\\\\n  --use-l2-guard \\\\\n  --device cuda:1 \\\\\n  --out-dir {out_dir}\
     \ \\\\\n  --ckpt-dir {ckpt_dir}\n"
