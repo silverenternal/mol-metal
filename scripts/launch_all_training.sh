@@ -51,8 +51,9 @@ run_one() {
     return $?
   fi
   echo "=== [$(date +%H:%M:%S)] LAUNCH ${yaml} on cuda:0 (TUI dashboard auto-spawned; see tmux pane) ==="
-  # No --fast flag: this runs pre-flight + actual trainer + spawns TUI dashboard (per AGENTS.md 5.5; Wf-TUI)
-  USER_OK=1 bash scripts/start.sh "${yaml}" 2>&1 | tail -50
+  # No pipe: TUI dashboard needs direct terminal to render rich-based 4-quadrant table
+  # (piped TUI falls back to plain mode or buffers; trainer launched via nohup still runs in background).
+  USER_OK=1 bash scripts/start.sh "${yaml}"
 }
 
 if [[ "${DRY_RUN:-false}" == "true" ]]; then
