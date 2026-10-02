@@ -91,15 +91,34 @@ def dock_panel(path: Path) -> str:
     return m2.group(1) if m2 else ""
 
 
+def has_multiple_device_flags(path: Path) -> bool:
+    """CANONICAL flag detection: return True if wrapper has > 1 --device flag invocation.
+
+    Per AGENTS.md §5.5 filesystem-truth + Wf-A2 wrapper consolidation: a CANONICAL
+    wrapper has exactly ONE --device flag invocation (the canonical entry-point).
+    Multiple --device flags indicate DUPLICATE pattern (e.g. inline + for-loop).
+    """
+    try:
+        content = path.read_text(encoding="utf-8")
+    except Exception:
+        return False
+    return len(re.findall(r"--device\s+\w+", content)) > 1
+
+
 def classify(surface: dict[str, bool], wrapper_path: Path) -> tuple[str, str]:
     """Classify a wrapper based on its canonical surface coverage.
 
     Returns (classification, evidence).
+
+    Per Wf-A2 ADR docs-only sync: extend to factor in CANONICAL flag detection
+    (multiple --device flags = DUPLICATE pattern per AGENTS.md §5.5 filesystem-truth).
     """
     if surface.get("_read_error"):
         return "DUPLICATE", f"read_error: {surface['_read_error']}"
     matched = [k for k, v in surface.items() if v and k != "_template"]
     missing = [k for k, v in surface.items() if not v and k != "_template"]
+    if has_multiple_device_flags(wrapper_path):
+        return "DUPLICATE", "multiple --device flag invocations (>1) — CANONICAL flag pattern violated"
     if len(matched) == len(CANONICAL_MARKERS):
         return "REAL", "all 7 canonical markers present"
     if surface.get("_template"):

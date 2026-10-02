@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mol-metal.local/schemas/metric_v1.schema.json",
+  "title": "Mol-Metal metric JSON v1 (tolerant)",
+  "description": "Schema for files under metrics/by_metric/*.json. The required fields are listed below — these fields are EXPECTED on every metric file but the validator emits WARNING (not FAIL) when any of them are missing, preserving backward compatibility with pre-v1 metric files. Optional fields such as honest_framing, gate_target, wave, and recipe/dataset are listed in `properties`. The schema is intentionally tolerant: additionalProperties is true so unknown keys are allowed (e.g. per_seed, val_history, scorer_name).",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "metric_id": {
+      "type": ["string", "null"],
+      "description": "Stable metric identifier (e.g. 'm1_auc', 'm2_r2', 'decode_ratio'). Lowercase + snake_case. Null allowed for legacy files."
+    },
+    "value": {
+      "type": ["number", "integer", "null"],
+      "description": "Canonical scalar value of the metric. Null allowed for derived/composite metrics where the scalar is computed elsewhere."
+    },
+    "unit": {
+      "type": ["string", "null"],
+      "description": "Physical or dimensionless unit (e.g. 'kcal/mol', 'pIC50', 'auc', 'Å', 'dimensionless')."
+    },
+    "source_path": {
+      "type": ["string", "null"],
+      "description": "Path on disk to the report JSON or log that produced this metric. Convention: 'molmetal/reports/<wave>/<subdir>/<file>.json' or 'metrics/by_metric/<file>.json'."
+    },
+    "timestamp": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp when the metric was last refreshed (e.g. '2026-09-30T16:48:36Z')."
+    },
+    "honest_framing": {
+      "type": ["string", "null"],
+      "description": "Honest-framing verdict per AGENTS.md §5.2 + party-twenty-spirit §3.5 (e.g. 'MEASURED_PASS', 'MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL', 'PROJECTED_PENDING_GPU_RETRAIN')."
+    },
+    "gate_target": {
+      "type": ["number", "integer", "null"],
+      "description": "Threshold the metric must clear for honest-framing PASS (e.g. Krasnov 0.86 gate for m1_auc)."
+    },
+    "wave": {
+      "type": ["string", "null"],
+      "description": "Source wave identifier (e.g. 'Wf-335-M1', 'Wf-377-A1', 'Wf-413-A1')."
+    },
+    "recipe": {
+      "type": ["string", "null"],
+      "description": "Legacy recipe string (pre-v1; validator emits WARNING when missing metric_id+value+unit+source_path+timestamp but present in its place)."
+    },
+    "dataset": {
+      "type": ["string", "null"],
+      "description": "Legacy dataset string (pre-v1)."
+    }
+  }
+}

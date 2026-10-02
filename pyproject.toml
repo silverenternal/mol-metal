@@ -1,7 +1,7 @@
 [project]
-name = "try-triton-on-rocm"
+name = "mol-metal"
 version = "0.1.0"
-description = "Triton kernels on ROCm (RX 7800 XT, gfx1101) — experiments"
+description = "Mol-Metal: precious-metal anticancer drug design framework (Pt/Ru/Ir/Au/Pd) on top of Flow Matching + Structure-Based Drug Design + Lambda Calculus MCTS proof-search"
 requires-python = "==3.12.*"
 # torch & triton-rocm: ROCm 7.2.4 wheels from download.pytorch.org/whl/rocm7.2.
 # The ROCm PyTorch build depends on `triton-rocm` (not the PyPI `triton`),
@@ -51,9 +51,21 @@ managed = true
 [tool.setuptools]
 packages = ["molmetal", "molmetal.molmetal_lam", "molmetal.data", "molmetal.baselines", "molmetal_lam"]
 
+# Console-script entry point — mirrors OmegaFold's
+# entry_points={"console_scripts": ["omegafold=omegafold.__main__:main"]} pattern
+# in setup.py:32.  After `uv pip install -e .`, the `molmetal` command
+# is on PATH and dispatches to `molmetal.__main__.cli_main`.
+[project.scripts]
+molmetal = "molmetal.__main__:cli_main"
+
 # Keep pytest focused on this repository's maintained tests. Vendored research
 # repositories under ``molmetal/references`` ship their own plugins, options,
 # and optional dependencies; collecting them causes import-time failures.
+#
+# Per Wf-A2 code consolidation (AGENTS.md §5.8 omega-flow minimalism pattern):
+#   - `tests/` is the CPU-only regression-guard surface (per-wave audits).
+#   - `molmetal/tests/` is the canonical pytest root (558 script-aligned).
+#   - See `tests/INDEX.md` for per-test-file scope + when-to-run map.
 [tool.pytest.ini_options]
 testpaths = ["tests", "molmetal"]
 norecursedirs = ["references", ".venv", ".git", "__pycache__"]

@@ -1684,6 +1684,68 @@ wheels = [
 ]
 
 [[package]]
+name = "mol-metal"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "admet-ai" },
+    { name = "biopython" },
+    { name = "datamol" },
+    { name = "gemmi" },
+    { name = "hypothesis" },
+    { name = "mdanalysis" },
+    { name = "meeko" },
+    { name = "molfeat", version = "0.11.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "molfeat", version = "1.0.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+    { name = "numpy" },
+    { name = "openbabel-wheel" },
+    { name = "openmm" },
+    { name = "openpyxl" },
+    { name = "pandas" },
+    { name = "posebusters" },
+    { name = "pot" },
+    { name = "prody" },
+    { name = "pyyaml" },
+    { name = "rdkit" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+    { name = "torch" },
+    { name = "torchdiffeq" },
+    { name = "triton-rocm" },
+    { name = "vina" },
+    { name = "xgboost" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "admet-ai", specifier = ">=2.0.1" },
+    { name = "biopython", specifier = ">=1.81" },
+    { name = "datamol", specifier = ">=0.13.0" },
+    { name = "gemmi", specifier = ">=0.7.5" },
+    { name = "hypothesis", specifier = ">=6.168.0" },
+    { name = "mdanalysis", specifier = ">=2.10.0" },
+    { name = "meeko", specifier = ">=0.8.0" },
+    { name = "molfeat", specifier = ">=0.11.0" },
+    { name = "numpy", specifier = ">=1.26,<3" },
+    { name = "openbabel-wheel", specifier = ">=3.1.1.23" },
+    { name = "openmm", specifier = ">=8.6.1" },
+    { name = "openpyxl", specifier = ">=3.1" },
+    { name = "pandas", specifier = ">=2.0" },
+    { name = "posebusters", specifier = ">=0.6.5" },
+    { name = "pot", specifier = ">=0.9.7.post1" },
+    { name = "prody", specifier = ">=2.6.1" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "rdkit", specifier = ">=2024.3" },
+    { name = "scikit-learn", specifier = ">=1.3" },
+    { name = "scipy", specifier = ">=1.11" },
+    { name = "torch", specifier = ">=2.14,<2.15", index = "https://download.pytorch.org/whl/rocm7.2" },
+    { name = "torchdiffeq", specifier = ">=0.2.5" },
+    { name = "triton-rocm", specifier = "==3.8.0", index = "https://download.pytorch.org/whl/rocm7.2" },
+    { name = "vina", specifier = ">=1.2.7" },
+    { name = "xgboost", specifier = ">=2.0" },
+]
+
+[[package]]
 name = "molfeat"
 version = "0.11.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2974,68 +3036,6 @@ version = "3.8.0"
 source = { registry = "https://download.pytorch.org/whl/rocm7.2" }
 wheels = [
     { url = "https://download-r2.pytorch.org/whl/triton_rocm-3.8.0-cp312-cp312-linux_x86_64.whl", hash = "sha256:6318e6faa21395632defa13c57fa84fce5c42a79c531159911f227e599422eba", upload-time = "2026-09-02T00:55:39Z" },
-]
-
-[[package]]
-name = "try-triton-on-rocm"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "admet-ai" },
-    { name = "biopython" },
-    { name = "datamol" },
-    { name = "gemmi" },
-    { name = "hypothesis" },
-    { name = "mdanalysis" },
-    { name = "meeko" },
-    { name = "molfeat", version = "0.11.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
-    { name = "molfeat", version = "1.0.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
-    { name = "numpy" },
-    { name = "openbabel-wheel" },
-    { name = "openmm" },
-    { name = "openpyxl" },
-    { name = "pandas" },
-    { name = "posebusters" },
-    { name = "pot" },
-    { name = "prody" },
-    { name = "pyyaml" },
-    { name = "rdkit" },
-    { name = "scikit-learn" },
-    { name = "scipy" },
-    { name = "torch" },
-    { name = "torchdiffeq" },
-    { name = "triton-rocm" },
-    { name = "vina" },
-    { name = "xgboost" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "admet-ai", specifier = ">=2.0.1" },
-    { name = "biopython", specifier = ">=1.81" },
-    { name = "datamol", specifier = ">=0.13.0" },
-    { name = "gemmi", specifier = ">=0.7.5" },
-    { name = "hypothesis", specifier = ">=6.168.0" },
-    { name = "mdanalysis", specifier = ">=2.10.0" },
-    { name = "meeko", specifier = ">=0.8.0" },
-    { name = "molfeat", specifier = ">=0.11.0" },
-    { name = "numpy", specifier = ">=1.26,<3" },
-    { name = "openbabel-wheel", specifier = ">=3.1.1.23" },
-    { name = "openmm", specifier = ">=8.6.1" },
-    { name = "openpyxl", specifier = ">=3.1" },
-    { name = "pandas", specifier = ">=2.0" },
-    { name = "posebusters", specifier = ">=0.6.5" },
-    { name = "pot", specifier = ">=0.9.7.post1" },
-    { name = "prody", specifier = ">=2.6.1" },
-    { name = "pyyaml", specifier = ">=6.0" },
-    { name = "rdkit", specifier = ">=2024.3" },
-    { name = "scikit-learn", specifier = ">=1.3" },
-    { name = "scipy", specifier = ">=1.11" },
-    { name = "torch", specifier = ">=2.14,<2.15", index = "https://download.pytorch.org/whl/rocm7.2" },
-    { name = "torchdiffeq", specifier = ">=0.2.5" },
-    { name = "triton-rocm", specifier = "==3.8.0", index = "https://download.pytorch.org/whl/rocm7.2" },
-    { name = "vina", specifier = ">=1.2.7" },
-    { name = "xgboost", specifier = ">=2.0" },
 ]
 
 [[package]]

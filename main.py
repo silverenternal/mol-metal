@@ -1,26 +1,12 @@
-"""MolFlow-Triton end-to-end demo.
+"""Top-level shim — dispatches to :mod:`molmetal.__main__`.
 
-Builds a tiny synthetic molecular graph, encodes it, runs the EGNN
-velocity net, takes a couple of integration steps with the Triton
-Euler ODE kernel, and prints the integrated drift.  Verifies that the
-whole stack (Triton kernels + EGNN + flow-matching loss + ODE
-sampler) wires together correctly on the local ROCm GPU.
-
-Run
----
-    python main.py
-or, after the project is installed as a uv-managed package:
-    uv run python main.py
+Mirrors the OmegaFold pattern where the legacy ``main.py`` keeps a
+3-line shim that re-exports the package entry point.  Both
+``python main.py`` and ``molmetal demo`` run the same code path.
 """
-
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-PROJECT_ROOT = Path(__file__).resolve().parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+from molmetal.__main__ import _demo_main
 
 
 def banner(title: str) -> None:

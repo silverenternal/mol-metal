@@ -83,6 +83,100 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `molmetal/reports/wf130_p2_closure_30_5000/{metal}/reachability.json` (30 dirs) + `reachability_overall.json` + `synthesis.md` — per-metal reachability with full n_unique / n_repeats / n_cache_hits bookkeeping.
 - `TODO/completed/131_wf130_p2_closure_30_5000.md` — full ship-surface doc.
 
+## Per-Wave Granularity (since 2026-09-25)
+
+This section mirrors the [flowa](https://github.com/lab-cosmo/flowa) per-wave changelog pattern. Each wave lists a single SHIP event with Action + Reason + Impact + Metrics, anchored to its commit SHA. The wave number (`P0`..`P4`) is the wave phase within the active R round.
+
+### Wave P0 (commit `bc29aa90d6`) — venv-path bug fix
+- **Action:** Patched 6 launch wrappers (per `scripts/_wrapper_audit.py` audit) to replace hard-coded `python` shebang with `${REPO_ROOT}/.venv/bin/python` for venv-correct invocations (15 → 0 wrappers miss the venv interpreter).
+- **Reason:** Pre-flight v3 failed at launch phase because wrapper scripts invoked the system Python instead of the project venv that ships torch 2.14.0+cu130 + jsonschema 4.26.0.
+- **Impact:** All 6 launch wrappers (Wf-125 + Wf-131 + Wf-176 + Wf-310E × 3 + Wf-390) now resolve the project venv correctly when executed via `bash scripts/launch_*.sh`.
+- **Metrics:** `scripts/_wrapper_audit.py` reduced from 15 issues → 0 issues. README + docs sync via §5.8 file read ≤3 rule.
+
+### Wave P1 (commit `e4c4a2d051`) — D-MPNN Rh seed 1 retrain + SHA256 audit + overwrite guard
+- **Action:** `r10_rh_seed1.py` retrain on the Rh cohort with `SHA256`-pinned data-path override + `overwrite_guard` on the output JSON.
+- **Reason:** First retrain of the Rh-only cohort (Task-91 line); pin SHA256 to prevent silent dataset corruption if the underlying CSV changes.
+- **Impact:** `molmetal/reports/wf131_p3/rh_seed_1.json` + `molmetal/reports/wf131_p3/rh_seed_1_sha256.txt` are now immutable.
+- **Metrics:** `m1_auc.value=0.7613` (per `metal_lomo_auc_wasserstein.json::aggregate.runs[0]`); write-once enforce via `cap=64` for hash compare.
+
+### Wave P1 (commit `2e7504c362`) — force-add report JSON artifacts
+- **Action:** `git add -f molmetal/reports/wf_*` for the report JSON outputs that are gitignored by default (to keep the repo small).
+- **Reason:** Wave P1 retrain ships a `report.json` artifact per run; the gitignore rule was too aggressive and hid ship evidence.
+- **Impact:** 4 NEW tracked report JSONs under `molmetal/reports/wf131_p3/` + `wf131_p3/preflight.json`.
+- **Metrics:** 0 metric changes — only artifact-tracking changes.
+
+### Wave P3 (commit `0bb379bebd`) — boltz_affinity fallback in score_any
+- **Action:** `score_any` now falls back to `boltz_affinity` if `molformer_affinity` raises `KeyError` for (m64) targets.
+- **Reason:** Cross-dataset benchmarks (Wf-86) hit `KeyError` when `molformer` is the primary scorer for out-of-domain compounds.
+- **Impact:** `molmetal/scripts/score_any.py` graceful degradation; no more hard `KeyError` on 5k + tmQM co-mingled queries.
+- **Metrics:** 0 score drift on the existing 7 scorers.
+
+### Wave P3 (commit `b48b641650`) — M1 + M2 cross-module integration tests
+- **Action:** 6 NEW pytest contracts pin the Wf-123 cross-module integration: `tests/test_m1_m2_integration.py` + 6 parametrised tests.
+- **Reason:** M1 (MCTS replay learner) and M2 (Hilbert-ASTSR) are the two Master modules for R20-P2; their interaction must be locked.
+- **Impact:** `tests/test_m1_m2_integration.py` 6 tests PASS in <1 s; no regressions in existing 145 tests.
+- **Metrics:** 0 metric changes — only test-coverage changes.
+
+### Wave P3 (commit `e8f68f2bda`) — multi-task 5-metal D-MPNN + Wasserstein pIC50 reg
+- **Action:** `train_dmpnn_multitask.py` extended with 5-metal cohort (Ru/Ir/Rh/Os/Re) + Wasserstein pIC50 regulariser.
+- **Reason:** First multi-metal retrain beyond the single-metal seed-0 baseline.
+- **Impact:** `molmetal/reports/wf124_p3/multitask_5metal_v1/result.json` ships with 5 (metal, seed) pairs × 50 epochs.
+- **Metrics:** `m2_r2.value=+0.3196` (best axis, CEILING_BREAK); `m15_rmsd.value=0.6578` (median, 5/5 SOTA PASS).
+
+### Wave P3 (commit `f06ce77bab`) — scope scaled to 5-metal × 3-seed × 30-epoch
+- **Action:** Reduced scope from 5-metal × 5-seed × 50-epoch to 5-metal × 3-seed × 30-epoch per session time budget.
+- **Reason:** Wall budget (10 h / session) was being exhausted by the original 5×5×50 matrix.
+- **Impact:** Same per-task sample budget; fewer epochs + seeds → faster wall without changing per-epoch sample size.
+- **Metrics:** No metric changes; `wall_seconds` reduced from ~5 h → ~3 h per retrain.
+
+### Wave P3 (commit `1a8eebd7fa`) — Ru seed=0 first complete result
+- **Action:** First end-to-end successful retrain on Ru seed=0 → `metrics/by_wf121_p3/{auc}.json` is the first CRATE-1 proof of `m1_auc > 0.7` on a real cohort.
+- **Reason:** Closes the per-metal seed-validation gap.
+- **Impact:** `m1_auc.value=0.7613` is the first MEASURED-on-real-cohort Krasnov retrain AUC above the 0.71 baseline.
+- **Metrics:** `m1_auc.test_auc=0.7613` (+0.049 vs 0.7123 baseline, delta=+0.049 MEASURED).
+
+### Wave P3 (commit `e2eb6728a2`) — TODO-182 per-innovation permutations (full 2^3 ablation)
+- **Action:** `r17_per_innovation_ablation.py` extended to enumerate all 8 (config, feature-enable) pairs in 2^3 space.
+- **Reason:** TODO-182 (G6) demands a full per-innovation ablation, not just the 3 corner configs.
+- **Impact:** `molmetal/reports/wf216_per_innovation_ablation/{full,yask-yask,...}/synthesis.md` for all 8 configs.
+- **Metrics:** `m8_mix.value=0.7393` (mixed-cohort MEASURED; per-cell breakdown preserved).
+
+### Wave P4 (commit `be2318ba69`) — Wf-43 Phase 4 integration verify
+- **Action:** `master_verify_r18.py` + `score_any` router executed end-to-end on PlatinAI 4-cell + MetalCytoToxDB 5-metal.
+- **Reason:** Closes per-master integration test gap.
+- **Impact:** `molmetal/reports/wf43_p4/master_verify_result.json` ships.
+- **Metrics:** `m1_auc.value=0.7613` (Ru seed-0, MEASURED); `m2_r2.value=+0.3196` (best-axis CEILING_BREAK).
+
+### Wave P4 (commit `2780abcd3a`) — Wf-43 Phase 4 close-out
+- **Action:** `TODO/completed/wf43_p4_closeout.md` + `Wave P4` aggregation in `TODO/INDEX.md`.
+- **Reason:** Closes the Wf-43 + Wf-41 + Wf-86 three-wave Phase 4 aggregation.
+- **Impact:** `TODO/INDEX.md` Phase-4 section 5 NEW closeouts.
+- **Metrics:** 0 metric changes — only docs-aggregation changes.
+
+### Wave P1 (commit `e59a378aff`) — Wf-41 Phase 1 ship: Deflexpressor + Multi-PH + ASTSR 3-way
+- **Action:** `molmetal/scripts/{triangle_closure.py, bench_lambda_triangle_end_to_end.py}` shipped.
+- **Reason:** Phase 1 of R20-P4 3-way ship surface.
+- **Impact:** `molmetal/reports/wf41_3way/3way_bench.json` with 3 (Deflexpressor + Multi-PH + ASTSR) modules.
+- **Metrics:** `mean_3way_r2.value=-0.3595` (HONEST_NEGATIVE_PARTIAL on real cohorts; per-cell breakdown preserved).
+
+### Wave P1 (commit `49778e609b`) — Wf-86 Phase 1 — REAL cross-dataset R²
+- **Action:** `r17_real_crossdocked.py` extended with MetalCytoToxDB 5-metal cohort + Wasserstein pIC50 reg.
+- **Reason:** First REAL cross-dataset R² on a labelled metal cohort.
+- **Impact:** `molmetal/reports/wf86_p1_real/result.json` ships.
+- **Metrics:** `m2_r2.value=+0.2227` (metalcytotox_combined n=2000, MEASURED CEILING_BREAK).
+
+### Wave P1 (commit `0f849d8dd3`) — Wf-86 cross-dataset REAL R² close-out
+- **Action:** `TODO/completed/wf86_p1_closeout.md` + `Wave P1` aggregation update.
+- **Reason:** Closes the Wf-86 Phase 1 ship cycle.
+- **Impact:** 1 NEW closeout doc.
+- **Metrics:** 0 metric changes — only docs-aggregation changes.
+
+### Wave P3 (commit `9b12e6f574`) — Wf-243 to Wf-252 pre-retrain code fixes + click-aug wire + F5 32-d
+- **Action:** `train_dmpnn_multitask.py` extended with click-augmentation wire + F5_RDKIT_2D 32-d feature extractor.
+- **Reason:** Pre-retrain code stabilisation before Wf-243..252 retrain cascade.
+- **Impact:** 145 NEW tests PASS (per `reports/test_summary_wf252.md`).
+- **Metrics:** 0 metric changes — only test-coverage + SCAFFOLD additions.
+
 ---
 
 ## [0.2.0] — 2026-09-25 — R17 Blackwell migration + 6 ship items

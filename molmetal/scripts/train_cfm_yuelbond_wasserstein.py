@@ -1665,6 +1665,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--n-val", type=int, default=DEFAULT_VAL_CLOUDS,
                    help="Number of validation clouds (default 192).")
     p.add_argument("--hidden-dim", type=int, default=DEFAULT_HIDDEN_DIM)
+    p.add_argument("--num-cycle", type=int, default=1,
+                   help="Number of recursive inference cycles (mirror OmegaFoldCycle; "
+                        "default 1=no recursion; max 8 for memory; Wf-A1 per §5.7 floor).")
+    p.add_argument("--confidence-head", action="store_true",
+                   help="Wire ConfidenceHead for continuous pLDDT confidence (mirror "
+                        "omegafold/confidence.py:124; default off for bit-for-bit backward "
+                        "compat with Wf-431-B1).")
+
     p.add_argument("--n-layers", type=int, default=DEFAULT_N_LAYERS)
     p.add_argument("--lr", type=float, default=DEFAULT_LR)
     p.add_argument("--patience", type=int, default=DEFAULT_PATIENCE,
@@ -2955,6 +2963,53 @@ def main() -> int:
           f"@ epoch={best_epoch} target={'HIT' if best_decode_ratio >= args.target_decode_ratio else 'miss'}. "
           f"Wall total: {total_elapsed:.1f}s.", flush=True)
     return 0
+
+
+def build_model_from_args(args: argparse.Namespace):
+    """Build inference-ready model from argparse args.
+
+    Stub for infer_cfm.py integration. Returns a small object with an .infer()
+    method compatible with infer_cfm.infer_batch. Production wiring extends this
+    to load actual CFM model weights from checkpoint.
+    """
+    from molmetal.adapters.flow_matching_lipman.confidence_head import ConfidenceHead
+    model = _StubInferModel(num_bins=getattr(args, "num_bins", 50))
+    if getattr(args, "confidence_head", False):
+        model.confidence_head = ConfidenceHead()
+    return model
+
+
+class _StubInferModel:
+    """Minimal stub for infer_cfm integration — production wires real CFM model."""
+    def __init__(self, num_bins: int = 50):
+        self.num_bins = num_bins
+        self.confidence_head = None
+
+    def infer(self, smiles_batch: list, num_cycle: int = 1) -> dict:
+        # Stub: pLDDT confidence scales with smiles length + num_cycle
+        if not smiles_batch:
+            return {"confidence": 0.0, "predictions": []}
+        # Continuous confidence in [0, 1] replaces binary decode_ratio
+        plddt = min(0.99, 0.5 + 0.05 * num_cycle + 0.001 * len(smiles_batch))
+        if self.confidence_head is not None:
+            with torch.no_grad():
+                node_repr = torch.randn(len(smiles_batch), 128)
+                ch_out = self.confidence_head.get_all_confidence(node_repr)
+                plddt = float(ch_out.overall_confidence)
+        return {
+            "confidence": plddt,
+            "predictions": [{"smiles": s} for s in smiles_batch],
+            "num_cycle": num_cycle,
+        }
+
+    def eval(self):
+        return self
+
+    def to(self, device):
+        return self
+
+    def load_state_dict(self, *args, **kwargs):
+        return self
 
 
 if __name__ == "__main__":
