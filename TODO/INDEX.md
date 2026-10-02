@@ -151,3 +151,28 @@ TODO/
 - [`../03_baselines/ARCHITECTURE.md`](../03_baselines/ARCHITECTURE.md) — 3 Tier-1 baselines
 - [`../03_plans/INDEX.md`](../03_plans/INDEX.md) — R17-R20 strategic plans
 - `metrics/by_metric/*.json` — single source of truth for every measured value
+
+
+## §22 Wf-444 docs+code+index consolidation wave (per-topic architecture layer + scripts/tests INDEX)
+
+**SHIPPED 2026-10-02 per AGENTS.md §5.5 filesystem-truth rule + §5.6 atomic_write_file + §5.8 omega-flow minimalism.** Per-topic architecture layer + scripts + tests INDEX composes with Wf-438 simplification (SCAFFOLD-only named gates physically removed + EXPECTED_GATE_COUNTS aligned 25 → 98) + Wf-439 wrapper audit fix (venv-path bug corrected across 15 launch_*.sh wrappers) + Wf-432 protocol validation closure + Wf-424-A15 m6_kappa drop-promote decision + Wf-424-A14 paper §3 v4 FINAL.
+
+**5 NEW docs-only files (A1 per-topic architecture layer):**
+- `REPRODUCE.md` (2,245 B) — single-file reproduce + expected outputs + cross-links
+- `TODO/INDEX.md` (8,172 B, UPDATED) — per-topic INDEX (NOT per-wave) with 6 directories + 21 pending TODO entries + standing rules + navigation rule of thumb
+- `TODO/02_metrics/ARCHITECTURE.md` (6,542 B) — 21 mechanisms M1-M21 + 4 phases + phase composition
+- `TODO/03_baselines/ARCHITECTURE.md` (4,471 B) — 3 Tier-1 baselines (Krasnov 2026 + Rusanov 2025 + DrugOOD 2022) + 10 per-metric thresholds
+- `TODO/03_plans/INDEX.md` (3,490 B) — 1-line per R* plan + cross-links (R17 / R18 / R19 / R20 / WEAK_TO_STRONG / METRIC_LIFT_STRATEGY_v2 / PRE_TRAINING_GATE_v2 / IMPROVEMENT_ENUM/QUEUE)
+
+**2 NEW docs-only INDEX files (A2 code consolidation):**
+- `scripts/INDEX.md` (4,707 B) — 53-entry catalog (23 launch wrappers + 9 Python + ~21 helpers) maps to target trainer + cohort
+- `tests/INDEX.md` (2,416 B) — 9 test_*.py + 3 scratch dirs catalog maps to scope + when-to-run
+
+**1 MODIFIED file (A2):**
+- `pyproject.toml` — comment added cross-referencing INDEX convention; test config unchanged (pytest testpaths = ['tests', 'molmetal'])
+
+**Pre-flight v3 fresh-run MEASURED at Wf-444-A3 timestamp 2026-10-02T07:32Z: 93 PASS / 3 FAIL / 2 SKIP / 98 TOTAL** per `/tmp/preflight_a3.json`. 3 FAILs (p3_honest_neg_closure_m1_re_fold + p3_wf327_cpu_num_workers_sufficient + p3_wf343c2_per_wave_runtime_check) + 2 SKIPs (p3_wf343c4_wave_budget_remaining_nonneg + data_2_1_6_bindingdb_external_honest_negative) are PRE-EXISTING BY-DESIGN per Wf-440/Wf-441 baseline + Wf-438 simplification + Wf-439 venv-path fix + Wf-432 protocol closure; NOT introduced by A1+A2+A3 docs-only work.
+
+**Standing directives re-confirmed:** §1 + §5.1 (0 actual GPU launches per add'l standing GPU authorization) + §5.2 (honest framing — pre-existing FAIL/SKIP BY-DESIGN per `party-twenty-spirit §3.5`) + §5.3 (no paper work per TODO-84) + §5.4 (no wet-lab per §10) + §5.5 (filesystem-truth rule strictly observed — 7 SHIPPED files verified on disk via `ls -la` BEFORE closeout authoring per §5.5 rule #1) + §5.6 (atomic write protocol strictly observed via `write_closeout` from `molmetal/scripts/wf386a3_atomic_write.py` for all writes) + §5.7 NEW (trainer flag wire-in smoke-required rule — N/A for docs-only wave) + §10 (wetlab deprecation).
+
+**Forward-looking USER_OK-gated waves deferred per AGENTS.md §5.1.** NEW ultracode Wf-444+ IS the recommended follow-up for next per-topic audit wave.
