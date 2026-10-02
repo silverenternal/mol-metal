@@ -1,7 +1,7 @@
 {
-  "schema_version": "1.0",
-  "created_at": "2026-10-03",
-  "wave": "Wf-A5 follow-up (Wf-449 fix + GPU compute util + rocm cleanup + checkpoint resume + resource scaling research)",
+  "schema_version": "1.1",
+  "created_at": "2026-10-03T03:55:00+0000 (Wf-A6 plan extension per user voice 2026-10-03 verbatim review + research recommendations)",
+  "wave": "Wf-A5 follow-up + Wf-A6 review-based plan (Wf-449 fix + GPU compute util + rocm cleanup + checkpoint resume + resource scaling research + LR scheduler + dynamic metals + 6 blockers)",
   "context": "Per AGENTS.md §5.5 filesystem-truth rule + §5.7 trainer flag wire-in smoke-required rule + §5.6 atomic write protocol adoption rule + user voice 2026-10-03 verbatim: 启动命令太长, 都用配置文件解决; 训练时不降低效率且能断点续训; 预检 GPU 算力利用率; torch 环境应该是 cuda 删 rocm",
   "agent_role": "Senior trainer integration engineer; USER_OK=1 granted per AGENTS.md §5.1",
   "constraints": {
@@ -76,7 +76,7 @@
       "title": "断点续训 (checkpoint resumption): trainer 加 --resume-from + yaml output.checkpoint_interval=50 + start.sh auto-detect latest .pt",
       "type": "code_patch+yaml+start_sh",
       "file": "molmetal/scripts/train_dmpnn_multitask_wasserstein.py + configs/training/m17_pt_platinai_4cell_5seed_50ep_v1.yaml + scripts/start.sh",
-      "status": "PENDING (design only; no code yet)",
+      "status": "SHIPPED on disk per §5.5 filesystem-truth (closeout + trainer + yaml + start.sh all verified via ls -la)",
       "est_loc": 120,
       "est_wall_cpu_min": 20,
       "deps": [
@@ -113,7 +113,7 @@
       "title": "资源 scaling 研究 + config 优化 (batch_size / num_workers / AMP bf16 / torch.compile / cudnn.benchmark / channels_last 对 GPU 算力利用率与训练效果影响)",
       "type": "research+config_optimization",
       "file": "configs/training/m17_pt_platinai_4cell_5seed_50ep_v1.yaml + docs/SESSION_FINAL_SYNTHESIS.md (or new doc)",
-      "status": "PENDING (research not done yet)",
+      "status": "SHIPPED on disk per §5.5 filesystem-truth (2 VALID YAML patches + 7 SCHEMA-ONLY fields with HONEST-NEGATIVE comments + docs/RESOURCE_SCALING.md 19294 B + closeout all on disk)",
       "est_loc": 200,
       "est_wall_cpu_min": 60,
       "deps": [
@@ -267,6 +267,129 @@
         "metrics/by_metric/m1_auc_wasserstein.json update 14/15 → 15/15 runs"
       ],
       "closeout": "TODO/completed/B7_wf124_p3_ablation.md + 1 NEW §22 INDEX entry"
+    },
+    {
+      "id": "A1",
+      "title": "BLOCKER A 修复: D-MPNN --metals 改动态 (去掉 argparse choices=FIVE_METALS 硬约束 + 加 --metals auto 自动从 CSV 发现 + 运行时校验)",
+      "status": "PENDING (待实施)",
+      "type": "code_patch+yaml+smoke",
+      "priority": "HIGH",
+      "user_voice": "2026-10-03 verbatim \"得搞成动态的\" - --metals 不应硬编码 FIVE_METALS 约束; 任何 metal string 都应能通过校验（如果不在 CSV 里就报 clear error）",
+      "blockers_resolved": [
+        "BLOCKER A: Wf-A2 yaml --metals Pt invalid for FIVE_METALS constraint at trainer line 1341-1345"
+      ],
+      "files": [
+        "molmetal/scripts/train_dmpnn_multitask_wasserstein.py:141 FIVE_METALS constant (保留为 default only)",
+        "molmetal/scripts/train_dmpnn_multitask_wasserstein.py:1341-1345 argparse (去掉 choices=FIVE_METALS)",
+        "molmetal/scripts/train_dmpnn_multitask_wasserstein.py:train() main (加 --metals auto 检测 + runtime CSV 校验)"
+      ],
+      "design": "去掉 line 1341 的 choices=FIVE_METALS 约束; default=list(FIVE_METALS) 保留; 加 --metals auto literal mode 触发 CSV distinct metal 列扫描; 启动时校验 (--metals X 但 CSV metal 列里没 X → raise ValueError with clear message 列出 actual distinct metals); CFM trainer 没有 --metals flag 不需改; yaml entry.command 可保留 --metals Pt (因为现在不验证)",
+      "expected_lines_changed": "~30 LOC",
+      "wf_audit_ref": "audit \"wfa2_bug\" + \"metals_argparse_constraint\" + BLOCKER A",
+      "§5.7 smoke_required": true,
+      "commit_after": "A1"
+    },
+    {
+      "id": "A2",
+      "title": "BLOCKER C 修复 + research 推荐: 实装 Linear warmup + CosineAnnealingLR (D-MPNN + CFM trainer 加 --lr-scheduler/--lr-warmup-epochs/--lr-min-lr/--weight-decay CLI flags + scheduler.step() per epoch)",
+      "status": "PENDING (待实施)",
+      "type": "code_patch+yaml+start_sh",
+      "priority": "HIGH",
+      "user_voice": "2026-10-03 verbatim \"学习率的控制至少得用余弦退火或者更加高级的方案，做一下调研然后应用\"",
+      "blockers_resolved": [
+        "BLOCKER C: D-MPNN + CFM trainer 都没有 LR scheduler (constant-LR Adam only); --use-lr-warmup 在 CFM 是 SCAFFOLD-only 没真接线"
+      ],
+      "files": [
+        "molmetal/scripts/train_dmpnn_multitask_wasserstein.py:881 optimizer + 1445 --lr CLI + main() training loop",
+        "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2593 optimiser + 1722 --lr CLI + main()",
+        "configs/training/m17_pt_platinai_4cell_5seed_50ep_v1.yaml:protocol section",
+        "scripts/start.sh:parse_yaml heredoc"
+      ],
+      "design": "按 research agent 推荐方案实装 Linear warmup + CosineAnnealingLR (保守备选; OneCycleLR 作为用户启用时的 super-convergence 路径):\n- 新 CLI flags: --lr-scheduler {none,cosine,onecycle} default none (preserves Wf-131 baseline); --lr-warmup-epochs INT default 5; --lr-min-lr FLOAT default 1e-6; --weight-decay FLOAT default 0.0\n- 新 Python helper: build_lr_scheduler(optimizer, total_steps, scheduler_type, warmup_steps, min_lr) returns torch.optim.lr_scheduler.SequentialLR(warmup + cosine) 或 OneCycleLR 或 None\n- 用 SequentialLR(warmup=LinearLR, cosine=CosineAnnealingLR) 在 main() 里根据 scheduler_type instantiate\n- 在每个 epoch 末尾调用 scheduler.step()\n- yaml protocol.scheduler 配置: {type: cosine, warmup_epochs: 5, min_lr: 1e-6}\n- start.sh parse_yaml 提取 SCHEDULER + WARMUP_EPOCHS + MIN_LR + WEIGHT_DECAY env vars\n- 真实接线 --use-lr-warmup (CFM SCAFFOLD-only → 真 LR ramp)",
+      "expected_lines_changed": "~150 LOC across 4 files (trainer_dmpnn ~50 + trainer_dmpnn ~50 + yaml ~20 + start.sh ~30)",
+      "wf_audit_ref": "audit \"trainer_dmpnn.3_warmup NONE + 9_existing_lr_flags --lr-scheduler DOES NOT EXIST\" + \"trainer_cfm 9_existing_lr_flags --use-lr-warmup EXISTS but SCAFFOLD-only\"",
+      "research_citation": "Loshchilov & Hutter 2017 SGDR arXiv:1608.03983; Smith & Topin 2018 Super-Convergence arXiv:1708.07120; HuggingFace transformers.get_cosine_schedule_with_warmup; PyTorch torch.optim.lr_scheduler.SequentialLR + LinearLR + CosineAnnealingLR",
+      "§5.7 smoke_required": true,
+      "commit_after": "A2"
+    },
+    {
+      "id": "A3",
+      "title": "BLOCKER B 修复: yaml output.ckpt_dir 字段缺失 → 添加 output.ckpt_dir: molmetal/checkpoints (canonical checkpoint path)",
+      "status": "PENDING (待实施)",
+      "type": "yaml_patch",
+      "priority": "MEDIUM",
+      "user_voice": "2026-10-03 review-based audit - BLOCKER B",
+      "blockers_resolved": [
+        "BLOCKER B: yaml output.ckpt_dir 字段缺失导致 start.sh fallback 到 results/auto/ckpts 而不是 molmetal/checkpoints (canonical Wf-131 P3 path)"
+      ],
+      "files": [
+        "configs/training/m17_pt_platinai_4cell_5seed_50ep_v1.yaml:144 output section"
+      ],
+      "design": "在 yaml output section 添加 ckpt_dir: molmetal/checkpoints; 不改 start.sh parse_yaml (已经有 ckpt_dir fallback); 一次性 yaml fix",
+      "expected_lines_changed": "~2 LOC (1 line added + 1 comment)",
+      "wf_audit_ref": "audit \"yaml_m17.output_ckpt_dir MISSING\"",
+      "commit_after": "A3 (可以与 A4 合并提交)"
+    },
+    {
+      "id": "A4",
+      "title": "BLOCKER E + F 修复: yaml 7 个 SCHEMA-ONLY 字段 (protocol.bf16 + compute.torch_compile/cudnn_benchmark/channels_last/tf32/amp) honest-framing + 加 comment 说明 D-MPNN 不支持这些 flags",
+      "status": "PENDING (待实施)",
+      "type": "docs_only",
+      "priority": "LOW",
+      "user_voice": "2026-10-03 review-based audit - BLOCKER E + F",
+      "blockers_resolved": [
+        "BLOCKER E: yaml protocol.bf16=true 是 SCHEMA-ONLY (D-MPNN 没 bf16 路径)",
+        "BLOCKER F: yaml 7 个 compute.* 字段都是 SCHEMA-ONLY (D-MPNN 不支持这些 flags)"
+      ],
+      "files": [
+        "configs/training/m17_pt_platinai_4cell_5seed_50ep_v1.yaml:78-105 compute + protocol.bf16 fields"
+      ],
+      "design": "不删除这些字段 (CFM trainer 里有 --bf16 SCAFFOLD-only + --torch-compile 等; 未来 Wf-A7+ 可能 port 到 D-MPNN); 加 YAML 注释说明:\"以下 7 个 compute.* 字段与 protocol.bf16 是 SCHEMA-ONLY for D-MPNN trainer (D-MPNN 当前不支持这些 flags); 仅 CFM trainer (molmetal/scripts/train_cfm_yuelbond_wasserstein.py) 支持 --bf16/--torch-compile/--cudnn-benchmark/--channels-last/--tf32 (per Wf-431-B1); 当 D-MPNN trainer 加上这些 CLI flag 后 (WFA7+ forward-looking), 这些字段会被实际应用\"",
+      "expected_lines_changed": "~15 LOC (comment block above SCHEMA-ONLY fields)",
+      "wf_audit_ref": "audit \"blockers E + F: yaml protocol.bf16=true + 7 compute.* fields SCHEMA-ONLY\"",
+      "commit_after": "A4"
+    },
+    {
+      "id": "A5",
+      "title": "R5 + R6 from audit: D-MPNN + CFM trainer 加 --weight-decay + --max-norm CLI flags (目前 weight_decay=0.0 + grad_clip_max_norm=5.0 都硬编码)",
+      "status": "PENDING (待实施)",
+      "type": "code_patch+smoke",
+      "priority": "MEDIUM",
+      "user_voice": "2026-10-03 review-based audit",
+      "blockers_resolved": [],
+      "files": [
+        "molmetal/scripts/train_dmpnn_multitask_wasserstein.py:881 optimizer + main()",
+        "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2593 optimiser + main()",
+        "configs/training/m17_pt_platinai_4cell_5seed_50ep_v1.yaml"
+      ],
+      "design": "在两个 trainer 各加 2 个 CLI flags: --weight-decay FLOAT default 0.0 (passed to torch.optim.Adam weight_decay parameter); --max-norm FLOAT default 5.0 (passed to torch.nn.utils.clip_grad_norm_ max_norm); 改 yaml 加这两个字段 (weight_decay=1e-5 per paper-protocol best practice; max_norm=5.0 default); start.sh parse_yaml 提取这两个 env vars",
+      "expected_lines_changed": "~30 LOC across 3 files",
+      "wf_audit_ref": "audit \"trainer_dmpnn 5_weight_decay NONE\" + \"trainer_dmpnn 6_gradient_clipping max_norm hardcoded 5.0\" + \"trainer_cfm 5_weight_decay NONE\" + \"trainer_cfm 6_gradient_clipping max_norm hardcoded 5.0\"",
+      "§5.7 smoke_required": true,
+      "commit_after": "A5"
+    },
+    {
+      "id": "A6",
+      "title": "R7 from audit: anchor refresh helper script (scripts/refresh_stale_anchors.sh + molmetal/scripts/walk_anchors.py ~30 LOC) + final §5.7 50-step smoke 全 trainer + closeout + commit",
+      "status": "PENDING (待实施)",
+      "type": "scripts+smoke+closeout",
+      "priority": "HIGH (wrap-up)",
+      "user_voice": "2026-10-03 review-based audit",
+      "blockers_resolved": [
+        "BLOCKER D: p3_wf343c4_anchor_freshness_24h gate FAIL on natural-drift anchors - 提供 refresh helper 让用户能手动 refresh"
+      ],
+      "files": [
+        "molmetal/scripts/walk_anchors.py (NEW ~30 LOC)",
+        "scripts/refresh_stale_anchors.sh (NEW ~20 LOC shell wrapper)",
+        "TODO/completed/A6_lr_dynamic_metals_closeout.md (NEW closeout per §5.6 atomic_write)",
+        "TODO/INDEX.md (§22.139 new entry per filesystem ordering)",
+        "AGENTS.md (§6 row 622 new per §6 trail extension pattern)"
+      ],
+      "design": "walk_anchors.py 扫描 4 ANCHOR_GLOB_PATTERNS 列出 STALE anchors (age > 24h); refresh_stale_anchors.sh 调 walk_anchors + 依次 touch 每个 STALE file (用户用 --dry-run 预览; 默认行为 touch); §5.7 50-step smoke for D-MPNN trainer + CFM trainer 验证所有 CLI flags 接线正常 + loss[0] > loss[-1]; atomic_write 写 closeout + INDEX + AGENTS sync per §5.6; commit per §5.6",
+      "expected_lines_changed": "~200 LOC across 5 files (walk_anchors ~30 + refresh_stale_anchors ~20 + closeout ~150)",
+      "wf_audit_ref": "audit \"p3_wf343c4_anchor_freshness_24h needs_refresh_script NO refresh script exists\"",
+      "§5.7 smoke_required": true,
+      "commit_after": "A6 (final wave closeout)"
     }
   ],
   "execution_plan": {
@@ -304,6 +427,22 @@
       ],
       "wall_gpu_hr_est": 66,
       "rationale": "Stage 3 batch 1 (parallel on cuda:0 + cuda:1): Wf-299 Wave A (5hr) + Wf-125 CONTROLD PAIR (6hr on cuda:1) + Wf-131 P3 deferred runs (25hr — can run concurrently on cuda:1). Batch 2 (sequential on cuda:0): Wf-380 SCAFFOLD-loss (10hr) + Wf-394 Lambda CFM (5hr). Batch 3 (sequential on cuda:0): Wf-390 Path A (12hr) + Wf-246-C (3hr) post-N6 patch. All now have N3 resume-from wire-in for graceful SIGTERM/Ctrl+C handling."
+    },
+    "stage_4_wf_a6_review_fixes": {
+      "description": "Wf-A6 review-based plan addressing 6 BLOCKERS (A: --metals dynamic + B: ckpt_dir + C: LR scheduler + E/F: SCHEMA-ONLY fields + D: anchor refresh helper) + research-recommended CosineAnnealingLR + linear warmup",
+      "task_ids": [
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6"
+      ],
+      "user_voice_2026_10_03": "你提到的这六点blocker先在todo.json里在具体review的基础上做修改规划，research发现的点就按照他推荐的来",
+      "research_citation": "Loshchilov & Hutter 2017 SGDR + Smith & Topin 2018 Super-Convergence + HuggingFace transformers.get_cosine_schedule_with_warmup; recommendation: Linear warmup + CosineAnnealingLR (conservative) + OneCycleLR (aggressive super-convergence) as opt-in",
+      "execution_order": "A1 (--metals dynamic) -> A2 (LR scheduler per research) -> A3 (ckpt_dir yaml fix) -> A4 (SCHEMA-ONLY honest-framing) -> A5 (--weight-decay + --max-norm CLI) -> A6 (anchor refresh helper + smoke + closeout + commit)",
+      "estimated_wall": "~50-80 min CPU-only across 6 sub-tasks (~30 LOC + ~150 LOC + ~2 LOC + ~15 LOC + ~30 LOC + ~200 LOC respectively)",
+      "user_ok_requirement": "None (CPU-only docs+code+test wave per AGENTS.md §5.1; actual GPU retrain launches are B1-B7 USER_OK-gated)"
     }
   },
   "honest_framing": {
@@ -313,7 +452,9 @@
     "real_code_work_still_pending": [
       "N2.2: venv reinstall torch 2.14.0+cu130 (heavy, 30 min; needs USER_OK-gated to actually reinstall)",
       "N3: 断点续训 (trainer resume-from + yaml checkpoint_interval + start.sh auto-detect)",
-      "N4: 资源 scaling 研究 (48 config combinations test + yaml update)"
+      "N4: 资源 scaling 研究 (48 config combinations test + yaml update)",
+      "Wf-A6: 6 BLOCKERS A-F (A=--metals dynamic + B=ckpt_dir + C=LR scheduler + D=anchor refresh + E/F=SCHEMA-ONLY) per Wf-A5 follow-up audit 2026-10-03",
+      "Wf-A6: research-recommended LR scheduler (Linear warmup + CosineAnnealingLR per Loshchilov-Hutter 2017 SGDR; OneCycleLR per Smith-Topin 2018 super-convergence as opt-in) — A2"
     ],
     "real_gpu_work_pending": [
       "B1: Wf-299 Wave A (~5hr)",
@@ -325,6 +466,7 @@
       "B7: Wf-124 P3 14 pairs + ablation (~25hr)"
     ],
     "wf_a4_honest_failure_mode": "Wf-A4 reported 6/6 SCAFFOLD flags wired but actual code changes were limited to 30 lines in dmpnn trainer for Wf-424-A12 + TODO-201 wire-in only; cfm trainer SCAFFOLD flags were ALREADY wired by prior waves so Wf-A4 had no new cfm trainer code to write; Wf-A4 closeouts claimed work that was either already done or never happened per §5.5 filesystem-truth audit",
-    "wf_a5_followup_honest_failure_mode": "Per AGENTS.md §5.5 + §5.2: this wave is the recovery path. N1 + N2 are SHIPPED; N3 + N4 + B1-B7 are pending. The previous A1-A6 tasks are SHIPPED on disk per filesystem-truth rule (verify-on-disk + 2 real code patches). Honest framing: no fabrication of aspirational numbers; every numeric value is MEASURED via direct invocation (e.g. dry-run shows correct TRAINER_CMD line; pre-flight shows correct GPU util baseline)."
+    "wf_a5_followup_honest_failure_mode": "Per AGENTS.md §5.5 + §5.2: this wave is the recovery path. N1 + N2 are SHIPPED; N3 + N4 + B1-B7 are pending. The previous A1-A6 tasks are SHIPPED on disk per filesystem-truth rule (verify-on-disk + 2 real code patches). Honest framing: no fabrication of aspirational numbers; every numeric value is MEASURED via direct invocation (e.g. dry-run shows correct TRAINER_CMD line; pre-flight shows correct GPU util baseline).",
+    "wf_a6_review_based_plan": "6 BLOCKERS identified via Wf-A5 follow-up audit (2026-10-03): A=--metals hardcoded (D-MPNN FIVE_METALS constraint rejects Pt per Wf-A2 yaml); B=yaml output.ckpt_dir field missing (defaults to wrong location); C=no LR scheduler in either trainer (constant-LR Adam only); D=anchor freshness gate FAIL on natural drift (BY-DESIGN per Wf-421-A2 + Wf-422-A2); E=yaml protocol.bf16 SCHEMA-ONLY (D-MPNN no bf16 path); F=yaml compute.* fields SCHEMA-ONLY (D-MPNN no torch-compile/cudnn-benchmark/channels-last/tf32 flags). Resolution plan: A1 (dynamic --metals per user voice 得搞成动态的), A2 (Linear warmup + CosineAnnealingLR per research recommendation), A3+A4 (yaml fixes with honest-framing), A5 (CLI flag enhancements), A6 (anchor refresh helper + closeout + commit). MEASURED-vs-PROJECTED discipline per party-twenty-spirit §3.5: speedup estimates from research agent are PROJECTED cross-domain (vision/transformer); direct chemistry-specific ablations are not retrieved; in-house 5-seed D-MPNN validation recommended before treating numbers as MEASURED."
   }
 }
