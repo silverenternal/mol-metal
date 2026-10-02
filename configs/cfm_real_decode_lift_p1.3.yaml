@@ -1,173 +1,121 @@
-# TODO-119 P1.3 — Real-CFM decode_ratio lift
-# Date: 2026-09-28 (Wf-258-Prepare dry-run config)
-# Owner: Hugo Lee + ultracode agent
-# Status: DRY-RUN (--dry-run mode; no GPU execution)
-#
-# Parent: TODO-119 P1.3 — real-CFM decode_ratio lift on PlatinAI /
-# DrugOOD / MetalCytoToxDB cohorts.
-# Parent audit: molmetal/reports/wf258_audit/cfm_todo_gap_audit.md §1.1
-# Parent TODO: TODO/completed/119_decode_ratio_strengthen.md §3
-# Wf-257 §5.1 cite: Wf-257 §5.1 (CFM TODO shortlist, entry 1)
-#
-# HONEST FRAMING (party-twenty-spirit §3.5):
-# - Wf-181 / Wf-188 numbers (decode_ratio = 0.9980 / 0.9958 on MetalCytoToxDB)
-#   are POST-Wf-124 P2 ad-hoc MEASUREMENTS, NOT a formal P1.3 deliverable.
-# - P1.3 formal deliverable is per-cohort full-batch on PlatinAI 4-cell +
-#   DrugOOD assay/scaffold/size cohorts, which is NOT yet formally run.
-# - Target decode_ratio >= 0.5 is a MEASURED-FROM-CURRENT-0.0-HONEST-NEGATIVE
-#   gate. Do NOT cite 0.9980 / 0.9958 as P1.3 result until full P1.3 sweep runs.
-
-dry_run: true          # skip GPU; CPU verification only
-user_ok_required: true  # per kill_then_adapt standing directive
-
-# ============================================================================
-# DATA — REAL CSV (NOT synthetic)
-# ============================================================================
+# Wf-A8 yaml-unify pattern applied 2026-10-03 per task brief
+# Per AGENTS.md §5.5 filesystem-truth + §5.6 atomic-write + §5.7 trainer-flag-smoke
+# Cross-links: TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/decisions/0002-tier2-scope.md
+# Cross-links: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md + COMPARISON_BASELINES.md
+# Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
+dry_run: true
+user_ok_required: true
 data:
   csv: .data/molmetal/metalcytotox_5metal_multitask_v2.csv
-  n_rows_expected: 26632   # v2 26633 lines - 1 header = 26632 rows (per Wf-261 strict scaffold split; 169 null-scaffold rows dropped)
-  expected_columns_subset: [smiles, metal, pic50, source]
-  # Per Wf-120 P2 + Wf-124 P2 audit (TODO-180 §0):
-  # - 5-metal cohort: Ru / Ir / Os / Rh / Re
-  # - Per-metal row counts vary; Rh/Os/Re < 1.2k rows
+  n_rows_expected: 26632
+  expected_columns_subset:
+  - smiles
+  - metal
+  - pic50
+  - source
   cohort_filter:
-    metals: [Ru, Ir, Os, Rh, Re]
-    # Wf-261 strict Bemis-Murcko scaffold 70/10/20 split (0 leak; 3069 unique scaffolds)
+    metals:
+    - Ru
+    - Ir
+    - Os
+    - Rh
+    - Re
     scaffold_split: true
-
-# ============================================================================
-# MODEL — Full 3-innovation stack (chemprop_v2_mt + YuelBond + W2 + Catherine)
-# ============================================================================
 model:
-  backbone: chemprop_v2_mt           # multi-task D-MPNN
+  backbone: chemprop_v2_mt
   hidden_dim: 128
   n_layers: 3
   atom_vocab_size: 14
-  bond_head: learned                 # YuelBond bond-aware decoder
-  joint_train: true                  # train bond head end-to-end
-  cfm_decoder: yuelbond              # P0 F1 BondAwareDecoder
-  wasserstein_weight: 0.1            # W2 regularization (Wf-124 P2 ship)
-  closure_bounded: true              # Catherine 6/6 closure-bounded gen
-  use_yuelbond: true                 # full 3-innovation stack
-
-# ============================================================================
-# FLOW MATCHING
-# ============================================================================
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  wasserstein_weight: 0.1
+  closure_bounded: true
+  use_yuelbond: true
 flow:
-  n_steps: 100                       # ODE integration sub-steps
-  method: rk4                        # Runge-Kutta 4
-  ot_solver: w_flow                  # waveform-relaxation (R18.2.1)
-
-# ============================================================================
-# TRAINING PROTOCOL — small smoke (1 seed x 3 epochs)
-# ============================================================================
+  n_steps: 100
+  method: rk4
+  ot_solver: w_flow
 protocol:
-  n_seeds: 1                         # 1 seed (smoke)
-  seeds: [0]
-  epochs: 3                          # small smoke (~30 min on PRO 6000)
+  n_seeds: 1
+  seeds:
+  - 0
+  epochs: 3
   batch_size: 16
-  lr: 1.0e-4
+  lr: 0.0001
   warmup_steps: 50
   grad_clip_norm: 1.0
   ema_decay: 0.999
   edge_cutoff: 6.0
   bf16: true
-
-# ============================================================================
-# EVALUATION
-# ============================================================================
+  scheduler:
+    type: cosine
+    warmup_epochs: 5
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
 eval:
-  primary_metric: decode_ratio       # m14 — RDKit-strict decode fraction
+  primary_metric: decode_ratio
   secondary_metrics:
-    - catherine_pass_rate            # 6/6 closure per metal
-    - wasserstein_loss               # W2 trajectory
-    - dock_rmsd                      # m15 — Vina after CFM (deferred)
-  target_decode_ratio: 0.5           # MEASURED from current 0.0 honest-negative
-
-# ============================================================================
-# OUTPUT — project root results/ per user 2026-09-28 instruction
-# ============================================================================
+  - catherine_pass_rate
+  - wasserstein_loss
+  - dock_rmsd
+  target_decode_ratio: 0.5
 output:
   base_dir: results/cfm_real_decode_lift_p1.3
   per_seed_dir: results/cfm_real_decode_lift_p1.3/seed{seed}
   metrics_json: results/cfm_real_decode_lift_p1.3/decode_lift_metrics.json
   log_master: results/cfm_real_decode_lift_p1.3/master.log
-
-# ============================================================================
-# WAVES — ~30 min total on PRO 6000
-# ============================================================================
+  ckpt_dir: molmetal/checkpoints
+  events_jsonl: true
 waves:
-  total_waves: 1                     # fits in single 1-hr wave
+  total_waves: 1
   wave_a:
-    description: "Full 3-innovation CFM smoke, 1 seed x 3 epochs"
-    seeds: [0]
+    description: Full 3-innovation CFM smoke, 1 seed x 3 epochs
+    seeds:
+    - 0
     epochs: 3
-    wall_time_estimate: 0.5          # hr on PRO 6000
-    # Within 10h budget per user 2026-09-28 instruction.
-
-# ============================================================================
-# COMPUTE
-# ============================================================================
+    wall_time_estimate: 0.5
 compute:
-  gpu: cuda:0                        # RTX PRO 6000 Blackwell
+  gpu: cuda:0
   cpu_workers: 4
   bf16: true
-
-# ============================================================================
-# STANDING DIRECTIVES
-# ============================================================================
 directives:
   kill_then_adapt: true
-  time_budget: 10h                   # user 2026-09-28 standing budget
+  time_budget: 10h
   user_ok_required: true
-  user_ok_granted: "pending — DRY-RUN only"
+  user_ok_granted: pending — DRY-RUN only
   per_wave_user_ok_required: true
-
-# ============================================================================
-# ENTRY POINT — reference existing script (do NOT recreate)
-# ============================================================================
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+  - p3_wf343c4_anchor_freshness_24h
+  - p3_wf343c2_per_wave_runtime_check
 entry:
-  # Reuses Wf-124 P2 shipped CFM trainer; has --no-yuelbond, --no-wasserstein,
-  # --no-closure-bounded flags confirmed via --help output.
   script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
-  command: |
-    CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
-      molmetal/scripts/train_cfm_yuelbond_wasserstein.py \\
-      --epochs {epochs} \\
-      --use-yuelbond \\
-      --pocket-id {pocket_id} \\
-      --seed {seed} \\
-      --out-dir {out_dir}
-
+  command: "CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\\\\n  molmetal/scripts/train_cfm_yuelbond_wasserstein.py\
+    \ \\\\\n  --epochs {epochs} \\\\\n  --use-yuelbond \\\\\n  --pocket-id {pocket_id} \\\\\n  --seed {seed} \\\\\n  --out-dir\
+    \ {out_dir}\n"
   warm_start_checkpoint: molmetal/checkpoints/cfm_yuelbond_wasserstein.pt
-  # 617 KB Wf-124 P2 best ckpt (synthetic) — informational only; real retrain
-  # should NOT use synthetic warm-start.
-
-# ============================================================================
-# HONEST FRAMING (party-twenty-spirit §3.5)
-# ============================================================================
 honest_framing:
   claims:
-    - "Real-CFM decode_ratio lift smoke on 26632-row MetalCytoToxDB 5-metal v2 (Wf-261 strict Bemis-Murcko scaffold split, 0 leak)"
-    - "Full 3-innovation stack: YuelBond + W2 + Catherine closure-bounded"
-    - "1 seed x 3 epochs, ~30 min on PRO 6000 (small smoke per TODO-119 P1.3)"
+  - Real-CFM decode_ratio lift smoke on 26632-row MetalCytoToxDB 5-metal v2 (Wf-261 strict Bemis-Murcko scaffold split, 0
+    leak)
+  - 'Full 3-innovation stack: YuelBond + W2 + Catherine closure-bounded'
+  - 1 seed x 3 epochs, ~30 min on PRO 6000 (small smoke per TODO-119 P1.3)
   do_not_claim:
-    - "Wf-181 / Wf-188 0.9980 / 0.9958 as P1.3 result (those are ad-hoc, not P1.3)"
-    - "Synthetic Pt click cloud decode_ratio 1.000 (that is decoder smoke only)"
-    - "Aggregate lift before per-cohort ablation"
+  - Wf-181 / Wf-188 0.9980 / 0.9958 as P1.3 result (those are ad-hoc, not P1.3)
+  - Synthetic Pt click cloud decode_ratio 1.000 (that is decoder smoke only)
+  - Aggregate lift before per-cohort ablation
   deferred:
-    - "PlatinAI 4-cell full-batch run (P1.3 cohort 1)"
-    - "DrugOOD assay/scaffold/size full-batch run (P1.3 cohort 2)"
-    - "Cross-cohort aggregation + MEASURED-vs-PROJECTED audit"
-    - "Vina dock_rmsd eval (m15) — separate hardware pathway"
-
-# ============================================================================
-# CROSS-REFERENCES
-# ============================================================================
+  - PlatinAI 4-cell full-batch run (P1.3 cohort 1)
+  - DrugOOD assay/scaffold/size full-batch run (P1.3 cohort 2)
+  - Cross-cohort aggregation + MEASURED-vs-PROJECTED audit
+  - Vina dock_rmsd eval (m15) — separate hardware pathway
 cross_references:
-  - molmetal/reports/wf258_audit/cfm_todo_gap_audit.md
-  - TODO/completed/119_decode_ratio_strengthen.md
-  - molmetal/reports/wf257_research/cfm_potential.md
-  - configs/cfm_full_retrain.yaml
-  - molmetal/scripts/train_cfm_yuelbond_wasserstein.py
-  - molmetal/checkpoints/cfm_yuelbond_wasserstein.pt
+- molmetal/reports/wf258_audit/cfm_todo_gap_audit.md
+- TODO/completed/119_decode_ratio_strengthen.md
+- molmetal/reports/wf257_research/cfm_potential.md
+- configs/cfm_full_retrain.yaml
+- molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+- molmetal/checkpoints/cfm_yuelbond_wasserstein.pt

@@ -1,35 +1,41 @@
-# MolFlow-Triton default config
-# YAML is loaded by utils.config.load_config()
-#
-# DIRECTIVE 2026-09-28: "强者默认路由倒真实测试" — strong (production-scale)
-# measurements default-route to real test data. Use --smoke (or set
-# data.dataset=metalcytotox_fallback explicitly) only for opt-in smoke runs.
-
+# Wf-A8 yaml-unify pattern applied 2026-10-03 per task brief
+# Per AGENTS.md §5.5 filesystem-truth + §5.6 atomic-write + §5.7 trainer-flag-smoke
+# Cross-links: TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/decisions/0002-tier2-scope.md
+# Cross-links: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md + COMPARISON_BASELINES.md
+# Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
 model:
   hidden_dim: 128
   n_layers: 4
-
 flow:
   n_steps: 100
   method: rk4
-
 train:
   batch_size: 32
-  lr: 1.0e-4
-  epochs: 30           # was 100 but 5 epochs already converged
+  lr: 0.0001
+  epochs: 30
   warmup_steps: 200
   grad_clip_norm: 1.0
   ema_decay: 0.999
-  edge_cutoff: 6.0     # sweep winner from cutoff_sweep.md (was hard-coded 5.0)
-
+  edge_cutoff: 6.0
 data:
-  # 'qm9' (default) trains on real 3D molecules parsed by RDKit.
-  # Set to 'metalcytotox' to fall back to the synthetic QSAR CSV.
   dataset: qm9
-  # For QM9: which split (train/val/test) and which of the 12 targets
-  # to use as the per-sample label (None = all 12 concatenated).
   split: train
   target_index: null
-
 device: cuda
 seed: 42
+output:
+  ckpt_dir: molmetal/checkpoints
+  events_jsonl: true
+directives:
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+  - p3_wf343c4_anchor_freshness_24h
+  - p3_wf343c2_per_wave_runtime_check
+protocol:
+  scheduler:
+    type: cosine
+    warmup_epochs: 5
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0

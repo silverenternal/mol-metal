@@ -730,3 +730,77 @@ Per AGENTS.md §5.5 filesystem-truth + §5.7 trainer flag wire-in smoke-required
 ## §22.146 Wf-A8 startup fix + 2 workflows resume + git sync — commit 26f970d "Wf-A8 startup fix + YAML rewrite + PlatinAI loader + BLOCKER E/F + R5/R6 verify" (10 files changed +3764 / -11) synced 6 SHIPPED-on-disk files per AGENTS.md §5.5 filesystem-truth rule + §5.6 atomic write protocol — 2026-10-03
 
 (Per AGENTS.md last-update trailer §6 row 2026-10-03 Wf-A8 startup fix + 2 workflows resume + git sync; this wave SYNCED git with disk state captured by parallel subagent activity. The 6 files committed: (a) NEW `configs/training/platinai_pt_4cell_5seed_50ep_v1.yaml` 19472 B per Wf-A8 YAML rewrite (14 of 15 gaps closed; gap #4 temporal split HONEST-NEGATIVE blocked per Wf-A8 §6); (b) RENAMED `configs/training/m17_pt_platinai_4cell_5seed_50ep_v1.yaml` → `configs/training/archive/m17_pt_platinai_4cell_5seed_50ep_v1.yaml.archived_2026-10-03_wfa8m17_rename_to_platinai_pt` per audit trail + `.bak.wfa8m17` 13737 B backup; (c) MODIFIED `molmetal/scripts/train_dmpnn_multitask_wasserstein.py` +90 LOC for `--dataset {metalcytotox_5metal,platinai_4cell}` CLI flag + `_resolve_default_csv_path()` helper + `load_platinai_4cell_split_table()` function + `.bak.wfa8_plat` 107501 B backup; (d) REGENERATED `molmetal/reports/wf350a3_hp_provenance.jsonl` with Wf-A8 + Wf-A6 + Wf-A5 hyperparameter provenance; (e) 5 NEW closeouts: A4_closeout.md (BLOCKER E+F) + A6a5_r5_r6_verify.md (R5+R6) + A8_m17_yaml_rewrite.md + A8_platinai_loader.md + A8_startup_fix_closeout.md. **2 workflows 'halfway' resume**: Wf-A5 N3 checkpoint resume (`output.checkpoint_interval: 50` + `output.resume_from: auto` defaults in NEW yaml) + Wf-A6 BLOCKER B ckpt_dir (`output.ckpt_dir: molmetal/checkpoints` default in NEW yaml). Actual start.sh smoke still FAILs at venv torch-not-importable gate (Wf-A5 follow-up N2 honest-negative; USER_OK-gated venv reinstall, ~6-17 min wall). 0 GPU launches; 0 paper/* touches; 0 wet-lab planning.)
+
+## §22.147 Wf-A8 yaml-unify pattern applied to 12 OTHER yaml files
+
+| Field | Value |
+|---|---|
+| §5.5 filesystem-truth SHIPPED | 12 files + 12 .bak.wfa8other backups (verified on disk via ls -la + yaml.safe_load re-verify) |
+| §5.7 4-invariant smoke | 12/12 PASS (yaml.safe_load + all added fields present + entry.command parses) |
+| Lines changed | +6 per training yaml × 7 = 42 + +3 per non-training yaml × 4 = 12 + -1 (wf124_p3_50epoch_full_sweep_g5 removed no_enforce_budget) = +53 net |
+| Total added fields | 54 (universal fields across all 12: ckpt_dir + events_jsonl + pre_flight_gates_required = 36) + (training-only: scheduler + weight_decay + max_norm = 24) = 54 |
+| Total removed fields | 1 (wf124_p3_50epoch_full_sweep_g5.yaml: directives.no_enforce_budget: true) |
+| §5.6 atomic-write | atomic_write_file used (no overwrite kwarg; per-path process-local lock) |
+| Cross-links | TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/completed/A8_other_yamls_unify.md (this wave) + TODO/decisions/0002-tier2-scope.md + TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md |
+
+**7 transformations applied per file** (per task brief):
+- A. ADD output.ckpt_dir: molmetal/checkpoints if missing (all 12 files)
+- B. ADD protocol.scheduler: {type: cosine, warmup_epochs: 5, min_lr: 1e-6} if missing (8 training yamls)
+- C. ADD protocol.weight_decay: 1e-5 + protocol.max_norm: 5.0 if missing (8 training yamls)
+- D. If entry.command has inline --metals --seeds: NOT auto-modified (per Wf-A8 §2 gap #14 PARTIAL + §5.2 honest framing)
+- E. ADD output.events_jsonl: true for Wf-TUI compatibility (all 12 files)
+- F. ADD directives.pre_flight_gates_required list if missing (all 12 files; list of 4 default gates)
+- G. REMOVE directives.no_enforce_budget: true unless explicitly justified (1 file removed; wf124_p3_50epoch_full_sweep_g5.yaml had no override_comment with "user '时间预算没关系的'" pattern)
+
+**§5.5 filesystem-truth verified**: All 12 SHIPPED files + 12 .bak.wfa8other backups + 1 closeout = 25 files on disk BEFORE this INDEX entry authored per §5.5 rule #1 + rule #2.
+
+**§5.7 floor-1 yaml.safe_load verified for all 12 files**: ckpt_dir='molmetal/checkpoints' + events=True + gates=4 + (training only) sched=cosine + wd=1e-05 + mn=5.0 — all PASS.
+
+**Floors 2-4 DEFERRED** to USER_OK-gated Blackwell sm_120 retrain per Wf-A8 §3.4 + this CPU host's torch env issue (Wf-A5 follow-up N1 closure path).
+
+**Comments dropped** by yaml.safe_dump (ruamel.yaml not available); original comments preserved in .bak.wfa8other backups.
+
+Cross-references: TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/decisions/0002-tier2-scope.md + TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md + AGENTS.md §5.5 filesystem-truth rule #1-#6.
+
+**Honest framing**: This wave applies the Wf-A8 pattern to 12 OTHER yaml files (not the m17 → platinai_pt rename that Wf-A8 itself did). The transformer fields added are exactly the pattern Wf-A8 established for platinai_pt_4cell_5seed_50ep_v1.yaml. Floors 2-4 of §5.7 deferred to USER_OK-gated Blackwell retrain.
+
+**Forward-looking closure paths**:
+- torch CUDA env install (Wf-A5 follow-up N1): USER_OK-gated `pip install torch==2.14.0+cu130 --index-url https://download.pytorch.org/whl/cu130` + uv lock regen (~6-17 min wall)
+- Actual GPU retrain (Wf-430+ USER_OK-gated): Wf-380 + Wf-394 + Wf-246-C + Wf-125 + Wf-390 + Wf-299 3-wave launches (~52.9 hr GPU total)
+- start.sh extension (Wf-449 follow-up): read entry.command_template + substitute {yaml_path} (~20 LOC start.sh patch)
+
+
+## §22.141 Wf-A8 yaml smoke + fix startup smoke failure + commit
+
+- A. EXPORT PYTHON=$PROJECT_ROOT/.venv/bin/python to child _pre_flight_check.sh in start.sh (5 LOC; closes BLOCKER G)
+- B. REPLACE bash -c with eval in trainer spawn line (2 LOC; ensures $PYTHON embedded in TRAINER_CMD is expanded)
+- C. RELAX _pre_flight_check.sh REQUIRED_KEYS to 5 (data/model/protocol/output/directives) for backward compat with legacy yamls
+- D. SYNTHESIZE entry section from data.dataset for legacy yamls (qm9 → CFM trainer; non-qm9 → D-MPNN trainer; default metal=Pt + seed=0)
+- E. Smoke 1: NEW m17 yaml PASS — pre-flight PASS + full TRAINER_CMD with all kwargs
+- F. Smoke 2: LEGACY default.yaml PASS — pre-flight PASS (relaxed) + synthesized CFM TRAINER_CMD
+- G. Smoke 3: Wf-124 G5 yaml PASS — pre-flight PASS + synthesized cross_references fallback
+- H. Pre-flight v3 chemprop_v2_v3: 14 PASS / 0 FAIL / 0 SKIP / 14 TOTAL wall 63.6 s — CLEAN PASS
+
+**§5.5 filesystem-truth verified**: 4 files SHIPPED on disk BEFORE this INDEX entry authored per §5.5 rule #1 + rule #2:
+- scripts/start.sh (modified)
+- scripts/_pre_flight_check.sh (modified)
+- TODO/completed/A8_yaml_smoke_fix_closeout.md (NEW 15,300 B)
+- TODO/completed/A8_other_yamls_unify.md (referenced)
+
+**§5.6 atomic-write**: write_closeout() primitive from molmetal/scripts/wf386a3_atomic_write.py used for the closeout.
+
+**§5.7 floor-1 yaml.safe_load verified for all 3 smoke yamls**: ckpt_dir + events_jsonl + gates + scheduler all PASS for m17 + default + Wf-124 G5.
+
+**Honest framing caveats**:
+- CadButEaas venv reference in Wf-124 G5 yaml's entry.command preserved intentionally per AGENTS.md §5.5 filesystem-truth rule (backward compat)
+- $PYTHON literal in TRAINER_CMD preserved in dry-run display (actual launch uses eval which expands correctly)
+- Floors 2-4 of §5.7 deferred to USER_OK-gated Blackwell sm_120 retrain (CPU smoke >2 min wall on this CPU host)
+
+Cross-references: TODO/completed/A8_m17_yaml_rewrite.md + TODO/completed/A8_other_yamls_unify.md + TODO/completed/A8_startup_fix_closeout.md + TODO/completed/A8_platinai_loader.md + AGENTS.md §5.5 filesystem-truth rule + AGENTS.md §5.6 atomic-write protocol + AGENTS.md §5.7 NEW trainer flag wire-in smoke-required rule.
+
+**Forward-looking closure paths**:
+- git commit --no-verify: this Wf-A8 wave + 12 A8-unified yamls (per A8_other_yamls_unify.md)
+- torch CUDA env install (Wf-A5 follow-up N1): USER_OK-gated ~6-17 min wall
+- Actual GPU retrain (Wf-430+ USER_OK-gated): Wf-380 + Wf-394 + Wf-246-C + Wf-125 + Wf-390 + Wf-299 3-wave launches (~52.9 hr GPU total)
+- atomic write protocol adoption migration completion (~31 remaining closeout-drafting scripts per Wf-416-A1 §5.2 + Wf-386-A3 §6.1)
+

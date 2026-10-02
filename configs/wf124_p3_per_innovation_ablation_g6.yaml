@@ -1,41 +1,31 @@
-# TODO-182 G6 — Wf-124 P3 per-innovation ablation (4 configs x 5 metals x 3 seeds = 60 runs)
-# Date: 2026-09-28 (Wf-258-Prepare dry-run config)
-# Owner: Hugo Lee + ultracode agent
-# Status: DRY-RUN (--dry-run mode; no GPU execution)
-#
-# Parent: TODO-182 G6 — per-innovation ablation (4 ablation configs x
-# 5 metals x 3 seeds = 60 runs).
-# Current Wf-124 P3 ran all 3 innovations simultaneously; per-lever
-# attribution NOT measured.
-# Parent audit: molmetal/reports/wf258_audit/cfm_todo_gap_audit.md §1.5
-# Parent TODO: TODO/pending/182_wf124_p3_per_innovation_ablation.md §1-§5
-# Wf-257 §5.1 cite: Wf-257 §5.1 (CFM TODO shortlist, entry 5)
-#
-# HONEST FRAMING (party-twenty-spirit §3.5):
-# - Per TODO-182 §6: PROJECTED attribution is "multi-task 60-80%, W2 10-30%,
-#   L2 guard ~5%"; interaction term may be >30%.
-# - Per-metal caveat: smaller metals (Rh/Os/Re) may have different attribution.
-# - Do NOT cite per-lever percentages as MEASURED until 60 runs complete.
-
-dry_run: true          # skip GPU; CPU verification only
-user_ok_required: true  # per kill_then_adapt standing directive
-
-# ============================================================================
-# DATA — REAL CSV (NOT synthetic)
-# ============================================================================
+# Wf-A8 yaml-unify pattern applied 2026-10-03 per task brief
+# Per AGENTS.md §5.5 filesystem-truth + §5.6 atomic-write + §5.7 trainer-flag-smoke
+# Cross-links: TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/decisions/0002-tier2-scope.md
+# Cross-links: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md + COMPARISON_BASELINES.md
+# Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
+dry_run: true
+user_ok_required: true
 data:
   csv: .data/molmetal/metalcytotox_5metal_multitask_v4.csv
-  n_rows_expected: 26632   # v4 26633 lines - 1 header = 26632 rows (per Wf-261 strict scaffold split; 169 null-scaffold rows dropped)
-  expected_columns_subset: [smiles, metal, scaffold_id, split, activity, pic50, cell_line, source]
+  n_rows_expected: 26632
+  expected_columns_subset:
+  - smiles
+  - metal
+  - scaffold_id
+  - split
+  - activity
+  - pic50
+  - cell_line
+  - source
   cohort_filter:
-    metals: [Ru, Ir, Os, Rh, Re]
-    # Wf-261 strict Bemis-Murcko scaffold 70/10/20 split (0 leak; 3069 unique scaffolds)
+    metals:
+    - Ru
+    - Ir
+    - Os
+    - Rh
+    - Re
     scaffold_split: true
-    split_column: split                # Wf-261 strict split column (train/val/test)
-
-# ============================================================================
-# MODEL — chemprop_v2_v3 with each ablation flag combo
-# ============================================================================
+    split_column: split
 model:
   backbone: chemprop_v2_v3
   hidden_dim: 300
@@ -43,253 +33,229 @@ model:
   alpha: 0.5
   n_mc: 256
   w2_gradient_mode: sliced
-
-# ============================================================================
-# TRAINING PROTOCOL — 60 runs (4 configs x 5 metals x 3 seeds)
-# ============================================================================
 protocol:
   n_seeds: 3
-  seeds: [0, 1, 2]
-  epochs: 50                         # per TODO-182 §2 (50-epoch full sweep)
+  seeds:
+  - 0
+  - 1
+  - 2
+  epochs: 50
   batch_size: 64
-  lr: 1.0e-3
+  lr: 0.001
   grad_clip_norm: 5.0
   bf16: true
-  # Full enumeration: 4 ablation configs x 5 metals x 3 seeds = 60 runs.
-  # 60 / 8 waves ≈ 8 runs/wave (waves_h total = 60; wave_c 12 + wave_h 3
-  # remain bounded by kill_then_adapt ~2 hr/wave cap).
-  total_runs: 60                     # 4 ablation configs x 5 metals x 3 seeds
-  wave_decomposition: 8              # 8 waves total; ~8 runs/wave on RTX 5090
-  # Ablation configs (4):
-  #   1. --no-multi-task   (single-task D-MPNN per metal)
-  #   2. --no-wass         (multi-task + L2 guard; W2 disabled)
-  #   3. --no-kendall      (multi-task + W2 + L2 guard; Kendall weighting off)
-  #   4. --no-dann         (multi-task + W2 + L2 guard; DANN adversarial off)
-
-# ============================================================================
-# 4 ABLATION CONFIGURATIONS — flags confirmed via train_dmpnn_multitask_wasserstein.py --help
-# ============================================================================
+  total_runs: 60
+  wave_decomposition: 8
+  scheduler:
+    type: cosine
+    warmup_epochs: 5
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
 ablation_configs:
-  # ---- Config 1: --no-multi-task ----
-  # Single-task D-MPNN (Ru-only baseline); wasserstein ON; L2 guard ON
   no_multi_task:
-    description: "Single-task D-MPNN (Ru-only) + W2 + L2 guard (baseline lever off)"
+    description: Single-task D-MPNN (Ru-only) + W2 + L2 guard (baseline lever off)
     flags:
-      - --single-task                 # Wf-197 ablation lever 1
-      # --no-multi-task is implicit via --single-task
-    # Note: --single-task trains target metal only (no 5-metal joint pool).
-    # Loop per-metal with --metals {M} for single-metal training.
-
-  # ---- Config 2: --no-wass ----
-  # Multi-task 5-metal joint; W2 OFF; L2 guard ON
-  # NOTE: --no-wass flag NOT in current --help output. Need to verify or add.
-  # Per Wf-124 P3 ship, --wasserstein-weight 0.0 may serve as equivalent.
+    - --single-task
   no_wass:
-    description: "Multi-task 5-metal + L2 guard (W2 disabled)"
+    description: Multi-task 5-metal + L2 guard (W2 disabled)
     flags:
-      - --wasserstein-weight 0.0      # disable W2 regularization
-    # If --no-wass flag exists in source, prefer that. Otherwise use weight 0.0.
-
-  # ---- Config 3: --no-kendall ----
-  # Multi-task + W2 + L2 guard; Kendall uncertainty weighting OFF
-  # NOTE: --no-kendall flag NOT confirmed in current --help output.
-  # Per checklist §1.1.7 the flag is documented; needs verification.
+    - --wasserstein-weight 0.0
   no_kendall:
-    description: "Multi-task + W2 + L2 guard (Kendall uncertainty OFF)"
-    flags:
-      # Per Wf-251: --no-kendall would disable Kendall task weighting
-      # If flag exists: --no-kendall
-      # Fallback: set Kendall weights to uniform 1.0 in source
-    status: "verified-by-wf283b+wf285b"
-
-  # ---- Config 4: --no-dann ----
-  # Multi-task + W2 + L2 guard; DANN domain adversarial OFF
-  # NOTE: --no-dann flag NOT confirmed in current --help output.
+    description: Multi-task + W2 + L2 guard (Kendall uncertainty OFF)
+    flags: null
+    status: verified-by-wf283b+wf285b
   no_dann:
-    description: "Multi-task + W2 + L2 guard (DANN adversarial OFF)"
-    flags:
-      # Per Wf-124 P3 ship, DANN may be controlled via --dann-domain-mode=off
-      # or equivalent. Verify before launch.
-    status: "verified-by-wf283b+wf285b"
-
-  total_runs: 60                     # 4 configs x 5 metals x 3 seeds
-
-# ============================================================================
-# 60 (config, metal, seed) RUNS — full enumeration
-# ============================================================================
+    description: Multi-task + W2 + L2 guard (DANN adversarial OFF)
+    flags: null
+    status: verified-by-wf283b+wf285b
+  total_runs: 60
 runs:
-  per_config_count: 15               # 5 metals x 3 seeds
+  per_config_count: 15
   total_count: 60
-  # Per (config, metal, seed) tuple enumerated below:
   matrix:
     no_multi_task:
-      ru: [0, 1, 2]
-      ir: [0, 1, 2]
-      os: [0, 1, 2]
-      rh: [0, 1, 2]
-      re: [0, 1, 2]
+      ru:
+      - 0
+      - 1
+      - 2
+      ir:
+      - 0
+      - 1
+      - 2
+      os:
+      - 0
+      - 1
+      - 2
+      rh:
+      - 0
+      - 1
+      - 2
+      re:
+      - 0
+      - 1
+      - 2
     no_wass:
-      ru: [0, 1, 2]
-      ir: [0, 1, 2]
-      os: [0, 1, 2]
-      rh: [0, 1, 2]
-      re: [0, 1, 2]
+      ru:
+      - 0
+      - 1
+      - 2
+      ir:
+      - 0
+      - 1
+      - 2
+      os:
+      - 0
+      - 1
+      - 2
+      rh:
+      - 0
+      - 1
+      - 2
+      re:
+      - 0
+      - 1
+      - 2
     no_kendall:
-      ru: [0, 1, 2]
-      ir: [0, 1, 2]
-      os: [0, 1, 2]
-      rh: [0, 1, 2]
-      re: [0, 1, 2]
+      ru:
+      - 0
+      - 1
+      - 2
+      ir:
+      - 0
+      - 1
+      - 2
+      os:
+      - 0
+      - 1
+      - 2
+      rh:
+      - 0
+      - 1
+      - 2
+      re:
+      - 0
+      - 1
+      - 2
     no_dann:
-      ru: [0, 1, 2]
-      ir: [0, 1, 2]
-      os: [0, 1, 2]
-      rh: [0, 1, 2]
-      re: [0, 1, 2]
-
-# ============================================================================
-# EVALUATION
-# ============================================================================
+      ru:
+      - 0
+      - 1
+      - 2
+      ir:
+      - 0
+      - 1
+      - 2
+      os:
+      - 0
+      - 1
+      - 2
+      rh:
+      - 0
+      - 1
+      - 2
+      re:
+      - 0
+      - 1
+      - 2
 eval:
   per_run_metrics:
-    - test_auc
-    - val_auc
-    - wasserstein_final
-    - grad_norm_max
+  - test_auc
+  - val_auc
+  - wasserstein_final
+  - grad_norm_max
   attribution_matrix:
-    description: "Per-lever attribution (multi-task / W2 / Kendall / DANN)"
+    description: Per-lever attribution (multi-task / W2 / Kendall / DANN)
     output: ablation_report.json
-  target_test_auc: 0.86              # PROJECTED (NOT MEASURED)
-
-# ============================================================================
-# OUTPUT — project root results/ per user 2026-09-28 instruction
-# ============================================================================
+  target_test_auc: 0.86
 output:
   base_dir: results/wf124_p3_per_innovation_ablation_g6
   per_config_dir: results/wf124_p3_per_innovation_ablation_g6/{config}/{metal}/per_seed_metrics_seed{seed}.json
   ablation_report: results/wf124_p3_per_innovation_ablation_g6/ablation_report.json
   log_master: results/wf124_p3_per_innovation_ablation_g6/master.log
-
-# ============================================================================
-# WAVES — 8 waves on RTX 5090 GPU-1 (each <=10 runs, ~1 hr per kill_then_adapt)
-# ============================================================================
+  ckpt_dir: molmetal/checkpoints
+  events_jsonl: true
 waves:
   total_waves: 8
   wave_a:
-    description: "no_multi_task Ru/Ir/Os (9 runs)"
+    description: no_multi_task Ru/Ir/Os (9 runs)
     runs: 9
-    wall_time_estimate: 1.1          # hr on RTX 5090 (9 x ~7.5 min)
+    wall_time_estimate: 1.1
   wave_b:
-    description: "no_multi_task Rh/Re + no_wass Ru (9 runs)"
+    description: no_multi_task Rh/Re + no_wass Ru (9 runs)
     runs: 9
     wall_time_estimate: 1.1
   wave_c:
-    description: "no_wass Ir/Os/Rh/Re (12 runs)"
-    runs: 12                          # > 10 but under 2 hr wall
+    description: no_wass Ir/Os/Rh/Re (12 runs)
+    runs: 12
     wall_time_estimate: 1.5
   wave_d:
-    description: "no_kendall Ru/Ir (6 runs)"
+    description: no_kendall Ru/Ir (6 runs)
     runs: 6
     wall_time_estimate: 0.8
   wave_e:
-    description: "no_kendall Os/Rh/Re (9 runs)"
+    description: no_kendall Os/Rh/Re (9 runs)
     runs: 9
     wall_time_estimate: 1.1
   wave_f:
-    description: "no_dann Ru/Ir/Os (9 runs)"
+    description: no_dann Ru/Ir/Os (9 runs)
     runs: 9
     wall_time_estimate: 1.1
   wave_g:
-    description: "no_dann Rh (3 runs)"
+    description: no_dann Rh (3 runs)
     runs: 3
     wall_time_estimate: 0.4
   wave_h:
-    description: "no_dann Re (3 runs) + ablation_report.json write"
+    description: no_dann Re (3 runs) + ablation_report.json write
     runs: 3
-    wall_time_estimate: 0.5          # incl. report write
-  total_wall_time_estimate: 12.5     # hr on RTX 5090 (60 x ~12.5 min @ 50 ep)
-
-# ============================================================================
-# COMPUTE
-# ============================================================================
+    wall_time_estimate: 0.5
+  total_wall_time_estimate: 12.5
 compute:
-  gpu: cuda:1                        # RTX 5090 GPU-1
+  gpu: cuda:1
   cpu_workers: 4
   bf16: true
-
-# ============================================================================
-# STANDING DIRECTIVES
-# ============================================================================
 directives:
   kill_then_adapt: true
-  time_budget: 13h                   # user 2026-09-28 standing budget (12.5h sweep + headroom)
+  time_budget: 13h
   user_ok_required: true
-  user_ok_granted: "pending — DRY-RUN only"
+  user_ok_granted: pending — DRY-RUN only
   per_wave_user_ok_required: true
-
-# ============================================================================
-# ENTRY POINT — reference existing script (do NOT recreate)
-# ============================================================================
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+  - p3_wf343c4_anchor_freshness_24h
+  - p3_wf343c2_per_wave_runtime_check
 entry:
-  # Reuses Wf-124 P3 shipped trainer; ablation flags per --help + checklist.
-  # Per Wf-258 §3.4 gap #1: --no-kendall / --no-dann need verification before
-  # launch (likely partial; --no-multi-task and --no-wass confirmed in
-  # scientific 进展 §1.1.7).
   script: molmetal/scripts/train_dmpnn_multitask_wasserstein.py
-  command: |
-    CUDA_VISIBLE_DEVICES=1 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
-      molmetal/scripts/train_dmpnn_multitask_wasserstein.py \\
-      --metals {metal} \\
-      --seeds {seed} \\
-      --epochs 50 \\
-      --batch-size 64 \\
-      --lr 1e-3 \\
-      --alpha 0.5 \\
-      {flags_joined} \\
-      --device cuda:1 \\
-      --out-dir {out_dir} \\
-      --ckpt-dir {ckpt_dir} \\
-      --no-enforce-budget
-
-  warm_start_checkpoint: "n/a"
-
-  # Per Wf-258 §3.4 gap: ablation flag verification required before launch.
-  pre_launch_checklist:
-
-# ============================================================================
-# HONEST FRAMING (party-twenty-spirit §3.5)
-# ============================================================================
+  command: "CUDA_VISIBLE_DEVICES=1 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\\\\n  molmetal/scripts/train_dmpnn_multitask_wasserstein.py\
+    \ \\\\\n  --metals {metal} \\\\\n  --seeds {seed} \\\\\n  --epochs 50 \\\\\n  --batch-size 64 \\\\\n  --lr 1e-3 \\\\\n\
+    \  --alpha 0.5 \\\\\n  {flags_joined} \\\\\n  --device cuda:1 \\\\\n  --out-dir {out_dir} \\\\\n  --ckpt-dir {ckpt_dir}\
+    \ \\\\\n  --no-enforce-budget\n"
+  warm_start_checkpoint: n/a
+  pre_launch_checklist: null
 honest_framing:
-  # Per-innovation ablation requires MEASURED data on v4 strict scaffold split.
-  # v4 CSV (26632 rows) inherits Wf-261-Regenerate strict Bemis-Murcko split
-  # (0 scaffold leak across train/val/test; 3069 unique scaffolds; per
-  # molmetal/reports/wf261_verify/verify_report.md §1 + §2.1).
   audit_citations:
-    - molmetal/reports/wf261_verify/verify_report.md       # Wf-261 strict scaffold split + 0 leak
-    - molmetal/reports/wf258_audit/cfm_todo_gap_audit.md   # Wf-258 audit (TODO-182 entry #5)
-  claims:
-    - "60-run per-innovation ablation: 4 configs x 5 metals x 3 seeds"
-    - "~7.5 hr wall-time on RTX 5090 GPU-1, 8 waves each <=10 runs"
-    - "Per-lever attribution matrix (multi-task / W2 / Kendall / DANN)"
-    - "v4 CSV uses strict Bemis-Murcko scaffold split (Wf-261 verified; 0 leak)"
-    - "epochs=50 per TODO-182 §2 full-sweep protocol"
-  do_not_claim:
-    - "Per-lever attribution percentages as MEASURED until 60 runs complete"
-    - "Interaction term sign or magnitude (may be >30% per TODO-182 §3.4)"
-    - "Best-seed selection (per mol-metal-gpu-execution §7)"
-    - "Apples-to-aples comparison vs v1 30-epoch (Wf-261 §3 honest-negative)"
-  deferred:
-    - "Pairwise interaction runs (3 pairwise x 5 metals x 3 seeds = 45 more)"
-    - "Per-metal hyperparameter tuning (Wf-120 P3 follow-up)"
-    - "50-epoch follow-up on v2 CSV for cross-check vs v4 (Wf-262 follow-up)"
-
-# ============================================================================
-# CROSS-REFERENCES
-# ============================================================================
-cross_references:
+  - molmetal/reports/wf261_verify/verify_report.md
   - molmetal/reports/wf258_audit/cfm_todo_gap_audit.md
-  - TODO/pending/182_wf124_p3_per_innovation_ablation.md
-  - 科研进展_pre_retrain_checklist_2026-09-28.md
-  - molmetal/scripts/train_dmpnn_multitask_wasserstein.py
-  - TODO/pending/180_wf124_p3_remaining_metals_seeds.md
-  - TODO/pending/181_wf124_p3_50_epoch_full_sweep.md
+  claims:
+  - '60-run per-innovation ablation: 4 configs x 5 metals x 3 seeds'
+  - ~7.5 hr wall-time on RTX 5090 GPU-1, 8 waves each <=10 runs
+  - Per-lever attribution matrix (multi-task / W2 / Kendall / DANN)
+  - v4 CSV uses strict Bemis-Murcko scaffold split (Wf-261 verified; 0 leak)
+  - epochs=50 per TODO-182 §2 full-sweep protocol
+  do_not_claim:
+  - Per-lever attribution percentages as MEASURED until 60 runs complete
+  - Interaction term sign or magnitude (may be >30% per TODO-182 §3.4)
+  - Best-seed selection (per mol-metal-gpu-execution §7)
+  - Apples-to-aples comparison vs v1 30-epoch (Wf-261 §3 honest-negative)
+  deferred:
+  - Pairwise interaction runs (3 pairwise x 5 metals x 3 seeds = 45 more)
+  - Per-metal hyperparameter tuning (Wf-120 P3 follow-up)
+  - 50-epoch follow-up on v2 CSV for cross-check vs v4 (Wf-262 follow-up)
+cross_references:
+- molmetal/reports/wf258_audit/cfm_todo_gap_audit.md
+- TODO/pending/182_wf124_p3_per_innovation_ablation.md
+- 科研进展_pre_retrain_checklist_2026-09-28.md
+- molmetal/scripts/train_dmpnn_multitask_wasserstein.py
+- TODO/pending/180_wf124_p3_remaining_metals_seeds.md
+- TODO/pending/181_wf124_p3_50_epoch_full_sweep.md

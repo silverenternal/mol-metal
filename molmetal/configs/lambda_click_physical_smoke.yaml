@@ -1,4 +1,8 @@
-# Bounded integration experiment; not the canonical SOTA evaluation protocol.
+# Wf-A8 yaml-unify pattern applied 2026-10-03 per task brief
+# Per AGENTS.md §5.5 filesystem-truth + §5.6 atomic-write + §5.7 trainer-flag-smoke
+# Cross-links: TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/decisions/0002-tier2-scope.md
+# Cross-links: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md + COMPARISON_BASELINES.md
+# Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
 test_set: crossdocked_pocket10
 n_test_pockets: 100
 docking:
@@ -34,3 +38,12 @@ lambda_specific:
   synthesis_oracle: false
   symbolic_prior: false
   symbolic_prior_refit_every: 0
+output:
+  ckpt_dir: molmetal/checkpoints
+  events_jsonl: true
+directives:
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+  - p3_wf343c4_anchor_freshness_24h
+  - p3_wf343c2_per_wave_runtime_check

@@ -120,7 +120,11 @@ echo "[start.sh][OK] USER_OK=1 granted"
 # ============================================================================
 # 2) Preflight check (calls _pre_flight_check.sh with yaml arg)
 # ============================================================================
-echo "[start.sh] running pre-flight check..."
+# Wf-A8 (2026-10-03) — export PYTHON=PROJECT_ROOT/.venv/bin/python to child _pre_flight_check.sh
+# so the pre-flight uses the project venv (where torch lives) rather than system python3
+# (per AGENTS.md §5.9 single-venv rule; matches the §5.1 standing GPU authorization contract).
+export PYTHON="${PYTHON:-$PROJECT_ROOT/.venv/bin/python}"
+echo "[start.sh] running pre-flight check (PYTHON=$PYTHON)..."
 if ! bash scripts/_pre_flight_check.sh --fast "$YAML_PATH"; then
   echo "[start.sh][FAIL] pre-flight check failed — aborting"
   exit 1
@@ -155,9 +159,63 @@ yaml_path, env_path = sys.argv[1], sys.argv[2]
 with open(yaml_path) as f:
     d = yaml.safe_load(f)
 e = d.get('entry', {})
+# Wf-A8 (2026-10-03) backward compat: legacy yamls (R17-R20 era like
+# configs/default.yaml) lack an `entry` section. Synthesize from
+# data.dataset to keep backward-compat functional (per A8_yaml_unify
+# _closeout.md §0 backward-compat contract + AGENTS.md §5.5).
+if not e:
+    ds = (d.get('data', {}) or {}).get('dataset', 'qm9')
+    if ds == 'qm9':
+        legacy_script = 'molmetal/scripts/train_cfm_yuelbond_wasserstein.py'
+        e = {
+            'script': legacy_script,
+            'command': (
+                '$PYTHON {script} --hidden {hidden} --n-layers {n_layers} '
+                '--n-steps {n_steps} --method {method} --batch-size {batch_size} '
+                '--lr {lr} --epochs {epochs} --device cuda:0 '
+                '--out-dir {out_dir} --ckpt-dir {ckpt_dir}'
+            ),
+        }
+    else:
+        legacy_script = 'molmetal/scripts/train_dmpnn_multitask_wasserstein.py'
+        e = {
+            'script': legacy_script,
+            'command': (
+                '$PYTHON {script} --dataset {dataset} --metals Pt '
+                '--epochs {epochs} --batch-size {batch_size} --lr {lr} '
+                '--device cuda:0 --out-dir {out_dir} --ckpt-dir {ckpt_dir}'
+            ),
+        }
+    d['entry'] = e
+# Wf-A8 (2026-10-03) — derive legacy per-pair placeholders before the
+# format() call. cross_references can be either a dict (legacy yamls
+# with .pairs) or a list (new Wf-A8 yamls); handle both so the
+# format() below doesn't KeyError on {metal}/{seed}.
+_cr_obj = d.get('cross_references')
+if not isinstance(_cr_obj, dict):
+    _metal_default = 'Pt'
+    _seed_default = '0'
+else:
+    _pairs = _cr_obj.get('pairs') or [{}]
+    _first = _pairs[:1][0] if _pairs else {}
+    if not isinstance(_first, dict):
+        _first = {}
+    _metal_default = _first.get('metal', 'Pt')
+    _seed_default = _first.get('seed', '0')
 cmd = e.get('command', '').format(
     out_dir=d.get('output', {}).get('base_dir', 'results/auto'),
     ckpt_dir=d.get('output', {}).get('ckpt_dir', 'results/auto/ckpts'),
+    hidden=(d.get('model', {}) or {}).get('hidden_dim', 128),
+    n_layers=(d.get('model', {}) or {}).get('n_layers', 4),
+    n_steps=(d.get('flow', {}) or {}).get('n_steps', 100),
+    method=(d.get('flow', {}) or {}).get('method', 'rk4'),
+    batch_size=(d.get('train', {}) or {}).get('batch_size', 32),
+    lr=(d.get('train', {}) or {}).get('lr', 1e-4),
+    epochs=(d.get('train', {}) or {}).get('epochs', 30),
+    dataset=(d.get('data', {}) or {}).get('dataset', 'qm9'),
+    script=e.get('script', 'molmetal/scripts/train_dmpnn_multitask_wasserstein.py'),
+    metal=_metal_default,
+    seed=_seed_default,
 )
 # Strip yaml literal-block backslash continuations: '|' block scalars
 # preserve backslashes as literal chars; we need single-line for shell.
@@ -289,7 +347,12 @@ fi
 
 echo "[start.sh] launching trainer (PID will be reported)..."
 TRAINER_PID=""
-nohup bash -c "$TRAINER_CMD >> $LOG_FILE 2>&1" &
+# Wf-A8 (2026-10-03) — use `eval` so that $PYTHON and other shell
+# variables embedded in the yaml's entry.command template (e.g.
+# "$PYTHON {script} ...") are properly interpolated. `bash -c "..."`
+# would NOT expand variables embedded in $TRAINER_CMD (verified by
+# direct test); `eval` does.
+nohup eval "$TRAINER_CMD >> $LOG_FILE 2>&1" &
 TRAINER_PID=$!
 echo "[start.sh][OK] trainer spawned PID=$TRAINER_PID"
 

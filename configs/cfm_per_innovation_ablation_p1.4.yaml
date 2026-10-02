@@ -1,40 +1,26 @@
-# TODO-119 P1.4 — Per-innovation CFM ablation (YuelBond / W2 / closure)
-# Date: 2026-09-28 (Wf-258-Prepare dry-run config)
-# Owner: Hugo Lee + ultracode agent
-# Status: DRY-RUN (--dry-run mode; no GPU execution)
-#
-# Parent: TODO-119 P1.4 — per-innovation CFM ablation (YuelBond only / W2
-# only / closure only / all-combined control).
-# Parent audit: molmetal/reports/wf258_audit/cfm_todo_gap_audit.md §1.2
-# Parent TODO: TODO/completed/119_decode_ratio_strengthen.md §3
-# Wf-257 §5.1 cite: Wf-257 §5.1 (CFM TODO shortlist, entry 2)
-#
-# HONEST FRAMING (party-twenty-spirit §3.5):
-# - Current Wf-124 P2 decode_ratio = 1.000 (synthetic) is AGGREGATE of 3
-#   simultaneous innovations; per-lever attribution NOT measured.
-# - Per-lever attribution is a paper §3 algorithm-description hard requirement
-#   (party-twenty-spirit §3.5).
-# - Ablation interaction term may be large (>30% of total lift per TODO-182 §3.4
-#   hypothesis); do NOT cite per-lever % as MEASURED until 4 ablations complete.
-
-dry_run: true          # skip GPU; CPU verification only
-user_ok_required: true  # per kill_then_adapt standing directive
-
-# ============================================================================
-# DATA — REAL CSV (NOT synthetic)
-# ============================================================================
+# Wf-A8 yaml-unify pattern applied 2026-10-03 per task brief
+# Per AGENTS.md §5.5 filesystem-truth + §5.6 atomic-write + §5.7 trainer-flag-smoke
+# Cross-links: TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/decisions/0002-tier2-scope.md
+# Cross-links: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md + COMPARISON_BASELINES.md
+# Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
+dry_run: true
+user_ok_required: true
 data:
   csv: .data/molmetal/metalcytotox_5metal_multitask_v2.csv
-  n_rows_expected: 26632   # v2 26633 lines - 1 header = 26632 rows (per Wf-261 strict scaffold split; 169 null-scaffold rows dropped)
-  expected_columns_subset: [smiles, metal, pic50, source]
+  n_rows_expected: 26632
+  expected_columns_subset:
+  - smiles
+  - metal
+  - pic50
+  - source
   cohort_filter:
-    metals: [Ru, Ir, Os, Rh, Re]
-    # Wf-261 strict Bemis-Murcko scaffold 70/10/20 split (0 leak; 3069 unique scaffolds)
+    metals:
+    - Ru
+    - Ir
+    - Os
+    - Rh
+    - Re
     scaffold_split: true
-
-# ============================================================================
-# MODEL — 4 ablation configs (backbone shared; ablate per-innovation flags)
-# ============================================================================
 model:
   backbone: chemprop_v2_mt
   hidden_dim: 128
@@ -43,188 +29,149 @@ model:
   bond_head: learned
   joint_train: true
   cfm_decoder: yuelbond
-
-# ============================================================================
-# FLOW MATCHING (shared across all 4 ablations)
-# ============================================================================
 flow:
   n_steps: 100
   method: rk4
   ot_solver: w_flow
-
-# ============================================================================
-# TRAINING PROTOCOL — 4 ablation configs x 1 seed x 3 epochs (~2 hr total)
-# ============================================================================
 protocol:
   n_seeds: 1
-  seeds: [0]
-  epochs: 3                          # small smoke per ablation
+  seeds:
+  - 0
+  epochs: 3
   batch_size: 16
-  lr: 1.0e-4
+  lr: 0.0001
   warmup_steps: 50
   grad_clip_norm: 1.0
   ema_decay: 0.999
   edge_cutoff: 6.0
   bf16: true
-
-# ============================================================================
-# 4 ABLATION CONFIGURATIONS
-# ============================================================================
+  scheduler:
+    type: cosine
+    warmup_epochs: 5
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
 ablation_configs:
   a_full_stack:
-    description: "Full stack (YuelBond + W2 + Catherine) — Wf-124 P2 control"
+    description: Full stack (YuelBond + W2 + Catherine) — Wf-124 P2 control
     flags:
-      - --use-yuelbond
-      # wasserstein on by default
-      # closure_bounded on by default
+    - --use-yuelbond
     expected_per_metric:
-      decode_ratio: 0.7              # PROJECTED — synthetic 1.0 not real-cohort
+      decode_ratio: 0.7
       wasserstein_loss: 0.4
       catherine_pass_rate: 0.95
   b_yuelbond_only:
-    description: "YuelBond only (no W2, no Catherine)"
+    description: YuelBond only (no W2, no Catherine)
     flags:
-      - --use-yuelbond
-      - --no-wasserstein
-      - --no-closure-bounded
+    - --use-yuelbond
+    - --no-wasserstein
+    - --no-closure-bounded
     expected_per_metric:
-      decode_ratio: 0.6              # PROJECTED — single lever
-      wasserstein_loss: 0.0          # disabled
-      catherine_pass_rate: 0.80      # PROJECTED — no closure reg
+      decode_ratio: 0.6
+      wasserstein_loss: 0.0
+      catherine_pass_rate: 0.8
   c_w2_only:
-    description: "W2 only (no YuelBond, no Catherine)"
+    description: W2 only (no YuelBond, no Catherine)
     flags:
-      - --no-yuelbond
-      # wasserstein on by default
-      - --no-closure-bounded
+    - --no-yuelbond
+    - --no-closure-bounded
     expected_per_metric:
-      decode_ratio: 0.4              # PROJECTED — weakest lever
+      decode_ratio: 0.4
       wasserstein_loss: 0.4
-      catherine_pass_rate: 0.80
+      catherine_pass_rate: 0.8
   d_catherine_only:
-    description: "Catherine only (no YuelBond, no W2)"
+    description: Catherine only (no YuelBond, no W2)
     flags:
-      - --no-yuelbond
-      - --no-wasserstein
-      # closure_bounded on by default
+    - --no-yuelbond
+    - --no-wasserstein
     expected_per_metric:
-      decode_ratio: 0.5              # PROJECTED — closure reg helps validity
+      decode_ratio: 0.5
       wasserstein_loss: 0.0
       catherine_pass_rate: 0.95
-
-# ============================================================================
-# EVALUATION
-# ============================================================================
 eval:
   per_config_metrics:
-    - decode_ratio                   # m14 — primary CFM metric
-    - wasserstein_loss               # W2 trajectory
-    - catherine_pass_rate            # 6/6 closure per metal
-  target_decode_ratio: 0.5           # MEASURED from current 0.0 honest-negative
-
-# ============================================================================
-# OUTPUT — project root results/ per user 2026-09-28 instruction
-# ============================================================================
+  - decode_ratio
+  - wasserstein_loss
+  - catherine_pass_rate
+  target_decode_ratio: 0.5
 output:
   base_dir: results/cfm_per_innovation_ablation_p1.4
   per_config_dir: results/cfm_per_innovation_ablation_p1.4/{config_name}
   metrics_json: results/cfm_per_innovation_ablation_p1.4/ablation_report.json
   log_master: results/cfm_per_innovation_ablation_p1.4/master.log
-
-# ============================================================================
-# WAVES — ~2 hr total on PRO 6000, split into 4 waves (~30 min each)
-# ============================================================================
+  ckpt_dir: molmetal/checkpoints
+  events_jsonl: true
 waves:
   total_waves: 4
   wave_a:
-    description: "Full stack control (YuelBond + W2 + Catherine)"
+    description: Full stack control (YuelBond + W2 + Catherine)
     ablation_config: a_full_stack
-    seeds: [0]
+    seeds:
+    - 0
     epochs: 3
-    wall_time_estimate: 0.5          # hr on PRO 6000
+    wall_time_estimate: 0.5
   wave_b:
-    description: "YuelBond only"
+    description: YuelBond only
     ablation_config: b_yuelbond_only
-    seeds: [0]
+    seeds:
+    - 0
     epochs: 3
     wall_time_estimate: 0.5
   wave_c:
-    description: "W2 only"
+    description: W2 only
     ablation_config: c_w2_only
-    seeds: [0]
+    seeds:
+    - 0
     epochs: 3
     wall_time_estimate: 0.5
   wave_d:
-    description: "Catherine only"
+    description: Catherine only
     ablation_config: d_catherine_only
-    seeds: [0]
+    seeds:
+    - 0
     epochs: 3
     wall_time_estimate: 0.5
-  total_wall_time_estimate: 2.0      # hr on PRO 6000
-
-# ============================================================================
-# COMPUTE
-# ============================================================================
+  total_wall_time_estimate: 2.0
 compute:
-  gpu: cuda:0                        # RTX PRO 6000 Blackwell
+  gpu: cuda:0
   cpu_workers: 4
   bf16: true
-
-# ============================================================================
-# STANDING DIRECTIVES
-# ============================================================================
 directives:
   kill_then_adapt: true
-  time_budget: 10h                   # user 2026-09-28 standing budget
+  time_budget: 10h
   user_ok_required: true
-  user_ok_granted: "pending — DRY-RUN only"
+  user_ok_granted: pending — DRY-RUN only
   per_wave_user_ok_required: true
-
-# ============================================================================
-# ENTRY POINT — reference existing script (do NOT recreate)
-# ============================================================================
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+  - p3_wf343c4_anchor_freshness_24h
+  - p3_wf343c2_per_wave_runtime_check
 entry:
-  # Reuses Wf-124 P2 shipped CFM trainer; has --no-yuelbond, --no-wasserstein,
-  # --no-closure-bounded flags (confirmed via --help output).
   script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
-  command: |
-    CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
-      molmetal/scripts/train_cfm_yuelbond_wasserstein.py \\
-      --epochs {epochs} \\
-      {flags_joined} \\
-      --pocket-id {pocket_id} \\
-      --seed {seed} \\
-      --out-dir {out_dir}
-
+  command: "CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\\\\n  molmetal/scripts/train_cfm_yuelbond_wasserstein.py\
+    \ \\\\\n  --epochs {epochs} \\\\\n  {flags_joined} \\\\\n  --pocket-id {pocket_id} \\\\\n  --seed {seed} \\\\\n  --out-dir\
+    \ {out_dir}\n"
   warm_start_checkpoint: molmetal/checkpoints/cfm_yuelbond_wasserstein.pt
-  # 617 KB Wf-124 P2 best ckpt (synthetic) — informational only.
-
-# ============================================================================
-# HONEST FRAMING (party-twenty-spirit §3.5)
-# ============================================================================
 honest_framing:
   claims:
-    - "Per-innovation CFM ablation: YuelBond / W2 / Catherine / all-combined"
-    - "4 ablation configs x 1 seed x 3 epochs, ~2 hr on PRO 6000"
-    - "Per-lever attribution matrix (4 ablations) for paper §3 honesty"
+  - 'Per-innovation CFM ablation: YuelBond / W2 / Catherine / all-combined'
+  - 4 ablation configs x 1 seed x 3 epochs, ~2 hr on PRO 6000
+  - Per-lever attribution matrix (4 ablations) for paper §3 honesty
   do_not_claim:
-    - "Aggregate lift before per-lever attribution"
-    - "Per-lever percentages as MEASURED until all 4 ablations complete"
-    - "Interaction term sign or magnitude (may be >30% per TODO-182 §3.4)"
+  - Aggregate lift before per-lever attribution
+  - Per-lever percentages as MEASURED until all 4 ablations complete
+  - Interaction term sign or magnitude (may be >30% per TODO-182 §3.4)
   deferred:
-    - "Cross-leverage interaction runs (3 pairwise interactions: YuelBond x W2,
-       YuelBond x Catherine, W2 x Catherine) — would double wave count to 8"
-    - "Per-cohort (PlatinAI / DrugOOD) cross-tabulation"
-    - "ablation_report.json write + audit (post-wave)"
-
-# ============================================================================
-# CROSS-REFERENCES
-# ============================================================================
+  - 'Cross-leverage interaction runs (3 pairwise interactions: YuelBond x W2, YuelBond x Catherine, W2 x Catherine) — would
+    double wave count to 8'
+  - Per-cohort (PlatinAI / DrugOOD) cross-tabulation
+  - ablation_report.json write + audit (post-wave)
 cross_references:
-  - molmetal/reports/wf258_audit/cfm_todo_gap_audit.md
-  - TODO/completed/119_decode_ratio_strengthen.md
-  - TODO/pending/182_wf124_p3_per_innovation_ablation.md
-  - molmetal/reports/wf257_research/cfm_potential.md
-  - configs/cfm_full_retrain.yaml
-  - molmetal/scripts/train_cfm_yuelbond_wasserstein.py
-  - molmetal/checkpoints/cfm_yuelbond_wasserstein.pt
+- molmetal/reports/wf258_audit/cfm_todo_gap_audit.md
+- TODO/completed/119_decode_ratio_strengthen.md
+- TODO/pending/182_wf124_p3_per_innovation_ablation.md
+- molmetal/reports/wf257_research/cfm_potential.md
+- configs/cfm_full_retrain.yaml
+- molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+- molmetal/checkpoints/cfm_yuelbond_wasserstein.pt

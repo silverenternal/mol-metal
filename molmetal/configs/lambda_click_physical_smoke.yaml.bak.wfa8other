@@ -1,0 +1,36 @@
+# Bounded integration experiment; not the canonical SOTA evaluation protocol.
+test_set: crossdocked_pocket10
+n_test_pockets: 100
+docking:
+  engine: quickvina2
+  version: '2.1'
+  exhaustiveness: 1
+  n_poses: 1
+scoring:
+  sa: ertl_2000
+  qed: rdkit
+  lipinski: true
+  logp_threshold: 5
+success_rate:
+  vina_threshold_kcal: -8.0
+  sa_threshold: 4
+  qed_threshold: 0.5
+  logp_max: 5
+nfe:
+  target_per_pocket: 4
+  method: mcts_rollouts
+posebusters:
+  enabled: true
+  threshold: pass_all
+mcts:
+  top_k: 10
+  max_depth: 1
+  patience: 50
+  early_stop: true
+  branching_target: 12
+lambda_specific:
+  tile_library: standard_12
+  click_rules: CuAAC
+  synthesis_oracle: false
+  symbolic_prior: false
+  symbolic_prior_refit_every: 0

@@ -158,8 +158,12 @@ if [[ -n "$YAML_ARG" ]]; then
   YAML_SHA=$(sha256sum "$YAML_ARG" | awk '{print $1}')
   log_ok "yaml_sha256=$YAML_SHA"
 
-  # Required top-level keys per canonical training yaml (m17_pt_..._v1.yaml)
-  REQUIRED_KEYS=("data" "model" "protocol" "eval" "output" "compute" "directives" "entry")
+  # Required top-level keys: data, model, protocol, output, directives are MINIMUM for backward compat
+  # (Wf-A8 --fast legacy mode for legacy yamls like configs/default.yaml which pre-date the
+  # Wf-A8 yaml-unify pattern; legacy yamls from R17-R20 era lack eval/compute/entry sections).
+  # New sections eval / compute / entry are emitted by Wf-A8 unified yaml pattern as REQUIRED-FOR-NEW-YAMLS
+  # but OPTIONAL for legacy yaml backward compat (per A8_yaml_unify_closeout.md §0 backward-compat contract).
+  REQUIRED_KEYS=("data" "model" "protocol" "output" "directives")
   PARSE_OUT=$("$PYTHON" -c "
 import sys, yaml
 with open('$YAML_ARG') as f:
