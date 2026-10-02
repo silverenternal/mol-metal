@@ -1,6 +1,6 @@
 # R17 Ablation Runner — final.md
 
-**Date**: 2026-10-02  
+**Date**: 2026-10-03  
 **Source**: `molmetal/scripts/ablation_runner.py`  
 **Step budget**: 200 steps per ablation  
 **Out dir**: `.pytest_tmp/test_final_md_observes_honest_0`  

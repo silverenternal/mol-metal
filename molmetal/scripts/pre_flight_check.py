@@ -7921,8 +7921,9 @@ def parse_argv(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument(
         "--json",
         type=Path,
+        nargs="?",
         default=None,
-        help="Optional path to write JSON report (default: stdout only).",
+        help="Optional path to write JSON report (default: stdout only). Wf-A8 fix: --json alone now defaults to no JSON output (was argparse error before).",
     )
     p.add_argument(
         "--strict",

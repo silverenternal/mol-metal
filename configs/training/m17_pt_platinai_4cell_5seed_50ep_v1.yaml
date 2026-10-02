@@ -85,6 +85,14 @@ model:
 #
 # Forward-looking: port the 7 missing flags to D-MPNN trainer (Wf-A6+ work).
 # See docs/RESOURCE_SCALING.md §13 for the per-flag port plan.
+# NOTE: protocol.bf16 below is SCHEMA-ONLY for the D-MPNN trainer
+# (molmetal/scripts/train_dmpnn_multitask_wasserstein.py). D-MPNN currently
+# has NO --bf16 / --amp flag path (the trainer uses default fp32 throughout);
+# only the CFM trainer (molmetal/scripts/train_cfm_yuelbond_wasserstein.py,
+# per Wf-431-B1) supports --bf16. Setting protocol.bf16=true is a
+# forward-compatibility declaration: when D-MPNN grows a bf16 AMP path
+# (Wf-A7+ forward-looking), this field will activate a code path instead
+# of being purely schema-only.
 protocol:
   n_seeds: 5
   seeds: [0, 1, 2, 3, 4]
@@ -113,6 +121,21 @@ protocol:
     - {metal: Pt, seed: 3}
     - {metal: Pt, seed: 4}
   n_runs_total: 5
+  # Wf-A6 A2 BLOCKER C fix (2026-10-03) — LR scheduler (per user
+  # voice verbatim "学习率的控制至少得用余弦退火或者更加高级的方案，做一下调研然后应用").
+  # Loshchilov-Hutter 2017 SGDR (arXiv:1608.03983) + Smith-Topin 2018
+  # super-convergence (arXiv:1708.07120) survey recommended
+  # Linear warmup + CosineAnnealingLR as conservative primary path;
+  # OneCycleLR as opt-in super-convergence path.  Default = "none"
+  # preserves Wf-131 P1 + Wf-251-F4 baseline bit-for-bit.
+  scheduler:
+    type: cosine  # {none, cosine, onecycle}; cosine = Linear warmup + CosineAnnealingLR via SequentialLR
+    warmup_epochs: 5  # EDM 2022 recommendation
+    min_lr: 1.0e-6  # CosineAnnealingLR floor; OneCycleLR final_div_factor
+  # Wf-A6 A2 BLOCKER C fix — Adam weight_decay (audit R5 closure):
+  # 0.0 preserves Wf-131 P1 baseline bit-for-bit; >0 enables L2
+  # regularisation across all trainable params.
+  weight_decay: 0.0
 
 # ============================================================================
 # EVALUATION
@@ -129,6 +152,14 @@ output:
   per_metal_dir: results/m17_pt_platinai_4cell_5seed_50ep/{metal}/per_seed_metrics_seed{seed}.json
   training_summary: results/m17_pt_platinai_4cell_5seed_50ep/training_summary.json
   log_master: results/m17_pt_platinai_4cell_5seed_50ep/master.log
+  # Wf-A6 A3 BLOCKER B fix (2026-10-03) — ckpt_dir is the canonical Wf-131 P3
+  # + Wf-251-F4 checkpoint storage path per AGENTS.md 5.5 filesystem-truth;
+  # do not remove or rename. Without this, start.sh fallback resolves
+  # {ckpt_dir} to results/auto/ckpts instead of molmetal/checkpoints, which
+  # breaks resume_from: auto (the resume_from code scans ckpt_dir for
+  # dmpnn_mtw_{metal}_seed{seed}.pt). Wf-131 P3 + Wf-251-F4 use this
+  # canonical path; Wf-A6 fixes it for Wf-A5 N3 resume_from integration.
+  ckpt_dir: molmetal/checkpoints
   # Wf-A5 N3 — checkpoint resumption (per A5_remaining_tasks.json §N3
   # design field + user voice 2026-10-03 "训练时不降低效率且能断点续训").
   # checkpoint_interval = N epochs between persisted resumable checkpoints

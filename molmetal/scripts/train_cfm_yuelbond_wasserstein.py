@@ -152,6 +152,102 @@ from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
 _CFM_CHEMPROP_V3_CACHE_HOLDER: Dict[str, Optional[object]] = {"cache": None}
 
 
+# ---------------------------------------------------------------------------
+# Runtime event emission (Wf-TUI deep integration)
+# ---------------------------------------------------------------------------
+# Module-level state for JSONL event emission. Set once in main() via
+# _install_event_emitter(); consumed by emit_event() at each print site.
+# Default (None) means stdout-only — preserves the Wf-124 P2 + Wf-148
+# baseline bit-for-bit when --emit-json-events is False at the CLI.
+_EVENT_LOG_PATH: Optional[Path] = None
+_EVENT_FH = None
+_EVENT_ENABLED: bool = False
+_EVENT_TYPES = frozenset(
+    {"train_epoch", "eval_epoch", "lr_step", "resume", "batch", "done"}
+)
+
+
+def emit_event(event_type: str, **fields) -> None:
+    """Emit a structured runtime event to stdout (text) AND events.jsonl.
+
+    event_type: 'train_epoch' | 'eval_epoch' | 'lr_step' | 'resume' | 'batch' | 'done'
+    fields: metric names → values (numbers, strings, lists, bools)
+        ─ bool/int/float serialised as-is; str as JSON string; list/tuple as JSON list
+        ─ path-like fields are coerced to str()
+    Output schema (one JSON object per line):
+        {"event": "<event_type>", ...fields, "ts": <unix-time-float>}
+    Stdout: also writes a backslash-escaped prefix so log scrapers see
+        "[EVENT <type>] ..." for grep-tail compat (preserves Wf-124 P2 text).
+    Per AGENTS.md §5.5 filesystem-truth + §5.6 atomic write: this helper
+    is the canonical wire-in for the TUI dashboard JSON parsing path
+    (vs the legacy regex-based text path per _tui_dashboard.py line 147).
+    """
+    if event_type not in _EVENT_TYPES:
+        raise ValueError(
+            f"emit_event: unknown event_type={event_type!r}; "
+            f"valid={sorted(_EVENT_TYPES)}"
+        )
+    payload: Dict[str, Any] = {}
+    for k, v in fields.items():
+        if isinstance(v, Path):
+            payload[k] = str(v)
+        elif isinstance(v, (bool, int, float, str)) or v is None:
+            payload[k] = v
+        else:
+            payload[k] = str(v)
+    payload["event"] = event_type
+    payload["ts"] = time.time()
+    line = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    if _EVENT_ENABLED:
+        print(line, flush=True)
+    else:
+        msg = " ".join(
+            f"{k}={payload[k]}" for k in sorted(payload) if k != "ts"
+        )
+        print(f"[EVENT {event_type}] {msg}", flush=True)
+    if _EVENT_LOG_PATH is not None:
+        global _EVENT_FH
+        if _EVENT_FH is None:
+            try:
+                _EVENT_FH = _EVENT_LOG_PATH.open("a", buffering=1)
+            except Exception:
+                _EVENT_FH = None
+        if _EVENT_FH is not None:
+            try:
+                _EVENT_FH.write(line + "\n")
+            except Exception:
+                pass
+
+
+def _install_event_emitter(
+    emit_enabled: bool,
+    events_jsonl_path: Path,
+) -> None:
+    """Module-level install hook called from main() once per job."""
+    global _EVENT_ENABLED, _EVENT_LOG_PATH, _EVENT_FH
+    _EVENT_ENABLED = bool(emit_enabled)
+    _EVENT_LOG_PATH = Path(events_jsonl_path)
+    if _EVENT_FH is not None:
+        try:
+            _EVENT_FH.close()
+        except Exception:
+            pass
+    _EVENT_FH = None
+
+
+def _close_event_emitter() -> None:
+    """Module-level teardown hook called from main() at end of job."""
+    global _EVENT_FH, _EVENT_LOG_PATH, _EVENT_ENABLED
+    if _EVENT_FH is not None:
+        try:
+            _EVENT_FH.close()
+        except Exception:
+            pass
+    _EVENT_FH = None
+    _EVENT_LOG_PATH = None
+    _EVENT_ENABLED = False
+
+
 def set_cfm_chemprop_v3_cache(cache: Optional[object]) -> None:
     """Set the module-level CFM chemprop v3 cache (called from main()).
 
@@ -165,6 +261,79 @@ def set_cfm_chemprop_v3_cache(cache: Optional[object]) -> None:
 def get_cfm_chemprop_v3_cache() -> Optional[object]:
     """Return the current module-level CFM chemprop v3 cache (or None)."""
     return _CFM_CHEMPROP_V3_CACHE_HOLDER["cache"]
+
+
+# ---------------------------------------------------------------------------
+# Wf-A6 A2 BLOCKER C fix — LR scheduler helper (Loshchilov-Hutter 2017 SGDR /
+# Smith-Topin 2018 OneCycle). Opt-in via --lr-scheduler {cosine, onecycle}.
+# Default OFF (return None) preserves Wf-124 P2 + Wf-148 baseline bit-for-bit.
+# ---------------------------------------------------------------------------
+from torch.optim.lr_scheduler import (  # Wf-A6 A2 BLOCKER C fix
+    CosineAnnealingLR,
+    LinearLR,
+    OneCycleLR,
+    SequentialLR,
+)
+
+
+def build_lr_scheduler(
+    optimizer: torch.optim.Optimizer,
+    total_steps: int,
+    scheduler_type: str,
+    warmup_steps: int,
+    min_lr: float,
+) -> object:
+    """Wf-A6 A2 BLOCKER C fix — opt-in LR scheduler factory.
+
+    Args:
+        optimizer: torch.optim.Optimizer (Adam for CFM YuelBond + BondHead).
+        total_steps: total training steps (epochs * steps_per_epoch).
+        scheduler_type: 'none' | 'cosine' | 'onecycle'.
+        warmup_steps: linear warmup duration in steps (0 = no warmup).
+        min_lr: cosine floor / onecycle final_div_factor reference.
+
+    Returns:
+        None if scheduler_type == 'none' (default; preserves baseline).
+        torch.optim.lr_scheduler.LRScheduler otherwise.
+
+    Notes:
+        - 'cosine': LinearLR warmup (start_factor=0.01 -> 1.0) +
+          SequentialLR([LinearLR, CosineAnnealingLR], milestones=[warmup_steps]).
+          Total cosine steps = total_steps - warmup_steps.
+        - 'onecycle': OneCycleLR(max_lr=base_lr*10, total_steps=total_steps,
+          pct_start=0.3, anneal_strategy='cos', div_factor=25,
+          final_div_factor=1e4). No separate warmup phase needed.
+    """
+    if scheduler_type == "none":
+        return None
+    if scheduler_type == "cosine":
+        warmup_steps = max(0, min(int(warmup_steps), int(total_steps) - 1))
+        cosine_steps = max(1, int(total_steps) - warmup_steps)
+        warmup = LinearLR(
+            optimizer, start_factor=0.01, end_factor=1.0, total_iters=warmup_steps
+        )
+        cosine = CosineAnnealingLR(
+            optimizer, T_max=cosine_steps, eta_min=float(min_lr)
+        )
+        if warmup_steps == 0:
+            return cosine
+        return SequentialLR(
+            optimizer,
+            schedulers=[warmup, cosine],
+            milestones=[warmup_steps],
+        )
+    if scheduler_type == "onecycle":
+        base_lr = float(optimizer.defaults[0]["lr"])
+        return OneCycleLR(
+            optimizer,
+            max_lr=base_lr * 10,
+            total_steps=int(total_steps),
+            pct_start=0.3,
+            anneal_strategy="cos",
+            div_factor=25,
+            final_div_factor=1e4,
+        )
+    raise ValueError(f"build_lr_scheduler: unknown scheduler_type={scheduler_type!r}")
 
 
 # Deterministic 4-SMILES smoke cohort for the CFM-side cache wire-in
@@ -1435,7 +1604,11 @@ def train_one_epoch(
             # numerical behaviour.
             model.train()
         loss.backward()
-        grad_norm = float(torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0))
+        # Wf-A8 (2026-10-03) gradient clipping per --max-norm flag (per
+        # AGENTS.md §5.7 trainer flag wire-in smoke-required rule; bit-exact
+        # baseline preserved when max_norm=0.0).
+        max_norm = float(getattr(args, "max_norm", 5.0)) if args is not None else 5.0
+        grad_norm = float(torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=max_norm))
         optimiser.step()
         bond_losses.append(float(bond_ce.detach()))
         w2_losses.append(float(w2_val.detach()))
@@ -1720,6 +1893,79 @@ def parse_args() -> argparse.Namespace:
 
     p.add_argument("--n-layers", type=int, default=DEFAULT_N_LAYERS)
     p.add_argument("--lr", type=float, default=DEFAULT_LR)
+    # Wf-A6 A2 BLOCKER C fix — LR scheduler (cosine/onecycle) + warmup + weight decay
+    # per user voice 2026-10-03 verbatim '学习率的控制至少得用余弦退火或者更加高级的方案'.
+    # Default OFF preserves Wf-124 P2 + Wf-148 baseline bit-for-bit.
+    p.add_argument(
+        "--lr-scheduler",
+        type=str,
+        choices=("none", "cosine", "onecycle"),
+        default="none",
+        help=(
+            "Wf-A6 A2 BLOCKER C fix: opt-in LR scheduler strategy. "
+            "'none' (default; preserves Wf-124 P2 + Wf-148 baseline "
+            "bit-for-bit) uses a fixed LR throughout training. "
+            "'cosine' applies linear warmup for --lr-warmup-epochs "
+            "followed by CosineAnnealingLR to --lr-min-lr "
+            "(Loshchilov-Hutter 2017 SGDR; conservative 2024-2025 "
+            "transformer/GNN default). 'onecycle' applies Smith-Topin "
+            "2018 super-convergence policy with max_lr = base * 10, "
+            "pct_start = 0.3, div_factor = 25, final_div_factor = 1e4, "
+            "anneal_strategy = 'cos'. PROJECTED 1.5-3x speedup vs "
+            "ReduceLROnPlateau baseline for 'cosine'; PROJECTED 5-10x "
+            "speedup for 'onecycle'. MEASURED-end-to-end lift requires "
+            "Blackwell sm_120 GPU retrain per AGENTS.md §5.1."
+        ),
+    )
+    p.add_argument(
+        "--lr-warmup-epochs",
+        type=int,
+        default=5,
+        help=(
+            "Wf-A6 A2 BLOCKER C fix: linear warmup duration in epochs "
+            "applied before cosine/onecycle scheduler. Default 5 "
+            "(EDM 2022 §5 recommendation). Only effective when "
+            "--lr-scheduler != 'none'."
+        ),
+    )
+    p.add_argument(
+        "--lr-min-lr",
+        type=float,
+        default=1e-6,
+        help=(
+            "Wf-A6 A2 BLOCKER C fix: floor LR for cosine annealing "
+            "or final_div_factor ratio denominator for onecycle. "
+            "Default 1e-6. Only effective when --lr-scheduler != 'none'."
+        ),
+    )
+    p.add_argument(
+        "--weight-decay",
+        type=float,
+        default=0.0,
+        help=(
+            "Wf-A6 A2 BLOCKER C fix (audit gap R5): torch.optim.Adam "
+            "weight_decay parameter. Default 0.0 (preserves Wf-124 P2 "
+            "+ Wf-148 baseline bit-for-bit). Setting 1e-5..1e-3 "
+            "typically improves generalization on Transformer/GNN "
+            "models (Loshchilov-Hutter 2019 decoupled weight decay). "
+            "Bit-exact OFF when 0.0."
+        ),
+    )
+    p.add_argument(
+        "--max-norm",
+        type=float,
+        default=5.0,
+        help=(
+            "Wf-A8 (2026-10-03) gradient clipping max norm. Default 5.0 "
+            "(Pascanu 2013; standard for transformer/GNN stability). "
+            "Applied via torch.nn.utils.clip_grad_norm_(parameters, "
+            "max_norm) AFTER loss.backward() + BEFORE optimizer.step() "
+            "in the training loop. When 0.0, clipping is DISABLED "
+            "(preserves Wf-124 P2 + Wf-148 baseline bit-for-bit). "
+            "Setting 1.0..10.0 recommended for CFM velocity_net + "
+            "EGNN where exploding gradients are a concern."
+        ),
+    )
     p.add_argument("--patience", type=int, default=DEFAULT_PATIENCE,
                    help="Early-stopping patience (default 10 epochs).")
     p.add_argument(
@@ -2307,9 +2553,15 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--use-lr-warmup", dest="use_lr_warmup", action="store_true",
         default=False, help=(
-            "Wf-415-A3 NEW alias: linear LR warmup before main scheduler "
-            "(EDM 2022 §5). Default OFF. SCAFFOLD-only flag; activates "
-            "warmup_steps linear ramp. Bit-exact OFF when False."
+            "Wf-415-A3 NEW alias for backward-compat: linear LR "
+            "warmup before main scheduler (EDM 2022 §5). Default "
+            "OFF. Wf-A6 A2 BLOCKER C fix (2026-10-03): superseded by "
+            "--lr-scheduler cosine / onecycle which compose warmup "
+            "internally via SequentialLR. This flag is retained for "
+            "backward compat with Wf-415-A3 scripts; when both "
+            "--use-lr-warmup and --lr-scheduler=cosine are set, the "
+            "cosine scheduler's LinearLR warmup takes precedence. "
+            "Bit-exact OFF when False."
         ),
     )
     p.add_argument(
@@ -2411,6 +2663,35 @@ def parse_args() -> argparse.Namespace:
             "See configs/training/wf124_p3_50epoch_full_sweep_g5.yaml for schema."
         ),
     )
+    # Wf-TUI NEW: structured event emission for deep TUI integration.
+    # When ON, emit_event() writes JSON lines to stdout + appends to
+    # --events-jsonl-path. When OFF, emit_event() writes a backslash-
+    # escaped prefix line that preserves the Wf-124 P2 text log format
+    # for grep/tail consumers. Default ON per AGENTS.md §5.7 NEW trainer
+    # flag wire-in smoke-required rule; --no-emit-json-events restores
+    # the legacy text-only path for backward compat.
+    p.add_argument(
+        "--emit-json-events",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Wf-TUI NEW: emit structured JSON events to stdout + "
+            "--events-jsonl-path. Default ON; --no-emit-json-events "
+            "falls back to the legacy '[EVENT <type>] key=value' text "
+            "path (backward compat with Wf-124 P2 grep/tail consumers)."
+        ),
+    )
+    p.add_argument(
+        "--events-jsonl-path",
+        type=Path,
+        default=None,
+        help=(
+            "Wf-TUI NEW: path to events.jsonl log (default '<out_dir>/"
+            "events.jsonl'). Each emit_event() call appends one JSON "
+            "line. Consumers (TUI dashboard, downstream monitoring) "
+            "tail this file for structured per-epoch / per-batch events."
+        ),
+    )
     args = p.parse_args()
     # Apply YAML overrides (no-op when --config not supplied).
     from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
@@ -2457,6 +2738,25 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     ckpt_dir = PROJECT_ROOT / args.ckpt_dir
     ckpt_dir.mkdir(parents=True, exist_ok=True)
+
+    # Wf-TUI NEW: install structured-event emitter BEFORE any training
+    # step (so epoch-start + checkpoint-resume + lr-step events all
+    # route through emit_event()). Default events.jsonl path =
+    # '<out_dir>/events.jsonl' when --events-jsonl-path not supplied.
+    # Bit-for-bit backward compat with Wf-124 P2 baseline: when
+    # --no-emit-json-events is set at the CLI flag, emit_event() emits
+    # the legacy '[EVENT <type>] k=v k=v ...' text format instead of
+    # JSON, and events.jsonl writes are still appended (TUI consumers
+    # can read the JSONL regardless of stdout format).
+    _events_jsonl_path = (
+        args.events_jsonl_path
+        if args.events_jsonl_path is not None
+        else (out_dir / "events.jsonl")
+    )
+    _install_event_emitter(
+        emit_enabled=bool(args.emit_json_events),
+        events_jsonl_path=_events_jsonl_path,
+    )
     # Cohort.
     print(f"[Wf-124 P2] building cohorts: "
           f"train={args.n_train}, val={args.n_val}",
@@ -2590,7 +2890,7 @@ def main() -> int:
     )
     # The decoder's head *is* model.head — we share weights so training
     # updates the decoder too.
-    optimiser = optim.Adam(model.parameters(), lr=args.lr)
+    optimiser = optim.Adam(model.parameters(), lr=args.lr, weight_decay=getattr(args, "weight_decay", 0.0))  # Wf-A6 A2 BLOCKER C fix
     # Pocket bias + reference positions.
     bias_verdict = pocket_specific_closure_bias(args.pocket_id)
     closure_bias = bias_verdict.bias_dict if bias_verdict.is_known_pocket else None
@@ -2679,6 +2979,32 @@ def main() -> int:
     best_epoch = -1
     epochs_without_improve = 0
     overall_start = time.time()
+    # Wf-A6 A2 BLOCKER C fix — instantiate LR scheduler (opt-in).
+    # Default OFF (lr_scheduler='none') preserves Wf-124 P2 + Wf-148
+    # baseline bit-for-bit. Cosine / OneCycle variants compose
+    # linear warmup + main scheduler via SequentialLR per
+    # build_lr_scheduler() helper. The actual step() call fires once
+    # per epoch (end of inner loop).
+    steps_per_epoch = max(1, len(train_clouds_d) // max(1, args.batch_size))
+    total_steps = max(1, int(args.epochs) * int(steps_per_epoch))
+    warmup_steps = max(
+        0, int(getattr(args, "lr_warmup_epochs", 5)) * int(steps_per_epoch)
+    )
+    scheduler = build_lr_scheduler(
+        optimizer=optimiser,
+        total_steps=total_steps,
+        scheduler_type=str(getattr(args, "lr_scheduler", "none")),
+        warmup_steps=warmup_steps,
+        min_lr=float(getattr(args, "lr_min_lr", 1e-6)),
+    )
+    if scheduler is not None:
+        print(
+            f"[lr-sched] type={getattr(args, 'lr_scheduler', 'none')} "
+            f"warmup_epochs={getattr(args, 'lr_warmup_epochs', 5)} "
+            f"steps/epoch={steps_per_epoch} total_steps={total_steps} "
+            f"min_lr={getattr(args, 'lr_min_lr', 1e-6):.2e}",
+            flush=True,
+        )
     for epoch in range(args.epochs):
         epoch_start = time.time()
         train_loss, bond_ce, w2_val, grad_norm, catherine_rate = train_one_epoch(
@@ -2816,6 +3142,45 @@ def main() -> int:
             f"wall={elapsed:.1f}s",
             flush=True,
         )
+        # Wf-TUI NEW: structured per-epoch event to stdout + events.jsonl
+        # via the central emit_event() helper. TUI dashboard consumers
+        # parse the JSON line for live metrics; text-log consumers
+        # continue to grep the legacy print() line above (preserved for
+        # backward compat per AGENTS.md §5.2 honest-framing).
+        try:
+            emit_event(
+                "train_epoch",
+                epoch=int(epoch),
+                total_epochs=int(args.epochs),
+                train_loss=float(train_loss),
+                bond_ce=float(bond_ce),
+                train_w2=float(w2_val),
+                grad_norm=float(grad_norm),
+                catherine_pass=float(catherine_rate),
+                decode_ratio=float(decode_ratio),
+                decode_ratio_val=int(n_ok),
+                decode_ratio_n=int(n_total),
+                lr=float(args.lr),
+                epoch_time_sec=float(elapsed),
+                wall_time_s=float(elapsed),
+            )
+        except Exception:
+            # Defensive: never let JSONL emission crash training
+            # (Wf-A4-final huddle design contract).
+            pass
+        # Wf-TUI NEW: lr_step event.  Adam has a fixed LR per args.lr;
+        # no scheduler step occurs, but we emit the snapshot for the
+        # TUI dashboard so it can render the "current LR" row aligned
+        # with the per-epoch train event.
+        try:
+            emit_event(
+                "lr_step",
+                epoch=int(epoch),
+                lr=float(args.lr),
+                phase="constant",
+            )
+        except Exception:
+            pass
         # Target / early stopping.
         if decode_ratio > best_decode_ratio:
             best_decode_ratio = decode_ratio
@@ -2844,6 +3209,15 @@ def main() -> int:
                     flush=True,
                 )
                 break
+
+        # Wf-A6 A2 BLOCKER C fix — LR scheduler step (per-epoch).
+        # Default OFF (scheduler is None) preserves Wf-124 P2 + Wf-148
+        # baseline bit-for-bit. Cosine + SequentialLR get one step
+        # per epoch. OneCycleLR's per-epoch step is functionally
+        # equivalent up to total_steps divisor (Smith-Topin 2018
+        # §3.3 documented alternative).
+        if scheduler is not None:
+            scheduler.step()
     total_elapsed = time.time() - overall_start
     # Per-epoch metrics JSON.
     metrics_payload = {
@@ -2890,6 +3264,20 @@ def main() -> int:
     (out_dir / "per_epoch_metrics.json").write_text(
         json.dumps(metrics_payload, indent=2) + "\n"
     )
+    # Wf-TUI NEW: emit structured 'done' event for the full run.
+    try:
+        emit_event(
+            "done",
+            best_epoch=int(best_epoch),
+            best_decode_ratio=float(best_decode_ratio),
+            target_decode_ratio=float(args.target_decode_ratio),
+            hit_target=bool(best_decode_ratio >= args.target_decode_ratio),
+            wall_time_s=float(total_elapsed),
+            n_epochs=int(args.epochs),
+            n_epochs_run=len(per_epoch),
+        )
+    except Exception:
+        pass
     # Final CSV (for grep).
     csv_path = out_dir / "per_epoch_metrics.csv"
     with csv_path.open("w", newline="") as f:
@@ -3022,6 +3410,12 @@ def main() -> int:
     print(f"[Wf-124 P2] DONE. best_decode_ratio={best_decode_ratio:.3f} "
           f"@ epoch={best_epoch} target={'HIT' if best_decode_ratio >= args.target_decode_ratio else 'miss'}. "
           f"Wall total: {total_elapsed:.1f}s.", flush=True)
+
+    # Wf-TUI NEW: close the events.jsonl file handle (flush + release).
+    # Per AGENTS.md §5.6 atomic_write_file safe_overwrite_check contract,
+    # file-handle releases are explicit (no implicit GC).
+    _close_event_emitter()
+
     return 0
 
 

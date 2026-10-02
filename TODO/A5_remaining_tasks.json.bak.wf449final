@@ -1,0 +1,337 @@
+{
+  "schema_version": "1.0",
+  "created_at": "2026-10-03",
+  "wave": "Wf-A5 (post Wf-A4 audit + GPU retraining launch readiness)",
+  "context": "Audit per AGENTS.md §5.5 filesystem-truth rule + §5.7 trainer flag wire-in smoke-required rule + §5.6 atomic write protocol adoption rule",
+  "agent_role": "Senior trainer integration engineer; USER_OK=1 granted per AGENTS.md §5.1",
+  "constraints": {
+    "env": "/home/hugo/codes/mol-metal/.venv/bin/python (AGENTS.md §5.9 single-venv rule)",
+    "gpu": "cuda:0 RTX PRO 6000 Blackwell 98GB + cuda:1 RTX 5090 32GB (verified Wf-407-A1)",
+    "user_ok": "1 (granted 2026-09-30, reaffirmed Wf-431-A1)",
+    "no_paper_work": "TODO-84 active (no paper/* touches)",
+    "no_wetlab": "AGENTS.md §5.4 + §10 (no wet-lab planning)",
+    "honest_framing": "party-twenty-spirit §3.5 (MEASURED-vs-PROJECTED label discipline)",
+    "atomic_write": "AGENTS.md §5.6 (atomic_write_file from molmetal/scripts/wf386a3_atomic_write.py for all writes)",
+    "smoke_required": "AGENTS.md §5.7 NEW (50-step CPU smoke after every wire-in)",
+    "filesystem_truth": "AGENTS.md §5.5 (ls -la evidence per rule #2; closeout_author() rule #1)"
+  },
+  "tasks": [
+    {
+      "id": "A1",
+      "title": "TODO-200 Wf-340+353 deep integration: 5 SCAFFOLD flags wired into cfm trainer loss cascade",
+      "type": "code_patch",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "line_target": "loss = bond_ce + w2_val (or similar) inside train_one_epoch_joint",
+      "status": "SCAFFOLD_ONLY",
+      "est_loc": 80,
+      "est_wall_cpu_min": 10,
+      "deps": [],
+      "flags_to_wire": [
+        "--edm-preconditioning (per Wf-340-A1)",
+        "--shortcut-distill (per Wf-353-A2)",
+        "--consistency-weight (per Wf-353-A3)",
+        "--so3-average (per Wf-340-A4)",
+        "--use-ot-cfm (per Wf-340-A2)"
+      ],
+      "already_in_trainer": "function kwargs registered in parse_args + function signature (lines 690-737 per Wf-A4 audit); NOT called in main loop loss cascade",
+      "action": "Add 5 if/else blocks in loss cascade that conditionally add each SCAFFOLD module's contribution when its flag is set (default OFF preserves bit-for-bit backward compat with Wf-131 P1 + Wf-380-B1 baseline). For each: import SCAFFOLD module at function top, dispatch via if flag_name: loss += weight * module.compute(pred, target).",
+      "verify": [
+        "§5.7 50-step CPU smoke via molmetal/scripts/wf399a1_smoke_protocol.py run --trainer molmetal/scripts/train_cfm_yuelbond_wasserstein.py --flags --edm-preconditioning --shortcut-distill --consistency-weight --so3-average --use-ot-cfm",
+        "decode_ratio > 0 + loss[0] > loss[49] monotone non-increasing per §5.7 rule (a)+(b)+(c)+(d)",
+        "bash -n molmetal/scripts/train_cfm_yuelbond_wasserstein.py SYNTAX_OK"
+      ],
+      "closeout": "TODO/completed/A5a1_todo200_cfm_loss_wire.md + 1 NEW §22 INDEX entry + 1 NEW §6 AGENTS.md row"
+    },
+    {
+      "id": "A2",
+      "title": "TODO-201 m2 per-cohort features: cfm trainer effective_alpha override hook",
+      "type": "code_patch",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "line_target": "around line 800+ in train_one_epoch_joint loss computation",
+      "status": "SCAFFOLD_ONLY (dmpnn trainer already has it per Wf-A4; cfm trainer missing)",
+      "est_loc": 30,
+      "est_wall_cpu_min": 5,
+      "deps": ["A1"],
+      "flag_to_wire": [
+        "--per-cohort-features (per Wf-380-A2 + Wf-298 P3 chemprop v3 + Wf-380-A2 per-cohort features)"
+      ],
+      "action": "Mirror the Wf-A4 dmpnn trainer patch to cfm trainer: add per_cohort_features function kwarg + effective_alpha override block calling select_features(int(len(train_pool_idx))).",
+      "verify": [
+        "§5.7 50-step CPU smoke --flags --per-cohort-features",
+        "loss[0] > loss[49] monotone non-increasing per §5.7 rule (d)"
+      ],
+      "closeout": "TODO/completed/A5a2_todo201_cfm_per_cohort.md + 1 NEW §22 INDEX entry"
+    },
+    {
+      "id": "A3",
+      "title": "TODO-202 m7 diversity: sa_penalty actual loss cascade hook",
+      "type": "code_patch",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "line_target": "around line 800-1000 in train_one_epoch_joint loss computation (where sa_penalty flag exists as function kwarg but only 2 comment matches per Wf-A4 audit)",
+      "status": "SCAFFOLD_ONLY",
+      "est_loc": 20,
+      "est_wall_cpu_min": 5,
+      "deps": ["A1"],
+      "flag_to_wire": [
+        "--sa-penalty (per Wf-380-A6)"
+      ],
+      "already_in_trainer": "function kwarg registered (line 700) + 16 places diversity dispatch uses it for condition check; NOT actually applied to loss",
+      "action": "Add loss cascade term: if sa_penalty > 0: loss += sa_penalty * _sa_module.penalty(...) where _sa_module is sa_generation_penalty from molmetal/adapters/flow_matching_lipman/sa_penalty.py (Wf-380-A6 SCAFFOLD).",
+      "verify": [
+        "§5.7 50-step CPU smoke --flags --sa-penalty 0.5",
+        "loss[0] > loss[49] monotone non-increasing"
+      ],
+      "closeout": "TODO/completed/A5a3_todo202_sa_penalty_wire.md + 1 NEW §22 INDEX entry"
+    },
+    {
+      "id": "A4",
+      "title": "Wf-394 Lambda × CFM coupling: apply Wf-406-A2 + Wf-410-A2 + Wf-414-A2 patches to trainer",
+      "type": "code_patch",
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "line_target": "parse_args + train_one_epoch_joint + loss computation",
+      "status": "SCAFFOLD_ONLY (patches SHIPPED at Wf-406-A2 + Wf-410-A2 + Wf-414-A2 but never applied)",
+      "est_loc": 50,
+      "est_wall_cpu_min": 8,
+      "deps": ["A1"],
+      "flags_to_wire": [
+        "--lambda-cfm-coupling (store_true)",
+        "--lambda-cfm-coupling-weight (float)",
+        "--lambda-cfm-coupling-samples (int)"
+      ],
+      "already_in_trainer": "lambda_cfm_coupling_weight: float = 0.0 in function kwarg (line 708 per Wf-A4 audit); but dataset-build block + loss-multiplier block from Wf-406-A2 NOT applied",
+      "action": "Apply Wf-406-A2 patches: 3 add_argument() calls in parse_args + dataset-build block at main() + loss-multiplier block in train_one_epoch_joint. Per Wf-410-A2 audit heuristic expansion: line-based regex grep expansion for both OLD shape (lambda_reward_dataset.mean_weight) + NEW shape (lambda_cfm_coupling_weight).",
+      "verify": [
+        "§5.7 50-step CPU smoke --flags --lambda-cfm-coupling --lambda-cfm-coupling-weight 0.1",
+        "loss[0] > loss[49] monotone non-increasing",
+        "molmetal/tests/test_wf410a2_lambda_cfm_audit.py 1/1 PASS"
+      ],
+      "closeout": "TODO/completed/A5a4_wf394_lambda_cfm_apply.md + 1 NEW §22 INDEX entry"
+    },
+    {
+      "id": "A5",
+      "title": "TODO-204 m15 RMSD multi-template + MM-GBSA: replace closed-form surrogate with real meeko + Vina + GBSA binaries",
+      "type": "code_replace",
+      "file": "molmetal/scripts/wf404a2_rmsd_multitemplate_scaffold.py",
+      "status": "MOCK (closed-form surrogate only; no real binary integration per Wf-405-A3 §0 + Wf-404-A2 §0)",
+      "est_loc": 200,
+      "est_wall_cpu_min": 30,
+      "deps": [],
+      "action": "Replace surrogate_backend with: (1) meeko SMILES→PDBQT via subprocess.run(['mk_prepare_ligand.py', ...]) or python API; (2) Vina docking via subprocess.run(['vina', '--config', conf, '--out', out_pdbqt, '--log', log]); (3) GBSA scoring via subprocess.run(['gbsa', ...]) or Gnina. Preserve closed-form fallback for hosts without binaries (per §10 wetlab deprecation - this is MEASURED-on-host, not wet-lab work).",
+      "verify": [
+        "Smoke: python molmetal/scripts/wf404a2_rmsd_multitemplate_scaffold.py --help exits 0",
+        "Real-binary path runs on cuda:0 host (meeko + Vina + GBSA installed)",
+        "Smoke 3-template × 3-pose produces valid PDBQT outputs (RMSD computed against crystal pose)"
+      ],
+      "closeout": "TODO/completed/A5a5_todo204_real_backend.md + 1 NEW §22 INDEX entry"
+    },
+    {
+      "id": "A6",
+      "title": "Wf-246-C metal-coordination term: patch dmpnn trainer + scaffold launch wrapper ready",
+      "type": "code_patch",
+      "file": "molmetal/scripts/train_dmpnn_multitask_wasserstein.py",
+      "line_target": "criterion = MultiTaskLoss(alpha=effective_alpha) line near line 902 (per Wf-A4 patch)",
+      "status": "SCAFFOLD_ONLY (wrapper scripts/launch_wf409a3_metal_coord_retrain.sh + SCAFFOLD script at molmetal/scripts/wf409a3_metal_coord_retrain_scaffold.py SHIPPED; trainer missing --metal-coord-term flag)",
+      "est_loc": 30,
+      "est_wall_cpu_min": 5,
+      "deps": ["A2"],
+      "flag_to_wire": [
+        "--metal-coord-term (per Wf-246-C)"
+      ],
+      "already_in_trainer": "kcal_sign_audit verified at molmetal/molmetal_lam/sbdd_env/metal_coord_term.py:635 per Wf-409-A3 §1 (post-Wf-333-V1 fix (1 - 2*comp)*kcal_per_unit) but NOT exposed as trainer CLI flag",
+      "action": "Add --metal-coord-term flag + if flag: criterion outputs include kcal_loss term = metal_coord_term.kcal_loss(pred, ref). Bit-for-bit backward compat when flag OFF (default).",
+      "verify": [
+        "§5.7 50-step CPU smoke --flags --metal-coord-term",
+        "loss[0] > loss[49] monotone non-increasing",
+        "kcal_sign_audit_pass=True (from SCAFFOLD)"
+      ],
+      "closeout": "TODO/completed/A5a6_wf246c_metal_coord_patch.md + 1 NEW §22 INDEX entry"
+    },
+    {
+      "id": "C1",
+      "title": "Wf-A4 retroactive A4_launch_readiness.md closeout",
+      "type": "doc_only",
+      "file": "TODO/completed/A4_launch_readiness.md",
+      "status": "MISSING (Launch agent stalled 248s per Wf-A4 workflow journal; never wrote closeout)",
+      "est_wall_cpu_min": 2,
+      "deps": [],
+      "action": "Write retroactive closeout documenting: Launch agent stalled at 248s, no GPU launch triggered, A5 B1-B3 launches are the recovery path. Use atomic_write_file per §5.6.",
+      "verify": [
+        "ls -la TODO/completed/A4_launch_readiness.md exists",
+        "file size > 1KB",
+        "1 NEW §22 INDEX entry appended"
+      ],
+      "closeout": "None (this IS the closeout)"
+    },
+    {
+      "id": "C2",
+      "title": "Wf-A5 sync: AGENTS.md §6 row + INDEX.md §22 trailer",
+      "type": "doc_only",
+      "file": "AGENTS.md + TODO/INDEX.md",
+      "status": "PENDING",
+      "est_wall_cpu_min": 3,
+      "deps": ["A1", "A2", "A3", "A4", "A5", "A6", "C1"],
+      "action": "Append 1 NEW §6 row to AGENTS.md (after Wf-A4 trailer) + 1 NEW §22 INDEX entry to TODO/INDEX.md. Atomic write_closeout per §5.6.",
+      "verify": [
+        "grep -c '^## §22' TODO/INDEX.md increments by 1",
+        "AGENTS.md §6 trailer has Wf-A5 line"
+      ],
+      "closeout": "TODO/completed/A5_final_synthesis.md"
+    },
+    {
+      "id": "B1",
+      "title": "Wf-299 CFM 3-Wave Launch Wave A on cuda:0 Blackwell",
+      "type": "gpu_launch",
+      "wrapper": "scripts/launch_wf299_cfm_main.sh",
+      "args": "--wave A",
+      "wall_hr_gpu": 5,
+      "dep_cpu": ["A1", "A2", "A3", "A4"],
+      "launch_command": "cd /home/hugo/codes/mol-metal && USER_OK=1 nohup bash scripts/launch_wf299_cfm_main.sh --wave A > molmetal/reports/wf299_cfm_main/wave_a/Wf-A5-launch.log 2>&1 &",
+      "status": "BLOCKED on A1-A4 CPU patches",
+      "verify": [
+        "nvidia-smi --query-gpu=memory.free,utilization.gpu --format=csv,noheader shows cuda:0 active",
+        "molmetal/reports/wf299_cfm_main/wave_a/DRY_RUN.log + plan.json + 4 ablation configs (full_stack + yuelbond_only + w2_only + catherine_only) emit exit 0 + decode_ratio > 0",
+        "process PID logged"
+      ],
+      "closeout": "TODO/completed/A5b1_wf299_wave_a_launch.md + 1 NEW §22 INDEX entry"
+    },
+    {
+      "id": "B2",
+      "title": "Wf-125 P1 CONTROLD PAIR retrain on cuda:1 RTX 5090 (3 CONTROLD PAIR runs)",
+      "type": "gpu_launch",
+      "wrapper": "scripts/launch_wf125_p1_controlled_pair.sh",
+      "args": "--real (corrected interface per Wf-424-A10 §0.1.4)",
+      "wall_hr_gpu": 6,
+      "dep_cpu": ["A2"],
+      "launch_command": "cd /home/hugo/codes/mol-metal && USER_OK=1 nohup bash scripts/launch_wf125_p1_controlled_pair.sh --real > molmetal/reports/wf125_p1_controlled_pair/Wf-A5-launch.log 2>&1 &",
+      "status": "BLOCKED on A2 (per-cohort features)",
+      "verify": [
+        "balanced_rh_cohort.json loads 250 active SMILES (per Wf-387-A2)",
+        "3 CONTROLD PAIR runs sequential on cuda:1: synthetic vs real vs none",
+        "metrics/by_metric/metal_lomo_auc_wasserstein.json updates 7/7 → 7/7 runs complete (or 8/7 per Wf-413-A1 extension)"
+      ],
+      "closeout": "TODO/completed/A5b2_wf125_controlled_pair.md + 1 NEW §22 INDEX entry"
+    },
+    {
+      "id": "B3",
+      "title": "Wf-390 Path A 5-metal × 3-seed × 50-epoch m2 R² GPU retrain on cuda:0 Blackwell",
+      "type": "gpu_launch",
+      "wrapper": "scripts/launch_wf390a1_m2_r2_path_a.sh",
+      "args": "(none; uses --metals + --epochs + --seeds from YAML)",
+      "wall_hr_gpu": 12,
+      "dep_cpu": ["A1", "A2", "A6"],
+      "launch_command": "cd /home/hugo/codes/mol-metal && USER_OK=1 nohup bash scripts/launch_wf390a1_m2_r2_path_a.sh > molmetal/reports/wf390a1_m2_r2_path_a/Wf-A5-launch.log 2>&1 &",
+      "status": "BLOCKED on A1+A2+A6 CPU patches + Wf-424-A12 NameError fix",
+      "verify": [
+        "DRY_RUN.log shows 15 (metal, seed) pairs: Ru/Ir/Rh/Os/Re × {0,1,2}",
+        "§5.7 smoke passes (loss[0] > loss[49] + decode_ratio > 0)",
+        "MEASURED R² on metalcytotox_combined ≥ +0.05 vs Wf-335-M2 baseline +0.2227"
+      ],
+      "closeout": "TODO/completed/A5b3_wf390_path_a.md + 1 NEW §22 INDEX entry"
+    },
+    {
+      "id": "B4",
+      "title": "Wf-380 SCAFFOLD-loss retrain wrapper authoring + launch on cuda:0 Blackwell",
+      "type": "wrapper_author_plus_gpu_launch",
+      "wrapper_target": "scripts/launch_wf380_scaffold_loss_retrain.sh",
+      "wall_hr_gpu": 10,
+      "dep_cpu": ["A1", "A2", "A3"],
+      "status": "BLOCKED on A1+A2+A3 CPU patches",
+      "action": "First author wrapper modelled on scripts/launch_wf299_cfm_main.sh (USER_OK gate + preflight call + YAML parse + 4 ablation configs per configs/cfm_per_innovation_ablation_p1.4.yaml). Then launch.",
+      "launch_command": "cd /home/hugo/codes/mol-metal && USER_OK=1 nohup bash scripts/launch_wf380_scaffold_loss_retrain.sh > molmetal/reports/wf380_scaffold_loss/Wf-A5-launch.log 2>&1 &",
+      "verify": [
+        "wrapper dry-run exits 0 with 4 ablation configs enumerated",
+        "actual GPU run produces MEASURED m7 + m4 + m3 lift per Wf-380 SCAFFOLD assumptions"
+      ],
+      "closeout": "TODO/completed/A5b4_wf380_scaffold_loss.md + 1 NEW §22 INDEX entry"
+    },
+    {
+      "id": "B5",
+      "title": "Wf-394 Lambda × CFM coupling GPU retrain on cuda:0 Blackwell",
+      "type": "gpu_launch",
+      "wrapper": "(uses launch_wf299_cfm_main.sh with --lambda-cfm-coupling flags after A4 patch)",
+      "wall_hr_gpu": 5,
+      "dep_cpu": ["A4"],
+      "launch_command": "cd /home/hugo/codes/mol-metal && USER_OK=1 nohup bash scripts/launch_wf299_cfm_main.sh --wave A --lambda-cfm-coupling --lambda-cfm-coupling-weight 0.1 > molmetal/reports/wf394_lambda_cfm/Wf-A5-launch.log 2>&1 &",
+      "status": "BLOCKED on A4 CPU patch",
+      "verify": [
+        "MEASURED per Wf-406-A2 patch + Wf-410-A2 + Wf-414-A2 verification chain",
+        "loss curve demonstrates Lambda × CFM joint contribution"
+      ],
+      "closeout": "TODO/completed/A5b5_wf394_lambda_cfm.md + 1 NEW §22 INDEX entry"
+    },
+    {
+      "id": "B6",
+      "title": "Wf-246-C metal-coordination term GPU retrain on cuda:0 Blackwell",
+      "type": "gpu_launch",
+      "wrapper": "scripts/launch_wf409a3_metal_coord_retrain.sh",
+      "wall_hr_gpu": 3,
+      "dep_cpu": ["A6"],
+      "launch_command": "cd /home/hugo/codes/mol-metal && USER_OK=1 nohup bash scripts/launch_wf409a3_metal_coord_retrain.sh > molmetal/reports/wf409a3_metal_coord/Wf-A5-launch.log 2>&1 &",
+      "status": "BLOCKED on A6 CPU patch",
+      "verify": [
+        "MEASURED m18 + m19 + m20 lift per Wf-246-C SCAFFOLD assumptions",
+        "kcal_sign_audit passes post-launch"
+      ],
+      "closeout": "TODO/completed/A5b6_wf246c_metal_coord.md + 1 NEW §22 INDEX entry"
+    },
+    {
+      "id": "B7",
+      "title": "Wf-124 P3 remaining 14 pairs + 50-epoch sweep + per-innovation ablation (post-G6 todos closed)",
+      "type": "gpu_launch_multi",
+      "wrapper": "scripts/launch_wf131_p3_deferred_runs.sh + Wf-124 P3 ablation variants",
+      "wall_hr_gpu": 25,
+      "dep_cpu": [],
+      "launch_command": "cd /home/hugo/codes/mol-metal && USER_OK=1 nohup bash scripts/launch_wf131_p3_deferred_runs.sh --metals Ru Ir Os Rh Re --seeds 0 1 2 > molmetal/reports/wf131_p3_deferred_runs/Wf-A5-launch.log 2>&1 &",
+      "status": "READY (wrapper exists per Wf-355-B1)",
+      "verify": [
+        "14 (metal, seed) pairs complete on RTX 5090",
+        "5-fold × per-innovation ablation 4 configs × 30 epochs each",
+        "metrics/by_metric/m1_auc_wasserstein.json update 14/15 → 15/15 runs"
+      ],
+      "closeout": "TODO/completed/A5b7_wf124_p3_ablation.md + 1 NEW §22 INDEX entry"
+    }
+  ],
+  "execution_plan": {
+    "stage_1_cpu_patches": {
+      "order": ["A1", "A2", "A3", "A4", "A6", "A5"],
+      "wall_cpu_min_est": 60,
+      "rationale": "A1 is largest (5 SCAFFOLD flags); A2/A3/A4/A6 smaller follow-ups; A5 is meeko/Vina real binary replacement (most independent, can run anytime)"
+    },
+    "stage_2_doc_sync": {
+      "order": ["C1", "C2"],
+      "wall_cpu_min_est": 5,
+      "rationale": "C1 retroactive closeout (Wf-A4 missed); C2 final AGENTS + INDEX sync after stage_1 completes"
+    },
+    "stage_3_gpu_launches": {
+      "order": [
+        ["B1", "B2", "B7"],
+        ["B4", "B5"],
+        ["B3", "B6"]
+      ],
+      "wall_gpu_hr_est": 15,
+      "rationale": "Stage 3 batch 1 (parallel on cuda:0 + cuda:1): Wf-299 Wave A (5hr) + Wf-125 CONTROLD PAIR (6hr on cuda:1) + Wf-131 P3 deferred runs (25hr — can run concurrently on cuda:1). Batch 2 (sequential on cuda:0): Wf-380 SCAFFOLD-loss (10hr) + Wf-394 Lambda CFM (5hr). Batch 3 (sequential on cuda:0): Wf-390 Path A (12hr) + Wf-246-C (3hr) post-A6 patch."
+    }
+  },
+  "honest_framing": {
+    "real_code_work_done_by_wf_a4": "30 lines ADDED to molmetal/scripts/train_dmpnn_multitask_wasserstein.py (Wf-424-A12 + TODO-201 wire-in effective_alpha override); 7 closeout md files + INDEX.md 8 entries + AGENTS.md 1 row",
+    "real_code_work_done_by_prior_waves_for_cfm": "16 SCAFFOLD flags registered as function kwargs in train_cfm_yuelbond_wasserstein.py (Wf-380-B1 + Wf-388-A2/A3 + Wf-408-A2 + Wf-409-A1 + Wf-410-A2 + Wf-431-B1); diversity dispatch with 16 places uses top_p/top_k/mmd_weight/repulsion_weight/scaffold_conditioning as condition checks; stable_vm has 1 actual loss cascade wire (line 802)",
+    "real_code_work_still_pending": [
+      "A1: 5 SCAFFOLD flags (edm_preconditioning / shortcut_distill / consistency_weight / so3_average / use_ot_cfm) function kwargs present but 0 calls in loss cascade",
+      "A2: cfm trainer per_cohort_features hook (dmpnn trainer has it per Wf-A4; cfm missing)",
+      "A3: cfm trainer sa_penalty actual loss hook (only 2 comment matches exist)",
+      "A4: Wf-406-A2 + Wf-410-A2 + Wf-414-A2 Lambda × CFM patches exist but never applied to trainer",
+      "A5: TODO-204 closed-form surrogate → real meeko + Vina + GBSA binaries",
+      "A6: Wf-246-C metal-coord term as dmpnn trainer flag"
+    ],
+    "real_gpu_work_pending": [
+      "B1: Wf-299 Wave A (~5hr)",
+      "B2: Wf-125 CONTROLD PAIR (~6hr on cuda:1)",
+      "B3: Wf-390 Path A (~12hr)",
+      "B4: Wf-380 SCAFFOLD-loss (~10hr, post wrapper authoring)",
+      "B5: Wf-394 Lambda CFM (~5hr, post A4)",
+      "B6: Wf-246-C (~3hr, post A6)",
+      "B7: Wf-124 P3 14 pairs + ablation (~25hr)"
+    ],
+    "wf_a4_honest_failure_mode": "Wf-A4 reported 6/6 SCAFFOLD flags wired but actual code changes were limited to 30 lines in dmpnn trainer for Wf-424-A12 + TODO-201 wire-in only; cfm trainer SCAFFOLD flags were ALREADY wired by prior waves so Wf-A4 had no new cfm trainer code to write; Wf-A4 closeouts claimed work that was either already done or never happened per §5.5 filesystem-truth audit"
+  }
+}
