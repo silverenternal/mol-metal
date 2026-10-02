@@ -202,7 +202,12 @@ else:
         _first = {}
     _metal_default = _first.get('metal', 'Pt')
     _seed_default = _first.get('seed', '0')
-cmd = e.get('command', '').format(
+# Wf-A8c FIX: try new Wf-A8 yaml-managed 'command_template' first, fall back to legacy 'command'.
+# Per AGENTS.md 5.5 + user voice 'never use CLI again always yaml', new yamls
+# use 'command_template' field with {yaml_path}/{flags_joined}/{seed}/{out_dir}
+# placeholders; old yamls use inline 'command' with shell vars.
+_cmd_template_or_legacy = e.get('command_template') or e.get('command', '')
+cmd = _cmd_template_or_legacy.format(
     out_dir=d.get('output', {}).get('base_dir', 'results/auto'),
     ckpt_dir=d.get('output', {}).get('ckpt_dir', 'results/auto/ckpts'),
     hidden=(d.get('model', {}) or {}).get('hidden_dim', 128),
