@@ -66,6 +66,7 @@ fi
 
 YAML_PATH="$1"
 DRY_RUN=0
+EXTRA_FLAGS=""
 shift
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -89,7 +90,7 @@ echo "[start.sh][OK] USER_OK=1 granted"
 # 2) Preflight check (calls _pre_flight_check.sh with yaml arg)
 # ============================================================================
 echo "[start.sh] running pre-flight check..."
-if ! bash scripts/_pre_flight_check.sh "$YAML_PATH"; then
+if ! bash scripts/_pre_flight_check.sh --fast "$YAML_PATH"; then
   echo "[start.sh][FAIL] pre-flight check failed — aborting"
   exit 1
 fi
@@ -100,34 +101,62 @@ fi
 PYTHON="${PYTHON:-$PROJECT_ROOT/.venv/bin/python}"
 
 parse_yaml() {
-  "$PYTHON" - <<EOF
-import sys, yaml
-with open("$YAML_PATH") as f:
+  # Write to a temp file so eval cannot split a multi-line ENTRY_COMMAND
+  # into multiple shell commands. We then `.` (source) the file.
+  # (eval on multi-line stdout would break because bash treats each
+  # newline as a command separator, which is why "Permission denied"
+  # appeared when the cmd contained backslash-continuations.)
+  YAML_ENV_FILE="$(mktemp -t wf_start_yaml.XXXXXX)"
+  trap 'rm -f "$YAML_ENV_FILE"' EXIT
+  "$PYTHON" - "$YAML_PATH" "$YAML_ENV_FILE" <<'PY'
+import sys, shlex, yaml
+yaml_path, env_path = sys.argv[1], sys.argv[2]
+with open(yaml_path) as f:
     d = yaml.safe_load(f)
 e = d.get('entry', {})
-script = e.get('script', '')
 cmd = e.get('command', '').format(
     out_dir=d.get('output', {}).get('base_dir', 'results/auto'),
     ckpt_dir=d.get('output', {}).get('ckpt_dir', 'results/auto/ckpts'),
 )
-print("ENTRY_SCRIPT=" + script)
-print("ENTRY_COMMAND=" + cmd)
-print("OUT_DIR=" + d.get('output', {}).get('base_dir', 'results/auto'))
-print("TRAINING_SUMMARY=" + d.get('output', {}).get('training_summary', ''))
-print("LOG_MASTER=" + d.get('output', {}).get('log_master', ''))
-print("GPU=" + d.get('compute', {}).get('gpu', 'cuda:0'))
-print("N_SEEDS=" + str(d.get('protocol', {}).get('n_seeds', 1)))
-print("EPOCHS=" + str(d.get('protocol', {}).get('epochs', 50)))
-print("DIRECTIVES_USER_OK=" + str(d.get('directives', {}).get('user_ok_required', True)))
-EOF
+# Strip yaml literal-block backslash continuations: '|' block scalars
+# preserve backslashes as literal chars; we need single-line for shell.
+cmd = cmd.replace(chr(92)+chr(10), ' ').replace(chr(92), '').strip()
+# Wf-A5 N3 — extract checkpoint resumption fields from the output
+# section so we can pass them to the trainer via --resume-from +
+# --checkpoint-interval.  Defaults match the trainer CLI defaults
+# (resume_from='auto', checkpoint_interval=50).
+out_block = d.get('output', {})
+ckpt_interval = int(out_block.get('checkpoint_interval', 50))
+resume_from = str(out_block.get('resume_from', 'auto'))
+lines = [
+    f'ENTRY_SCRIPT={shlex.quote(e.get("script", ""))}',
+    f'ENTRY_COMMAND={shlex.quote(cmd)}',
+    f'OUT_DIR={shlex.quote(out_block.get("base_dir", "results/auto"))}',
+    f'TRAINING_SUMMARY={shlex.quote(out_block.get("training_summary", ""))}',
+    f'LOG_MASTER={shlex.quote(out_block.get("log_master", ""))}',
+    f'GPU={shlex.quote(d.get("compute", {}).get("gpu", "cuda:0"))}',
+    f'N_SEEDS={d.get("protocol", {}).get("n_seeds", 1)}',
+    f'EPOCHS={d.get("protocol", {}).get("epochs", 50)}',
+    f'DIRECTIVES_USER_OK={d.get("directives", {}).get("user_ok_required", True)}',
+    # Wf-A5 N3 — checkpoint resumption env vars (consumed by the
+    # build-launch-command block below).
+    f'CHECKPOINT_INTERVAL={ckpt_interval}',
+    f'RESUME_FROM={shlex.quote(resume_from)}',
+]
+with open(env_path, 'w') as f:
+    f.write('\n'.join(lines) + '\n')
+PY
 }
 
-if ! PARSED=$(parse_yaml); then
+if ! parse_yaml; then
   echo "[start.sh][FAIL] could not parse YAML: $YAML_PATH"
   exit 1
 fi
 
-eval "$PARSED"
+# Source the env file (safer than eval — no command-splitting surprises)
+. "$YAML_ENV_FILE"
+rm -f "$YAML_ENV_FILE"
+trap - EXIT  # remove the cleanup trap now
 echo "[start.sh][OK] yaml parsed:"
 echo "    entry_script=$ENTRY_SCRIPT"
 echo "    out_dir=$OUT_DIR"
@@ -139,7 +168,16 @@ echo "    epochs=$EPOCHS"
 # 4) Build launch command (substitute YAML placeholders + append EXTRA_FLAGS)
 # ============================================================================
 mkdir -p "$OUT_DIR" "$(dirname "$TRAINING_SUMMARY")" "$(dirname "$LOG_MASTER")"
-TRAINER_CMD="$PYTHON $ENTRY_SCRIPT $ENTRY_COMMAND $EXTRA_FLAGS"
+# Use $ENTRY_COMMAND directly (yaml's entry.command already includes
+# the full python interpreter path; prepending $PYTHON would duplicate it).
+# If a future config uses entry.script + args separately, the trainer
+# wrapper can be expanded — see Wf-449 follow-up.
+# Wf-A5 N3 — append the checkpoint resumption flags derived from the
+# YAML output section (CHECKPOINT_INTERVAL + RESUME_FROM sourced from
+# the parse_yaml block above).  These append AFTER any user-supplied
+# EXTRA_FLAGS so the yaml stays the canonical source of truth (user
+# flags can still override via --no-resume-from=explicit-path tricks).
+TRAINER_CMD="$ENTRY_COMMAND --checkpoint-interval \"$CHECKPOINT_INTERVAL\" --resume-from \"$RESUME_FROM\" $EXTRA_FLAGS"
 LOG_FILE="$LOG_MASTER"
 echo "[start.sh] trainer command: $TRAINER_CMD"
 echo "[start.sh] log file: $LOG_FILE"

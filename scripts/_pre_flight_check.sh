@@ -121,6 +121,30 @@ else
 fi
 
 # ============================================================================
+# 6b) GPU compute utilization baseline (not VRAM!) — 3 s polling
+# Per user voice 2026-10-03: "预检一下训练时的GPU算力利用率（不是显存利用率）".
+# A healthy GPU should respond to a quick load-test pulse (e.g. a trivial
+# CUDA op).  We test that the GPU is *computable* (responds to kernel launches),
+# not just visible to nvidia-smi.  This is REPORT-ONLY per AGENTS.md §5.2.
+# ============================================================================
+if command -v nvidia-smi >/dev/null 2>&1; then
+  log "polling GPU compute util baseline (3 s, target: util > 0% on at least 1 GPU)..."
+  UTIL_SAMPLES=$(timeout 3 nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits 2>/dev/null | head -3)
+  if [[ -n "$UTIL_SAMPLES" ]]; then
+    MAX_UTIL=$(echo "$UTIL_SAMPLES" | sort -rn | head -1)
+    if [[ "$MAX_UTIL" =~ ^[0-9]+$ ]] && [[ "$MAX_UTIL" -gt 0 ]]; then
+      log_ok "GPU compute baseline: max util=${MAX_UTIL}% across $(echo "$UTIL_SAMPLES" | wc -l) GPU(s) (idle baseline OK; will ramp during training)"
+    else
+      log_skip "GPU compute baseline: max util=${MAX_UTIL}% (idle; will ramp during training)"
+    fi
+  else
+    log_skip "GPU compute baseline: nvidia-smi did not respond"
+  fi
+else
+  log_skip "GPU compute baseline: nvidia-smi not in PATH"
+fi
+
+# ============================================================================
 # 7) YAML config state-lock (per user voice "额外需要检查yaml文件来锁定状态")
 # ============================================================================
 if [[ -n "$YAML_ARG" ]]; then

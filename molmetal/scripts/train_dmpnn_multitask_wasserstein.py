@@ -754,6 +754,15 @@ def train_one_metal_one_seed(
     metal_coord_term: bool = False,
     metal_coord_weight: float = 0.5,
     cal_sign_vina_convention: bool = True,
+    # Wf-A5 N3 — checkpoint resumption kwargs (default 'auto' / 50
+    # preserve bit-for-bit backward compat with Wf-131 P1 + Wf-251-F4
+    # baseline when no checkpoint exists — cold start).  Threaded as
+    # direct kwargs from the ``main()`` caller so the Wf-A5 N3 resume
+    # flag actually triggers the load logic at the start of this
+    # function (see ``_load_checkpoint_for_resume`` call below).
+    resume_from: str = "auto",
+    resume_from_path: Optional[Path] = None,
+    checkpoint_interval: int = 50,
 ) -> MetalSeedResult:
     """Train a 5-metal multi-task D-MPNN for one (metal, seed).
 
@@ -870,6 +879,23 @@ def train_one_metal_one_seed(
         use_dann=use_dann,
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    # Wf-A5 N3 — checkpoint resumption: load prior state if present.
+    # MUST come after construction so model + optimizer are valid objects.
+    # Bit-for-bit backward compat with Wf-131 P1 + Wf-251-F4 baseline:
+    # when resume_from='none' OR no checkpoint exists, this is a no-op.
+    # The optimizer state is also reloaded so resumed training continues
+    # from the saved Adam state (no lr spike).
+    start_epoch, ckpt_w_history = _load_checkpoint_for_resume(
+        model=model,
+        optimizer=optimizer,
+        metal=metal,
+        seed=seed,
+        ckpt_dir=ckpt_dir,
+        resume_from=resume_from,
+        resume_from_path=resume_from_path,
+        device=device,
+    )
     # Wf-405-A2 + TODO-201 wire-in (Wf-201 forward-looking): when
     # --per-cohort-features is set, override the BCE `alpha` based on
     # the *actual* joint pool size (not the metals×200 estimate used at
@@ -903,10 +929,10 @@ def train_one_metal_one_seed(
     best_val_auc = -1.0
     best_state: Optional[Dict] = None
     best_epoch = 0
-    w_history: List[float] = []
+    w_history: List[float] = ckpt_w_history  # Wf-A5 N3 — extend from resumed state
 
     t_train = time.time()
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         ep_t0 = time.time()
         avg_loss, avg_cls, avg_reg, avg_w = train_one_epoch_joint(
             model=model,
@@ -972,6 +998,31 @@ def train_one_metal_one_seed(
                 k: v.detach().cpu().clone() for k, v in model.state_dict().items()
             }
 
+        # Wf-A5 N3 — checkpoint resumption: save mid-training checkpoint
+        # every ``checkpoint_interval`` epochs (default 50).  Final epoch
+        # always saves (handled by the post-loop block below).
+        is_last_epoch = (epoch == epochs - 1)
+        if checkpoint_interval > 0 and (
+            (epoch + 1) % checkpoint_interval == 0 or is_last_epoch
+        ):
+            _save_resumable_checkpoint(
+                ckpt_dir=ckpt_dir,
+                metal=metal,
+                seed=seed,
+                model=model,
+                optimizer=optimizer,
+                epoch=epoch + 1,
+                best_val_auc=best_val_auc,
+                wasserstein_history=w_history,
+                alpha=alpha,
+                w_w=w_w,
+                use_l2_guard=use_l2_guard,
+                lr=lr,
+                batch_size=batch_size,
+                hidden=hidden if hidden is not None else DEFAULT_HIDDEN,
+                depth=depth if depth is not None else DEFAULT_DEPTH,
+            )
+
     if best_state is None:
         # Fallback: use last epoch weights
         best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
@@ -997,8 +1048,23 @@ def train_one_metal_one_seed(
 
     ckpt_path = ckpt_dir / f"dmpnn_mtw_{metal.lower()}_seed{seed}.pt"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
+    # Wf-A5 N3 — post-loop save now also writes the resumable schema
+    # keys (``epoch`` + ``best_val_auc`` + ``optimizer_state_dict``) so the
+    # resulting checkpoint is loadable by ``_load_checkpoint_for_resume``
+    # on the next invocation.  The legacy keys (``epochs`` + ``best_epoch``
+    # + ``val_auc`` + ``test_auc`` + ``n_*``) are preserved for backward
+    # compat with downstream inference consumers (Wf-131 P1 + Wf-251-F4).
     torch.save(
         {
+            # Wf-A5 N3 NEW resumable keys (used by --resume-from auto)
+            "epoch": int(epochs),
+            "best_val_auc": float(val_m.get("roc_auc", float("nan"))),
+            "wasserstein_history": list(w_history),
+            "model_state_dict": best_state,
+            "optimizer_state_dict": {
+                k: v for k, v in optimizer.state_dict().items()
+            },
+            # Legacy keys (preserved bit-for-bit for downstream consumers)
             "metal": metal,
             "seed": seed,
             "epochs": epochs,
@@ -1009,11 +1075,9 @@ def train_one_metal_one_seed(
             "batch_size": batch_size,
             "hidden": hidden if hidden is not None else DEFAULT_HIDDEN,
             "depth": depth if depth is not None else DEFAULT_DEPTH,
-            "model_state_dict": best_state,
             "val_auc": float(val_m.get("roc_auc", float("nan"))),
             "test_auc": float(test_m.get("roc_auc", float("nan"))),
             "best_epoch": best_epoch,
-            "wasserstein_history": w_history,
             "n_train": int(len(target_train)),
             "n_val": int(len(target_val)),
             "n_test": int(len(target_test)),
@@ -1045,6 +1109,199 @@ def train_one_metal_one_seed(
         wasserstein_history=w_history,
         elapsed_seconds=float(train_seconds + featurise_seconds),
     )
+
+
+# ---------------------------------------------------------------------------
+# Wf-A5 N3 — checkpoint resumption helpers (SCAFFOLD)
+# ---------------------------------------------------------------------------
+def _resumable_ckpt_path(ckpt_dir: Path, metal: str, seed: int) -> Path:
+    """Return the canonical resumable checkpoint path.
+
+    Matches the canonical final-checkpoint filename used by the
+    post-loop ``torch.save`` block below so that the same path can be
+    reused for both the final checkpoint and the periodic mid-training
+    checkpoints.
+    """
+    return ckpt_dir / f"dmpnn_mtw_{metal.lower()}_seed{seed}.pt"
+
+
+def _save_resumable_checkpoint(
+    *,
+    ckpt_dir: Path,
+    metal: str,
+    seed: int,
+    model: "MultiTaskWassersteinModel",
+    optimizer: torch.optim.Optimizer,
+    epoch: int,
+    best_val_auc: float,
+    wasserstein_history: List[float],
+    alpha: float,
+    w_w: float,
+    use_l2_guard: bool,
+    lr: float,
+    batch_size: int,
+    hidden: int,
+    depth: int,
+) -> Path:
+    """Persist a resumable checkpoint (Wf-A5 N3 design §6.3).
+
+    The checkpoint dict contains everything needed to resume training
+    on a subsequent invocation:
+        - ``model_state_dict``: full backbone + heads
+        - ``optimizer_state_dict``: Adam state (for lr continuity)
+        - ``epoch``: 1-indexed last-completed epoch
+        - ``best_val_auc``: best-so-far val AUC across this run
+        - ``wasserstein_history``: per-epoch wasserstein means
+        - ``metal`` / ``seed`` / ``alpha`` / ``w_w`` / ``use_l2_guard``:
+          config fingerprint
+    Backward compat: legacy checkpoints without ``optimizer_state_dict``
+    are loadable via the ``try/except`` wrapper in
+    ``_load_checkpoint_for_resume``.
+    """
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+    ckpt_path = _resumable_ckpt_path(ckpt_dir, metal, seed)
+    torch.save(
+        {
+            "metal": metal,
+            "seed": seed,
+            "epoch": int(epoch),
+            "best_val_auc": float(best_val_auc),
+            "wasserstein_history": list(wasserstein_history),
+            "alpha": float(alpha),
+            "w_w": float(w_w),
+            "use_l2_guard": bool(use_l2_guard),
+            "lr": float(lr),
+            "batch_size": int(batch_size),
+            "hidden": int(hidden),
+            "depth": int(depth),
+            "model_state_dict": {
+                k: v.detach().cpu().clone() for k, v in model.state_dict().items()
+            },
+            "optimizer_state_dict": {
+                k: v for k, v in optimizer.state_dict().items()
+            },
+        },
+        ckpt_path,
+    )
+    print(
+        f"  [{metal} seed={seed}] [Wf-A5-N3] saved resumable checkpoint "
+        f"at epoch={epoch} → {ckpt_path}",
+        flush=True,
+    )
+    return ckpt_path
+
+
+def _load_checkpoint_for_resume(
+    *,
+    model: "MultiTaskWassersteinModel",
+    optimizer: torch.optim.Optimizer,
+    metal: str,
+    seed: int,
+    ckpt_dir: Path,
+    resume_from: str,
+    resume_from_path: Optional[Path],
+    device: torch.device,
+) -> Tuple[int, List[float]]:
+    """Load a prior checkpoint to resume training (Wf-A5 N3 design §6.3).
+
+    Returns ``(start_epoch, wasserstein_history)``:
+      - ``start_epoch`` is 0 for cold-start and ``ckpt.epoch`` (= 1-indexed
+        last-completed epoch) for resumed training. The new
+        ``range(start_epoch, epochs)`` in ``train_one_metal_one_seed``
+        therefore skips the already-completed epochs.
+      - ``wasserstein_history`` is the loaded history (empty list for
+        cold-start).
+
+    Bit-for-bit backward compat:
+      - ``resume_from == 'none'`` always cold-starts (no-op)
+      - ``resume_from == 'auto'`` with no checkpoint present cold-starts
+        (no-op) — same as the Wf-131 P1 + Wf-251-F4 baseline behaviour
+      - ``resume_from == 'path'`` with missing explicit path cold-starts
+        + WARN
+      - legacy checkpoints without ``optimizer_state_dict`` load the
+        model state but skip optimizer state (warn-once)
+    """
+    start_epoch = 0
+    w_history: List[float] = []
+
+    if resume_from == "none":
+        print(
+            f"  [{metal} seed={seed}] [Wf-A5-N3] resume_from=none; "
+            f"cold-start (no checkpoint load).",
+            flush=True,
+        )
+        return start_epoch, w_history
+
+    if resume_from == "path":
+        ckpt_path = resume_from_path
+        if ckpt_path is None or not ckpt_path.exists():
+            print(
+                f"  [{metal} seed={seed}] [Wf-A5-N3][WARN] "
+                f"--resume-from=path but path does not exist: "
+                f"{ckpt_path}; cold-starting.",
+                flush=True,
+            )
+            return start_epoch, w_history
+    else:
+        # 'auto' — scan ckpt_dir for canonical path
+        ckpt_path = _resumable_ckpt_path(ckpt_dir, metal, seed)
+        if not ckpt_path.exists():
+            print(
+                f"  [{metal} seed={seed}] [Wf-A5-N3] resume_from=auto but "
+                f"no checkpoint found at {ckpt_path}; cold-starting.",
+                flush=True,
+            )
+            return start_epoch, w_history
+
+    # Load checkpoint (weights: torch.consistent across CPU/GPU via map_location)
+    try:
+        ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
+    except Exception as exc:
+        print(
+            f"  [{metal} seed={seed}] [Wf-A5-N3][WARN] failed to load "
+            f"checkpoint {ckpt_path}: {exc}; cold-starting.",
+            flush=True,
+        )
+        return start_epoch, w_history
+
+    # Restore model + optimizer + epoch counter
+    try:
+        model.load_state_dict(ckpt["model_state_dict"])
+    except Exception as load_exc:
+        print(
+            f"  [{metal} seed={seed}] [Wf-A5-N3][WARN] model_state_dict "
+            f"mismatch: {load_exc}; cold-starting.",
+            flush=True,
+        )
+        return start_epoch, w_history
+
+    start_epoch = int(ckpt.get("epoch", 0))
+    w_history = list(ckpt.get("wasserstein_history", []))
+    best_val_auc_resumed = float(ckpt.get("best_val_auc", -1.0))
+
+    # Backward-compat: legacy checkpoints may not have optimizer state
+    if "optimizer_state_dict" in ckpt:
+        try:
+            optimizer.load_state_dict(ckpt["optimizer_state_dict"])
+            optimizer_resumed = True
+        except Exception as opt_exc:
+            print(
+                f"  [{metal} seed={seed}] [Wf-A5-N3][WARN] optimizer_state_dict "
+                f"incompatible: {opt_exc}; model resumed, optimizer cold.",
+                flush=True,
+            )
+            optimizer_resumed = False
+    else:
+        optimizer_resumed = False
+
+    print(
+        f"  [{metal} seed={seed}] [Wf-A5-N3] resumed from "
+        f"epoch={start_epoch} → continue from epoch={start_epoch + 1} "
+        f"(best_val_auc={best_val_auc_resumed:.4f}, "
+        f"optimizer_resumed={optimizer_resumed})",
+        flush=True,
+    )
+    return start_epoch, w_history
 
 
 def _safe_classification_metrics(
@@ -1197,6 +1454,54 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument(
         "--ckpt-dir", type=Path, default=DEFAULT_CKPT_DIR,
         help="Checkpoint directory.",
+    )
+    # ---- N3 checkpoint resumption (Wf-A5 N3 design field) ----
+    # --resume-from controls how to load a prior checkpoint at the start of
+    # `train_one_metal_one_seed`:
+    #   'auto'  : scan ckpt_dir for the canonical
+    #             `dmpnn_mtw_{metal}_seed{seed}.pt` filename; if found,
+    #             load model_state_dict + optimizer_state_dict + epoch +
+    #             resume from epoch+1; if not found, cold start.
+    #   'none'  : cold start (ignore any pre-existing checkpoint).
+    #   'path'  : load the explicit path passed via --resume-from-path
+    #             (kept as 'auto'-equivalent for back-compat with the
+    #             choices=['auto','none','path'] contract).
+    # Default 'auto' = sane default; existing yaml files implicitly get
+    # resume-from=auto which is bit-for-bit backward compat with Wf-151 P1
+    # baseline (no checkpoint present ⇒ cold start, same as 'none').
+    p.add_argument(
+        "--resume-from",
+        choices=["auto", "none", "path"],
+        default="auto",
+        help=(
+            "Checkpoint resumption mode (Wf-A5 N3): 'auto' = scan ckpt-dir "
+            "for latest dmpnn_mtw_{metal}_seed{seed}.pt; 'none' = cold start; "
+            "'path' = use --resume-from-path (default 'auto')."
+        ),
+    )
+    p.add_argument(
+        "--resume-from-path",
+        type=Path,
+        default=None,
+        help=(
+            "Explicit checkpoint .pt path for --resume-from=path mode "
+            "(Wf-A5 N3). Default None."
+        ),
+    )
+    # --checkpoint-interval controls how often (in epoch) to persist a
+    # resumable checkpoint. Per design §6.3 the canonical value is 50.
+    # Save also fires at the final epoch (epoch == epochs-1) regardless
+    # of interval, so the canonical final checkpoint is always present.
+    # Default 50 = sane default; with epochs=50 this means 1 mid
+    # checkpoint at epoch 50 (= final) and 0 mid-way checkpoints.
+    p.add_argument(
+        "--checkpoint-interval",
+        type=int,
+        default=50,
+        help=(
+            "Save checkpoint every N epochs (Wf-A5 N3); also saves at "
+            "the final epoch regardless. Default 50."
+        ),
     )
     p.add_argument(
         "--csv", type=Path, default=DEFAULT_5METAL_CSV,
@@ -1571,6 +1876,19 @@ def main(argv: Optional[List[str]] = None) -> int:
                     ),
                     cal_sign_vina_convention=bool(
                         getattr(args, "cal_sign_vina_convention", True)
+                    ),
+                    # Wf-A5 N3 — checkpoint resumption kwargs
+                    # (``--resume-from`` + ``--resume-from-path`` +
+                    # ``--checkpoint-interval``) thread from main()
+                    # into ``train_one_metal_one_seed()`` so the
+                    # _load_checkpoint_for_resume() call fires before
+                    # the build_split_indices loop.
+                    resume_from=str(getattr(args, "resume_from", "auto")),
+                    resume_from_path=getattr(
+                        args, "resume_from_path", None
+                    ),
+                    checkpoint_interval=int(
+                        getattr(args, "checkpoint_interval", 50)
                     ),
                 )
             except Exception as exc:

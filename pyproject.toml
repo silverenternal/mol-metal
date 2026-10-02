@@ -3,14 +3,12 @@ name = "mol-metal"
 version = "0.1.0"
 description = "Mol-Metal: precious-metal anticancer drug design framework (Pt/Ru/Ir/Au/Pd) on top of Flow Matching + Structure-Based Drug Design + Lambda Calculus MCTS proof-search"
 requires-python = "==3.12.*"
-# torch & triton-rocm: ROCm 7.2.4 wheels from download.pytorch.org/whl/rocm7.2.
-# The ROCm PyTorch build depends on `triton-rocm` (not the PyPI `triton`),
-# per torch-2.14.0+rocm7.2 METADATA: Requires-Dist: triton-rocm~=3.8.0
-# Both torch and triton-rocm are served by the same simple index, so a single
-# custom index routes both packages.
+# torch & triton: CUDA 13.0 wheels (per AGENTS.md §5.1 — this host is
+# pure CUDA, no AMD GPU).  Both come from the official cu130 index.
+# If you need to retrain on a different host, re-pin via `uv add torch==<ver>+cu130`.
 dependencies = [
     "torch>=2.14,<2.15",
-    "triton-rocm==3.8.0",
+    "triton==3.8.0",
     "numpy>=1.26,<3",
     # data layer (MetalCytoToxDB loader, transforms)
     "pandas>=2.0",
@@ -74,17 +72,15 @@ markers = [
     "slow: marks tests as slow (deselect with '-m not slow')",
     "integration: marks tests requiring optional external services or data",
     "gpu: marks tests requiring a GPU (QuickVina-GPU, CFM retrain, etc.)",
-    "gpu_blocked: marks tests whose real path is BLOCKED by the GPU outage (RX 7800 XT gfx1101 firmware-level SMU hang per wf_gpu_diag/diagnosis.md)",
+    "gpu_blocked: marks tests whose real path is BLOCKED on this CUDA host (placeholder for AMD-only tests; currently unused on pure-CUDA nodes per AGENTS.md §5.1)",
 ]
 
-# Download PyTorch's ROCm 7.2 build for cp312.  This simple index serves both
-# `torch` (+rocm7.2 wheels) and `triton-rocm` (3.8.0).  Default PyPI is still
+# Download PyTorch's CUDA 13.0 build for cp312.  Default PyPI is still
 # consulted for everything else (numpy, etc.).
 [[tool.uv.index]]
-name = "pytorch-rocm"
-url  = "https://download.pytorch.org/whl/rocm7.2"
+name = "pytorch-cu130"
+url  = "https://download.pytorch.org/whl/cu130"
 explicit = true
 
 [tool.uv.sources]
-torch        = [{ index = "pytorch-rocm" }]
-triton-rocm  = [{ index = "pytorch-rocm" }]
+torch = [{ index = "pytorch-cu130" }]

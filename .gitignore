@@ -74,6 +74,10 @@ topo_plot_clean.png
 %{size_download}\n
 wf_lambda_mcts_coords_fix/
 workflow-scripts/
+# Wf-449 state-locking runtime lock files (per AGENTS.md §5.6 atomic write
+# protocol — prevent concurrent trainer invocations on the same yaml; not
+# source).
+configs/training/.state/
 
 # --- Pre-trained model checkpoints (large; SHIPPED via `git add -f`) --------
 # Default policy: include molmetal/checkpoints/ (canonical, 70 MB)

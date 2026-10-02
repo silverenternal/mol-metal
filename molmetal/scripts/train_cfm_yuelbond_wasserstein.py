@@ -795,7 +795,52 @@ def train_one_epoch(
         all_targets = torch.cat(batch_targets, dim=0)
         if all_logits.shape[0] != all_targets.shape[0]:
             continue
+        # Wf-A5-A2 — per-cohort alpha → label_smoothing override. Default
+        # OFF preserves bit-for-bit backward compat with Wf-243..Wf-252
+        # + Wf-388-A2/A3 + Wf-405-A2 + Wf-406-A2 + Wf-408-A2 + Wf-409-A1
+        # baseline (F.cross_entropy defaults unchanged). When ON, the
+        # per-cohort config axis (Wf-380-A2 select_features(n_pool) per
+        # TODO-201) selects label_smoothing tied to alpha — small cohorts
+        # (n<300, alpha=1.0) get heavy smoothing (noise-robust against
+        # limited-label overfit); large cohorts (n>=1000, alpha=0.1) get
+        # mild smoothing. Try/except defensive fallback preserves
+        # training on broken wire-in (bit-exact identity).
         bond_ce = F.cross_entropy(all_logits, all_targets)
+        if per_cohort_features:
+            try:
+                from molmetal.scripts.wf380a2_m2_r2_per_cohort import (
+                    select_features,
+                )
+                _pc = select_features(int(len(train_clouds)))
+                _alpha = float(_pc.get("alpha", 0.0))
+                # Clamp alpha to [0.0, 0.9] — alpha >= 1.0 collapses
+                # label_smoothing into uniform distribution and
+                # eliminates the signal.
+                _ls = max(0.0, min(0.9, _alpha))
+                bond_ce = F.cross_entropy(
+                    all_logits, all_targets, label_smoothing=_ls,
+                )
+                # Side-channel audit log (printed once per epoch).
+                if not hasattr(train_one_epoch, "_pc_logged") or (
+                    not train_one_epoch._pc_logged
+                ):
+                    train_one_epoch._pc_logged = True
+                    print(
+                        f"[Wf-A5-A2] --per-cohort-features ENABLED: "
+                        f"tier={_pc.get('tier', '?')} "
+                        f"features={_pc.get('features', '?')} "
+                        f"alpha={_alpha:+.3f} label_smoothing={_ls:.3f} "
+                        f"n_train={len(train_clouds)}",
+                        flush=True,
+                    )
+            except Exception as exc:
+                # Defensive: keep legacy bond_ce; do NOT crash.
+                print(
+                    f"[Wf-A5-A2][WARNING] --per-cohort-features override "
+                    f"failed: {exc}; continuing with alpha=0.0 "
+                    f"(no label_smoothing).",
+                    flush=True,
+                )
         # Wf-405-A2 — stable_vm flag swap (default OFF preserves
         # legacy F.cross_entropy). When ON, replace bond_ce with
         # stable_vm_loss for noise-robust multi-scale mixture
