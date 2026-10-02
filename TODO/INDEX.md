@@ -804,3 +804,35 @@ Cross-references: TODO/completed/A8_m17_yaml_rewrite.md + TODO/completed/A8_othe
 - Actual GPU retrain (Wf-430+ USER_OK-gated): Wf-380 + Wf-394 + Wf-246-C + Wf-125 + Wf-390 + Wf-299 3-wave launches (~52.9 hr GPU total)
 - atomic write protocol adoption migration completion (~31 remaining closeout-drafting scripts per Wf-416-A1 §5.2 + Wf-386-A3 §6.1)
 
+
+## §22.148 Wf-A8b yaml alignment gates + tmux pipeline launcher (2026-10-03)
+
+**Wave**: Wf-A8b review-based extension of Wf-A8 yaml unification per user voice 2026-10-03 verbatim '选项2，然后最后的启动交给我'.
+
+**Status**: 3 files SHIPPED on disk per AGENTS.md §5.5 filesystem-truth rule + §5.6 atomic write + §5.7 trainer flag wire-in smoke-required rule.
+
+**MEASURED-vs-PROJECTED ledger**:
+- 4 NEW pre-flight gates ADDED to molmetal/scripts/pre_flight_check.py at lines 5343, 5400, 5458, 5603 per AGENTS.md §5.5 filesystem-truth rule verified via `grep -nE "^def gate_p3_protocol_alignment_yaml" pre_flight_check.py` BEFORE this INDEX entry authoring
+- scripts/launch_all_training.sh 2482 B mode 0755 atomic-written via §5.6 per user voice '只能用gpu0吧' (cuda:0 only) + '这个也得靠yaml决定训练配置' (yaml-driven via --config flag) + '千万别再用cli控制' (NO --device CLI override)
+- Pre-flight chemprop_v2_v3 pipeline MEASURED: 15 PASS / 3 FAIL / 0 SKIP / 18 TOTAL wall 61.2 s (4 NEW gates active: yaml_dataset_authorized FAIL + yaml_split_matches_baseline FAIL + yaml_target_in_baseline_range PASS + yaml_no_inline_cli FAIL — failures are EXPECTED per §1.4 pre-flight-as-mandatory principle; gate violations flag yaml files needing updates before launch)
+
+**SHIPPED files per §5.5 filesystem-truth rule**:
+1. molmetal/scripts/pre_flight_check.py (369528 B; 4 NEW gate functions added)
+2. molmetal/scripts/pre_flight_check.py.bak.wfa8b (349497 B; backup per §5.6 safe_overwrite_check BEFORE source patch)
+3. scripts/launch_all_training.sh (2482 B mode 0755; executable; pre-flight validation + serial cuda:0 execution + 24h per-launch budget + kill_then_adapt §0 contract)
+4. TODO/completed/A8b_yaml_alignment_gates_closeout.md (7610 B mode 0644 per §5.5 rule #4; 7 sections)
+
+**Cross-references**:
+- TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md — Tier-1 metric × baseline × alignment level matrix (Rusanov per-cell-line; Krasnov scaffold-split; DrugOOD 3-split)
+- TODO/03_baselines/COMPARISON_BASELINES.md — Tier-1 baseline selection + per-paper rationale
+- TODO/decisions/0008-comparison-baselines.md — alignment-not-reproduction principle ADR
+- TODO/A5_remaining_tasks.json — B1-B7 launch task list (cuda:0 only per user voice)
+- AGENTS.md §1 + §5.1 + §5.2 + §5.5 + §5.6 + §5.7 — standing directives re-confirmed
+
+**USER responsibilities** (per user voice '最后启动交给我'):
+1. Optionally fix existing yaml files to pass 4 new gates BEFORE launch (most likely needed: yaml_dataset_authorized + yaml_split_matches_baseline + yaml_no_inline_cli)
+2. Run DRY_RUN first: `USER_OK=1 DRY_RUN=true bash scripts/launch_all_training.sh`
+3. Actual launch via tmux: `USER_OK=1 bash scripts/launch_all_training.sh` (~41 hr serial wall time on cuda:0: 3 P0 launches ~23 hr + 2 P1 launches ~15 hr)
+
+**Standing directives re-confirmed**: AGENTS.md §1 + §5.1 (USER_OK gating honored) + §5.2 (honest framing — failures EXPECTED) + §5.3 (no paper work per TODO-84) + §5.4 (no wet-lab per §10) + §5.5 (filesystem-truth verified before this INDEX entry) + §5.6 (atomic_write_file applied) + §5.7 (smoke discipline applied to 4 NEW gates) + §5.10 (OmegaFold-gap-fill rule) + §10 (wetlab deprecation).
+

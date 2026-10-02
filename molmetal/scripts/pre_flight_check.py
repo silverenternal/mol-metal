@@ -5316,6 +5316,377 @@ def gate_p3_protocol_alignment_baseline_paper_refs_bib(
         time.perf_counter() - t0)
 
 
+def _yaml_load_alldata(
+    yaml_path: Path,
+) -> "Tuple[bool, str, dict]":
+    """Wf-A8 §5.5 filesystem-truth + §5.6 atomic-write helper.
+
+    Returns (ok, error_msg, parsed_dict_or_empty).  Mirrors the
+    PyYAML parsing pattern from gate_yaml_schema + gate_wf343c4_hyperparams_config_complete.
+    """
+    try:
+        import yaml as _yaml
+    except ImportError:
+        return False, "PyYAML not installed", {}
+    if not yaml_path.is_file():
+        return False, f"missing: {yaml_path}", {}
+    try:
+        with open(yaml_path, encoding="utf-8") as fh:
+            obj = _yaml.safe_load(fh)
+    except Exception as exc:  # noqa: BLE001 — surface any yaml parse error
+        return False, f"yaml parse error: {type(exc).__name__}: {exc}", {}
+    if not isinstance(obj, dict):
+        return False, f"top-level not dict: {type(obj).__name__}", {}
+    return True, "", obj
+
+
+def gate_p3_protocol_alignment_yaml_dataset_authorized(
+    name: str, priority: str, pipeline: str,
+    yaml_paths: Tuple[Path, ...],
+) -> GateResult:
+    """Wf-A8 §5.5 filesystem-truth Gate 1 — yaml data.dataset is benchmark-authorized.
+
+    Per user voice 2026-10-03 verbatim *"alignment-not-reproduction must be
+    hard-enforced in pre-flight"* + Tier-2 §3 baseline MATRIX contract:
+    every active configs/*.yaml MUST carry ``data.dataset`` ∈ the Tier-1
+    benchmark-authorized list.  This gate prevents drift toward
+    unaligned datasets (e.g. qm9-only defaults) when the user requests
+    Tier-1 LEAD metrics.
+
+    Tier-1 authorized datasets (per TODO/03_baselines/COMPARISON_BASELINES.md
+    + PROTOCOL_ALIGNMENT_MATRIX.md §2):
+        metalcytotox_5metal (Krasnov 2026)
+        platinai_4cell (Rusanov 2025)
+        platinai_5k (Rusanov 2025 5K variant — future cohort)
+        drugood (Ji 2022)
+        nci60_10cell (Shoemaker 2006)
+        crossdocked_100 (Lovato 2019)
+    """
+    t0 = time.perf_counter()
+    ALLOWED = {
+        "metalcytotox_5metal", "platinai_4cell", "platinai_5k",
+        "drugood", "nci60_10cell", "crossdocked_100",
+    }
+    failures: List[str] = []
+    parse_failures: List[str] = []
+    for p in yaml_paths:
+        ok, err, obj = _yaml_load_alldata(p)
+        if not ok:
+            parse_failures.append(f"{p.name}: {err}")
+            continue
+        ds = obj.get("data", {}).get("dataset") if isinstance(obj.get("data"), dict) else None
+        if ds is None:
+            # Some legacy yamls use ``data.split`` only (no top-level dataset).
+            # That is HONEST-NEGATIVE per user voice "alignment-not-reproduction":
+            # for Tier-1 LEAD we require an explicit dataset field.
+            failures.append(f"{p.name}: missing data.dataset (alignment-not-reproduction)")
+            continue
+        if ds not in ALLOWED:
+            failures.append(f"{p.name}: data.dataset={ds!r} not in Tier-1 authorized list")
+    if failures or parse_failures:
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"dataset_alignment_failures={failures}; parse_failures={parse_failures}",
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name, priority, pipeline, "PASS",
+        f"all {len(yaml_paths)} yamls have data.dataset in Tier-1 authorized list "
+        f"({len(ALLOWED)} datasets): {[p.name for p in yaml_paths]}",
+        time.perf_counter() - t0,
+    )
+
+
+def gate_p3_protocol_alignment_yaml_split_matches_baseline(
+    name: str, priority: str, pipeline: str,
+    yaml_paths: Tuple[Path, ...],
+) -> GateResult:
+    """Wf-A8 §5.5 filesystem-truth Gate 2 — yaml data.split.type matches baseline paper.
+
+    Per TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md §3 + COMPARISON_BASELINES.md:
+    the canonical split-type to baseline-paper mapping is:
+        per_cell_line                 → Rusanov 2025 (PlatinAI 4-cell protocol)
+        per_cell_line_balanced        → Rusanov 2025 (PlatinAI 4-cell hash-balanced variant)
+        scaffold_split                → Krasnov 2026 (MetalCytoToxDB Bemis-Murcko 70/10/20)
+        scaffold_split_5fold_cv       → Krasnov 5-fold CV alternative (fallback)
+        3_split_assay_scaffold_size  → DrugOOD 2022 (Ji 2022 3-split OOD protocol)
+    yaml.data.split.type MUST be in this mapping; FAIL if not.
+    """
+    t0 = time.perf_counter()
+    BASELINE_SPLIT = {
+        "per_cell_line", "per_cell_line_balanced", "scaffold_split",
+        "scaffold_split_5fold_cv", "3_split_assay_scaffold_size",
+    }
+    failures: List[str] = []
+    parse_failures: List[str] = []
+    for p in yaml_paths:
+        ok, err, obj = _yaml_load_alldata(p)
+        if not ok:
+            parse_failures.append(f"{p.name}: {err}")
+            continue
+        data_block = obj.get("data")
+        if not isinstance(data_block, dict):
+            failures.append(f"{p.name}: missing data block (split not enforceable)")
+            continue
+        split_block = data_block.get("split")
+        if not isinstance(split_block, dict):
+            failures.append(f"{p.name}: missing data.split block")
+            continue
+        sp_type = split_block.get("type")
+        if sp_type is None:
+            failures.append(f"{p.name}: missing data.split.type")
+            continue
+        if sp_type not in BASELINE_SPLIT:
+            failures.append(
+                f"{p.name}: data.split.type={sp_type!r} not in baseline mapping "
+                f"(Rusanov/Krasnov/Ji/Fallback)"
+            )
+    if failures or parse_failures:
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"split_baseline_failures={failures}; parse_failures={parse_failures}",
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name, priority, pipeline, "PASS",
+        f"all {len(yaml_paths)} yamls have data.split.type in baseline mapping "
+        f"({len(BASELINE_SPLIT)} split types)",
+        time.perf_counter() - t0,
+    )
+
+
+def gate_p3_protocol_alignment_yaml_target_in_baseline_range(
+    name: str, priority: str, pipeline: str,
+    yaml_paths: Tuple[Path, ...],
+    tolerance: float = 0.05,
+) -> GateResult:
+    """Wf-A8 §5.5 filesystem-truth Gate 3 — yaml eval.target_per_cell_line / target_overall /
+    target_decode_ratio / target_test_auc within baseline paper range.
+
+    Per TODO/03_baselines/COMPARISON_BASELINES.md + PROTOCOL_ALIGNMENT_MATRIX.md:
+        PlatinAI 4-cell (Rusanov 2025 Table S4-S5):
+            A2780 ∈ [0.70, 0.80], MCF7 ∈ [0.65, 0.75], A549 ∈ [0.60, 0.70],
+            A2780cis ∈ [0.80, 0.90]
+            overall ≈ average of per-cell → [0.69, 0.79]
+        MetalCytoToxDB 5-metal (Krasnov 2026 Table 4):
+            Ru/Ir/Rh/Re/Os AUC ∈ [0.78, 0.85]
+        DrugOOD (Ji 2022):
+            assay ≈ 0.70-0.80, scaffold ≈ 0.65-0.75, size ≈ 0.65-0.75
+        CFM decode_ratio target (per TODO/02_metrics §1 m14_cfm):
+            decode_ratio ∈ [0.50, 1.00] (sanity ceiling per Wf-269C)
+        D-MPNN test_auc target (per TODO/02_metrics §1 m1_auc):
+            test_auc ∈ [0.65, 0.90]
+
+    Per-cell-line target_wildly outside tolerance (e.g. yaml claims 0.95
+    when Rusanov 2025 baseline is 0.75) = FAIL; slightly outside tolerance
+    = WARN (cite baseline paper Table).
+    """
+    t0 = time.perf_counter()
+    PER_CELL_RANGES = {
+        "A2780": (0.70, 0.80),
+        "MCF7": (0.65, 0.75),
+        "A549": (0.60, 0.70),
+        "A2780cis": (0.80, 0.90),
+    }
+    PER_METAL_RANGE = (0.78, 0.85)  # Krasnov 2026 5-metal
+    OVERALL_RANGE = (0.69, 0.79)    # PlatinAI 4-cell average
+    DRUGOOD_RANGE = (0.65, 0.80)   # DrugOOD 3-split OOD broad band
+    DECODE_RATIO_RANGE = (0.50, 1.00)
+    TEST_AUC_RANGE = (0.65, 0.90)
+
+    failures: List[str] = []
+    warnings: List[str] = []
+    parse_failures: List[str] = []
+
+    def _in_range(value, lo, hi, tol):
+        return (lo - tol) <= value <= (hi + tol)
+
+    for p in yaml_paths:
+        ok, err, obj = _yaml_load_alldata(p)
+        if not ok:
+            parse_failures.append(f"{p.name}: {err}")
+            continue
+        eval_block = obj.get("eval")
+        if not isinstance(eval_block, dict):
+            continue  # eval block may be absent for non-eval yamls
+
+        # 1. per_cell_line target bands
+        per_cell = eval_block.get("target_per_cell_line")
+        if isinstance(per_cell, dict):
+            for cell, (lo, hi) in PER_CELL_RANGES.items():
+                if cell in per_cell:
+                    v = float(per_cell[cell])
+                    if not (lo <= v <= hi):
+                        if _in_range(v, lo, hi, tolerance):
+                            warnings.append(
+                                f"{p.name}: target_per_cell_line.{cell}={v} slightly outside "
+                                f"Rusanov 2025 Table S4-S5 range [{lo}, {hi}] "
+                                f"(tolerance ±{tolerance})"
+                            )
+                        else:
+                            failures.append(
+                                f"{p.name}: target_per_cell_line.{cell}={v} wildly outside "
+                                f"Rusanov 2025 Table S4-S5 range [{lo}, {hi}] "
+                                f"(yaml target inflated vs baseline paper)"
+                            )
+
+        # 2. overall target
+        overall = eval_block.get("target_overall")
+        if overall is not None:
+            v = float(overall)
+            if not (OVERALL_RANGE[0] <= v <= OVERALL_RANGE[1]):
+                if _in_range(v, *OVERALL_RANGE, tolerance):
+                    warnings.append(
+                        f"{p.name}: target_overall={v} slightly outside "
+                        f"PlatinAI 4-cell average range {OVERALL_RANGE}"
+                    )
+                else:
+                    failures.append(
+                        f"{p.name}: target_overall={v} wildly outside "
+                        f"PlatinAI 4-cell average range {OVERALL_RANGE}"
+                    )
+
+        # 3. CFM decode_ratio target
+        dec = eval_block.get("target_decode_ratio")
+        if dec is not None:
+            v = float(dec)
+            if not (DECODE_RATIO_RANGE[0] <= v <= DECODE_RATIO_RANGE[1]):
+                if _in_range(v, *DECODE_RATIO_RANGE, tolerance):
+                    warnings.append(
+                        f"{p.name}: target_decode_ratio={v} slightly outside "
+                        f"Wf-269C sanity range {DECODE_RATIO_RANGE}"
+                    )
+                else:
+                    failures.append(
+                        f"{p.name}: target_decode_ratio={v} wildly outside "
+                        f"Wf-269C sanity range {DECODE_RATIO_RANGE}"
+                    )
+
+        # 4. D-MPNN test_auc target
+        test_auc = eval_block.get("target_test_auc")
+        if test_auc is not None:
+            v = float(test_auc)
+            if not (TEST_AUC_RANGE[0] <= v <= TEST_AUC_RANGE[1]):
+                if _in_range(v, *TEST_AUC_RANGE, tolerance):
+                    warnings.append(
+                        f"{p.name}: target_test_auc={v} slightly outside "
+                        f"Krasnov 2026 range {TEST_AUC_RANGE}"
+                    )
+                else:
+                    failures.append(
+                        f"{p.name}: target_test_auc={v} wildly outside "
+                        f"Krasnov 2026 range {TEST_AUC_RANGE}"
+                    )
+
+    if failures:
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"target_baseline_failures={failures}; "
+            f"warnings={warnings}; parse_failures={parse_failures}",
+            time.perf_counter() - t0,
+        )
+    if warnings:
+        return GateResult(
+            name, priority, pipeline, "WARN",
+            f"target_baseline_warnings={warnings}; "
+            f"parse_failures={parse_failures}",
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name, priority, pipeline, "PASS",
+        f"all {len(yaml_paths)} yamls have eval targets within baseline paper ranges "
+        f"(±{tolerance} tolerance)",
+        time.perf_counter() - t0,
+    )
+
+
+def gate_p3_protocol_alignment_yaml_no_inline_cli(
+    name: str, priority: str, pipeline: str,
+    yaml_paths: Tuple[Path, ...],
+) -> GateResult:
+    """Wf-A8 §5.5 filesystem-truth Gate 4 — yaml entry.command must NOT contain inline CLI flags.
+
+    Per user voice 2026-10-03 verbatim *"alignment-not-reproduction must be
+    hard-enforced in pre-flight"* + 2026-09-30 user directive *"never
+    use CLI again always yaml"* — yaml entry.command MUST be empty OR only
+    contain ``--config <yaml_path>``.  Inline trainer flags like
+    ``--metals Pt --seeds 0 1 2 --epochs 30 --batch-size 64`` are
+    FORBIDDEN: every retrain must derive its config from yaml.
+
+    EXCEPTION: trainer-specific debug flags (--device cpu for smoke
+    tests, --no-enforce-budget for DRY-RUN, --dry-run for pre-flight
+    verification) ARE acceptable when isolated to one flag pair.
+    """
+    t0 = time.perf_counter()
+    FORBIDDEN_FLAGS = {
+        "--metals", "--seeds", "--epochs", "--batch-size", "--lr",
+        "--hidden", "--hidden-dim", "--n-layers", "--depth",
+        "--alpha", "--wasserstein-weight", "--pocket-id",
+        "--out-dir", "--ckpt-dir", "--csv", "--n-train",
+        "--steps", "--joint-train", "--bond-head",
+    }
+    DEBUG_FLAG_OVERRIDES = {"--device", "--dry-run", "--no-enforce-budget", "--config"}
+
+    failures: List[str] = []
+    parse_failures: List[str] = []
+
+    for p in yaml_paths:
+        ok, err, obj = _yaml_load_alldata(p)
+        if not ok:
+            parse_failures.append(f"{p.name}: {err}")
+            continue
+        entry_block = obj.get("entry")
+        if not isinstance(entry_block, dict):
+            failures.append(f"{p.name}: missing entry block")
+            continue
+        cmd = entry_block.get("command")
+        if cmd is None:
+            # Empty entry.command is acceptable per task brief (yaml controls).
+            continue
+        if not isinstance(cmd, str):
+            failures.append(f"{p.name}: entry.command not string")
+            continue
+
+        # Strip yaml template placeholders ({epochs}, {seed}, {flags_joined}, etc.)
+        # before scanning for forbidden flags — placeholders are NOT
+        # inline CLI flags, they are yaml-template substitution.
+        import re as _re
+        sanitized = _re.sub(r"\{[a-zA-Z0-9_]+\}", "", cmd)
+        tokens = sanitized.split()
+        bad_flags: List[str] = []
+        for tok in tokens:
+            if not tok.startswith("-"):
+                continue
+            # skip env-var prefixes (e.g. CUDA_VISIBLE_DEVICES=0)
+            if "=" in tok and tok.split("=", 1)[0].isupper():
+                continue
+            # canonical form strips leading dashes
+            flag = tok.split("=", 1)[0]
+            if flag in DEBUG_FLAG_OVERRIDES:
+                continue
+            if flag in FORBIDDEN_FLAGS:
+                bad_flags.append(flag)
+        if bad_flags:
+            failures.append(
+                f"{p.name}: entry.command contains {len(bad_flags)} inline CLI flag(s) "
+                f"({bad_flags[:3]}{'...' if len(bad_flags) > 3 else ''}); "
+                f"yaml must drive config (per user voice 2026-09-30 'never use CLI again always yaml')"
+            )
+
+    if failures or parse_failures:
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"yaml_no_inline_cli_failures={failures}; parse_failures={parse_failures}",
+            time.perf_counter() - t0,
+        )
+    return GateResult(
+        name, priority, pipeline, "PASS",
+        f"all {len(yaml_paths)} yamls have entry.command aligned to yaml "
+        f"(no inline CLI flags beyond debug overrides)",
+        time.perf_counter() - t0,
+    )
+
+
 # ---- Tier-2 recommended gates (§3) ----
 
 def gate_p3_protocol_recommended_seed_count_3(
@@ -6618,6 +6989,63 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                     ),
                     threshold=0.95,
                     op=">=",
+                ),
+            ),
+        ]
+
+    # ---- Wf-A8 PRE_TRAINING_GATE_v2 yaml-alignment gates (4 NEW; all +
+    # chemprop_v2_v3 pipelines per task brief "alignment-not-reproduction
+    # must be hard-enforced in pre-flight"; cfm/frontier excluded per the
+    # 4 yaml files in configs/ that are all chemprop_v2_v3 configs).
+    # Each gate scans every active yaml under configs/ + configs/training/
+    # and enforces one alignment dimension.
+    if pipeline in ("all", "chemprop_v2_v3"):
+        _wf_a8_yaml_paths: Tuple[Path, ...] = (
+            CONFIGS_DIR / "cfm_full_retrain.yaml",
+            CONFIGS_DIR / "cfm_per_innovation_ablation_p1.4.yaml",
+            CONFIGS_DIR / "cfm_real_decode_lift_p1.3.yaml",
+            CONFIGS_DIR / "default.yaml",
+            CONFIGS_DIR / "wf124_p3_50epoch_full_sweep_g5.yaml",
+            CONFIGS_DIR / "wf124_p3_per_innovation_ablation_g6.yaml",
+            CONFIGS_DIR / "wf124_p3_remaining_metals_g4.yaml",
+            CONFIGS_DIR / "training" / "platinai_pt_4cell_5seed_50ep_v1.yaml",
+        )
+        runners += [
+            # Gate 1 — yaml data.dataset ∈ Tier-1 authorized benchmark list
+            (
+                "p3_protocol_alignment_yaml_dataset_authorized",
+                lambda: gate_p3_protocol_alignment_yaml_dataset_authorized(
+                    "p3_protocol_alignment_yaml_dataset_authorized",
+                    "P3", pipeline,
+                    _wf_a8_yaml_paths,
+                ),
+            ),
+            # Gate 2 — yaml data.split.type ∈ Rusanov/Krasnov/Ji baseline mapping
+            (
+                "p3_protocol_alignment_yaml_split_matches_baseline",
+                lambda: gate_p3_protocol_alignment_yaml_split_matches_baseline(
+                    "p3_protocol_alignment_yaml_split_matches_baseline",
+                    "P3", pipeline,
+                    _wf_a8_yaml_paths,
+                ),
+            ),
+            # Gate 3 — yaml eval targets within baseline paper ranges
+            (
+                "p3_protocol_alignment_yaml_target_in_baseline_range",
+                lambda: gate_p3_protocol_alignment_yaml_target_in_baseline_range(
+                    "p3_protocol_alignment_yaml_target_in_baseline_range",
+                    "P3", pipeline,
+                    _wf_a8_yaml_paths,
+                ),
+            ),
+            # Gate 4 — yaml entry.command must NOT contain inline CLI flags
+            # (per user voice 2026-09-30 "never use CLI again always yaml")
+            (
+                "p3_protocol_alignment_yaml_no_inline_cli",
+                lambda: gate_p3_protocol_alignment_yaml_no_inline_cli(
+                    "p3_protocol_alignment_yaml_no_inline_cli",
+                    "P3", pipeline,
+                    _wf_a8_yaml_paths,
                 ),
             ),
         ]
