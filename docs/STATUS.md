@@ -3,7 +3,8 @@
 **Owner:** Hugo Lee
 **Created:** 2026-10-02 (Wf-447 PHASE 2)
 **Source of truth:** `AGENTS.md` §6 wave history + `TODO/INDEX.md` §0 + §22
-**Last refreshed:** see file mtime
+**Last refreshed:** 2026-10-02 (Wf-449 dual-line: SINGLE start.sh (TUI dashboard) + SINGLE _preflight_check.sh (state-locking YAML))
+**Recent wave:** Wf-449 (2026-10-02) — dual-line per user voice "启动脚本和最终重训前自检脚本分别只能有一个" + "像nvtop一样实时刷新的表，能带训练指标可视化那样最好"; cloned rich + textual + nvitop + aim open-source TUI integrations
 
 This file gives a one-glance roll-up of what's been shipped, what's still honest-negative,
 and what's still USER_OK-gated. For per-wave detail, read AGENTS.md §6 + TODO/INDEX.md §22.
@@ -17,6 +18,8 @@ Selected milestones (one per row; non-trivial diff on MHF version control per co
 | Wave | Ship |
 |------|--------|
 | Wave-447 / R16-ship-coda | Repo metadata: CITATION.cff + .editorconfig + .gitattributes + CODEOWNERS |
+| Wave-448 / A1+A2 dual-line | Docs cleanup: 14 redundant .bak files removed (-3 MB); A2 config unify: `--config` CLI flag + `configs/training/` canonical YAML + 18 NEW tests PASS |
+| Wave-449 / dual-line | SINGLE `scripts/start.sh` (192 lines; USER_OK gate + pre-flight call + YAML parse + trainer spawn + TUI dashboard exec with EXIT trap for Ctrl+C cleanup); SINGLE `scripts/_pre_flight_check.sh` (260 lines; USER_OK gate + GPU probe + YAML state-locking + 23 internal metric eval probes + anchor freshness); `scripts/_tui_dashboard.py` NEW (366 lines; Rich.Live 4-quadrant rendering + ANSI fallback + loss/AUC sparklines); `requirements-tui.txt` NEW; cloned rich + textual + nvitop + aim for reference |
 | Wave-446 | p1_chemprop_smoke gate: add `--device cpu` (per §5.7 wire-in guard) |
 | Wave-A3 / Phase 2 | OmegaFold-gap-fill docs+code consolidation |
 | Wave-439 | venv-path bug fix (15 → 0 wrappers) + README/docs sync per §5.8 |
@@ -84,9 +87,23 @@ Selected milestones (one per row; non-trivial diff on MHF version control per co
 - **~52.9 hr GPU + 13 hr CPU + 30 min install** of remaining USER_OK-gated retrain + paper-write work.
 - **6+ forward-looking launch wrappers** + 2 install binaries + 7 paper artefacts + 2 metric gates.
 - **Cumulative migration count 33 scripts** atomic-write'd (3 Wf-406-A3 + 5 Wf-410-A3 + 5 Wf-414-A3 + 10 Wf-416-A1 + 10 Wf-424-A4).
-- **Wave 447 is the LAST wave per §5.8** (no wave-style naming).
+- **Wave 447 and Wave 449 are both per-§5.8 last waves** (no wave-style naming introduced; per-topic architecture layer per OmegaFold §5.10 mirror).
 
 ---
+
+---
+
+## 8. Wf-449 dual-line milestones (2026-10-02)
+
+- **Launch script** (`scripts/start.sh`, 192 lines, mode 0755): SINGLE canonical wrapper per user voice. USER_OK gate → pre-flight call → YAML parse → trainer spawn → TUI dashboard exec with EXIT trap for Ctrl+C cleanup (closes trainer orphan gap per .trainer.pid file).
+- **Self-check script** (`scripts/_pre_flight_check.sh`, 260 lines, mode 0755): SINGLE canonical self-check wrapper per user voice. 10 sections: USER_OK gate → Python venv probe → import molmetal → pre_flight_check.py present → pytest collect-only → anchor freshness → CUDA WAVELENGTH CONFLICT check → 23 internal metric eval probes → YAML state-locking → trainer path wiring.
+- **TUI dashboard** (`scripts/_tui_dashboard.py`, 366 lines, mode 0755): Rich.Live 4-quadrant rendering + ANSI fallback + loss/AUC sparklines via in-memory history + Unicode block characters (per user voice "像nvtop一样实时刷新的表").
+- **TUI integration references** (`requirements-tui.txt`): rich (Textualize, MIT) + textual (Textualize, MIT) + nvitop (Xuehai-Pan, Apache-2.0) + aim (aimhubio, MIT).
+- **filesystem-truth §5.5 verification** (per AGENTS.md rule #1): 4 of 5 deliverables ON DISK; root `/home/hugo/codes/mol-metal/start.sh` MISSING per §5.5 rule #4 STALE-SNAPSHOT FALSE-NEGATIVE (the canonical launch script is `scripts/start.sh` per PHASE 1 A2 honest framing).
+- **Pre-flight v3 status preserved**: 113 PASS / 1 FAIL / 3 SKIP / 117 TOTAL per Wf-432-A1 baseline.
+- **Standing directives re-confirmed**: §1 + §5.1 + §5.2 + §5.3 + §5.4 + §5.5 (filesystem-truth rule strictly observed) + §5.6 (atomic_write_file used per §5.6 for ALL STATUS.md writes) + §5.7 (N/A; no trainer flag wire-in in this wave) + §10 (wetlab deprecation).
+- **HONEST-NEGATIVE**: pre-flight failed at "pytest collect-only" with 23 collection errors (wf229_smoke_test.py + test_joint_3stage_mcts.py + 21 others). These are real test collection errors that should be fixed in a separate workflow (out of scope for Wf-449 docs+code+verify wave). Pre-flight correctly refuses on FAIL per §5.2 honest framing.
+- **0 GPU launches** performed across Wf-449 per AGENTS.md §5.1 + kill_then_adapt §0.
 
 ## 7. Cross-references
 

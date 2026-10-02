@@ -1,0 +1,30 @@
+# requirements-tui.txt
+# Optional TUI dashboard dependencies (per Wf-A2 integration directive;
+# user voice 2026-10-02: "这个部分应该有类似的优秀开源项目的，你到时候clone
+# 下来做一下集成").
+#
+# The canonical TUI dashboard (`scripts/_tui_dashboard.py`) lazy-imports
+# these libraries and falls back to plain ANSI escape codes if none are
+# installed (per AGENTS.md §5.8 — no new pip installs in docs+code+verify
+# waves). Installing them upgrades the dashboard from plain refresh to a
+# full Textual-style TUI with rich sparklines + nvitop-style GPU monitoring.
+#
+# Install (optional, when running retrain in tmux on a developer machine):
+#   .venv/bin/pip install -r requirements-tui.txt
+
+# Core (REQUIRED for Rich.Live path; fallback to ANSI if absent)
+rich>=13.0          # Textualize Inc — rich terminal rendering
+                     # License: MIT — https://github.com/Textualize/rich
+
+# Optional (full TUI app)
+textual>=0.40       # Textualize Inc — Python TUI framework
+                     # License: MIT — https://github.com/Textualize/textual
+                     # Use case: replace Rich.Live with Textual App for
+                     # keyboard-navigable widgets + mouse support.
+
+# Optional (nvtop-style GPU monitor with process-level info)
+nvitop>=1.0         # Xuehai-Pan et al. — nvtop in Python
+                     # License: Apache-2.0 — https://github.com/XuehaiPan/nvitop
+                     # Use case: richer per-process GPU memory + utilization
+                     # with `select`able process list (matches user voice
+                     # "像nvtop一样实时刷新的表" reference).

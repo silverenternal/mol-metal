@@ -1352,7 +1352,22 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "backward-compat testing."
         ),
     )
-    return p.parse_args(argv)
+    # Wf-A2 NEW: --config YAML override (training config unification).
+    # CLI flags still win when explicitly passed (user-intent > YAML default).
+    # Bit-for-bit backward compat: omit --config = argparse-only path.
+    p.add_argument(
+        "--config",
+        default=None,
+        help=(
+            "Path to YAML config overriding argparse defaults. "
+            "CLI flags win where user explicitly passes them. "
+            "See configs/training/wf124_p3_50epoch_full_sweep_g5.yaml for schema."
+        ),
+    )
+    args = p.parse_args(argv)
+    # Apply YAML overrides (no-op when --config not supplied).
+    from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
+    return apply_yaml_overrides(p, args, args.config)
 
 
 def main(argv: Optional[List[str]] = None) -> int:
