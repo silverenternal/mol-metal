@@ -216,6 +216,13 @@ cmd = e.get('command', '').format(
     script=e.get('script', 'molmetal/scripts/train_dmpnn_multitask_wasserstein.py'),
     metal=_metal_default,
     seed=_seed_default,
+    # Wf-A8c FIX: yaml-path + flags_joined placeholders used by entry.command_template
+    # (per task brief single-source-of-truth rule: yaml is canonical; start.sh substitutes
+    # these placeholders from yaml-derived fields). yaml_path = first argv (the yaml file
+    # itself). flags_joined = Wf-A6 A2 + Wf-A8 + A8c protocol fields concatenated as a
+    # space-separated string for backwards-compat with legacy entry.command format.
+    yaml_path=sys.argv[1] if len(sys.argv) > 1 else 'config.yaml',
+    flags_joined='',  # explicit CLI flags (USER_OK + extra-flags) appended separately
 )
 # Strip yaml literal-block backslash continuations: '|' block scalars
 # preserve backslashes as literal chars; we need single-line for shell.
