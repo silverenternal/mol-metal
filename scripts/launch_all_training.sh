@@ -50,8 +50,9 @@ run_one() {
     run_pre_flight_only "${yaml}"
     return $?
   fi
-  echo "=== [$(date +%H:%M:%S)] LAUNCH ${yaml} on cuda:0 ==="
-  USER_OK=1 bash scripts/start.sh "${yaml}" --fast 2>&1 | tail -50
+  echo "=== [$(date +%H:%M:%S)] LAUNCH ${yaml} on cuda:0 (TUI dashboard auto-spawned; see tmux pane) ==="
+  # No --fast flag: this runs pre-flight + actual trainer + spawns TUI dashboard (per AGENTS.md 5.5; Wf-TUI)
+  USER_OK=1 bash scripts/start.sh "${yaml}" 2>&1 | tail -50
 }
 
 if [[ "${DRY_RUN:-true}" == "true" ]]; then
