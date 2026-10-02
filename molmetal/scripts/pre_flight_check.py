@@ -127,7 +127,7 @@ DOT_DATA_DIR = REPO_ROOT / ".data" / "molmetal"
 # via POSIX-atomic temp-file + rename (process-local per-path lock).
 from molmetal.scripts.wf386a3_atomic_write import atomic_write_file  # noqa: E402
 
-VENV_PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"  # Wf-446: was hardcoded to non-existent /home/hugo/codes/CadButEaas/.venv-vlm/bin/python; project venv at .venv/bin/python is the canonical Python for sub-gates
 # Wf-300D harness auto-fallback wrapper is a USER-LEVEL file, not part of
 # this repo. Located at $HOME/.claude/wrapper.py; Wf-306C P3 gate verifies
 # it exists so any subsequent auto-fallback calls (detect_schema_shape /
@@ -6233,13 +6233,11 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
     # Wf-326B root-cause: manual-loop fallback path, no pin_memory, no
     # workers, no prefetch).
     wf327_launch_scripts = (
-        REPO_ROOT / "scripts" / "launch_wf124_p3_g4.sh",
         REPO_ROOT / "scripts" / "launch_wf124_p3_g5.sh",
         REPO_ROOT / "scripts" / "launch_wf124_p3_g6.sh",
-        REPO_ROOT / "scripts" / "launch_wf300_cfm_main.sh",
         REPO_ROOT / "scripts" / "launch_wf310b_g6_final.sh",
         REPO_ROOT / "scripts" / "retry_g5_missing_pairs.sh",
-    )
+    )  # Wf-446: removed launch_wf124_p3_g4.sh + launch_wf300_cfm_main.sh (never part of Wf-326B §6.2 6-wrapper recipe)
 
     # Wf-313C — Day 3-5 paper-grade integration smoke tests + per-adapter
     # research-paper reference doc.  Per TODO-234 §6 + Wf-310F §6: 8 NEW
@@ -7866,7 +7864,10 @@ def _gate_chemprop_quick_smoke(chemprop_script: Path) -> GateResult:
     t0 = time.perf_counter()
     args = [
         VENV_PY, str(chemprop_script),
-        "--quick", "--allow-single-seed",
+        "--quick", "--allow-single-seed", "--device", "cpu",
+        # Wf-446: explicit --device cpu (the trainer defaults to cuda; pre-flight
+        # gates run on a CPU-only host where cuda is unavailable; --quick is the
+        # canonical CPU smoke per chemprop --quick help text).
     ]
     rc, out, err = _run(args, timeout=90.0, cwd=REPO_ROOT)
     elapsed = time.perf_counter() - t0

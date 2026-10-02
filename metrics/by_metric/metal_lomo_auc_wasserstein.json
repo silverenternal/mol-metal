@@ -1,33 +1,48 @@
 {
   "metric": "metal_lomo_auc_wasserstein",
-  "description": "Mean test ROC-AUC across 5 folds \u00d7 N seeds of multi-metal leave-one-metal-out transfer with W\u2082 transfer regularisation + Rh closure-oversample (Wf-125 P2 stacking on Wf-125 P1).",
+  "description": "Mean test ROC-AUC across 2 folds (Rh, Re) \u00d7 N seeds of multi-metal leave-one-metal-out transfer with W\u2082 transfer regularisation + Rh closure-oversample (Wf-125 P2 stacking on Wf-125 P1). Wf-131 P3 DEFERRED 7-run sweep at 50 epochs; 7/7 (metal, seed) pairs completed after Wf-413-A1 launched + waited for Re seed=4 to finish on GPU 0 Blackwell.",
   "unit": "ROC-AUC (0-1, higher better)",
   "scope": "tier2_sbdd_ood_lomo_wasserstein",
   "source": "molmetal/scripts/train_metal_lomo_wasserstein.py",
   "gate_target": 0.7,
-  "value": 0.48488381644275697,
-  "value_std": 0.0,
+  "value": 0.7576516768181095,
+  "value_std": 0.09239375069892813,
   "per_fold_auc_mean": {
-    "Rh": 0.48488381644275697
+    "Rh": 0.8798174728752262,
+    "Re": 0.7087853584076347
   },
   "per_fold_auc_std": {
-    "Rh": 0.0
+    "Rh": 0.011470605807773634,
+    "Re": 0.04821697661061659
   },
   "per_run_auc": [
-    0.48488381644275697
+    0.8879284160262206,
+    0.8717065297242316,
+    0.7018040822886531,
+    0.7462632594021216,
+    0.7467454194792671,
+    0.6294901157184185,
+    0.7196239151398265
   ],
-  "n_runs": 1,
-  "n_folds": 1,
+  "n_runs": 7,
+  "n_folds": 2,
   "metals": [
-    "Rh"
+    "Rh",
+    "Re"
   ],
   "seeds": [
-    0
+    3,
+    4,
+    0,
+    1,
+    2,
+    3,
+    4
   ],
-  "epochs": 2,
+  "epochs": 50,
   "wasserstein_weight": 0.05,
   "rh_oversample": 500,
-  "n_synthetic_rh_appended": 250,
+  "n_synthetic_rh_appended": 500,
   "model": "dmpnn_multitask_wasserstein",
   "data_source": "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv",
   "rh_cohort_source": "/home/hugo/codes/mol-metal/molmetal/reports/wf387a2_balanced_rh_cohort/balanced_rh_cohort.json",
@@ -36,11 +51,13 @@
   "l2_guard_max_norm": 5.0,
   "astr_scale_clip_min": -10.0,
   "astr_scale_clip_max": 10.0,
-  "status": "MEASURED_BELOW_GATE",
-  "verdict": "BELOW_GATE",
+  "status": "MEASURED_BELOW_KRASNOV_PARTIAL",
+  "verdict": "BELOW_KRASNOV_PARTIAL",
   "target_rh_auc": 0.5,
   "target_overall_auc": 0.6,
-  "rh_target_hit": false,
+  "rh_target_hit": true,
   "overall_target_hit": false,
-  "timestamp": "2026-10-02T04:23:42"
+  "timestamp": "2026-10-02T08:36:00.641592+00:00",
+  "n_runs_target": 7,
+  "n_runs_completed": 7
 }
