@@ -1,0 +1,22 @@
+{
+    "wf": "Wf-409-A3",
+    "deliverable": "Wf-246-C metal-coordination term retrain launch wrapper",
+    "mode": "R2_smoke",
+    "user_ok_required": true,
+    "user_ok_env_var": "USER_OK=1",
+    "metals": ["Ru"],
+    "seeds": [0],
+    "epochs": 5,
+    "n_pairs": 1,
+    "pair_budget_hr": 0.33,
+    "total_budget_hr": 0.33,
+    "scaffold_script": "molmetal/scripts/wf409a3_metal_coord_retrain_scaffold.py",
+    "sister_module": "molmetal/scripts/wf406a4_metal_coord_retrain_scaffold.py",
+    "honest_framing": {
+        "metal_coord_sign_fix_id": "Wf-333-V1 line 635",
+        "scaffold_only": true,
+        "gpu_launch_blocked_on_user_ok": true,
+        "actual_gpu_run_requires_user_ok_1": true
+    },
+    "ts": "2026-09-30T07:58:27Z"
+}

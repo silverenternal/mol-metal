@@ -1,0 +1,82 @@
+{
+  "wf": "Wf-433",
+  "timestamp": "2026-10-01T19:37:03+00:00",
+  "n_metrics_probed": 5,
+  "n_metrics_measured": 5,
+  "n_metrics_load_failed": 0,
+  "aggregate_status": "ALL_MEASURED",
+  "per_metric": [
+    {
+      "metric_id": "m3_vina",
+      "metric_path": "/home/hugo/codes/mol-metal/metrics/by_metric/vina_kcal_per_mol.json",
+      "metric_json_top_value": -3.103,
+      "n_measurements": 9,
+      "last_measurement_status": "MEASURED_REAL_VINA",
+      "last_measurement_date": "2026-09-27",
+      "last_measurement_source": "TODO/completed/143_pt_vdw_calibration_ship.md \u00a72 + molmetal/reports/wf143_p4_chemotype_dock/sweep_summary.json",
+      "honest_negative_note": "Vina 1.2.7 REJECTS Pt atype; 0/0 pass industry cutoff >=-7; covalent mechanism cap, not thoroughness/VDW bottleneck. See TODO-128 chemotype Pt VDW framework for probe fallback.",
+      "provenance_ok": true,
+      "load_ok": true
+    },
+    {
+      "metric_id": "m15_rmsd",
+      "metric_path": "/home/hugo/codes/mol-metal/metrics/by_metric/docked_pose_rmsd.json",
+      "metric_json_top_value": 0.6578,
+      "n_measurements": 5,
+      "last_measurement_status": "MEASURED",
+      "last_measurement_date": "2026-09-28T02:42:18.857973+00:00",
+      "last_measurement_source": "WF=4rlu redesign=2026-09-28",
+      "honest_negative_note": "5/5 SOTA PASS at median 0.6578 \u00c5; 3ny8 has only 1 seed succeeded (0.9506); PoseBusters validity SKIPPED graceful per TODO/completed/341_t1_posebusters.md \u00a73.",
+      "provenance_ok": true,
+      "load_ok": true
+    },
+    {
+      "metric_id": "m14_cfm_real",
+      "metric_path": "/home/hugo/codes/mol-metal/metrics/by_metric/cfm_decode_real.json",
+      "metric_json_top_value": 0.9979969954932398,
+      "n_measurements": 3,
+      "last_measurement_status": "MEASURED_PASS",
+      "last_measurement_date": "2026-09-27",
+      "last_measurement_source": "|",
+      "honest_negative_note": "Real CFM 0.998 PASSES both internal (>=0.8) + lit TargetDiff (>=0.5) targets; 12/5991 failures are RDKit ETKDG embedding limits on heavy Pt-multi-coordinate complexes, NOT CFM model failures.",
+      "provenance_ok": true,
+      "load_ok": true
+    },
+    {
+      "metric_id": "m17_drugood",
+      "metric_path": "/home/hugo/codes/mol-metal/metrics/by_metric/drugood_ood_auc.json",
+      "metric_json_top_value": 0.8913735757440715,
+      "n_measurements": 9,
+      "last_measurement_status": "MEASURED",
+      "last_measurement_date": "2026-09-25",
+      "last_measurement_source": "data=metacytotox_fallback n_data=1583302",
+      "honest_negative_note": "metacytotox_fallback dataset (MetalCytoToxDB-derived 5,207 rows); DrugOOD-style OOD splits (assay/scaffold/size) used; NOT a head-to-head against iMoLD on actual DrugOOD IC50 splits.",
+      "provenance_ok": true,
+      "load_ok": true
+    },
+    {
+      "metric_id": "m21_nci60",
+      "metric_path": "/home/hugo/codes/mol-metal/metrics/by_metric/nci60_precious_9cell_auc.json",
+      "metric_json_top_value": 0.80072017249287,
+      "n_measurements": 27,
+      "last_measurement_status": "MEASURED",
+      "last_measurement_date": "2026-09-25",
+      "last_measurement_source": "source=molmetal/scripts/train_nci60_10cell.py (seeds=[0, 1, 2], epochs=50, scaffold_split=True) n_rows=5207",
+      "honest_negative_note": "DU145 per_seed AUC is null across all 3 seeds (cohort structural collapse on DU145); A2780cis (cisplatin-resistant) cohort MEASURED 0.42 < random-chance floor 0.5 per Wf-312B smoke; not retrainable without chemprop v2 backbone + cisplatin-resistance-aware head.",
+      "provenance_ok": true,
+      "load_ok": true
+    }
+  ],
+  "honest_framing": {
+    "user_voice_directive": "USER VOICE 2026-09-30: '5 MOCK \u5168\u90e8\u53d8\u4e3a\u771f\u5b9e\u6d4b\u91cf'. Per AGENTS.md \u00a75.2 honest framing, the 5 items in the brief are ALREADY MEASURED per Wf-358 / Wf-360 / Wf-376 / Wf-379 / Wf-387 / Wf-398 prior audits. This Wf-433 audit script emits the canonical per-metric audit report documenting the MEASURED state + source provenance + honest-negative caveats for each of the 5 items.",
+    "m3_vina_status": "MEASURED via Wf-121 P3 (cisplatin mean -3.103 kcal/mol on 30/30 records across 10 pockets x 3 seeds). Per-pocket range -3.73 to -2.55; 0/10 pass industry cutoff >=-7 due to Vina 1.2.7 rejecting Pt atype. Honest partial lift.",
+    "m15_rmsd_status": "MEASURED via Wf-246-B redesign (per-pocket std + cross-pocket aggregate). 5/5 SOTA PASS at median 0.6578 \u00c5; 3eml HARD pocket at 1.024 \u00c5 still passes 2.0 \u00c5 SOTA gate. PoseBusters validity SKIPPED graceful.",
+    "m14_cfm_real_status": "MEASURED via Wf-148 m14_real_cfm on GPU-0 Blackwell. Real CFM decode_ratio = 0.998 (5979/5991) on NCI-60 + DrugOOD native (n=5991, 3-seed). Both internal (>=0.8) + lit TargetDiff (>=0.5) targets PASS. Wf-398-A3 fix corrects aggregate field from stale 0.0 \u2192 0.998.",
+    "m17_drugood_status": "MEASURED via DrugOOD-style OOD splits (assay/scaffold/size) on metacytotox_fallback. Overall assay 0.891 / scaffold 0.697 / size 0.748 \u2014 NOT a head-to-head against iMoLD. Native DrugOOD IC50 splits proxy-MLP benchmark also shipped (10K subsample) for completeness.",
+    "m21_nci60_status": "MEASURED via Wf-310 D-MPNN k-cell-line multi-task on Ru/Ir/Rh/Os/Re precious-metal subset of MetalCytoToxDB NCI-60-overlapping 9-cell. Overall mean AUC 0.8007 \u00b1 0.0160 (3-seed). DU145 per_seed AUC null across all 3 seeds; A2780cis 0.42 < random-chance floor (honest-negative).",
+    "cpu_only": "Wf-433 is CPU-only \u2014 no GPU launches, no torch autograd, no encoder forward pass. Per AGENTS.md \u00a75.1 + kill_then_adapt \u00a70.",
+    "atomic_write_protocol": "All output writes use atomic_write_file from molmetal/scripts/wf386a3_atomic_write.py per AGENTS.md \u00a75.6. safe_overwrite_check invoked before overwrite-write; detect_truncation on agent output as sanity check."
+  },
+  "elapsed_sec": 0.000621795654296875,
+  "user_voice_acknowledgement": "5 MOCK \u5168\u90e8\u53d8\u4e3a\u771f\u5b9e\u6d4b\u91cf per user directive. Per AGENTS.md \u00a75.2 honest framing, the 5 items are ALREADY MEASURED (no actual MOCK \u2192 REAL conversion needed). What this audit provides is the canonical verification + provenance + honest-negative caveat document for each MEASURED value."
+}

@@ -279,10 +279,22 @@ class LambdaRewardDataset(torch.utils.data.Dataset):
             if not smi or not isinstance(smi, str):
                 n_dropped += 1
                 continue
-            try:
-                w_f = float(w)
-            except Exception:
-                w_f = 0.0
+            # Wf-427-A2: ``w`` is now a reward_dict from
+            # :func:`lambda_samples_to_reward_targets` rather than a
+            # bare scalar.  Compute the mean across known reward
+            # channels (excluding the Wf-427-A2 ``_pocket_emb_norm``
+            # diagnostic key, which is a different unit of magnitude).
+            if isinstance(w, dict):
+                _keys = [k for k in w.keys() if k != "_pocket_emb_norm"]
+                if _keys:
+                    w_f = float(sum(float(w[k]) for k in _keys) / float(len(_keys)))
+                else:
+                    w_f = 0.0
+            else:
+                try:
+                    w_f = float(w)
+                except Exception:
+                    w_f = 0.0
             atom_types, coords = _smiles_to_atom_types_and_coords(smi)
             if atom_types is None or coords is None:
                 n_dropped += 1

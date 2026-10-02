@@ -1,0 +1,8 @@
+[23:00:58] ACTIVATION: READ-ONLY scaffold (default; --activate flag required for LIVE mode).
+wf355_a1       DRY_RUN_OK
+wf355_a2       DRY_RUN_OK
+wf355_a3       DRY_RUN_OK
+wf355_b1       PLAN_ONLY
+wf355_b2       DRY_RUN_OK
+g5_retrain     PARTIAL
+g6_recover     READY

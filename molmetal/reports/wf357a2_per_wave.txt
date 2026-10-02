@@ -1,0 +1,2 @@
+[wf343c2_per_wave_check] wave='Wf-347A1 pre-retrain smoke' config=/home/hugo/codes/mol-metal/configs/cfm_full_retrain.yaml preflight=/home/hugo/codes/mol-metal/molmetal/reports/wf259_run/pre_flight.json pairs=(5m × 5s=25) min_vram=8192MiB min_disk=50GiB budget=10.0h skip_live=True strict=True
+[wf343c2_per_wave_check] wrote /home/hugo/codes/mol-metal/molmetal/reports/wf343c2_per_wave_check/per_wave_check.json (overall=FAIL pass=2 fail=3 skip=2 schema_valid=True)

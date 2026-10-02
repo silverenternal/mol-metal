@@ -1,0 +1,21 @@
+{
+  "atom_count": 21,
+  "extraction_kind": "sdf",
+  "formula": "C13H24N4O3S",
+  "heavy_atom_count": 21,
+  "inchikey": "BLJRIMJGRPQVNF-JTQLQIEISA-N",
+  "ligand_resname": null,
+  "notes": "ADRB2_HUMAN TIM (\u03b22 adrenergic receptor ligand) CrossDocked SDF.",
+  "ok": true,
+  "phase2_recovery_path": "conda-forge vina install OR MOLMETAL_VINA_BIN env override per Wf-84 P2 stub_warning (Wf-309A discovery: which vina \u2192 not found)",
+  "phase2_redocking_status": "BLOCKED",
+  "pocket_id": "3ny8",
+  "smiles": "CC(C)(C)NC[C@H](O)COc1nsnc1N1CCOCC1",
+  "source_metadata_json": "molmetal/data/pocket_ref_ligands/ligand_metadata.json",
+  "source_path": "/home/hugo/codes/mol-metal/.data/molmetal/crossdocked/ADRB2_HUMAN_26_357_TM_0/3ny8_A_rec_3d4s_tim_lig_tt_min_0.sdf",
+  "source_sha256": "aa8a63085c3bb814cac4f7b409efeaa54c1e9cc4f00ef19e02c5deb97d7faafd",
+  "source_synthesis_md": "molmetal/reports/wf139_p1_ref_ligands/synthesis.md",
+  "source_wf": "Wf-139 P1",
+  "wf313a_relink_kind": "REFACTOR_FROM_FLAT_LAYOUT",
+  "wf313a_relink_utc": "2026-09-29T02:22:53.662515+00:00"
+}

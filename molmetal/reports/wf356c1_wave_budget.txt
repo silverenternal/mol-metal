@@ -1,0 +1,2 @@
+[wave_budget_tracker] budget_hr=10.0 auto_discover=True
+[wave_budget_tracker] wrote /home/hugo/codes/mol-metal/molmetal/reports/wf262_wave_budget/wave_budget_report.json (cumulative=193.04h, remaining=-183.04h, deferred=8)

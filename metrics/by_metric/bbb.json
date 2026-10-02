@@ -1,0 +1,21 @@
+{
+  "cross_check_via_metrics_v2_mean_helper": -0.15858744391982235,
+  "data_source": "metallo_drugs_500_train.csv",
+  "description": "logBB blood-brain barrier penetration (Clark 1999 regression on TPSA + logP); higher = more BBB",
+  "honest_framing_note": "bbb computed via metrics_v2 pass-through on the 449 metallo-drug SMILES cohort. 449/449 parsed (0 parse failures, gracefully skipped). Mean = -0.15858744391982235, std = 1.2925704672184033, verdict = INFO. Descriptive physico-chemical proxy \u2014 NOT a learned metallodrug score. For paper \u00a73 cohort panel only.",
+  "metric": "bbb",
+  "n_failed": 0,
+  "n_parsed": 449,
+  "n_samples": 449,
+  "scope": "ADMET pass-through panel (Wf-303C T1 / Wf-312C R01 5-NEW extension)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:bbb",
+  "status": "MEASURED",
+  "std": 1.2925704672184033,
+  "target_band": "-1 < logBB < 1 (BBB+/- threshold per Clark 1999)",
+  "timestamp": "2026-09-29",
+  "unit": "logBB; >-1 = BBB-penetrating, <-1 = BBB-excluded",
+  "value": -0.15858744391982235,
+  "verdict": "INFO",
+  "wf_design_ref": "molmetal/reports/wf312c_admet_extension/design.md \u00a7R01",
+  "wf_tag": "Wf-312C R01 ADMET 5-NEW extension"
+}

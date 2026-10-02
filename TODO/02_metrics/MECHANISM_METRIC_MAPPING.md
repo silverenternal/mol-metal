@@ -1,9 +1,10 @@
 # MECHANISM_METRIC_MAPPING — 机制 ↔ 指标映射 + 自查表
 
-**Date**: 2026-09-25 (R17)
+**Date**: 2026-09-30 (Wf-393-A2 sync, post Wf-380..390 implementation wave)
 **Purpose**: 每个指标 ↔ 哪些机制影响它；当指标 regress 时，去查哪个机制的 unit test
 **Audience**: 任何调试 metric regression 的人 + 写 ablation 时选 mechanism 的人
 **Companion**: `TODO/02_metrics/METRICS_TARGETS.md` (指标定义), `TODO/02_metrics/EVALUATORS_MIGRATED.md` (evaluator 来源)
+**Last sync**: Wf-393-A2 (2026-09-30) — §3 contribution matrix extended with M22-M28 + Wf-380 SCAFFOLD columns; §5/§6 Wf-385-A3 pre-flight gate references; §7 ablation design Wf-380 SCAFFOLD rows added
 
 ---
 
@@ -228,21 +229,54 @@ Each cell denotes: ✓ 主要贡献 / ○ 次要 / ✗ 无影响.
 | **M20** BioPython PLIP | | | | | | | | | ✓ | | | | | | | | | | | | |
 | **M21** Scaffold split | ✓ | ✓ | | | | | | | | | | | | | | | ✓ | | | |
 
+### M22-M28 (R18 Wave 1) — extension to contribution matrix (NEW 2026-09-30 per Wf-393-A2)
+
+Wf-380..390 wave shipped 10 CFM innovation SCAFFOLDS + Wf-380-B1 trainer integration. M22-M28 are the R18 Wave 1 mechanisms (Wf-1 T1+T2+T5 + Wf-9 + Wf-10 + Wf-2 W2.1+W2.2+W2.3 + Wf-2.4 P2-1+P2-2). Adding to the contribution matrix below:
+
+|  | **m1** | **m3** | **m4** | **m6** | **m7** | **m8** | **m11** | **m14** | **m15** | **Wf-380 SCAFFOLD** | **Wf-380-B1 trainer_integration** |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| **M22** SE(3) SB | | ✓ | | | | | ✓ | | ✓ | ✗ (NOT in Wf-380-A1 10 SCAFFOLDS) | ✗ |
+| **M23** Transport Relax | ○ | | | | | | | ✓ | | ✓ (optimal_transport_v2_solver) | ✓ (--use-optimal-transport-v2) |
+| **M24** Multi-PH | | | | | ✓ | | ✓ | | | ✗ (NOT in Wf-380-A1 10 SCAFFOLDS) | ✗ |
+| **M25** Hilbert PD | | | | | | | | | | ✓ (edm_preconditioning + lr_warmup) | ✓ (--edm-preconditioning + --lr-warmup-cosine) |
+| **M26** Score-Rep MC | | | ✓ | | ✓ | | | | | ✗ (NOT in Wf-380-A1 10 SCAFFOLDS) | ✗ |
+| **M27** W-Flow | | | | | | | | | ✓ | ✗ (NOT in Wf-380-A1 10 SCAFFOLDS) | ✗ |
+| **M28** MacroGuide PH | | | | | ✓ | | ✓ | | | ✗ (NOT in Wf-380-A1 10 SCAFFOLDS) | ✗ |
+
+**Wf-380 SCAFFOLD status legend** (per `TODO/completed/380a1_deep_integration_scaffolds.md`):
+- `edm_preconditioning` (M25 partial): Karras 2022 σ-preconditioning for CFM noise schedule
+- `optimal_transport_v2_solver` (M23 partial): Pooladian 2023 OT-CFM acceleration
+- `stable_vm`: StableVM 2026 ICML refactor for CFM loss stability
+- `so3_average`: Cao 2025 ICML SO(3)-averaged flow matching
+- `triton_mini_batch_ot`: Khainb 2025 Triton-fused mini-batch OT kernel
+- `shortcut_distillation_wf380`: Frans 2024 shortcut consistency distillation
+- `consistency_regularization_wf380`: EDM Karras 2022 consistency regularization
+- `flowmol_unified`: FlowMol arXiv:2412.01966 (CC-BY-NC, USER_OK-gated production integration)
+- `log_normal_t`: log-normal t-sampling for CFM time-density
+- `lr_warmup`: linear LR warmup (existing M14 baseline; Wf-380 SCAFFOLD formalizes cosine variant)
+
+**Wf-380-B1 trainer integration legend** (per `TODO/completed/380b1_index_sync.md`):
+- 14 NEW CLI flags + 7 `--no-X` negation flags in CFM trainer (`molmetal/scripts/train_cfm_yuelbond_wasserstein.py`)
+- 3 NEW CLI flags + 3 `--no-X` negation flags in D-MPNN trainer (`molmetal/scripts/train_dmpnn_multitask_wasserstein.py`)
+- AST parse OK for both trainers
+- MEASURED speedup is PROJECTED, NOT re-baselined (full A/B retrain DEFER to Wf-380-B2 follow-up USER_OK-gated)
+
 ### 关键 insight
 
 | Metric | 主要 mechanisms (Pareto 80/20) |
 |---|---|
-| **m1 Ru AUC** | M1 (MLC encoding) + M8 (LambdaASTSR reward) + M12 (vocab) + M21 (split) |
-| **m2 Pt 4-cell AUC** | M1 + M8 + M10 (84-rule) + M21 |
-| **m3 Vina Dock median** | M5 (EGNN) + M6 (CFM) + M7 (YuelBond) |
-| **m4 Success Rate** | M3 (MCTS) + M4 (PLL) + M5+M6+M7 (3D generation chain) |
-| **m5 SA** | M1 + M2 + M11 (click rules) + M18 (evaluator) |
-| **m7 Diversity** | M1 + M2 + M3 + M4 + M9 + M11 |
+| **m1 Ru AUC** | M1 (MLC encoding) + M8 (LambdaASTSR reward) + M12 (vocab) + M21 (split) + **M22** (R18 W1 SE(3) SB; PROJECTED GPU retrain per Wf-335-SYN §3) + **M25** (R18 W1 Hilbert PD; PROJECTED) |
+| **m2 Pt 4-cell AUC** | M1 + M8 + M10 (84-rule) + M21 + **M22** (PROJECTED) + **M24** (Multi-PH, PROJECTED) + **M25** (PROJECTED) |
+| **m3 Vina Dock median** | M5 (EGNN) + M6 (CFM) + M7 (YuelBond) + **M22** (PROJECTED SE(3) SB geodesic) + **M27** (PROJECTED W-Flow wall-time) |
+| **m4 Success Rate** | M3 (MCTS) + M4 (PLL) + M5+M6+M7 (3D generation chain) + **M26** (PROJECTED Score-Rep MC replaces Dirichlet) |
+| **m5 SA** | M1 + M2 + M11 (click rules) + M18 (evaluator) + **M25** (PROJECTED Hilbert PD) |
+| **m6 QED** | M11 + M18 (evaluator) + **M26** (PROJECTED Score-Rep MC variance penalty) |
+| **m7 Diversity** | M1 + M2 + M3 + M4 + M9 + M11 + **M24** (PROJECTED Multi-PH) + **M28** (PROJECTED MacroGuide ring topology) + **M35** (PROJECTED multi-PH + PLL strict monotonicity, R18 W2) |
 | **m8 PB-Valid** | M5+M6+M7 (3D chain) + M19 (evaluator) |
-| **m11 n_distinct** | M1 + M2 + M3 + M4 + M9 + M10 + M11 |
-| **m14 Decode ratio** | M5 + M6 + M7 + M12 + M13 + M14 + M15 + M16 + M17 |
-| **m16 Affinity r** | M3 + M4 + M8 + M9 |
-| **m17 OOD AUC** | M21 + M8 + M9 |
+| **m11 n_distinct** | M1 + M2 + M3 + M4 + M9 + M10 + M11 + **M22** (PROJECTED) + **M24** (PROJECTED) + **M28** (PROJECTED macrocycle) + **M35** (PROJECTED) + **M36** (PROJECTED skeleton jump, R18 W3) + **M38** (PROJECTED FG veto precision) + **M39** (PROJECTED layered gen) |
+| **m14 Decode ratio** | M5 + M6 + M7 + M12 + M13 + M14 + M15 + M16 + M17 + **M23** (PROJECTED transport relaxation) |
+| **m16 Affinity r** | M3 + M4 + M8 + M9 + **M25** (PROJECTED Hilbert PD) |
+| **m17 OOD AUC** | M21 + M8 + M9 + **M41** (PROJECTED Tanimoto<0.4 OOD protocol, R18 W3 PARTIAL) |
 
 ---
 
@@ -404,6 +438,9 @@ Each cell denotes: ✓ 主要贡献 / ○ 次要 / ✗ 无影响.
 | ODE solver drift on stiff pockets with M34 | M34 → M27 (R18 W1) → M15 (R17) | verify `α ∈ (0, 1]` + Grünwald-Letnikov step size; `pytest molmetal/tests/test_fractional_ode.py` |
 | m7 Diversity regress after M35 enabled | M35 → M24 (R18 W1) → M28 (R18 W1) → M4 (R17) | verify `compare_multi_ph_vs_single_pll` strict monotonicity; `pytest molmetal/tests/test_multi_ph_pll_integration.py -k monotonicity` |
 | m11 n_distinct regress after M35 enabled | M35 → M24 (R18 W1) → M28 (R18 W1) | verify `(B, H + n_bins ** 2)` concat shape; `pytest molmetal/tests/test_multi_ph_pll_integration.py` |
+| **SCAFFOLD wire_in gate FAIL after Wf-380 enabled** (NEW 2026-09-30 per Wf-385-A3) | **SCAFFOLD_W1 → trainer integration** | **WF3-385-A3-§0 scaffold_wire_in_gate pre-flight gate** per `TODO/completed/385a3_scaffold_wire_in_gate.md`; runner output at `molmetal/reports/wf385a3_*.json`; diagnostic: SCAFFOLD module imports clean + trainer integration preserves bit-for-bit reproducibility |
+| **m6_kappa main-result §3 inclusion check** (NEW 2026-09-30 per Wf-389-A1 §3) | **per-metric-redefinition → m6_kappa-drop-from-§3** | **WF3-385-A3-§0 scaffold_wire_in_gate `m6_kappa_in_supplementary_subtable` check**; if m6_kappa is in §3 main-result, gate FAIL; if PROMOTED to §3 supplementary sub-table, gate PASS (per Wf-389-A1 §3 + Wf-377-A1 §4.2 convergence) |
+| **Wf-380 SCAFFOLD vs trainer integration gap** (NEW 2026-09-30 per Wf-380-A1 §0 + Wf-380-B1 §0) | **SCAFFOLD-tier → trainer_integration** | **WF3-385-A3-§0 scaffold_wire_in_gate `wf380_scaffold_tier` check**; SCAFFOLD-tier modules must have corresponding trainer integration OR explicit SCAFFOLD-tier flag; gate FAIL if Wf-380-A1 SCAFFOLD modules are referenced but Wf-380-B1 trainer integration is missing |
 
 ---
 
@@ -591,6 +628,19 @@ Each cell denotes: ✓ 主要贡献 / ○ 次要 / ✗ 无影响.
 | 删 M8 (LambdaASTSR → F5) | m16 ↓ | m16 | ⏳ TODO (wf_lambda_deflexcite_coupling ablation) |
 | 删 M7 (YuelBond → distance-only) | m13 ↓, m14 ↓ | m13, m14 | ⏳ TODO |
 | 删 M21 (random split → scaffold split) | m1, m2, m17 虚高 | m1, m2, m17 | N/A (数据 hygiene) |
+| **Wf-380 SCAFFOLD ablations (NEW 2026-09-30 per Wf-380-A1 + Wf-380-B1)** ||||
+| 删 Wf-380-A1 SCAFFOLD (edm_preconditioning) | m14 → finite but small | m14, m1 | ✅ 已做 (Wf-380-A1 SCAFFOLD test 41/41 PASS; GPU retrain pending USER_OK per AGENTS.md §5.1) |
+| 删 Wf-380-A1 SCAFFOLD (optimal_transport_v2_solver) | m1 + m2 ↓ 5-10% | m1, m2 | ⏳ TODO (Wf-380-A1 SCAFFOLD; full ablation USER_OK-gated) |
+| 删 Wf-380-A1 SCAFFOLD (stable_vm) | m14 → unstable on rare-atom | m14 | ⏳ TODO (Wf-380-A1 SCAFFOLD; rare-atom cohort smoke TBD) |
+| 删 Wf-380-A1 SCAFFOLD (so3_average) | m3 + m15 ↓ 5-10% | m3, m15 | ⏳ TODO (Wf-380-A1 SCAFFOLD; SO(3) ablation cohort TBD) |
+| 删 Wf-380-A1 SCAFFOLD (triton_mini_batch_ot) | m1 + m2 ↓ speedup | m1, m2 | ⏳ TODO (Wf-380-A1 SCAFFOLD; Triton kernel correctness verified but not re-baselined) |
+| 删 Wf-380-A1 SCAFFOLD (shortcut_distillation_wf380) | m14 → fewer sampling steps | m14 | ⏳ TODO (Wf-380-A1 SCAFFOLD; Frans 2024 distillation fidelity TBD) |
+| 删 Wf-380-A1 SCAFFOLD (consistency_regularization_wf380) | m14 → drift | m14 | ⏳ TODO (Wf-380-A1 SCAFFOLD; EDM Karras 2022 consistency regularizer TBD) |
+| 删 Wf-380-A1 SCAFFOLD (flowmol_unified) | m3 + m11 ↓ | m3, m11 | ⏳ TODO (Wf-380-A1 SCAFFOLD; CC-BY-NC LICENSE-GATED production integration per Wf-336-A1 honest-negative caveat) |
+| 删 Wf-380-A1 SCAFFOLD (log_normal_t) | m14 → t-sampling variance ↑ | m14 | ⏳ TODO (Wf-380-A1 SCAFFOLD; log-normal vs uniform t-sampling variance TBD) |
+| 删 Wf-380-A1 SCAFFOLD (lr_warmup) | m14 → diverge | m14 | ✅ 已做 (Wf-380-A1 SCAFFOLD; M14 LR warmup baseline per Wf-327-F2) |
+| **Wf-388-A1 per-cohort config ablation** ||||
+| 删 Wf-388-A1 per-cohort config (n<300 → 12-d + Ridge α=1.0) | m2 R² regress (n<300 cohorts) | m2 | ✅ 已做 (Wf-388-A1 MEASURED: platinai_4cell + hilbert R² -0.1440 vs 50-d ensemble OVERFIT per Wf-367-B1) |
 
 ---
 

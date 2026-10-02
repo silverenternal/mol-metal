@@ -272,7 +272,7 @@ def test_017_total_modules_covered():
 def test_018_platinai_csv_loader():
     """The PlatinAI 5K CSV loader returns at least one valid SMILES."""
     if not _DATA.exists():
-        pytest.skip(f"PlatinAI CSV not found: {_DATA}")
+        pytest.fail(f"PlatinAI CSV not found: {_DATA}")
     smiles = bench_mod._load_platinai_smiles(_DATA, n=10)
     assert len(smiles) == 10, f"expected 10 SMILES, got {len(smiles)}"
     assert all(isinstance(s, str) and s for s in smiles), (
@@ -313,7 +313,7 @@ def test_021_end_to_end_writes_json_report(tmp_path, monkeypatch):
     spec target of 50 samples in 60 s).
     """
     if not _DATA.exists():
-        pytest.skip(f"PlatinAI CSV not found: {_DATA}")
+        pytest.fail(f"PlatinAI CSV not found: {_DATA}")
     monkeypatch.setattr(
         sys, "argv",
         [
@@ -350,7 +350,7 @@ def test_021_end_to_end_writes_json_report(tmp_path, monkeypatch):
 def test_022_end_to_end_wall_time_50_samples(monkeypatch):
     """The full 50-sample end-to-end benchmark fits in the 60-s spec budget."""
     if not _DATA.exists():
-        pytest.skip(f"PlatinAI CSV not found: { _DATA}")
+        pytest.fail(f"PlatinAI CSV not found: { _DATA}")
     _REPORT_DIR.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(
         sys, "argv",
@@ -382,7 +382,7 @@ def test_022_end_to_end_wall_time_50_samples(monkeypatch):
 def test_023_per_module_wall_time_finite():
     """Every per-module wall-time in the report is finite and ≥ 0."""
     if not _REPORT_FILE.exists():
-        pytest.skip(f"canonical report missing: {_REPORT_FILE}")
+        pytest.fail(f"canonical report missing: {_REPORT_FILE}")
     payload = json.loads(_REPORT_FILE.read_text())
     wall_ms = payload["per_module_wall_time_ms"]
     for sid, w in wall_ms.items():

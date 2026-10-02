@@ -1,0 +1,9 @@
+Wf-420-A3 fresh pre-flight v3 run
+Timestamp: 2026-09-30T16:18Z
+Command: USER_OK=1 python molmetal/scripts/pre_flight_check.py --pipeline all
+Result: 111 PASS / 2 FAIL / 4 SKIP / 117 TOTAL wall 193.60 s
+FAILs: p2_tests_pass + p3_wf343c2_per_wave_runtime_check (cascade child)
+Root cause: conftest.py:197 ModuleNotFoundError: No module named 'torch'
+Verdict: HONEST_NEGATIVE_BLOCKED — launch REFUSED per kill_then_adapt §0
+GPU 0 Blackwell: 2 MiB used / 97340 MiB free / 0% util (IDLE — VRAM PASS)
+GPU 1 RTX 5090: 2 MiB used / 32202 MiB free / 0% util (IDLE — VRAM PASS)

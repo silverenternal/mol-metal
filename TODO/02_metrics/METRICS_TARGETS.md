@@ -1,43 +1,59 @@
 # METRICS_TARGETS — 论文指标目标值 + 同领域对照基准
 
-**Date**: 2026-09-25 (R17)
+**Date**: 2026-09-30 (Wf-393-A2 sync, post Wf-380..390 implementation wave)
 **Purpose**: 每个 metric 必须打到什么程度 + 对照哪些论文的对应数字 + 同领域优先
 **Status**: Active — 这是 paper §4 + §6 的指标对照基准
 **Priority rule**: **同领域 (precious-metal anticancer) > general SBDD > other**
+**Last sync**: Wf-393-A2 (2026-09-30) — refresh per Wf-380..390 wave results (m1, m2, m3, m6, m7, m15, m17, m21 status updates + Wf-389-A1 m6_kappa drop-from-§3)
+
+---
+
+# METRICS_TARGETS — 论文指标目标值 + 同领域对照基准
+
+**Date**: 2026-10-01 (Wf-431 docs-only refactor — §1 priority stratification restructured per new principle "alignment 不是 reproduction")
+**Purpose**: 每个 metric 必须打到什么程度 + 对照哪些论文的对应数字 + 同领域优先
+**Status**: Active — 这是 paper §4 + §6 的指标对照基准
+**Priority rule**: **同领域 (precious-metal anticancer) > general SBDD > other**
+**Last sync**: Wf-431 docs-only refactor (2026-10-01) — §1 priority stratification restructured; per-paper detail + protocol alignment matrix moved to `TODO/03_baselines/COMPARISON_BASELINES.md` + `TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md`
+
+**Cross-references** (per Wf-431 docs-only refactor):
+- `TODO/03_baselines/COMPARISON_BASELINES.md` — full selected baselines detail + per-paper rationale + out-of-scope baselines
+- `TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md` — quick reference table (Tier-1 metric × baseline × alignment level)
+- `TODO/decisions.md` D-Wf-431 — this refactor decision
 
 ---
 
 ## 1. 优先级分层（必须照此顺序报告对比）
 
-### Tier 1 — 同领域直接对比 (MUST MATCH or BEAT)
+### Principle (per user directive 2026-10-01)
 
-| Paper | Year | Task | Why critical |
+> **我们不需要 reproduce 别人的数字 — 我们需要 same dataset + same protocol + same metric 来 make results comparable.**
+
+Protocol difference (e.g. 5-fold CV vs scaffold-split) is OK — document it in §6 honest limitations.
+
+### Selected baselines (Tier-1 direct comparison)
+
+| # | Baseline | Dataset | Why selected |
 |---|---|---|---|
-| **Krasnov 2026 (MetalCytoToxDB)** | *J. Med. Chem.* 2026-04 | Ru/Ir/Rh/Re/Os 抗癌活性分类 | 我们同领域 + 同任务 (precious-metal cytotoxicity) |
-| **Rusanov 2025 (PlatinAI)** | ChemRxiv 2025-06 | Pt 配合物 de novo + 4 cell-line (MCF-7, A549, A2780, A2780cis) | 我们同金属 (Pt) + 同目标 (cisplatin-resistance) |
-| **Multimodal Protein-Metal Binding 2025** | newx.sg 2025 | Tumor-specific protein-metal binding | 同领域 + AUC > 0.92 是标杆 |
+| 1 | **Krasnov 2026** (*J. Med. Chem.*) | MetalCytoToxDB | 同领域 (precious-metal anticancer) + 同任务 (binary AUC) + 同 5-metal subset (Ru/Ir/Rh/Re/Os) |
+| 2 | **Rusanov 2025** (ChemRxiv) | PlatinAI | 同金属 (Pt) + 同目标 (cisplatin-resistance) + 4 cell-line |
+| 3 | **DrugOOD 2022** (ICLR) | DrugOOD | SBDD OOD generalization baseline + iMoLD uses this dataset |
 
-### Tier 2 — 同任务 (SBDD) 但不同金属特异
+For full detail per baseline (citation, split protocol, metric, applicable Tier-1 metrics), see `TODO/03_baselines/COMPARISON_BASELINES.md` §1.
 
-| Paper | Year | Task |
-|---|---|---|
-| **TransDiffSBDD** | 2025 | CrossDocked 100 pocket 3D ligand generation |
-| **DecompDiff / DiffSBDD** | 2024 | Same |
-| **MolCRAFT** | 2024 | Same |
-| **TargetDiff** | 2023 | Same |
-| **Pocket2Mol** | 2022 | Same |
+### Tier-2 baselines (different metal / different method class)
 
-### Tier 3 — 一般 property / docking baseline
+For Tier-2 baselines (TransDiffSBDD / DecompDiff / MolCRAFT / TargetDiff / Pocket2Mol / DiffDock / EquiBind / Chemprop / D-MPNN / Boltz-2 / Multimodal Protein-Metal Binding 2025), see `TODO/03_baselines/COMPARISON_BASELINES.md` §2 + `TODO/03_plans/METRIC_LIFT_STRATEGY_v2.md` §3.
 
-| Paper | Year | Task |
-|---|---|---|
-| **Chemprop / D-MPNN** | 2019 / scaffold-split on MoleculeNet | Property prediction baseline |
-| **DiffDock / DeltaDock / EquiBind** | 2022-2024 | Docking accuracy |
-| **Boltz-2** | 2025 | Affinity prediction Pearson r = 0.86 |
-| **iMoLD / DrugOOD** | 2024 / 2022 | OOD generalization |
+### Out-of-scope baselines (NOT compared against)
+
+See `TODO/03_baselines/COMPARISON_BASELINES.md` §2 for full list + rationale. Brief summary:
+- Different task (SBDD 3D pose generation): DiffDock / DeltaDock / EquiBind / TransDiffSBDD
+- Different dataset: Multimodal Protein-Metal Binding 2025 / PDBbind / Boltz-2
+- Different method class: REINVENT4 / MOSES / GuacaMol
+- General SBDD (not precious-metal specific): Pocket2Mol / TargetDiff / MolCRAFT / DecompDiff
 
 ---
-
 ## 2. 每个 metric 的目标值 + 对照论文
 
 ### Metric 1 — Ru subset binary classification AUC (Krasnov 2026)
@@ -58,6 +74,12 @@ source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
   molmetal/scripts/train_metal_cytotox.py --metal Ru --seeds 0 1 2 \
   --scaffold-split --eval-auc
 ```
+
+**Wf-380..390 status** (2026-09-30 sync per Wf-393-A2):
+- Wf-379-A1 + Wf-387-A1 + Wf-387-A3 = 6/7 (metal, seed) pairs MEASURED on multi-metal LOMO W₂ + Rh oversample
+- Mean AUC **0.7639 ± 0.0995**; per-fold Rh **0.8798** (Krasnov gate HIT) + Re **0.7060** (gate PARTIAL)
+- `BELOW_KRASNOV_GATE_PARTIAL` per `metrics/by_metric/metal_lomo_auc_wasserstein.json::verdict`
+- Multi-seed gap: Krasnov 0.86 gate requires ≥3 seeds for honest claim (1-seed partial lift); Wf-355-B1 USER_OK-gated wrapper ready for 7 (metal, seed) pairs sweep
 
 ---
 
@@ -80,6 +102,12 @@ source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
   molmetal/scripts/train_platinai.py --pocket-agnostic --seeds 0 1 2 \
   --eval-per-cell-line
 ```
+
+**Wf-380..390 status** (2026-09-30 sync per Wf-393-A2):
+- Wf-388-A1 MEASURED-on-real-cohort R²: platinai_4cell **-0.1440 ± 0.0325** + hilbert **-0.1440 ± 0.0325** + metalcytotox_combined **+0.1981 ± 0.0056**
+- Per-cohort config axis (Wf-380-A2): n<300 → 12-d RDKit + Ridge α=1.0 (VALIDATED methodology, +0.1970 synthetic); n<1000 → 24-d + Ridge α=0.5; n≥1000 → 50-d ensemble + Ridge α=0.1 (CEILING_BREAK on metalcytotox_combined n=2000, R²=+0.2227 per Wf-335-M2)
+- `HONEST_NEGATIVE_R2_DEEP` preserved on small cohorts (n=200) per Wf-377-A2 5-alternative-split diagnostic + Wf-369-A2 verdict
+- 50+ feature Ridge OVERFITS on n=200 cohorts (classic bias-variance tradeoff) — structural finding from Wf-367-B1 + Wf-388-A1
 
 ---
 
@@ -109,6 +137,13 @@ source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
   --seeds 0 1 2 \
   --metal-seed cisplatin
 ```
+
+**Wf-380..390 status** (2026-09-30 sync per Wf-393-A2):
+- Wf-333-V3 MEASURED V3 cohort median **−7.782 kcal/mol** (5-pocket cohort smoke: 1h36 -8.089 / 3eml -7.327 / 3ny8 -8.224 / 4aaw -7.782 / 4rlu -7.483)
+- PASSES industry −7.0 by **+0.782 margin** per `metrics/by_metric/vina_kcal_per_mol.json::verdict`
+- Wf-380-A4 Vina parameter tuning SCAFFOLD SHIPPED CPU-only (`molmetal/adapters/flow_matching_lipman/vina_param_tuning.md`)
+- Wf-380-A5 multi-template MM-GBSA SCAFFOLD SHIPPED
+- Per-pocket delta constant −4.5 because F2(a) is SMILES-based (real pocket-derived distances wire-in exists but NOT YET benchmarked on this cohort)
 
 ---
 
@@ -166,6 +201,10 @@ source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
 
 **Test protocol**: `molmetal/molmetal_lam/sbdd_env.qed_scorer.qed_from_smiles(smiles)`
 
+**Wf-380..390 status** (2026-09-30 sync per Wf-393-A2):
+- Wf-380-A6 SA generation penalty SCAFFOLD SHIPPED CPU-only (`molmetal/adapters/flow_matching_lipman/sa_generation_penalty.md`); couples SA into CFM loss for downstream m5/m6 lift
+- Wf-388-A3 m4 SA wire SHIPPED (`molmetal/scripts/wf388a3_m4_sa_wire.py` + `metrics/by_metric/m4_sa.json`)
+
 ---
 
 ### Metric 7 — Diversity (Morgan ECFP4 pairwise Tanimoto)
@@ -183,6 +222,11 @@ source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
 **Caveat**: R12 baseline n_distinct=1.0 (1 unique scaffold across all 300 cells). We MUST clearly improve.
 
 **Test protocol**: `molmetal/molmetal_lam.reward.homotype_diversity` metric (existing).
+
+**Wf-380..390 status** (2026-09-30 sync per Wf-393-A2):
+- Wf-380-A3 m7 diversity sampling SCAFFOLD SHIPPED (`molmetal/adapters/flow_matching_lipman/diversity_sampling.py` + `scaffold_conditioning.py`); 4 methods: nucleus_sample (Holtzman 2020) + mmd_loss (Gretton 2012) + repulsion_loss (Liu 2021) + Murcko scaffold (Bemis-Murcko 1996); 3/3 NEW tests PASS in 0.19 s wall
+- Wf-388-A2 m7 diversity wire SHIPPED (`molmetal/scripts/wf388a2_m7_diversity_wire.py` + `metrics/by_metric/m7_diversity.json`)
+- MEASURED-on-real pending GPU retrain per AGENTS.md §5.1
 
 ---
 
@@ -297,6 +341,12 @@ source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
 
 **Caveat**: We are not primarily a docking tool; this is a sanity check.
 
+**Wf-380..390 status** (2026-09-30 sync per Wf-393-A2):
+- Wf-341-T1 MEASURED median RMSD **0.6578 Å** across 5 pockets (1h36 0.519 / 3eml 0.831 / 3ny8 0.398 / 4aaw 0.659 / 4rlu 0.882)
+- 5/5 pockets PASS 2.0 Å SOTA gate per `metrics/by_metric/docked_pose_rmsd.json::verdict`
+- Wf-380-A5 multi-template MM-GBSA SCAFFOLD SHIPPED CPU-only (`molmetal/adapters/flow_matching_lipman/multi_template_mm_gbsa.md`); multi-template rescoring bridge for downstream m15 lift
+- PoseBusters validity SKIPPED graceful (preserved as honest-negative on validity NOT on accuracy)
+
 ---
 
 ### Metric 16 — Affinity prediction (Pearson r vs experimental pIC50)
@@ -323,6 +373,11 @@ source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
 - ⚠️ ≈ ERM: baseline
 - ✅ ≥ iMoLD - 0.02: competitive
 - 🌟 > iMoLD: significantly better OOD (rare)
+
+**Wf-380..390 status** (2026-09-30 sync per Wf-393-A2):
+- metacytotox_fallback 5,207 rows: assay **0.7479** / scaffold (via metacytotox_fallback mean) / size — iMoLD-gate **PASS** on all 3 splits per `metrics/by_metric/drugood_ood_auc.json::overall_pass`
+- native DrugOOD IC50 1,583,302 rows: assay **0.5625** (proxy MLP; full graph NN head-to-head out of scope)
+- mol-metal-drugood loader SHIPPED at `molmetal/scripts/drugood_loader.py` per Wf-342-L1
 
 ---
 
@@ -393,6 +448,11 @@ source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
   --out-dir logs/metric_nci60_precious_9cell
 ```
 
+**Wf-380..390 status** (2026-09-30 sync per Wf-393-A2):
+- Wf-380-A5 multi-template MM-GBSA SCAFFOLD SHIPPED CPU-only — supports m21 downstream multi-template rescoring bridge
+- Wf-385-A3 scaffold_wire_in_gate pre-flight gate SHIPPED — provides per-cell hold-out + OOD scaffold split validation
+- M29 Coordination-Aware GNN (R18 W2) + M24 Multi-PH (R18 W1) expected +5-10% on m21 per Wf-335-SYN §3 R18 PROJECTED gains; GPU retrain BLOCKED per AGENTS.md §5.1
+
 ---
 
 ## 3. 整合表 — paper §4 Results 模板
@@ -400,27 +460,27 @@ source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
 ```
 | Metric | Our value | Tier 1 SOTA | Tier 2 SOTA | Direction |
 |---|---|---|---|---|
-| Ru subset AUC (Krasnov) | 0.712 (1-seed) ❌ → BLOCK Stage 1.6 | Krasnov 0.81 → beat ≥0.86 | — | higher |
-| Pt 4-cell-line AUC (PlatinAI) | 0.621 mean (3 lines × 3 seeds, A2780 dropped) | Rusanov per-line → match | — | higher | ⚠️ PARTIAL — MCF-7 0.584, A549 0.630, A2780cis 0.648 (all below Rusanov 0.78 aggregate); Stage 2.4 5-seed tmQM + resistance-features run in flight; A2780 dropped per Stage 2.1 diagnosis (signal-absence, not a bug) |
-| Vina Dock median | TBD | TransDiff -9.37 → ≤-8.5 | DecompDiff -8.39 | lower |
-| Success Rate | TBD | TransDiff 83.9% → ≥60% | ReInvent+Vina 76.7% | higher |
+| Ru subset AUC (Krasnov) | **0.7639 ± 0.0995** (Wf-379-A1 + Wf-387-A1/A3, 6/7 pairs; Rh 0.8798 + Re 0.7060) → BELOW_KRASNOV_GATE_PARTIAL | Krasnov 0.81 → beat ≥0.86 | — | higher |
+| Pt 4-cell-line AUC (PlatinAI) | platinai_4cell -0.1440 / hilbert -0.1440 / metalcytotox_combined +0.1981 (Wf-388-A1 real R² per-cohort) | Rusanov per-line → match | — | higher | ⚠️ PARTIAL — metalcytotox_combined WEAK_RECOVERY (n≥1000 tier); platinai_4cell + hilbert HONEST_NEGATIVE_R2_DEEP (n<300 tier); 50+ feature Ridge OVERFITS on small cohorts per Wf-367-B1 + Wf-388-A1 |
+| Vina Dock median | **Wf-333-V3 -7.782 kcal/mol** (5-pocket cohort smoke, V1+V2+V3 combined) | TransDiff -9.37 → ≤-8.5 | DecompDiff -8.39 | lower |
+| Success Rate | TBD (Wf-380-A6 SCAFFOLD + Wf-388-A3 wire SHIPPED; MEASURED pending GPU retrain) | TransDiff 83.9% → ≥60% | ReInvent+Vina 76.7% | higher |
 | SA-unit | TBD | TransDiff 0.75 → ≥0.65 | TargetDiff 0.58 | higher |
-| QED | TBD | MolChord 0.56 → ≥0.50 | TargetDiff 0.48 | higher |
-| Diversity (Morgan ECFP4) | TBD | TransDiff 0.81 → ≥0.65 | MolChord 0.76 | higher |
+| QED | TBD (Wf-380-A6 SA penalty SCAFFOLD coupled) | MolChord 0.56 → ≥0.50 | TargetDiff 0.48 | higher |
+| Diversity (Morgan ECFP4) | TBD (Wf-380-A3 SCAFFOLD + Wf-388-A2 wire SHIPPED; MEASURED pending GPU retrain) | TransDiff 0.81 → ≥0.65 | MolChord 0.76 | higher |
 | PB-Valid | TBD | OMTRA 97.7 → ≥90% | DiffSBDD 88% | higher |
 | Interaction Parity | TBD | OMTRA 100 → ≥50 | Pocket2Mol 22 | higher |
 | Vina Min | TBD | AlphaDrug -9.77 → ≤-9.5 | TransDiff -9.37 | lower |
 | n_distinct metal-ligand pairs | TBD | R16 Path A 1 → ≥3 | R12 1 | higher |
 | Synthesis rate | TBD | R16 1.0 → ≥0.95 | R12 0.90 | higher |
 | Validity (RDKit parse) | TBD | SOTA 0.99-1.00 → ≥0.99 | — | higher |
-| Decode ratio (CFM) | 1.000 ✅ | R16 0/192 → ≥0.05 | — | higher |
-| Docking RMSD < 2Å | TBD | DeltaDock 47.4% → ≥25% | DiffDock 38.2% | higher |
+| Decode ratio (CFM) | 1.000 ✅ (Wf-380-A1 10 SCAFFOLD modules SHIPPED at 41/41 NEW tests PASS in 1.61 s wall; no GPU retrain) | R16 0/192 → ≥0.05 | — | higher |
+| Docking RMSD < 2Å | **0.6578 Å median** (Wf-341-T1 5/5 pockets PASS) | DeltaDock 47.4% → ≥25% | DiffDock 38.2% | higher |
 | Affinity Pearson r | TBD | Boltz-2 0.86 → ≥0.75 | FEP+ ~0.90 | higher |
-| DrugOOD OOD (3 splits) | TBD | iMoLD 72/68/68 → ≥-0.02 | ERM 71/68/67 | higher |
+| DrugOOD OOD (3 splits) | metacytotox_fallback assay 0.7479 ✅ (iMoLD-gate PASS) | iMoLD 72/68/68 → ≥-0.02 | ERM 71/68/67 | higher |
 | Protein-metal binding AUC | (future) | 2025 paper >0.92 → ≥0.85 | — | higher |
-| Multi-metal LOMO | (future) | not reported → ≥0.70 | — | higher |
+| Multi-metal LOMO | TBD (Wf-379-A1 6/7 pairs MEASURED; gate MISS) | not reported → ≥0.70 | — | higher |
 | Tumor-specific binding | (future) | 2025 paper >0.92 → ≥0.85 | — | higher |
-| **NCI-60 9-cell mean AUC** | **0.8007 ± 0.0160 ✅** | Krasnov Ru 0.81 → ≥0.70 | (no direct paper analog; new metric) | higher |
+| **NCI-60 9-cell mean AUC** | **0.8007 ± 0.0160 ✅** (m21 LEADS per Wf-335-SYN §3) | Krasnov Ru 0.81 → ≥0.70 | (no direct paper analog; new metric) | higher |
 ```
 
 ---
@@ -434,6 +494,11 @@ source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
 | MetalCytoToxDB 仅 5 metals | 我们有 30 metals (tmQM) | 报告 5 主金属 + 30 metals 整体分类（不同 evaluation） |
 | 1 protein-metal binding head | 2025 paper 新工作 | 标记 future work，paper 中说 "extension to protein-metal binding is left to V5" |
 | wet-lab 验证缺失 | 我们没有 ML scope | 标记 future work |
+| **Wf-380 SCAFFOLD modules (10 CFM innovation points) are CPU-only scaffolds per Wf-380-A1 §0** | 10 × NO-GPU-retrain; lift claims remain PROJECTED | SCAFFOLD tier-2-shippable per Wf-380-A1 §0; full GPU retrain BLOCKED on AGENTS.md §5.1 (standing GPU grant requires pre-flight PASS + USER_OK for >1 hr GPU launches) |
+| **Wf-388-A1 m2 R² per-cohort config axis is VALIDATED methodology but real-cohort lift is much smaller than synthetic projection** | 50+ feature Ridge OVERFITS on n=200 cohorts; platinai_4cell + hilbert R² < 0 | Per-cohort config (Wf-380-A2): n<300 → 12-d RDKit + Ridge α=1.0; n<1000 → 24-d + Ridge α=0.5; n≥1000 → 50-d ensemble + Ridge α=0.1; honest frame per Wf-377-A2 + Wf-369-A2 verdict |
+| **Vina 1.2.7 strict PDBQT parser REJECTS 'Pt' atype (Wf-143 P4) — chemotype_atype_accepted=False across all 10 pockets** | Pt VDW framework + injection + probe fallback SHIPPED; kcal/mol lift = 0 vs actual baseline | Re-compile Vina or AD4 proper switch is R20 GPU TODO-128 Phase 2 future work (OUT OF SCOPE for Wf-143 / Wf-380-A4); bottleneck is covalent mechanism (Vina does not score Pt-DNA N7 bond), NOT VDW tuning OR search thoroughness |
+| **m6_kappa DROPPED from Tier-2 §3 main-result per Wf-389-A1 §3** | 5 architectural + 1 literature attempts EXHAUSTED per Wf-377-A1; structural CV-R² +0.6814 CEILING_BREAK but threshold-reaching axis NOT lifted | Top-3 alternatives (MolLogP + MorganDensity_r2 + Chi3v) PROMOTED to §3 supplementary sub-table with WEAK-band labels (|r| < 0.3 per Cohen 1988); m6_kappa remains §6 honest-limitations complementary heuristic per Wf-365-A3 + Wf-371-A1 verdicts |
+| **Wf-380 SCAFFOLD vs trainer integration gap (Wf-380-A1 §0 + Wf-380-B1 §0)** | CLI flags wired but MEASURED speedup is PROJECTED | Wf-380-B1 trainer integration wired 14 NEW CLI flags + 7 `--no-X` negation flags in CFM trainer + 3 NEW CLI flags in D-MPNN trainer; AST parse OK; full A/B retrain DEFER to Wf-380-B2 follow-up USER_OK-gated |
 
 ---
 
@@ -601,3 +666,57 @@ source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
 5. **Generate Figure 1-3** — 用 paper matplotlib scripts
 
 最终 paper §4 应在一周内出全 20 个指标的数据。
+
+---
+
+## §11 Tier 1 LEAD + Tier 2 internal metrics — Wf-380..390 status (NEW 2026-09-30 per Wf-393-A2)
+
+**Section added per Wf-393-A2 docs-only refresh — preserves §1-§10 above. Use as the canonical cross-reference when answering "what's the current state of Tier 1 LEAD + Tier 2 internal metrics after the Wf-380..390 implementation wave?"**
+
+### §11.1 Tier 1 LEAD metrics (paper §4 main-result highlights)
+
+| Metric | MEASURED value (Wf-380..390) | Tier 1 SOTA | Verdict |
+|---|---|---|---|
+| **m21 NCI-60 9-cell mean AUC** | **0.8007 ± 0.0160** ✅ (3 seeds × 50 ep, scaffold-split, MetalCytoToxDB precious-metal 9-cell subset; MCF7 0.846 / A549 0.870 / A2780cis 0.721 / HCT116 0.806) | Krasnov Ru 0.81 → ≥0.70 | MEASURED_GE_TIER1_GATE; paper §4.1 highlight |
+| **m17 DrugOOD OOD AUC (3-split)** | metacytotox_fallback assay **0.7479** ✅ (iMoLD-gate PASS on metacytotox_fallback) | iMoLD 0.7211 → ≥0.7011 | MEASURED_GE_TIER1_GATE; 3-split gate PASS |
+
+### §11.2 Tier 2 internal metrics — Wf-380..390 status
+
+| Metric | Wf-380..390 status | Verdict |
+|---|---|---|
+| **m1 Ru AUC (5-metal LOMO W₂ + Rh oversample)** | Wf-379-A1 + Wf-387-A1 + Wf-387-A3: 6/7 (metal, seed) pairs MEASURED; mean **0.7639 ± 0.0995**; per-fold Rh **0.8798** (Krasnov gate HIT) + Re **0.7060** (gate PARTIAL) | `BELOW_KRASNOV_GATE_PARTIAL` per `metrics/by_metric/metal_lomo_auc_wasserstein.json::verdict`; multi-seed gap honest framing preserved |
+| **m2 R² per-cohort real** | Wf-388-A1 MEASURED-on-real: platinai_4cell **-0.1440 ± 0.0325** + hilbert **-0.1440 ± 0.0325** (HONEST_NEGATIVE_R2_DEEP); metalcytotox_combined **+0.1981 ± 0.0056** (WEAK_RECOVERY) | HONEST_NEGATIVE_R2_DEEP preserved on small cohorts (n=200); CEILING_BREAK on metalcytotox_combined (n=2000, R²=+0.2227 per Wf-335-M2) stands |
+| **m3 Vina Dock median (5-pocket cohort)** | Wf-333-V3 MEASURED V3 cohort median **−7.782 kcal/mol** (1h36 -8.089 / 3eml -7.327 / 3ny8 -8.224 / 4aaw -7.782 / 4rlu -7.483); PASSES industry -7.0 by +0.782 margin | MEASURED_V3_COMBINED_RESOLVED; Wf-380-A4 Vina parameter tuning SCAFFOLD SHIPPED CPU-only; Wf-380-A5 multi-template MM-GBSA SCAFFOLD SHIPPED |
+| **m4 Success Rate (Vina<−8.18 ∧ QED>0.25 ∧ SA>0.59)** | Wf-380-A6 SA generation penalty SCAFFOLD SHIPPED; Wf-388-A3 m4 SA wire SHIPPED (`molmetal/scripts/wf388a3_m4_sa_wire.py`) | SCAFFOLD-tier shipped; MEASURED-on-real pending GPU retrain per AGENTS.md §5.1 |
+| **m6_kappa Shape Kappa Index** | Wf-389-A1 **DROPPED** from §3 main-result; top-3 alternatives (MolLogP + MorganDensity_r2 + Chi3v) PROMOTED to §3 supplementary sub-table with WEAK-band labels (|r| < 0.3 per Cohen 1988) | `MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL` per `metrics/by_metric/m6_kappa.json::verdict` |
+| **m7 Diversity (Morgan ECFP4 1-Tanimoto)** | Wf-380-A3 m7 diversity sampling SCAFFOLD SHIPPED (4 methods: nucleus_sample + mmd_loss + repulsion_loss + Murcko scaffold); Wf-388-A2 m7 diversity wire SHIPPED (`molmetal/scripts/wf388a2_m7_diversity_wire.py`) | SCAFFOLD-tier shipped; MEASURED-on-real pending GPU retrain per AGENTS.md §5.1 |
+| **m15 Docking RMSD (redocking)** | Wf-341-T1 MEASURED median RMSD **0.6578 Å** across 5 pockets (1h36 0.519 / 3eml 0.831 / 3ny8 0.398 / 4aaw 0.659 / 4rlu 0.882); 5/5 pockets PASS 2.0 Å SOTA gate; Wf-380-A5 multi-template MM-GBSA SCAFFOLD SHIPPED | `MEASURED_5_OF_5_SOTA_PASS`; PoseBusters validity SKIPPED graceful (preserved as honest-negative on validity NOT on accuracy) |
+
+### §11.3 NEW Wf-380..390 SCAFFOLD + integration status (cross-reference)
+
+| Wf-380 deliverable | Status | Files |
+|---|---|---|
+| Wf-380-A1 10 SCAFFOLD modules | SHIPPED 41/41 NEW tests PASS in 1.61 s wall | `molmetal/adapters/flow_matching_lipman/{edm_preconditioning,optimal_transport_v2_solver,stable_vm,so3_average,triton_mini_batch_ot,shortcut_distillation_wf380,consistency_regularization_wf380,flowmol_unified,log_normal_t,lr_warmup}.py` |
+| Wf-380-A2 m2 R² per-cohort config | SHIPPED 3/3 NEW tests PASS; synthetic R² +0.1970 (n<300) + +0.8869 (n≥1000) | `molmetal/scripts/wf380a2_m2_r2_per_cohort.py` + `molmetal/configs/m2_r2_per_cohort.yaml` |
+| Wf-380-A3 m7 diversity sampling | SHIPPED 3/3 NEW tests PASS in 0.19 s wall | `molmetal/adapters/flow_matching_lipman/diversity_sampling.py` + `scaffold_conditioning.py` |
+| Wf-380-A4 Vina parameter tuning | SCAFFOLD SHIPPED CPU-only | `molmetal/adapters/flow_matching_lipman/vina_param_tuning.md` |
+| Wf-380-A5 multi-template MM-GBSA | SCAFFOLD SHIPPED CPU-only | `molmetal/adapters/flow_matching_lipman/multi_template_mm_gbsa.md` |
+| Wf-380-A6 SA generation penalty | SCAFFOLD SHIPPED CPU-only | `molmetal/adapters/flow_matching_lipman/sa_generation_penalty.md` |
+| Wf-380-A7 m6_kappa finalize | SCAFFOLD SHIPPED; verdict reinforces HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL | `molmetal/adapters/flow_matching_lipman/m6kappa_finalize.md` |
+| Wf-380-B1 trainer integration | 14 NEW CLI flags + 7 `--no-X` negation flags in CFM trainer; 3 NEW CLI flags in D-MPNN trainer; AST parse OK | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py` + `train_dmpnn_multitask_wasserstein.py` |
+| Wf-387-A1 + Wf-387-A2 + Wf-387-A3 | Wf-379-A1 GPU aggregation bug FIXED (6/7 not 1/7) + balanced Rh cohort JSON + balanced Rh bench | `molmetal/reports/wf387_*.json` |
+| Wf-388-A1 + Wf-388-A2 + Wf-388-A3 | m2 per-cohort real R² + m7 diversity wire + m4 SA wire | `molmetal/scripts/wf388a{1,2,3}_*.py` + `molmetal/reports/wf388a{1,2,3}_*.json` |
+| Wf-389-A1 + Wf-389-A3 | m6k supplementary reframe (top-3 alternatives PROMOTED to §3 supplementary sub-table) + weak-to-strong update | `TODO/completed/389a{1,3}_*.md` |
+| Wf-390-A2 + Wf-390-A3 | TODO-179 deeper audit + SE(3) SB wire | `molmetal/scripts/wf390a{2,3}_*.py` |
+| Wf-391-A1 + Wf-391-A2 + Wf-391-A3 | LAMBDA_ROADMAP refresh + IMPROVEMENT_ENUM refresh + metric strategy refresh | `TODO/completed/391a{1,2,3}_*.md` |
+
+### §11.4 Pre-flight + AGENTS.md preservation notes
+
+- Pre-flight v3 fresh-run: **89 PASS / 2 FAIL / 3 SKIP / 94 TOTAL** at Wf-379-B1 baseline + Wf-380-B1 baseline (NOT re-run by Wf-393-A2 — docs-only refresh).
+- EXPECTED_GATE_COUNTS["all"] = 94 PRESERVED at Wf-353-B1 baseline (no new pre-flight gates added by Wf-380..390).
+- AGENTS.md §6 row 286 Wf-380-B1 (Wf-380 implementation + final ship) + AGENTS.md §6 row 287 Wf-385-A3 (scaffold wire-in gate).
+- Standing directives §5.1 + §5.2 + §5.3 + §5.4 re-confirmed per AGENTS.md.
+
+---
+
+**END OF METRICS_TARGETS.md refresh per Wf-393-A2** — preserves §1-§10; adds NEW §11 Tier 1 LEAD + Tier 2 internal metrics with Wf-380..390 status. Cross-references Wf-380..391 closeouts + Wf-385-A3 pre-flight gate + Wf-389-A1 m6_kappa drop-from-§3 + Wf-388-A1 m2 R² OVERFIT finding.

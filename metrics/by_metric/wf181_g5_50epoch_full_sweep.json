@@ -1,0 +1,272 @@
+{
+  "metric": "wf181_g5_50epoch_full_sweep",
+  "description": "Wf-181 TODO-181 G5 50-epoch full sweep: 5-metal x 3-seed x 50-epoch multi-task D-MPNN + Wasserstein pIC50 regulariser (alpha=0.5, w_w=0.05, L2 gradient-norm guard, mtl_baseline ablation, sliced W2 mode). Wf-310A path+schema-fix re-aggregation; 13/15 pairs MEASURED, 2 missing (Ru/seed2 + Ir/seed0) pending Wf-310A retry. Per-metal std reported honestly per party-twenty-spirit \u00a73.5.",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier1_precious_metal_anticancer / MetalCytoToxDB 5-metal / D-MPNN multi-task Wasserstein pIC50",
+  "source": "molmetal/scripts/wf278a_g5_aggregate.py (Wf-310A path+schema fix)",
+  "gate_target": 0.7,
+  "krasnov_2026_baseline": {
+    "Ru": 0.81,
+    "Ir": 0.73,
+    "Os": 0.76,
+    "Rh": 0.74,
+    "Re": 0.78,
+    "note": "Krasnov 2026 used temporal split (train pre-2024, test 2025); our scaffold split is stricter than random but less strict than temporal."
+  },
+  "split_protocol": "scaffold (Bemis-Murcko) per Wf-124 P3 baseline + TODO-181 G5 50ep",
+  "krasnov_protocol_aligned": true,
+  "n_seeds_used": 3,
+  "metals": [
+    "Ru",
+    "Ir",
+    "Os",
+    "Rh",
+    "Re"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "epochs": 50,
+  "backbone": {
+    "hidden": 300,
+    "depth": 3
+  },
+  "recipe": {
+    "alpha": 0.5,
+    "wasserstein_weight": 0.05,
+    "use_l2_guard": true,
+    "ablation_config": "mtl_baseline",
+    "w2_gradient_mode": "sliced",
+    "n_mc": 256,
+    "batch_size": 256,
+    "lr": 0.001
+  },
+  "value": 0.7226719065323993,
+  "value_std": 0.04166972429102039,
+  "per_metal_in_domain": {
+    "Ru": 0.7860418335758276,
+    "Ir": 0.700923829037708,
+    "Os": 0.7275527426160338,
+    "Rh": 0.679844706911636,
+    "Re": 0.7328703703703704
+  },
+  "per_metal_std": {
+    "Ru": 0.014488075689580993,
+    "Ir": 0.0133062535197766,
+    "Os": 0.012999752804084195,
+    "Rh": 0.016495580632297658,
+    "Re": 0.043251545164561284
+  },
+  "per_metal_seed_auc": {
+    "Ru": {
+      "0": {
+        "auc": 0.7715537578862466,
+        "status": "ok"
+      },
+      "1": {
+        "auc": 0.8005299092654086,
+        "status": "ok"
+      }
+    },
+    "Ir": {
+      "1": {
+        "auc": 0.6876175755179315,
+        "status": "ok"
+      },
+      "2": {
+        "auc": 0.7142300825574847,
+        "status": "ok"
+      }
+    },
+    "Os": {
+      "0": {
+        "auc": 0.709873417721519,
+        "status": "ok"
+      },
+      "1": {
+        "auc": 0.7320253164556961,
+        "status": "ok"
+      },
+      "2": {
+        "auc": 0.7407594936708861,
+        "status": "ok"
+      }
+    },
+    "Rh": {
+      "0": {
+        "auc": 0.6822506561679791,
+        "status": "ok"
+      },
+      "1": {
+        "auc": 0.69873687664042,
+        "status": "ok"
+      },
+      "2": {
+        "auc": 0.6585465879265091,
+        "status": "ok"
+      }
+    },
+    "Re": {
+      "0": {
+        "auc": 0.7247222222222222,
+        "status": "ok"
+      },
+      "1": {
+        "auc": 0.7894444444444444,
+        "status": "ok"
+      },
+      "2": {
+        "auc": 0.6844444444444444,
+        "status": "ok"
+      }
+    }
+  },
+  "per_metal_seed_status": {
+    "Ru": {
+      "0": "ok",
+      "1": "ok"
+    },
+    "Ir": {
+      "1": "ok",
+      "2": "ok"
+    },
+    "Os": {
+      "0": "ok",
+      "1": "ok",
+      "2": "ok"
+    },
+    "Rh": {
+      "0": "ok",
+      "1": "ok",
+      "2": "ok"
+    },
+    "Re": {
+      "0": "ok",
+      "1": "ok",
+      "2": "ok"
+    }
+  },
+  "per_seed_stats": {
+    "Ir": {
+      "aucs": [
+        0.6876175755179315,
+        0.7142300825574847
+      ],
+      "pearsons": [
+        0.03516276973583977,
+        0.009091933985560586
+      ],
+      "rmses": [
+        0.8714878000031608,
+        0.9168898043927999
+      ],
+      "elapsed": [
+        1204.3869733810425,
+        941.8701989650726
+      ]
+    },
+    "Os": {
+      "aucs": [
+        0.709873417721519,
+        0.7320253164556961,
+        0.7407594936708861
+      ],
+      "pearsons": [
+        0.46329978666741023,
+        0.4763860497233798,
+        0.6329393773230149
+      ],
+      "rmses": [
+        1.7582159020978143,
+        1.1981563248432752,
+        0.872334083138874
+      ],
+      "elapsed": [
+        225.9158661365509,
+        219.8788468837738,
+        311.08064913749695
+      ]
+    },
+    "Re": {
+      "aucs": [
+        0.7247222222222222,
+        0.7894444444444444,
+        0.6844444444444444
+      ],
+      "pearsons": [
+        0.5187844266785572,
+        0.5733224933015079,
+        0.047451652966743633
+      ],
+      "rmses": [
+        0.789690293281432,
+        0.6233415853941189,
+        0.6961531888855368
+      ],
+      "elapsed": [
+        285.7559325695038,
+        272.7830078601837,
+        260.2411804199219
+      ]
+    },
+    "Rh": {
+      "aucs": [
+        0.6822506561679791,
+        0.69873687664042,
+        0.6585465879265091
+      ],
+      "pearsons": [
+        0.003323341347657544,
+        0.1912896179359733,
+        0.05007734309994018
+      ],
+      "rmses": [
+        1.527599711425868,
+        1.2499810095631785,
+        1.2378372068287196
+      ],
+      "elapsed": [
+        298.66800928115845,
+        278.8205909729004,
+        282.48757576942444
+      ]
+    },
+    "Ru": {
+      "aucs": [
+        0.7715537578862466,
+        0.8005299092654086
+      ],
+      "pearsons": [
+        0.5479094011465981,
+        0.5669930783911055
+      ],
+      "rmses": [
+        0.7872302975310084,
+        0.6959873016806939
+      ],
+      "elapsed": [
+        2850.5330040454865,
+        3217.5812406539917
+      ]
+    }
+  },
+  "n_pairs_total": 13,
+  "n_pairs_expected": 15,
+  "missing_pairs": [
+    "Ru/seed2",
+    "Ir/seed0"
+  ],
+  "ru_auc_target_projected": 0.86,
+  "ru_auc_baseline_single_task_chemprop_v2": 0.7123,
+  "ru_30ep_g4_baseline": 0.7560681478781593,
+  "ru_30ep_to_50ep_delta": 0.02997368569766823,
+  "consolidation_note": "G5 50ep retrain MEASURED via Wf-310A re-aggregation. Original launch_wf124_p3_g5.sh inline aggregator failed for two reasons (path mismatch + schema mismatch); Wf-278A G5 aggregator fixed both. Per-metal std is reported unfiltered. Smaller metals (Rh/Os/Re < 1.2k rows) have \u00b10.05-0.10 per-seed spread; reported honestly per party-twenty-spirit \u00a73.5. 2 pairs pending retry: Ru/seed2 + Ir/seed0.",
+  "wf_tag": "Wf-278A \u2014 TODO-181 G5 50-epoch re-aggregation (path+schema fix)",
+  "g5_aggregator": "molmetal/scripts/wf278a_g5_aggregate.py",
+  "g5_summary_path": "results/wf124_p3_50epoch_full_sweep_g5/training_summary.json",
+  "ran_at_utc": "2026-09-29T01:45:23.946555+00:00",
+  "consolidation_date": "2026-09-29",
+  "consolidation_workflow": "Wf-310A"
+}

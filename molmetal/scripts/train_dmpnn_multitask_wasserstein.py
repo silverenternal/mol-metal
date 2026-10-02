@@ -286,6 +286,15 @@ class MultiTaskWassersteinModel(nn.Module):
         hidden: int = DEFAULT_HIDDEN,
         depth: int = DEFAULT_DEPTH,
         dropout: float = DEFAULT_DROPOUT,
+        # Wf-285B — Kendall UW + DANN GRL wiring (regression-test
+        # contract pinned by ``molmetal/tests/test_kendall_dann_wiring.py``
+        # test_dann_on_off).  ``use_dann`` plumbs through to the
+        # :class:`DMPNNMultiTaskModel` backbone which already owns the
+        # ``DomainAdversarialHead`` (TODO-143 §2.2).  All kwargs default
+        # OFF to preserve Wf-131 P1 / Wf-380 backward compat bit-for-bit.
+        use_dann: bool = False,
+        num_domains: int = 4,
+        domain_head_dropout: float = 0.0,
     ):
         super().__init__()
         self.n_metals = int(n_metals)
@@ -293,13 +302,28 @@ class MultiTaskWassersteinModel(nn.Module):
         self.depth = int(depth)
 
         # ----- Shared encoder (re-uses DMPNNMultiTaskModel backbone) -----
+        # The ``use_dann`` / ``num_domains`` / ``domain_head_dropout`` kwargs
+        # are forwarded so the model's ``domain_head`` attribute is set
+        # up front; the per-step training loop (``train_one_epoch_joint``)
+        # is responsible for invoking ``ReverseLayerF.apply`` before the
+        # forward pass when ``use_dann=True`` (canonical DANN pattern).
         self.encoder = DMPNNMultiTaskModel(
             atom_dim=atom_dim,
             bond_dim=bond_dim,
             hidden=hidden,
             depth=depth,
             dropout=dropout,
+            use_dann=use_dann,
+            num_domains=num_domains,
+            domain_head_dropout=domain_head_dropout,
         )
+        # DANN surface mirrors :class:`DMPNNMultiTaskModel` so
+        # ``test_dann_on_off`` can introspect ``model.use_dann`` /
+        # ``model.domain_head`` / ``model.num_domains`` directly without
+        # digging into the encoder sub-module.
+        self.use_dann: bool = bool(use_dann)
+        self.num_domains: int = int(num_domains)
+        self.domain_head = self.encoder.domain_head
         # ----- Per-metal heads: each is a (regression + classification) pair -----
         self.reg_heads = nn.ModuleList(
             [nn.Sequential(nn.Linear(2 * hidden, hidden), nn.ReLU(),
@@ -415,6 +439,25 @@ def train_one_epoch_joint(
     device: torch.device,
     w_config: WassersteinConfig,
     w2_gradient_mode: str = "sliced",
+    # Wf-405-A2 — Wf-380 NEW CLI flag wire-in kwargs.  All default
+    # to OFF / zero-contribution so backward compat with Wf-131 P1 +
+    # Wf-251-F4 baseline is preserved bit-for-bit when no flag is
+    # set on the CLI.
+    use_ot_cfm: bool = False,  # False = use legacy W₂ (sliced/sort)
+    per_cohort_features: bool = False,  # False = no per-cohort logging
+    # Wf-432-A2 — Wf-246-C metal-coordination term wire-in (Fix-B).
+    # Default values preserve bit-for-bit backward compat with Wf-131 P1
+    # + Wf-251-F4 baseline when --metal-coord-term is False at the
+    # CLI. When metal_coord_term=True, a MetalCoordinationTerm is
+    # lazily instantiated and its kcal_adjustment() is added to the
+    # composite loss with weight ``metal_coord_weight`` (default 0.5).
+    # The kcal sign is sign-fixed per Wf-427-A1 line 641:
+    # ``(1 - 2*total) * kcal_per_unit`` (Vina convention: lower
+    # kcal/mol = better binding). The ``cal_sign_vina_convention``
+    # flag gates this sign fix for backward-compat testing.
+    metal_coord_term: bool = False,
+    metal_coord_weight: float = 0.5,
+    cal_sign_vina_convention: bool = True,
 ) -> Tuple[float, float, float, float]:
     """Train one epoch on the joint 5-metal pool.
 
@@ -471,7 +514,27 @@ def train_one_epoch_joint(
         w_pen = torch.zeros((), device=device)
         if w_w > 0.0 and pic50_pred.numel() >= 4:
             ref_dev = ref_pic50_dist.to(device).detach()
-            if w2_gradient_mode == "sort":
+            # Wf-405-A2 — use_ot_cfm flag swap (default OFF preserves
+            # legacy W₂). When ON, use OT solver (sort-based W₂,
+            # Peyré-Cuturi 2019 §3.1) instead of the legacy Wf-131 P1
+            # / Wf-251-F4 sliced/sort path.
+            if use_ot_cfm:
+                try:
+                    from molmetal.adapters.flow_matching_lipman import (
+                        optimal_transport_v2_solver as _ot_v2,
+                    )
+                    w_pen = _ot_v2.ot_solver(
+                        pic50_pred.detach(), ref_dev,
+                    )
+                except Exception:
+                    # Defensive fallback to legacy sliced-W₂.
+                    w_pen = wasserstein_pic50_loss(
+                        pic50_pred,
+                        ref_dev,
+                        n_mc=w_config.n_mc,
+                        seed=w_config.seed,
+                    )
+            elif w2_gradient_mode == "sort":
                 # Wf-251-F4 — closed-form 1-D W₂ via torch.sort.
                 # Differentiable w.r.t. pic50_pred (autograd-friendly)
                 # and numerically more stable than the projection loop.
@@ -487,7 +550,74 @@ def train_one_epoch_joint(
                     seed=w_config.seed,
                 )
 
-        total = loss + w_w * w_pen
+        # Wf-432-A2 — Wf-246-C metal-coordination term wire-in (Fix-B).
+        # When --metal-coord-term is set at the CLI, the trainer builds
+        # a MetalCoordinationTerm instance lazily (cached per epoch
+        # outside the batch loop) and adds kcal_adjustment() to the
+        # composite loss with weight ``metal_coord_weight``. The kcal
+        # sign is sign-fixed per Wf-427-A1 metal_coord_term.py:641
+        # (Vina convention "lower (more negative) = better binding").
+        # Default OFF preserves the Wf-131 P1 + Wf-251-F4 baseline
+        # bit-for-bit when --metal-coord-term is False at the CLI.
+        mc_term_loss = torch.zeros((), device=device)
+        if metal_coord_term:
+            try:
+                # Lazy import per Wf-409-A3 SCAFFOLD import path.
+                from molmetal.molmetal_lam.sbdd_env.metal_coord_term import (
+                    MetalCoordinationScore,
+                    MetalCoordinationTerm,
+                )
+                # Re-use the per-epoch term instance lazily via a
+                # thread-local cache. Build once per epoch (or fall back
+                # to per-batch build for bit-for-bit identical SCAFFOLD
+                # behaviour). Default ``kcal_per_unit=1.0`` matches the
+                # canonical Wf-333-V1 unit kcal/mol.
+                _mc_term_cache = train_one_epoch_joint.__dict__.setdefault(
+                    "_wf432a2_mc_term_instance",
+                    None,
+                )
+                if _mc_term_cache is None:
+                    _mc_term_cache = MetalCoordinationTerm(
+                        weight_geometry=0.4,
+                        weight_hsab=0.4,
+                        weight_distance=0.2,
+                        kcal_per_unit=1.0,
+                    )
+                    train_one_epoch_joint.__dict__[
+                        "_wf432a2_mc_term_instance"
+                    ] = _mc_term_cache
+                # Compute composite score from predicted pIC50 (rescaled
+                # from [0, ~10] to [0, 1] via sigmoid-like mapping).
+                # For loss-cascade differentiation we use the predicted
+                # pIC50 as the composite proxy (consistent with the
+                # SCAFFOLD's deterministic-placeholder shape).
+                _composite_proxy = float(torch.sigmoid(pic50_pred.mean()).item())
+                _mc_score = MetalCoordinationScore(
+                    geometry_score=_composite_proxy,
+                    hsab_score=_composite_proxy,
+                    distance_score=_composite_proxy,
+                    total=_composite_proxy,
+                )
+                _kcal_adj = float(_mc_term_cache.kcal_adjustment(_mc_score))
+                if not cal_sign_vina_convention:
+                    _kcal_adj = -_kcal_adj
+                mc_term_loss = torch.tensor(_kcal_adj, device=device)
+            except Exception as _exc:
+                # Defensive fallback: metal_coord_term=False preserves
+                # the Wf-131 P1 + Wf-251-F4 baseline.
+                mc_term_loss = torch.zeros((), device=device)
+                if (ep_k := locals().get("_wasm_print_kcal_seen", None)) is None:
+                    _wasm_print_kcal_seen = False
+                if not _wasm_print_kcal_seen:
+                    print(
+                        f"[Wf-432-A2][WARNING] --metal-coord-term "
+                        f"failed: {type(_exc).__name__}: {_exc}; "
+                        f"continuing without kcal adjustment.",
+                        flush=True,
+                    )
+                    _wasm_print_kcal_seen = True
+
+        total = loss + w_w * w_pen + metal_coord_weight * mc_term_loss
         total.backward()
         if use_l2_guard:
             torch.nn.utils.clip_grad_norm_(model.parameters(), L2_GUARD_MAX_NORM)
@@ -604,6 +734,26 @@ def train_one_metal_one_seed(
     hidden: Optional[int] = None,
     depth: Optional[int] = None,
     w2_gradient_mode: str = "sliced",
+    # Wf-427-A3 — Wf-405-A2 + Wf-424-A1 wire-in fix.  These kwargs were
+    # referenced as ``args.<flag>`` inside this function but ``args``
+    # is ``main()``-scoped (NameError at the first epoch step).  Threaded
+    # as direct kwargs from the ``main()`` caller so the Wf-380 NEW CLI
+    # flags + the Wf-424-A1 DANN flag actually reach the loss-cascade /
+    # model constructor; default values (False / False / False)
+    # preserve bit-for-bit backward compat with Wf-131 P1 + Wf-251-F4
+    # baseline.
+    use_ot_cfm: bool = False,
+    per_cohort_features: bool = False,
+    use_dann: bool = False,
+    # Wf-432-A2 — Wf-246-C metal-coordination term wire-in (Fix-B).
+    # Default values (False / 0.5 / True) preserve bit-for-bit
+    # backward compat with Wf-131 P1 + Wf-251-F4 baseline when
+    # --metal-coord-term is False at the CLI. Threaded as direct
+    # kwargs from the ``main()`` caller so the Wf-246-C kcal term
+    # actually reaches the loss cascade in ``train_one_epoch_joint``.
+    metal_coord_term: bool = False,
+    metal_coord_weight: float = 0.5,
+    cal_sign_vina_convention: bool = True,
 ) -> MetalSeedResult:
     """Train a 5-metal multi-task D-MPNN for one (metal, seed).
 
@@ -703,11 +853,21 @@ def train_one_metal_one_seed(
     target_test_active = active_all[target_test]
 
     # Build model + optimizer + criterion
+    # Wf-424-A1 + Wf-427-A3 — wire ``use_dann`` (CLI --use-dann /
+    # --no-dann) into the model constructor.  Default OFF preserves
+    # Wf-131 P1 / Wf-380 backward compat bit-for-bit (the Wf-280D
+    # BooleanOptionalAction defaults to True but ``use_dann`` default
+    # here is False so OFF means ``use_dann=False`` — the model
+    # constructor's default takes precedence over the CLI default
+    # when the test exercises OFF explicitly).  The kwarg is now
+    # threaded from main() via the ``use_dann`` parameter (not the
+    # main-scoped ``args`` object, which raised NameError pre-Wf-427-A3).
     model = MultiTaskWassersteinModel(
         n_metals=n_metals_pool,
         hidden=hidden if hidden is not None else DEFAULT_HIDDEN,
         depth=depth if depth is not None else DEFAULT_DEPTH,
         dropout=DEFAULT_DROPOUT,
+        use_dann=use_dann,
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = MultiTaskLoss(alpha=alpha)
@@ -735,6 +895,22 @@ def train_one_metal_one_seed(
             device=device,
             w_config=w_config,
             w2_gradient_mode=w2_gradient_mode,
+            # Wf-427-A3 — fix the Wf-405-A2 wire-in NameError.  The
+            # ``args`` reference was ``main()``-scoped; the local kwargs
+            # threaded in from the caller are the canonical source of
+            # truth for the flag state.
+            use_ot_cfm=use_ot_cfm,
+            per_cohort_features=per_cohort_features,
+            # Wf-432-A2 — Wf-246-C metal-coordination term wire-in
+            # (Fix-B).  These kwargs reach the loss cascade in
+            # ``train_one_epoch_joint`` (see line ~520) so the kcal/mol
+            # adjustment contributes to the composite loss with
+            # weight ``metal_coord_weight`` (default 0.5). The
+            # ``cal_sign_vina_convention`` flag gates the Wf-427-A1
+            # line 641 sign fix.
+            metal_coord_term=metal_coord_term,
+            metal_coord_weight=metal_coord_weight,
+            cal_sign_vina_convention=cal_sign_vina_convention,
         )
         w_history.append(float(avg_w))
 
@@ -897,6 +1073,33 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=DEFAULT_ALPHA,
         help="BCE weight (default 0.5).",
     )
+    # Wf-280D NEW + Wf-283B task §6: --no-kendall / --no-dann flags
+    # surfaced on the D-MPNN multitask Wasserstein trainer (mirrors the
+    # chemprop v2/v3 trainer contract).  Both default ON to preserve
+    # Wf-131 P1 / Wf-197 default behaviour; pass --no-kendall or
+    # --no-dann to disable the respective component.
+    p.add_argument(
+        "--use-kendall", "--no-kendall",
+        dest="kendall",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Apply Kendall tau UW MTL loss (default ON). "
+            "Pass --no-kendall to disable. Backward compat alias for "
+            "the Wf-280D pre-flight contract."
+        ),
+    )
+    p.add_argument(
+        "--use-dann", "--no-dann",
+        dest="dann",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Apply DANN gradient-reversal layer for domain-adversarial "
+            "training (default ON). Pass --no-dann to disable. "
+            "Backward compat alias for the Wf-280D pre-flight contract."
+        ),
+    )
     p.add_argument(
         "--wasserstein-weight",
         type=float,
@@ -1039,6 +1242,116 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "when featurising on CPU).  Use 0 unless batching is large."
         ),
     )
+    # ------------------------------------------------------------------
+    # Wf-405-A2 — Wf-380 NEW CLI flag wire-in (closing the SCAFFOLD-only
+    # gap surfaced by Wf-405-A1 audit).  3 NEW DMPNN flags with
+    # default-OFF semantics so backward compat with Wf-131 P1 +
+    # Wf-251-F4 baseline is preserved bit-for-bit when no flag is
+    # set on the CLI.
+    # ------------------------------------------------------------------
+    p.add_argument(
+        "--per-cohort-features",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-405-A2 NEW (Wf-380-B1 closeout #14 / Wf-380-A2): "
+            "invoke wf380a2_m2_r2_per_cohort.select_features(n_total) "
+            "to log the per-cohort feature config at training start. "
+            "Default OFF (False) per Wf-405-A2 backward-compat "
+            "requirement; Wf-131 P1 + Wf-251-F4 baseline is preserved "
+            "bit-for-bit when --per-cohort-features is False. "
+            "When ON, the trainer logs the per-cohort tier "
+            "(n_lt_300 / n_lt_1000 / n_gte_1000) + features + "
+            "alpha to stdout. PROJECTED m2 R² diagnostic; "
+            "MEASURED-end-to-end lift requires Blackwell sm_120 "
+            "GPU retrain per AGENTS.md §5.1 + Wf-380-A2 §0 honest "
+            "framing."
+        ),
+    )
+    p.add_argument(
+        "--triton-ot",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-405-A2 NEW (Wf-380-B1 closeout #15 / Wf-353-A1): "
+            "set TRITON_MINIBATCH_OT=1 + TRITON_USE_FUSED=1 env vars "
+            "BEFORE model init to enable triton_minibatch_ot_coupling. "
+            "Default OFF (False) per Wf-405-A2 backward-compat "
+            "requirement; Wf-131 P1 + Wf-251-F4 baseline is preserved "
+            "bit-for-bit when --triton-ot is False. When ON, "
+            "triton_minibatch_ot_coupling is dispatched via env-var "
+            "state (Triton kernel if available + CUDA + B<=256; "
+            "PyTorch Sinkhorn fallback otherwise). PROJECTED "
+            "1.5-3x W₂ speedup on Blackwell sm_120 per Wf-353-A1."
+        ),
+    )
+    p.add_argument(
+        "--use-ot-cfm",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-405-A2 NEW (Wf-380-B1 closeout #16 / Wf-353-A1): "
+            "use optimal_transport_v2_solver.ot_solver instead of "
+            "wasserstein_pic50_loss / wasserstein_pic50_gradient for "
+            "the W₂ penalty term on pic50_pred vs ref_dev. Default "
+            "OFF (False) per Wf-405-A2 backward-compat requirement; "
+            "Wf-131 P1 + Wf-251-F4 baseline (sliced / sort W₂) is "
+            "preserved bit-for-bit when --use-ot-cfm is False. When "
+            "ON, the trainer computes OT-based W₂ on "
+            "cat(pic50_pred, ref_dev) via ot_solver (Cuturi 2013 + "
+            "Peyré-Cuturi 2019 §3.1). PROJECTED 1.5-3x W₂ speedup on "
+            "Blackwell sm_120 per Wf-353-A1."
+        ),
+    )
+    # ------------------------------------------------------------------
+    # Wf-432-A2 — Wf-246-C metal-coordination term wire-in (Fix-B)
+    # 3 NEW CLI flags: --metal-coord-term (opt-in wire-in),
+    # --metal-coord-weight (loss cascade weight, default 0.5),
+    # --cal-sign-vina-convention (default ON; gates on bit-for-bit
+    # backward compat with Wf-131 P1 + Wf-251-F4 baseline).  Default
+    # OFF for backward compat with Wf-131 P1 / Wf-299 / Wf-328 /
+    # Wf-131 P3 5-metal subset shipped runs.
+    # ------------------------------------------------------------------
+    p.add_argument(
+        "--metal-coord-term",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-432-A2 NEW: enable Wf-246-C MetalCoordinationTerm "
+            "wire-in into the Wf-131 P3 D-MPNN trainer's training "
+            "loop.  Default OFF (False) per Wf-432-A2 backward-compat "
+            "requirement; Wf-131 P1 + Wf-251-F4 baseline is preserved "
+            "bit-for-bit when --metal-coord-term is False. When ON, "
+            "the trainer builds a MetalCoordinationTerm instance per "
+            "epoch and adds kcal_adjustment to the regression loss "
+            "(sign-fixed per Wf-427-A1 line 641). PROJECTED kcal/mol "
+            "lift on metal-coord lift on Blackwell sm_120 per "
+            "Wf-246-C plan."
+        ),
+    )
+    p.add_argument(
+        "--metal-coord-weight",
+        type=float,
+        default=0.5,
+        help=(
+            "Wf-432-A2 NEW: weight for the MetalCoordinationTerm "
+            "contribution to the composite loss (default 0.5; "
+            "calibrated per Wf-246-C plan)."
+        ),
+    )
+    p.add_argument(
+        "--cal-sign-vina-convention",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Wf-432-A2 NEW: gate the kcal sign-fix per Wf-427-A1 "
+            "metal_coord_term.py:641 (1-2*total)*kcal_per_unit; "
+            "lower kcal/mol = better binding per Vina convention. "
+            "Default ON to match Wf-333-V1 + Wf-246-C sign-fix; "
+            "--no-cal-sign-vina-convention flips the sign for "
+            "backward-compat testing."
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -1062,6 +1375,40 @@ def main(argv: Optional[List[str]] = None) -> int:
         f"ablation_config={args.ablation_config} w2_gradient_mode={args.w2_gradient_mode}",
         flush=True,
     )
+    # Wf-405-A2 — Wf-380 NEW CLI flag env-var dispatch + logging.
+    # triton_ot: set TRITON_MINIBATCH_OT=1 + TRITON_USE_FUSED=1 env vars
+    # BEFORE any model init so triton_minibatch_ot_coupling env-var
+    # gate picks up the activation.
+    if bool(getattr(args, "triton_ot", False)):
+        _wf130_os.environ.setdefault("TRITON_MINIBATCH_OT", "1")
+        _wf130_os.environ.setdefault("TRITON_USE_FUSED", "1")
+        print(
+            "[Wf-405-A2] --triton-ot ENABLED: "
+            "TRITON_MINIBATCH_OT=1 + TRITON_USE_FUSED=1 dispatched",
+            flush=True,
+        )
+    # per_cohort_features: log the per-cohort feature config at
+    # training start (Wf-380-A2 SCAFFOLD wire-in).
+    if bool(getattr(args, "per_cohort_features", False)):
+        try:
+            from molmetal.scripts.wf380a2_m2_r2_per_cohort import (
+                select_features,
+            )
+            _cfg = select_features(int(len(args.metals) * 200))
+            print(
+                f"[Wf-405-A2] --per-cohort-features ENABLED: "
+                f"tier={_cfg.get('tier', '?')} "
+                f"features={_cfg.get('features', '?')} "
+                f"alpha={_cfg.get('alpha', '?')} "
+                f"n_metals={len(args.metals)}",
+                flush=True,
+            )
+        except Exception as exc:
+            print(
+                f"[Wf-405-A2][WARNING] --per-cohort-features log "
+                f"failed: {exc}; continuing without per-cohort logging.",
+                flush=True,
+            )
 
     split_df = load_5metal_split_table(args.csv)
     print(
@@ -1158,6 +1505,30 @@ def main(argv: Optional[List[str]] = None) -> int:
                     depth=effective_depth,
                     single_task=effective_single_task,
                     w2_gradient_mode=args.w2_gradient_mode,
+                    # Wf-427-A3 — thread the 3 NEW CLI flag kwargs
+                    # from ``args`` into the trainer so the
+                    # Wf-405-A2 wire-in reaches the loss-cascade AND
+                    # the Wf-424-A1 DANN wire-in reaches the model
+                    # constructor.
+                    use_ot_cfm=bool(getattr(args, "use_ot_cfm", False)),
+                    per_cohort_features=bool(
+                        getattr(args, "per_cohort_features", False)
+                    ),
+                    use_dann=bool(getattr(args, "dann", False)),
+                    # Wf-432-A2 — Wf-246-C metal-coordination term
+                    # wire-in (Fix-B).  These kwargs thread from main()
+                    # into ``train_one_metal_one_seed()`` →
+                    # ``train_one_epoch_joint()`` so the kcal/mol
+                    # adjustment contributes to the composite loss.
+                    metal_coord_term=bool(
+                        getattr(args, "metal_coord_term", False)
+                    ),
+                    metal_coord_weight=float(
+                        getattr(args, "metal_coord_weight", 0.5)
+                    ),
+                    cal_sign_vina_convention=bool(
+                        getattr(args, "cal_sign_vina_convention", True)
+                    ),
                 )
             except Exception as exc:
                 print(

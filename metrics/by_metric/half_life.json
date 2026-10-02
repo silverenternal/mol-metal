@@ -1,0 +1,21 @@
+{
+  "cross_check_via_metrics_v2_mean_helper": 1.3091118021559578,
+  "data_source": "metallo_drugs_500_train.csv",
+  "description": "Elimination half-life t1/2 in hours (Obach 1997); higher = slower elimination",
+  "honest_framing_note": "half_life computed via metrics_v2 pass-through on the 449 metallo-drug SMILES cohort. 449/449 parsed (0 parse failures, gracefully skipped). Mean = 1.3091118021559578, std = 1.3419583397705115, verdict = INFO. Descriptive physico-chemical proxy \u2014 NOT a learned metallodrug score. For paper \u00a73 cohort panel only.",
+  "metric": "half_life",
+  "n_failed": 0,
+  "n_parsed": 449,
+  "n_samples": 449,
+  "scope": "ADMET pass-through panel (Wf-303C T1 / Wf-312C R01 5-NEW extension)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:half_life",
+  "status": "MEASURED",
+  "std": 1.3419583397705115,
+  "target_band": "1-24 hours (oral drug sweet spot)",
+  "timestamp": "2026-09-29",
+  "unit": "hours (elimination half-life t1/2)",
+  "value": 1.3091118021559578,
+  "verdict": "INFO",
+  "wf_design_ref": "molmetal/reports/wf312c_admet_extension/design.md \u00a7R01",
+  "wf_tag": "Wf-312C R01 ADMET 5-NEW extension"
+}

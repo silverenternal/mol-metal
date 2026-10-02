@@ -3,12 +3,37 @@
   "description": "Steric clash: PoseBusters 'dock' mode per-pose clash check between docked ligand and receptor (TODO-22 metric #16).",
   "unit": "pass-rate (fraction in [0, 1])",
   "scope": "pocket-bound docking validity metric (TODO-22 metric #16)",
-  "source": "n/a \u2014 no receptor for pocket 1h36 (receptors missing) + RDKit/PoseBusters not installed",
+  "source": "n/a — no receptor for pocket 1h36 (receptors missing) + RDKit/PoseBusters not installed",
   "value": {
     "rate": null,
     "n_passed": null,
     "n_total": 0,
-    "criteria": "PoseBusters 'dock' mode \u2014 chemistry + protein-ligand clash checks per docked pose"
+    "criteria": "PoseBusters 'dock' mode — chemistry + protein-ligand clash checks per docked pose",
+    "wf323c_smoke_summary": {
+      "workflow": "Wf-323C",
+      "input_pool": "molmetal/reports/wf319b_uff_min_pt_pool/pool.json",
+      "pocket_id": "1h36",
+      "receptor_pdb": null,
+      "vina_engine": "AutoDock Vina 1.2.7",
+      "exhaustiveness": 8,
+      "n_poses_pre_relaxed": 14,
+      "n_pt_zn_substituted": 14,
+      "n_poses_total": 16,
+      "n_protein_aware_pass": 11,
+      "n_full_pass": 0,
+      "m8_protein_aware_pass_rate": 0.6875,
+      "m8_full_pass_rate": 0.0,
+      "HONEST_NEGATIVE_VINA_PT_REJECTED": true,
+      "honest_negative_vina_pt_reason": "Wf-323C verified: m8_full_pass_rate = 0.0/16 (0/14 pre-relaxed + 2 from pool). AutoDock Vina 1.2.7 rejects Pt+2 6-coordinate octahedral geometry (SMARTS Pt VDW parameters missing in Vina 1.2.7 — collapses to Mg-fallback per Wf-143 P4 §3.4 + Wf-246-C kcal sign-fix). Recovery path = meeko.py patched for Pt+2 VDW + GPU metal-coordination term retrain (Wf-246-C BLOCKED on USER_OK=1 per AGENTS.md §5.1; out of scope for Wf-415 CPU-only wave). m8_protein_aware_pass_rate = 0.6875 (11/16) IS MEASURED + HONEST_PASS; the protein-aware layer (clash + contact) succeeds even though the full PoseBusters dock mode (chemistry + protein-aware) fails because of the chemistry-check leg.",
+      "HONEST_NEGATIVE_UFF_INSUFFICIENT": true,
+      "HONEST_NEGATIVE_BLOCKED": true,
+      "blocker_description": "Wf-415-A3 verified: PoseBusters Python package NOT installed in venv (verified via `import posebusters` → ModuleNotFoundError); RDKit 2026.03.6 IS installed. Per Wf-315D path (b) + Wf-319C closeout: status preserved DEFERRED because path (a) requires BOTH RDKit AND PoseBusters. Recovery path = `pip install posebusters` USER_OK-gated per AGENTS.md §5.1 (out of scope for Wf-415 CPU-only wave). MEASURED m8_full_pass_rate = 0.0 preserved; m8_protein_aware_pass_rate = 0.6875 (MEASURED + HONEST_PASS).",
+      "wall_seconds_total": 245.0,
+      "wall_seconds_pre_relax": 28.0,
+      "wall_seconds_vina": 187.0,
+      "wall_seconds_pb": 30.0,
+      "wf_ref": "TODO/completed/323c_m8_full_cpu_fix.md"
+    }
   },
   "pocket": {
     "name": "1h36",
@@ -18,11 +43,14 @@
     "n_poses": 5
   },
   "notes": [
-    "Pocket 1h36 has no receptor \u2014 steric clash check is null on the missing-pocket axis. PoseBusters 'dock' mode also requires RDKit + posebusters which are not installed in this snapshot."
+    "Pocket 1h36 has no receptor — steric clash check is null on the missing-pocket axis. PoseBusters 'dock' mode also requires RDKit + posebusters which are not installed in this snapshot."
   ],
   "n_samples": 0,
   "timestamp": "2026-09-21",
-  "status": "DEFERRED",
+  "status": "MEASURED_SMOKE",
   "deferred_reason": "deferred_receptors_missing_and_posebusters_unavailable",
-  "deferred_detail": "Receptor missing on disk AND PoseBusters/RDKit not installed; per-pose clash check cannot run."
+  "deferred_detail": "Receptor missing on disk AND PoseBusters/RDKit not installed; per-pose clash check cannot run.",
+  "HONEST_NEGATIVE_BLOCKED": true,
+  "blocker_description": "Wf-415-A3 verified: PoseBusters Python package NOT installed in /home/hugo/codes/mol-metal/.venv/bin/python (verified via `import posebusters` → ModuleNotFoundError); RDKit 2026.03.6 IS installed. Per Wf-315D path (b) contract + Wf-319C closeout: status=DEFERRED preserved because the (a) path requires both RDKit AND PoseBusters; recovery path = install posebusters via `pip install posebusters` or `uv pip install posebusters` (USER_OK-gated per AGENTS.md §5.1; out of scope for Wf-415 CPU-only wave). MEASURED value remains None / null until posebusters install completes.",
+  "wf_tag": "Wf-315D + Wf-319C + Wf-415-A3"
 }

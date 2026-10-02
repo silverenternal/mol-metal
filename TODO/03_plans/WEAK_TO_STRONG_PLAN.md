@@ -364,6 +364,28 @@ These increments are **already shipped or ship in Week 1-2 without GPU**:
 - **Status**: ⚠️ CPU scaffolding Week 1-2; GPU retrain Week 2-4
 - **R18 scope**: m3 Vina Dock lift (PROJECTED −8.5 kcal/mol) + m10 Vina Min
 - **GPU budget**: 2 weeks Blackwell single-card
+- **Baseline MEASURED on disk**: 10000-step CPU scaffold PASS in ~10s on 16-core CPU on dummy EGNN per `TODO/completed/339b2_m22_se3_sb_scaffold.md` §1.1 (5/5 NEW tests PASS)
+
+### §4.3.1 Revised step count table (PROJECTED — Wf-383-A1 + Wf-390-A3 audit)
+
+Per `TODO/completed/383a1_weak_to_strong_se3sb_audit.md` §3 + `TODO/pending/383_se3_sb_fast_converging_integration.md` §6-§8 (Wf-390-A3 audit artifacts) + `docs/HONEST_NEGATIVE_CATALOG.md` §6.16 (NEW Wf-383-A1 entry):
+
+| Step-count band | Steps | Composition | Status |
+|---|---:|---|---|
+| **Baseline (R17 → R18 W1-2)** | **10000** | Wf-339-B2 CPU scaffold `test_m22_se3_sb_cpu_scaffold_10000_steps` PASS in ~10s on 16-core CPU | ✅ MEASURED on disk |
+| **Conservative PROJECTED** (EDM + OT-CFM + log-normal t + EMA + lr-warmup wired) | **1500-2500** | multiplicative (2-3× EDM × 1.5-2× OT-CFM × 1.3× log-normal × 1.05-1.1× lr-warmup × EMA late-stage) ≈ 4.1-8.1× step reduction | ⚠️ PROJECTED — wires exist in CFM YuelBond trainer only; SE(3) SB extension DEFERRED per TODO-200 |
+| **Aggressive PROJECTED** (+ shortcut distillation 4-step student) | **500-1000** | conservative × Frans 2024 64→4 = × 16 step reduction / 4 = 16.4-32.4× step reduction | ⚠️ PROJECTED — shortcut distillation module SHIPPED but `train_step` integration DEFERRED per Wf-353-C3 §3 |
+| **Ceiling PROJECTED** (full shortcut distillation only) | **~625** | Frans 2024 conservative 64→4 step inference ratio applied to 10000 baseline | ⚠️ PROJECTED — ultimate bound on distillation alone, not yet wired |
+
+**Verdict**: **HONEST_NEGATIVE_PROJECTED_PENDING_DEEP_INTEGRATION** — step count is structurally revisable from 10000 → ~625 (16× reduction) once TODO-200 ships + Blackwell GPU retrain validates.
+
+**Wf-390-A3 audit artifacts (NEW, 2026-09-30)**:
+- `molmetal/scripts/wf390a3_se3_sb_integration_audit.py` — CPU-only audit script that verifies SE(3) SB trainer exists + `parse_args` importable + 0/10 SE(3)-specific flags (current state, expected to grow) + smoke step count bands pinned at Wf-383-A1 §3.2 PROJECTED values
+- `molmetal/tests/test_wf390a3_se3_sb.py` — 2 NEW tests PASS (`test_audit_se3_sb_trainer_present` + `test_smoke_se3_sb_step_count_band`); CPU-only regression guard for future Wf-200 wire-up
+- `TODO/completed/390a3_se3_sb_wire.md` — Wf-390-A3 closeout (~200 LOC, 5 sections)
+- `TODO/pending/383_se3_sb_fast_converging_integration.md` §6-§8 — NEW sections (audit + priority order + acceptance criteria Blackwell retrain)
+
+**Honest framing** (`party-twenty-spirit` §3.5): All revised step counts are **PROJECTED** until Wf-200 (Wf-340 + Wf-353 deep integration extension) wires the 10 fast-converging innovations to `train_se3sb.py` + Blackwell sm_120 GPU retrain validates the multiplicative composition. NO Mol-Metal GPU A/B matrix has been launched for these wires on the SE(3) SB trainer. Wf-390-A3 audit artifacts pin the PROJECTED bands as acceptance criteria for the future Blackwell retrain; they do NOT execute the retrain.
 
 ### §4.4 Multimodal head extension (m18 deferred)
 

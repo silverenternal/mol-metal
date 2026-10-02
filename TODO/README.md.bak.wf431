@@ -1,0 +1,414 @@
+# Mol-Metal: Precious-Metal Anti-Cancer Drug Design via Flow Matching + SBDD
+
+**Last updated:** 2026-09-30 (Wf-393-A3 docs-only sync — refreshed recent R/Wf timeline with Wf-378..392 ship waves; appended Tier-2 / wetlab-deprecation compliance verification block; cross-referenced refreshed `decisions.md` + `TODO/03_plans/{LAMBDA_ROADMAP,IMPROVEMENT_ENUM,IMPROVEMENT_QUEUE,METRIC_LIFT_STRATEGY_v2}.md` per Wf-391 docs refresh; preserved 2026-09-16 R15 ship summary block + honest framing preserved block)
+
+## Project Overview
+
+**Mol-Metal** designs de-novo small-molecule ligands for precious-metal anti-cancer targets
+(cisplatin-class, Pt/Ru/Ir organometallics) using **Flow Matching** generative models on top of a
+**Structure-Based Drug Design (SBDD)** loop. The system generates 3D ligand poses in a protein
+pocket, docks and scores them, and refines via a closed-loop design cycle.
+
+We aim to close the single-GPU (RX 7800 XT) vs. 64×A100 cluster gap by leveraging **Triton
+kernels on ROCm** — the constraint is "fits in 16 GB memory," not "reproduce multi-GPU training."
+
+---
+
+## Environment
+
+This project uses a **fully managed uv environment** (`UV_PROJECT_ENVIRONMENT` / `managed=true`):
+
+- **Package manager:** `uv` (all commands prefixed with `uv run`)
+- **Python:** 3.12
+- **GPU stack:** ROCm 7.2 + `triton-rocm` 3.8.0
+- **Hardware target:** AMD RX 7800 XT (gfx1101, 16 GB)
+
+**No pip / no venv / no system Python.** Activate nothing; just `uv run <cmd>`. See
+[`environment.md`](environment.md) for full setup, kernel validation, and the ROCm/Triton
+compatibility matrix.
+
+---
+
+## Engineering Practices
+
+Read [`engineering_practices.md`](engineering_practices.md) before touching code. Key conventions:
+
+- **Single source of truth:** every ADR lives in top-level `decisions.md` (open) or
+  `completed/` (closed). Never in code comments or scattered .md files.
+- **One task, one file:** `pending/NN_short_slug.md` is the atomic unit of work. Status moves
+  `pending → completed` (or `pending → archive` if superseded by a newer plan), not
+  delete-and-recreate.
+- **Audit trail:** every decision cites a paper / commit / date. AUDIT_RESEARCH_GRADE.md is the
+  immutable historical snapshot.
+- **No scope creep into TODO/01-13/:** those are historical research notes. New topical work
+  either updates an existing topic dir or lives in `pending/`.
+- **Use INDEX.md for status:** every file's current state is tracked in
+  [`INDEX.md`](INDEX.md) (single source of truth for "what's where + status").
+
+---
+
+## Directory Structure
+
+```
+TODO/
+├── README.md                       ← this file (overview + navigation)
+├── INDEX.md                        ← single source of truth: every file's status
+├── environment.md                  ← uv + ROCm 7.2 + triton-rocm 3.8.0 setup
+├── engineering_practices.md        ← conventions for this project
+├── AUDIT_RESEARCH_GRADE.md         ← historical audit (2026-09-11), preserved verbatim
+├── completion_audit_2026-09-13.md  ← completed-task audit
+├── project_workflow.md             ← project-level workflow doc
+├── decisions.md                    ← pending architecture choices (D1–D∞)
+├── risks.md                        ← open blockers / risks
+├── roadmap.md                      ← phase tracker (Phase 0-4)
+│
+├── pending/                        ← ACTIVE plans / in-flight work (33 files at 2026-09-30, see INDEX.md)
+│   ├── 094_r20_p3_multiph_pll_feature.md
+│   ├── 155_smiles_featurization_cache_extension.md
+│   ├── 177_wf123_p3_m1m2_downstream_metric_lift.md
+│   ├── 178_wf123_p3_metalcytotox_csv_ondisk.md
+│   ├── 179_wf123_p3_w2_pic50_alignment.md (moved to per-Wf tracking per Wf-390-A2)
+│   ├── 180_wf124_p3_remaining_metals_seeds.md
+│   ├── 181_wf124_p3_50_epoch_full_sweep.md
+│   ├── 182_wf124_p3_per_innovation_ablation.md
+│   ├── 183_wf123_wf124_p3_gap_routing_plan.md
+│   ├── 200_wf340_353_deep_integration_audit.md (Wf-380-A1 SCAFFOLD authoring baseline)
+│   ├── 201_m2_r2_per_cohort_feature_engineering.md (Wf-380-A2 per-cohort config)
+│   ├── 202_m7_diversity_sampling_improvements.md (Wf-380-A3 + Wf-388-A2 wire-in)
+│   ├── 203_m3_vina_docking_param_tuning.md (Wf-380-A4 Vina SCAFFOLD)
+│   ├── 204_m15_rmsd_multitemplate_mm_gbsa.md (Wf-380-A5 SCAFFOLD)
+│   ├── 205_m4_sa_generation_penalty.md (Wf-380-A6 + Wf-388-A3 wire-in)
+│   ├── 206_m6_kappa_metric_redefinition.md (HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL per Wf-365-A3 + Wf-377-A1 + Wf-381-A4)
+│   ├── 207_wf299_cfm_3wave_launch.md (Wf-385-A2 wrapper consistency review complete)
+│   ├── 219_wf219_krasnov_aligned.md
+│   ├── 234_wf234_frontier_math_audit_integration.md
+│   ├── 376_m2_r2_gpu_retrain_plan.md (master plan; 376a3 sub-plan SHIPPED)
+│   ├── 376a3_m2_r2_gpu_retrain_plan.md (Path A + Path B sub-plan SHIPPED by Wf-376-A3)
+│   ├── 383_se3_sb_fast_converging_integration.md (Wf-383-A1/A2/A3 + Wf-390-A3 SE(3) SB wire-in)
+│   ├── 84_no_paper_task_without_authorization.md (READ-only paper guard per AGENTS.md §5.3)
+│   ├── wetlab_cold_email_template.md  ← DEPRECATED per AGENTS.md §5.4 + §10
+│   ├── wetlab_ic50_analysis_pipeline.md ← DEPRECATED per AGENTS.md §5.4 + §10
+│   ├── wetlab_loi_consolidation_review.md ← DEPRECATED per AGENTS.md §5.4 + §10
+│   ├── wetlab_loi_ornl_protein_metal.md ← DEPRECATED per AGENTS.md §5.4 + §10
+│   ├── wetlab_loi_pku_cisplatin_ic50.md ← DEPRECATED per AGENTS.md §5.4 + §10
+│   ├── wetlab_loi_rusanov_2025_platinai.md ← DEPRECATED per AGENTS.md §5.4 + §10
+│   ├── wetlab_loi_xiehe_nci60.md ← DEPRECATED per AGENTS.md §5.4 + §10
+│   ├── wetlab_sop_binding_affinity_assay.md ← DEPRECATED per AGENTS.md §5.4 + §10
+│   ├── wetlab_sop_cellular_uptake_assay.md ← DEPRECATED per AGENTS.md §5.4 + §10
+│   └── wetlab_sop_cytotoxicity_assay.md ← DEPRECATED per AGENTS.md §5.4 + §10
+│
+├── completed/                      ← SHIPPED work (929 files at 2026-09-30, see `ls TODO/completed/ | wc -l`)
+│
+├── archive/                        ← STALE plans superseded by newer ones (4 files)
+│
+└── 01_research/ ... 13_lambda_clickchem/   ← historical topic subdirs (research notes)
+```
+
+**Navigation rule of thumb:**
+
+- "What's the current status of every file?" → [`INDEX.md`](INDEX.md)
+- "What's the project roadmap?" → [`roadmap.md`](roadmap.md)
+- "What should I work on next?" → [`pending/26_round13_round14_complete_plan.md`](pending/26_round13_round14_complete_plan.md) (the master comprehensive plan)
+- "What's blocked / at risk?" → [`risks.md`](risks.md)
+- "What architecture decisions are pending?" → [`decisions.md`](decisions.md)
+- "Why did we decide X?" → top-level `decisions.md` (open) or `completed/` (closed)
+- "What did we originally research?" → `01_research/` through `13_lambda_clickchem/`
+- "What just got shipped?" → newest entries in `completed/`
+- "What got superseded and is no longer relevant?" → `archive/`
+- "What are the actual measured numbers?" → [`../metrics/`](metrics/) (single source of truth for all measured values; 17 JSON + README at 2026-09-15)
+- "Why is the project shaped this way?" → this README + `AUDIT_RESEARCH_GRADE.md`
+
+---
+
+## Strategic Core (preserved)
+
+### Lipman 2023 as the FM backbone
+
+**Lipman et al. 2023 (Flow Matching for Generative Modeling, ICLR 2023)** is the foundational
+flow-matching paper (4600+ citations, official `github.com/facebookresearch/flow_matching`). It
+plugs naturally into MolFlow-Triton's `flow_matching` infrastructure.
+
+**Strategy:** clone the official library, write a thin `LipmanFlowMatchingAdapter`. We do NOT
+rewrite FM — we only own the adapter + glue code + algorithmic tweaks (mini-batch OT, guidance,
+metal coordination prior).
+
+### Hexagonal architecture (`molmetal/`)
+
+```
+┌────────────────────────────────────────────────────────┐
+│  molmetal/                                              │
+│                                                         │
+│  ┌──────────┐   ┌──────────────────────┐                │
+│  │ domain/  │   │  ports/ (we define)   │                │
+│  │ Pocket   │◄──│  MoleculeGenerator   │                │
+│  │ Molecule │   │  DockingEngine       │                │
+│  │ Complex  │   │  PropertyPredictor   │                │
+│  └──────────┘   │  ScoringFunction     │                │
+│                 │  DesignLoop          │                │
+│                 └────────┬─────────────┘                │
+│                          │                              │
+│  ┌───────────────────────┴──────────────────────────┐  │
+│  │  adapters/  (concrete impls from cloned repos)      │  │
+│  │  ┌───────────────────────────────────────────┐    │  │
+│  │  │ LipmanFlowMatchingAdapter ← we write      │    │  │
+│  │  │  import facebookresearch/flow_matching    │    │  │
+│  │  │  import models.egnn (MolFlow-Triton)      │    │  │
+│  │  └───────────────────────────────────────────┘    │  │
+│  │  ┌───────────────────────────────────────────┐    │  │
+│  │  │ DiffDockAdapter (later Phase)             │    │  │
+│  │  └───────────────────────────────────────────┘    │  │
+│  └────────────────────────────────────────────────────┘  │
+│                                                         │
+│  ┌────────────────────────────┐                        │
+│  │  references/  (git cloned) │                        │
+│  │  flow_matching/            │ ← Lipman 2023 official │
+│  │  DiffDock/                 │ ← Nature 2024 (later)  │
+│  └────────────────────────────┘                        │
+└────────────────────────────────────────────────────────┘
+```
+
+### Reuse strategy
+
+**MolFlow-Triton provides:** `scatter_sum` (Triton kernel + autograd), `EGNNLayer` (3D
+equivariance, dative-bond support), toy `ConditionalFlowMatchingLoss`, `FlowMatchingSampler`,
+`BaseMoleculeDataset`, `positions_to_smiles`.
+
+**facebookresearch/flow_matching provides** (cloned): `AffineLinearPath` (Lipman §4.8),
+`CondOTScheduler` (§4.7), production `ConditionalFlowMatchingLoss` (§4.5), `EulerSimulator` /
+`RK4Simulator`, `ODESolver`.
+
+**We write:** `EGNNVelocityField` (uses MolFlow-Triton's EGNN as v_θ),
+`LipmanFlowMatchingAdapter` (implements `MoleculeGenerator` port), training/sampling glue,
+closed-loop orchestration (generate → dock → score → refine), and all algorithmic optimizations
+(mini-batch OT, guidance, metal coordination prior, ...).
+
+---
+
+## Roadmap Status
+
+See [`roadmap.md`](roadmap.md) for the living tracker. Snapshot as of 2026-09-15:
+
+| Round | Goal | Status |
+|---|---|---|
+| R3 (closed) | Lambda + Mol-Hybrid algorithmic axes | ✅ |
+| R8 (closed) | 10 TODO items | ✅ |
+| R10 (closed) | CFG end-to-end + Pt prior | ✅ |
+| R11 (closed) | QVina + data staging + N=50 parity | ✅ |
+| R11b (closed) | anticancer metric suite | ✅ |
+| **R12 (in flight)** | Round-12 pilot at top-journal standard | ⚙️ partial |
+| **R13 (in flight)** | 100-pocket × 3-seed paper-grade sweep | ⚙️ 3 workflows running |
+| **R14 (planned)** | lit-grounded + math-prior + code-fix lift | ⏳ per TODO-25 |
+| arXiv | paper submission | ⏳ post-R13/R14 |
+
+---
+
+## Active Work
+
+Top priority items (full status in [`INDEX.md`](INDEX.md); full content in [`pending/`](pending/)):
+
+| # | File | Round | Status |
+|---|---|---|---|
+| 13 | [`13_top_journal_pilot_r12.md`](pending/13_top_journal_pilot_r12.md) | R12 | ✅ **DELIVERED** — diversity lift verified 1→20, 147 cells DESIGN→MEASURED in paper §4 |
+| 14 | [`14_full_100pocket_paper_r13.md`](pending/14_full_100pocket_paper_r13.md) | R13 | ⚙️ partial — honest-negative on novel pockets; pocket-invariance sub-fix in flight |
+| 19 | [`19_user_decisions.md`](pending/19_user_decisions.md) | meta | info — D6 REINVENT4, D7 Vina↔QVina, cite-only SOTA, journal choice |
+| 21 | [`21_lambda_model_coupling.md`](pending/21_lambda_model_coupling.md) | long-term | 战略方向, deferred post-R12 |
+| 22 | [`22_data_gap_alignment_plan.md`](pending/22_data_gap_alignment_plan.md) | R12/R13 | ✅ mostly shipped — 16/25 metrics MEASURED at scale |
+| 23 | [`23_weak_to_strong_plan.md`](pending/23_weak_to_strong_plan.md) | R13 | strategic plan, deferred |
+| 24 | [`24_cfm_architecture_redo_plan.md`](pending/24_cfm_architecture_redo_plan.md) | R13/R14 | ⚙️ P0+P1 SHIPPED; GPU retrain FAILURE; frontier research in flight |
+| 25 | [`25_round14_lit_grounded_plan.md`](pending/25_round14_lit_grounded_plan.md) | R14 | ⚙️ Path A + D2/D4 SHIPPED; CFM + pocket-invariance in flight |
+| 26 | [`26_round13_round14_complete_plan.md`](pending/26_round13_round14_complete_plan.md) | R13/R14 | R12 deliverable COMPLETE; R13 honest-negative; R14 in flight |
+| **27** | [`27_paper_main_pdf_repair.md`](completed/27_paper_main_pdf_repair.md) | **CLOSED** | ✅ 69 pages / 5.17 MB / 0 unresolved (per w5hj17h50 + we5qbl16b + wfm0fjqjs) |
+| **28** | [`28_round12_honest_negative_reframe.md`](pending/28_round12_honest_negative_reframe.md) | R12 framing | ⚙️ mostly closed — §4 + §6 + §3.4 updated; CROSS_REFS update deferred |
+| 29 | [`29_f2a_round13_retry.md`](pending/29_f2a_round13_retry.md) | R13 retry | ⚙️ in flight — `wyyy283ck` B (scaffold-aware) + `wrd5dbewn` (pocket-invariance combined) |
+
+Open blockers: [`risks.md`](risks.md). Open architecture decisions: [`decisions.md`](decisions.md).
+
+### Major 2026-09-15 ship summary (advantages made full)
+
+- ✅ **paper/main.pdf**: 69 pages / 5.17 MB / 0 unresolved bibitems
+- ✅ **paper §4**: 147 cells DESIGN→MEASURED (Path A 4-fix bundle + metal column + P0 anticancer + PB panel + click-rule effect sizes)
+- ✅ **paper §5**: 3 NEW sub-sections (drug-likeness ADMET, metal coordination probe, click-rule effect sizes)
+- ✅ **paper §6**: expanded 8→12 caveats with honest trade-off framing
+- ✅ **5 NEW first-class modules shipped**: conformer embed, pharmacophore filter, stereo-aware reduction, reaction confidence, Pareto multi-objective
+- ✅ **Deflex dual-system framework**: PocketMacroSkeleton (87.9% train acc) + λ Combinators (10 tests) + Symbolic Regression F5 formula (R = 2.58 - 2.51·sa_norm)
+- ✅ **REINVENT4 multiproperty wire**: r=0.6763 vs proxy at 4.06 s/SMILES
+- ✅ **PB MMFF94 relax**: 22/26 PB checks pass on click_tile
+- ✅ **Vina real**: -6.929 kcal/mol on 1-pocket smoke
+- ✅ **SA fragment pool optimize**: 3.32 → 3.099 (TargetDiff target 2.65-2.86)
+- ✅ **CFM internal review + P0 + P1 fixes**: 5 P0 + 4 P1 SHIPPED (CPU-only)
+- ✅ **GPU recovery**: cuda_available=True, 2 devices confirmed
+
+### Major 2026-09-16 R15 ship summary (advantages made full, structural layer)
+
+**R15 = 13 workflows across 4 parallel families + 1 verifier. 89 tests across 12 new files: 82 pass (92.1%) + 5 skip (libtorch ABI) + 2 fail (real bugs caught).**
+
+- ✅ **YuelBond decoder ships** (NEW `lam_chem/yuelbond_decoder.py`, 5 unit tests; chem-aware bond decoder head)
+- ✅ **CFM-Rescue 4 fixes ship bit-exact**: bond_head default `distance`→`learned`; joint_train default `False`→`True`; n_train 8→32; ODE solver euler→midpoint (RK2 within 0.01 ref)
+- ✅ **Lambda-Boost sub-fix C ship**: reference_ligand_resolver wire (5 unit tests); F2(a) MetalLigandExchange SMARTS (5 tests); AquaExchange SMARTS (6 tests)
+- ✅ **Lambda × CFM coupling dry-run bridge alive** (TODO-21 reopens per R15): `tmqm_cfm_pretraining.py --dry-run` exits 0 + writes `coupling_mlp.npz` + `.json`
+- ✅ **Deflex 5-phase wireup**: F5 learned shaping (6 tests); PocketMacro v2 (33-d features, was 29-d, 5 tests); learned_prior argmax (4 tests); integration smoke (3 tests, `test_full_chain_no_crash`)
+- ✅ **2 real bugs caught** by R15 cross-verifier (paper/* untouched, no symbol collisions): BUG-1 coupling reshape 64→5 silent-fail + BUG-2 Deflex v2 CWD-relative path
+- ✅ **Bonded-graph metric surface MEASURED** (NEW post-YuelBond): `n_bonded_samples` lifts 0/8 → 8/8 on CPU smoke (RDKit-strict stays 0/8, gated on R16 GPU retrain)
+- ✅ **24 Frontier papers surveyed** (Tier 1-4 synthesis): flow matching 6 + SBDD metal 3 + EGNN 4 + discrete+continuous 5 + MCTS 4 + theory 2
+- ✅ **paper/main.pdf**: 69 pages / 5.17 MB / 0 unresolved bibitems (recompile on next paper edit; currently unchanged since 2026-09-15 17:41 / 18:23)
+
+### Honest framing preserved for劣势 items (R15 bounded scope)
+
+- CFM `decode_ratio` = 0/8 on CPU smoke (bit-exact baseline pre-YuelBond) → metric lift requires R16 GPU retrain (W42-W43, 12-24h GPU)
+- BUG-1 coupling `_coupling_bias` reshape 64→5 silent-fail (3-line fix required pre-flight) → blocks env-gated learned_prior cache
+- BUG-2 Deflex v2 checkpoint CWD-relative path (5-line fix required pre-flight) → fails outside `molmetal/` CWD
+- Round-13 paper-grade 300 cells NOT delivered → R16 P3 sweep (W44-W45) deferred; per-pocket reference ligand SMILES is built but production 100-p × 3-seed sweep BLOCKED on GPU
+- Lambda pocket-invariance metric lift NOT re-measured → structural break implemented, metric lift pending R16 P3
+- Lambda × CFM coupling active only at dry-run bridge (BUG-1 silently disables runtime coupling until fix)
+- PB production pass rate (60-80% TargetDiff target) → R16 P3 sweep at n_sim=1000 with PB MMFF94 relax
+- All items documented in paper §6 limitations with honest framing; R15 ship closes structural layer only, NOT paper-grade measurements
+
+---
+
+## Wf-296..392 ultracode ship surface (2026-09-12 → 2026-09-30, refreshed per Wf-393-A3)
+
+Per `AGENTS.md` §6 history pointer + `TODO/INDEX.md` §0 + §22 (per-Wf coverage
+verdict table for Wf-340..392, ~290+ closeouts in `TODO/completed/` at 2026-09-30):
+
+### Major 2026-09-12 → 2026-09-29 ship summary (Tier-2 re-orientation)
+
+- ✅ **Tier-2 journal target adopted** (downgrade from JCIM Tier-1); per
+  2026-09-29/30 user directive verbatim *"我们发二区就可以了，不用规划湿实验"* —
+  pure computational submission in scope; no wet-lab data required for Tier-2
+  acceptance
+- ✅ **Wet-lab items DEPRECATED** per AGENTS.md §5.4 + §10: 4 LOI drafts + 3
+  wetlab SOPs + 1 IC50 analysis pipeline + R20-P6 wet-lab IC50 validation +
+  Wf-74 v2 wet-lab outreach + LAMBDA_ROADMAP §3.2 R22-P1 (m18 wet-lab re-scoped
+  to computational-only) + LAMBDA_ROADMAP §3.3 R23 (Phase I clinical DEPRECATED)
+- ✅ **7 NEW skills wired per Wf-321B**: variance-puct-default + hilbert-astsr-e2e
+  + closure-theorem + multiph-pll (R20) + score-rep-variance-mcts +
+  mcts-replay-learner + closure-dblock-bench + triangle-closure (R21); 28-skill
+  ecosystem verified at Wf-336-D2 + Wf-341-F3
+- ✅ **Wf-343C4 4 NEW pre-flight gates** added (hyperparams_config_complete +
+  yuelbond_decoder_env + anchor_freshness_24h + wave_budget_remaining_nonneg);
+  `EXPECTED_GATE_COUNTS["all"]` 62 → 66
+- ✅ **Wf-347 ultracode integration v3 wave** integrates Wf-343C2/C3 gates into
+  pre-flight + pipeline master + launchers; `EXPECTED_GATE_COUNTS["all"]`
+  66 → 68
+
+### Major 2026-09-29 → 2026-09-30 ship summary (Wf-340..392 ultracode series)
+
+Per user directive 2026-09-29 verbatim *"基于刚才的洞察，可以启动ultracode，覆盖
+所有发现的问题把残余的问题解决了，一定要全，工作流可以长"* — comprehensive
+residual-problem solver across 12+ thematic ultracode waves:
+
+- ✅ **Wf-340 CFM fast-converging training research** (11 agents): 24 unique
+  papers + 16 repos + 6 NEW wires MEASURED ~820 LOC + 12 NEW tests PASS;
+  PROJECTED 5-10× additional speedup on top of Wf-326/328 MEASURED 3-4×
+- ✅ **Wf-341..343 actionable CPU bundle + L1 DrugOOD loader + pre-retrain ship
+  wave**: Wf-343C4 4 NEW gates + Wf-347A1 + Wf-347A2 launchers + Wf-347B1/B2
+  per-wave check integration; `EXPECTED_GATE_COUNTS["all"]` 68 → 71 (Wf-352-A1)
+- ✅ **Wf-344 + Wf-345 ultracode residual driver + wave v1**: 22 NEW tests
+  + Wf-345-D1 pre-flight cascade root-cause (anchor freshness + wave budget +
+  wf343c2 strict assertion); 3 stale anchor refreshes (Wf-121 cisplatin real
+  Vina + Wf-143 chemotype dock + Wf-170 per-metal singletask + Wf-67 P4.3
+  100-pocket)
+- ✅ **Wf-346 registration-drift resolution** (11 closeouts A1+A2+A3+A4+
+  B1+B2+B3+C1+C2+C3+D1): 11/11 SHIPPED + 8 NEW tests across 4 NEW files
+  (697 LOC) PASS; 1 audit-doc drift fix in `321d_preflight_gate_audit.md`
+  62→66; 2 INDEX.md entries (§22.79)
+- ✅ **Wf-350 NeurIPS reproducibility backbone**: 3 NEW CPU-only gates
+  (`p1_runtime_energy_report` NeurIPS §E.4 per-GPU power draw +
+  `p1_compute_manifest` NeurIPS §E.5 compute manifest + `p1_hp_provenance_log`
+  NeurIPS §D.9 hyperparameter git-SHA provenance); `EXPECTED_GATE_COUNTS["all"]`
+  68 → 71
+- ✅ **Wf-353 Wf-340 deeper integration + Wf-343c1 un-wired gates** (6 closeouts):
+  A1 Triton mini-batch OT + A2 shortcut distillation + A3 consistency
+  regularization + A4 FlowMol unified atom-bond flow (CC-BY-NC); B1 Wf-343c1
+  22 un-wired gates wired; B2 Wf-343c2/c3 integration verify. 22 NEW tests
+  PASS; `EXPECTED_GATE_COUNTS["all"]` 71 → **93** at Wf-353-B1 baseline
+- ✅ **Wf-355..357 + Wf-358..362 ultracode residual + integration**: 60+ NEW
+  tests PASS across 30+ closeouts; Zotero 10.0.3 + Tectonic 0.17.0 install
+  SHIPPED at Wf-372 (read-only on `paper/*` per TODO-84); pre-flight 92/0/2/94
+  PRESERVED at Wf-367-C1 baseline
+- ✅ **Wf-372 install + integration SHIPPED**: Zotero + Better BibTeX + CSL
+  `mol-divers.csl` integration (3 NEW tests) + Tectonic + `sn-jnl.cls`
+  end-to-end compile (1 NEW test); 11 NEW tests across 4 test files; 0 `paper/*`
+  touches
+- ✅ **Wf-378 OPEN CPU-only gaps closure** (2 closeouts A1+A2): pre_flight_gpu_ready.sh
+  USER_OK hard entry gate + launch_wf124_p3_g6.sh USER_OK Gate Parity; 10 NEW
+  tests PASS; GAP-3 + GAP-(c) USER_OK UX gaps CLOSED
+- ✅ **Wf-379 GPU acceleration** (3 deliverables): Wf-131 P3 7 DEFERRED-runs
+  m1_auc 5-seed IN-FLIGHT on GPU 0 Blackwell 70.7 GB free (Rh seed 3 RUNNING
+  at Wf-379-B1 timestamp; MEASURED GPU 0 power 315.57W; Krasnov 0.86 gate
+  target) + R20 §5 tmQM + PlatinAI SCAFFOLD_NOT_FUNCTIONAL honest-negative
+  close (trainer CHOICES CONSTRAINT VIOLATION)
+- ✅ **Wf-380 ultracode residual implementation** (8 deliverables): 10 CFM
+  SCAFFOLD modules + 14 NEW CFM CLI flags + 3 NEW DMPNN CLI flags wired (default
+  ON via `--no-X` pattern) + m2 R² per-cohort features + m7 diversity sampling +
+  Vina param tuning SCAFFOLD + multi-template MM-GBSA SCAFFOLD + SA generation
+  penalty SCAFFOLD + m6_kappa finalise SCAFFOLD; 41+11 NEW tests PASS
+- ✅ **Wf-381..385 deeper-level fix + SCAFFOLD wire-in audit** (12+ closeouts):
+  Wf-385-A1 Wf-380 CLI flag audit (0/17 flags wired in main training loop) +
+  Wf-385-A3 SCAFFOLD-loss wire-in pre-flight gate
+  `p3_wf385_scaffold_loss_wire_in_verified` (20 NEW tests) + Wf-386-A3 atomic
+  write protocol adopted (AGENTS.md §5.6)
+- ✅ **Wf-386..389 process improvements + waves**: Wf-386 atomic write protocol
+  + Wf-388 6 diversity + 2 SA CLI flags wired (default OFF) + Wf-389 m6_kappa
+  Tier-2 supplementary sub-table reframe (`docs/PAPER_SECTION_3_METRIC_TABLE.md`
+  ~580 LOC 6 sections + 4 main + 3 supplementary + 1 demoted metric lineup)
+- ✅ **Wf-390..392 surface TODO items not yet covered**: TODO-376 m2 R² Path A
+  5-metal subset GPU retrain PLAN_ONLY + TODO-179 L5 R² deeper audit + alt
+  encoder bootstrap (40 NEW assertions PASS) + TODO-383 SE(3) SB wire-in audit
+  + smoke scaffold (2 NEW tests PASS) + LAMBDA_ROADMAP + IMPROVEMENT_ENUM +
+  IMPROVEMENT_QUEUE + METRIC_LIFT_STRATEGY_v2 strategic-plans refresh
+  (Wf-391; ~616 → ~700 LOC + 4 → 12 tasks + 4 PENDING → 32 tasks + ~410 →
+  ~860 LOC)
+- ✅ **Pre-flight v3 cascade STILL CLOSED** across 22+ consecutive runs at
+  Wf-385-B1 baseline **89/2/3/94** (HONEST-NEGATIVE DRIFT preserved); 2 FAILs =
+  `p3_loi_send_ready` (Tier-2 reclassification cascade from 2026-09-30 wetlab
+  deprecation inline edits — NOT Wf-393-introduced) + `p3_wf343c4_anchor_freshness_24h`
+  (natural drift across Wf-374..392 wave activity); 3 SKIPs BY-DESIGN
+
+### Tier-2 + wetlab-deprecation compliance verification (per AGENTS.md §5.4 + §10)
+
+Per Wf-393-A3 docs-only sync verification:
+
+- ✅ **Zero AFFIRMATIVE wetlab recommendations** in this `TODO/README.md`
+  (verified by `grep -cE "wetlab|Wetlab|WETLAB|wet-lab|wet_lab"` → **21 matches**,
+  of which: 1 in the last-updated header (line 3), 10 in the `pending/` DEPRECATED
+  file list (lines 89-98), 3 in the Tier-2 / wetlab-deprecation summary block
+  (lines 277, 280, 281), 1 in the pre-flight FAIL reference (line 364), 1 in the
+  compliance verification section header (line 368), 4 in the compliance
+  verification content (lines 372, 373, 375, 377), and 1 in the closing claim
+  (line 389); **zero** are affirmative wetlab-work recommendations; per AGENTS.md
+  §10.5 retain-as-historical-artifact policy + §10.6 cross-refs)
+- ✅ **Zero paper/* recommendations** in active plans (verified by `grep -E
+  "paper/.*SECTIONS|REWRITE_PAPER|EDIT_PAPER"` → 0 matches; TODO-84 active +
+  AGENTS.md §5.3)
+- ✅ **Standing GPU authorization** preserved (AGENTS.md §5.1; user grant
+  2026-09-29 verbatim *"显存够就放心大胆用"*; pre-flight + VRAM check + USER_OK
+  gating for > 1 hr GPU launches per Wf-368-B1)
+- ✅ **Honest framing** preserved (AGENTS.md §5.2 + `party-twenty-spirit` §3.5;
+  every numeric claim in Wf-340..392 ships with MEASURED vs PROJECTED tag
+  discipline; 6 NEW pre-flight FAILs across the series traced to known honest-
+  negative baseline per Wf-375-B1 §22.68.4)
+- ✅ **No wet-lab planning** per AGENTS.md §5.4 + §10 (all 7 wetlab pending
+  files marked DEPRECATED above; 4 LOI drafts + 3 SOPs + R20-P6 + Wf-74 v2 +
+  LAMBDA_ROADMAP §3.2 R22-P1 + LAMBDA_ROADMAP §3.3 R23 all DEPRECATED /
+  re-scoped to in-silico per 2026-09-29/30 user reinforcement)
+
+---
+
+## Archived Work
+
+- [`completed/`](completed/) — 28 shipped task files (R3–R11b). See INDEX.md for newest 4 entries.
+- [`archive/`](archive/) — 4 stale plans superseded by newer ones (07_r4c_full_sweep, 11_r10,
+  12_qvina_staging_r11, 20_post_r10_r11).
+
+---
+
+## Open Strategic Questions (preserved)
+
+These are the original Phase-0 gating questions; status updated 2026-09-12.
+
+| # | Question | Status (2026-09-12) |
+|---|---|---|
+| 1 | Clone DiffDock together with flow_matching? | Deferred — adapter not needed yet; Vina covers Phase 1 |
+| 2 | First target set? | **MMP13 primary, MMP2 secondary, CA2 stretch** (see decision D2) |
+| 3 | Docking tool? | **QVina now** (task 04); DiffDock inference later for Phase 3 |

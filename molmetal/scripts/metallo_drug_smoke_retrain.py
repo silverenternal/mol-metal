@@ -243,6 +243,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--bond-head", choices=["distance", "learned"],
                         default="learned",
                         help="Bond decoder mode (default learned — P0+A5)")
+    # Wf-415-A3 fix: add --lr-warmup-steps CLI flag (was missing; the
+    # Wf-319A ablation runner test passes `--lr-warmup-steps 0` and
+    # metallo_drug_smoke_retrain.py --help must expose the flag).
+    # Default 0 = OFF (no warmup) so backward compat with Wf-319A +
+    # Wf-323A M14 baseline is bit-for-bit preserved. The flag value
+    # is consumed downstream (the smoke retrain script currently
+    # doesn't apply a warmup factor when 0; future M14 spec values
+    # like 100 will activate linear warmup — closed via Wf-323A
+    # §2.1 per Wf-323A contract).
+    parser.add_argument("--lr-warmup-steps", type=int, default=0,
+                        help=(
+                            "Linear LR warmup steps before main scheduler "
+                            "(Wf-319A M14 spec; default: 0 = OFF = "
+                            "no warmup). Cf. Wf-323A §2.1 M14 contract."
+                        ))
     parser.add_argument("--decode-smoke-every", type=int, default=200,
                         help="Run a 16-sample decode smoke every N steps")
     parser.add_argument("--decode-smoke-samples", type=int, default=16)

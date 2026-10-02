@@ -1,0 +1,12 @@
+[molmetal] applied gfx1101 env vars: TOKENIZERS_PARALLELISM=false, TRANSFORMERS_VERBOSITY=error
+Wf-348-B1: cohort=platinai_4cell n_used=100
+  feature_dims: fourier=32 + multi_ph=32^2=1024 + pll=128 = joint_full=1184 (160-d Fourier + PLL = 160)
+  wall: 10.53s (feature_extraction=10.47s)
+  w2_per_cell:
+          mcf7: W₂=+0.4755
+          a549: W₂=+0.5237
+         a2780: W₂=+0.4879
+      a2780cis: W₂=+0.5814
+  w2_per_cohort: mean_per_row=+0.2575 pairwise_self=+0.0000 pairwise_ref=+0.0000
+  w2_cross_cohort (mean across cells): w2_pic50_sym=+0.1157 w2_feature_sym=+134147.5453
+  sota_band_check: SOTA_BAND_PARTIAL

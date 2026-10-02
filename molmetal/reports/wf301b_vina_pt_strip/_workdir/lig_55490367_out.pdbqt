@@ -1,0 +1,57 @@
+MODEL 1
+REMARK VINA RESULT:    -3.345      0.000      0.000
+REMARK INTER + INTRA:          -3.540
+REMARK INTER:                  -3.540
+REMARK INTRA:                   0.000
+REMARK UNBOUND:                 0.000
+REMARK SMILES CCC=O
+REMARK SMILES IDX 2 1 1 2 3 3 4 4
+REMARK H PARENT
+ROOT
+ATOM      1  C   UNL     1      30.480  58.773  46.224  1.00  0.00    +0.068 C 
+ATOM      2  C   UNL     1      31.667  59.702  46.070  1.00  0.00    +0.012 C 
+ENDROOT
+BRANCH   1   3
+ATOM      3  C   UNL     1      30.779  57.709  47.245  1.00  0.00    +0.223 C 
+ATOM      4  O   UNL     1      29.916  57.190  47.949  1.00  0.00    -0.303 OA
+ENDBRANCH   1   3
+TORSDOF 1
+ENDMDL
+MODEL 2
+REMARK VINA RESULT:    -3.082      4.487      4.679
+REMARK INTER + INTRA:          -3.262
+REMARK INTER:                  -3.262
+REMARK INTRA:                   0.000
+REMARK UNBOUND:                 0.000
+REMARK SMILES CCC=O
+REMARK SMILES IDX 2 1 1 2 3 3 4 4
+REMARK H PARENT
+ROOT
+ATOM      1  C   UNL     1      32.092  57.424  43.538  1.00  0.00    +0.068 C 
+ATOM      2  C   UNL     1      32.971  57.235  42.319  1.00  0.00    +0.012 C 
+ENDROOT
+BRANCH   1   3
+ATOM      3  C   UNL     1      30.857  58.204  43.177  1.00  0.00    +0.223 C 
+ATOM      4  O   UNL     1      30.570  58.514  42.024  1.00  0.00    -0.303 OA
+ENDBRANCH   1   3
+TORSDOF 1
+ENDMDL
+MODEL 3
+REMARK VINA RESULT:    -2.941      1.865      2.203
+REMARK INTER + INTRA:          -3.112
+REMARK INTER:                  -3.112
+REMARK INTRA:                   0.000
+REMARK UNBOUND:                 0.000
+REMARK SMILES CCC=O
+REMARK SMILES IDX 2 1 1 2 3 3 4 4
+REMARK H PARENT
+ROOT
+ATOM      1  C   UNL     1      30.102  58.639  46.117  1.00  0.00    +0.068 C 
+ATOM      2  C   UNL     1      31.094  58.016  47.079  1.00  0.00    +0.012 C 
+ENDROOT
+BRANCH   1   3
+ATOM      3  C   UNL     1      28.818  57.855  46.110  1.00  0.00    +0.223 C 
+ATOM      4  O   UNL     1      27.709  58.379  46.048  1.00  0.00    -0.303 OA
+ENDBRANCH   1   3
+TORSDOF 1
+ENDMDL

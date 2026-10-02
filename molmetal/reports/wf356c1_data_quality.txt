@@ -1,0 +1,10 @@
+[molmetal] applied gfx1101 env vars: TOKENIZERS_PARALLELISM=false, TRANSFORMERS_VERBOSITY=error
+[wf343c3_data_quality_check] loaders checked: 5
+[wf343c3_data_quality_check] load_binding_db: PASS=4 FAIL=0 SKIP=1 overall=PASS
+[wf343c3_data_quality_check] load_nci60: PASS=3 FAIL=0 SKIP=2 overall=PASS
+[wf343c3_data_quality_check] load_drugood_train: PASS=3 FAIL=0 SKIP=2 overall=PASS
+[wf343c3_data_quality_check] metalcytotox_5metal_multitask_v4: PASS=5 FAIL=0 SKIP=0 overall=PASS
+[wf343c3_data_quality_check] platinai_4cell: PASS=4 FAIL=0 SKIP=1 overall=PASS
+[wf343c3_data_quality_check] wrote /home/hugo/codes/mol-metal/molmetal/reports/wf343c3_data_quality/report.json
+[wf343c3_data_quality_check] wrote /home/hugo/codes/mol-metal/molmetal/reports/wf343c3_data_quality/summary.md
+PASS

@@ -1,0 +1,264 @@
+# TODO-181 G5 — Wf-124 P3 50-epoch full sweep (5 x 3 x 50)
+# Date: 2026-09-28 (Wf-258-Prepare dry-run config)
+# Owner: Hugo Lee + ultracode agent
+# Status: DRY-RUN (--dry-run mode; no GPU execution)
+#
+# Parent: TODO-181 G5 — 50-epoch full sweep (5 metals x 3 seeds x 50 epochs).
+# Current Wf-124 P3 ran 30 epochs due to session time budget; W2 trajectory
+# still decreasing at epoch 30 (Ru seed=0 final 0.3906), suggesting
+# undertraining. 50-epoch sweep is the proper scientific measurement.
+# Parent audit: molmetal/reports/wf258_audit/cfm_todo_gap_audit.md §1.4
+# Parent TODO: TODO/pending/181_wf124_p3_50_epoch_full_sweep.md §1-§5
+# Wf-257 §5.1 cite: Wf-257 §5.1 (CFM TODO shortlist, entry 4)
+#
+# HONEST FRAMING (party-twenty-spirit §3.5):
+# - Current 30-epoch Wf-124 P3 is known undertraining; W2 may need 40-50 epochs
+#   to fully kick in (TODO-181 §0).
+# - 50-epoch may add +0.01-0.03 lift OR plateau; honest framing is "uncertain,
+#   needs measurement". Do NOT cite 50-ep numbers as MEASURED until sweep
+#   completes.
+
+dry_run: true          # skip GPU; CPU verification only
+user_ok_required: true  # per kill_then_adapt standing directive
+
+# ============================================================================
+# DATA — REAL CSV (NOT synthetic)
+# ============================================================================
+data:
+  csv: .data/molmetal/metalcytotox_5metal_multitask_v4.csv
+  n_rows_expected: 26632   # v4 26633 lines - 1 header = 26632 rows (per Wf-261 strict scaffold split; 169 null-scaffold rows dropped)
+  expected_columns_subset: [smiles, metal, pic50, source]
+  cohort_filter:
+    metals: [Ru, Ir, Os, Rh, Re]
+    # Wf-261 strict Bemis-Murcko scaffold 70/10/20 split (0 leak; 3069 unique scaffolds)
+    scaffold_split: true
+
+# ============================================================================
+# MODEL — chemprop_v2_v3 multi-task D-MPNN + W2 pIC50 (50 ep protocol)
+# ============================================================================
+model:
+  backbone: chemprop_v2_v3
+  ablation_config: mtl_baseline       # Wf-251-F3 default
+  hidden_dim: 300
+  depth: 3
+  task: multi_task
+  wasserstein_weight: 0.05
+  alpha: 0.5
+  n_mc: 256
+  w2_gradient_mode: sliced
+  use_l2_guard: true
+
+# ============================================================================
+# TRAINING PROTOCOL — 5 x 3 x 50 = 15 runs (Wf-124 P3 50-ep extension)
+# ============================================================================
+protocol:
+  n_seeds: 3                         # 0, 1, 2
+  seeds: [0, 1, 2]
+  epochs: 50                         # mol-metal-gpu-execution §6 protocol
+  batch_size: 64
+  lr: 1.0e-3
+  grad_clip_norm: 5.0
+  bf16: true
+  # Explicit enumeration of all 15 (metal, seed) pairs (5 x 3 = 15)
+  enumerated_runs:
+    - {metal: Ru, seed: 0}
+    - {metal: Ru, seed: 1}
+    - {metal: Ru, seed: 2}
+    - {metal: Ir, seed: 0}
+    - {metal: Ir, seed: 1}
+    - {metal: Ir, seed: 2}
+    - {metal: Os, seed: 0}
+    - {metal: Os, seed: 1}
+    - {metal: Os, seed: 2}
+    - {metal: Rh, seed: 0}
+    - {metal: Rh, seed: 1}
+    - {metal: Rh, seed: 2}
+    - {metal: Re, seed: 0}
+    - {metal: Re, seed: 1}
+    - {metal: Re, seed: 2}
+  n_runs_total: 15
+
+# ============================================================================
+# 15 (metal, seed) PAIRS — 50-ep full sweep
+# ============================================================================
+sweep_pairs:
+  ru: [0, 1, 2]
+  ir: [0, 1, 2]
+  os: [0, 1, 2]
+  rh: [0, 1, 2]
+  re: [0, 1, 2]
+  total_pairs: 15
+
+# ============================================================================
+# EVALUATION
+# ============================================================================
+eval:
+  per_pair_metrics:
+    - test_auc
+    - val_auc
+    - wasserstein_final
+    - best_epoch                     # val_auc-based selection (NOT best-seed)
+  comparison_metrics:
+    - delta_test_auc_30vs50           # 30-ep vs 50-ep comparison
+    - delta_w2_final_30vs50           # W2 trajectory endpoint comparison
+  target_test_auc: 0.86              # PROJECTED (NOT MEASURED)
+
+# ============================================================================
+# OUTPUT — project root results/ per user 2026-09-28 instruction
+# ============================================================================
+output:
+  base_dir: results/wf124_p3_50epoch_full_sweep_g5
+  per_metal_dir: results/wf124_p3_50epoch_full_sweep_g5/{metal}/per_seed_metrics_seed{seed}.json
+  wasserstein_decay_dir: results/wf124_p3_50epoch_full_sweep_g5/{metal}/wasserstein_decay_seed{seed}.json
+  training_summary: results/wf124_p3_50epoch_full_sweep_g5/training_summary.json
+  comparison_30vs50: results/wf124_p3_50epoch_full_sweep_g5/30ep_vs_50ep_comparison.json
+  log_master: results/wf124_p3_50epoch_full_sweep_g5/master.log
+
+# ============================================================================
+# WAVES — 8 waves on RTX 5090 GPU-1 (each <=1 hr per kill_then_adapt;
+# --no-enforce-budget override applies per user '时间预算没关系的')
+# ============================================================================
+waves:
+  total_waves: 8
+  enforce_budget: false              # --no-enforce-budget override (user 2026-09-28)
+  per_wave_budget_hr: 1.0            # soft target per kill_then_adapt
+  wave_a:
+    description: "Ru s0 (1 pair)"
+    pairs:
+      - {metal: Ru, seed: 0}
+    n_pairs: 1
+    wall_time_estimate: 0.5          # hr on RTX 5090 (~30 min for 50 epochs)
+  wave_b:
+    description: "Ru s1 (1 pair)"
+    pairs:
+      - {metal: Ru, seed: 1}
+    n_pairs: 1
+    wall_time_estimate: 0.5
+  wave_c:
+    description: "Ru s2 (1 pair)"
+    pairs:
+      - {metal: Ru, seed: 2}
+    n_pairs: 1
+    wall_time_estimate: 0.5
+  wave_d:
+    description: "Ir s0/s1 (2 pairs)"
+    pairs:
+      - {metal: Ir, seed: 0}
+      - {metal: Ir, seed: 1}
+    n_pairs: 2
+    wall_time_estimate: 1.0
+  wave_e:
+    description: "Ir s2 + Os s0 (2 pairs)"
+    pairs:
+      - {metal: Ir, seed: 2}
+      - {metal: Os, seed: 0}
+    n_pairs: 2
+    wall_time_estimate: 1.0
+  wave_f:
+    description: "Os s1/s2 + Rh s0 (3 pairs)"
+    pairs:
+      - {metal: Os, seed: 1}
+      - {metal: Os, seed: 2}
+      - {metal: Rh, seed: 0}
+    n_pairs: 3
+    wall_time_estimate: 1.0
+  wave_g:
+    description: "Rh s1/s2 + Re s0 (3 pairs)"
+    pairs:
+      - {metal: Rh, seed: 1}
+      - {metal: Rh, seed: 2}
+      - {metal: Re, seed: 0}
+    n_pairs: 3
+    wall_time_estimate: 1.0
+  wave_h:
+    description: "Re s1/s2 (2 pairs)"
+    pairs:
+      - {metal: Re, seed: 1}
+      - {metal: Re, seed: 2}
+    n_pairs: 2
+    wall_time_estimate: 1.0
+  total_wall_time_estimate: 6.5      # hr on RTX 5090 (15 x ~26 min for 50 epochs)
+
+# ============================================================================
+# COMPUTE
+# ============================================================================
+compute:
+  gpu: cuda:1                        # RTX 5090 GPU-1
+  cpu_workers: 4
+  bf16: true
+
+# ============================================================================
+# STANDING DIRECTIVES
+# ============================================================================
+directives:
+  kill_then_adapt: true
+  time_budget: 10h                   # user 2026-09-28 standing budget
+  no_enforce_budget: true            # --no-enforce-budget override (user '时间预算没关系的')
+  user_ok_required: true
+  user_ok_granted: "pending — DRY-RUN only"
+  per_wave_user_ok_required: true
+
+# ============================================================================
+# ENTRY POINT — reference existing script (do NOT recreate)
+# ============================================================================
+entry:
+  # Reuses Wf-124 P3 shipped trainer; --epochs flag already supported
+  # (default 50 per --help output).
+  script: molmetal/scripts/train_dmpnn_multitask_wasserstein.py
+  command: |
+    CUDA_VISIBLE_DEVICES=1 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+      molmetal/scripts/train_dmpnn_multitask_wasserstein.py \\
+      --metals {metal} \\
+      --seeds {seed} \\
+      --epochs 50 \\
+      --batch-size 64 \\
+      --lr 1e-3 \\
+      --alpha 0.5 \\
+      --wasserstein-weight 0.05 \\
+      --use-l2-guard \\
+      --device cuda:1 \\
+      --out-dir {out_dir} \\
+      --ckpt-dir {ckpt_dir} \\
+      --no-enforce-budget
+
+  warm_start_checkpoint: "n/a"        # cold-start each pair
+
+# ============================================================================
+# HONEST FRAMING (party-twenty-spirit §3.5)
+# ============================================================================
+honest_framing:
+  # Data grounding (Wf-261 strict scaffold + Wf-258 audit)
+  data_grounding:
+    scaffold_split_source: "Wf-261 strict Bemis-Murcko 70/10/20 split (0 leak)"
+    scaffold_split_audit: molmetal/reports/wf261_audit/split_audit.md
+    cfm_todo_audit: molmetal/reports/wf258_audit/cfm_todo_gap_audit.md
+    csv_v4: "v4 retains v2's 26632 rows; adds scaffold_id + split columns (Wf-261 regeneration output)"
+  # Time budget (user 2026-09-28 '时间预算没关系的')
+  time_budget_directive:
+    user_statement: "时间预算没关系的"  # user 2026-09-28: time budget does not matter
+    no_enforce_budget_override: true   # --no-enforce-budget per kill_then_adapt
+    wall_time_target: "~6.5 hr on RTX 5090 GPU-1 (8 waves x <=1 hr)"
+  claims:
+    - "5 x 3 x 50 = 15 runs on RTX 5090 GPU-1, ~6.5 hr wall-time (8 waves)"
+    - "50-ep convergence check vs 30-ep Wf-124 P3 baseline"
+    - "30ep_vs_50ep_comparison.json per-metal lift delta"
+    - "Wf-261 strict scaffold split ensures 0 leakage across 15 (metal, seed) pairs"
+    - "Wf-258 audit identifies undertraining; 50-ep sweep is the proper scientific measurement"
+  do_not_claim:
+    - "50-ep lift magnitude as MEASURED until sweep completes"
+    - "Per-seed best-epoch as MEASURED convergence (use mean+/-std unfiltered)"
+    - "Krasnov 2026 0.86 target until 5x3 sweep aggregates honestly"
+  deferred:
+    - "Per-innovation ablation (TODO-182 G6) for lever attribution"
+    - "Hyperparameter tuning (Wf-120 P3 follow-up) if per-metal std too high"
+
+# ============================================================================
+# CROSS-REFERENCES
+# ============================================================================
+cross_references:
+  - molmetal/reports/wf258_audit/cfm_todo_gap_audit.md
+  - TODO/pending/181_wf124_p3_50_epoch_full_sweep.md
+  - molmetal/reports/wf124_p3_multitask/ru/per_seed_metrics_seed0.json
+  - molmetal/scripts/train_dmpnn_multitask_wasserstein.py
+  - TODO/pending/180_wf124_p3_remaining_metals_seeds.md
+  - TODO/pending/182_wf124_p3_per_innovation_ablation.md

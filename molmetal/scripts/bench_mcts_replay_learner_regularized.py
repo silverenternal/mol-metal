@@ -88,6 +88,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+# Atomic write protocol — closes the "half-merged file state" failure mode
+# (concurrent writers racing on the rename) and the "direct overwrite
+# without risk check" failure mode (closeout-drafting scripts silently
+# overwriting prior closeouts).  See `wf386a3_atomic_write.py` §0 +
+# AGENTS.md §5.6 adoption rule.
+from molmetal.scripts.wf386a3_atomic_write import (
+    atomic_write_file,
+    safe_overwrite_check,
+    detect_truncation,
+)
+
 import numpy as np
 
 # Path bootstrap — mirror the Wf-129 P1 / Wf-36 P4 convention.
@@ -1100,8 +1111,12 @@ def _write_per_seed_json(
                 per_seed_doc["strategies"][strat] = per_strat[strat][s_idx]
         per_seed_path = seeds_dir / f"seed_{int(seed)}" / "per_seed_metrics.json"
         per_seed_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(per_seed_path, "w") as f:
-            json.dump(per_seed_doc, f, indent=2, sort_keys=True)
+        # Wf-410-A3 migration: atomic write + safe_overwrite_check so the
+        # per-seed JSON survives concurrent writes across the 5-seed loop
+        # and we surface any substantial-content overwrite before it happens.
+        _per_seed_payload = json.dumps(per_seed_doc, indent=2, sort_keys=True)
+        safe_overwrite_check(per_seed_path, _per_seed_payload)
+        atomic_write_file(per_seed_path, _per_seed_payload, encoding="utf-8")
     # Root aggregate.
     agg_doc = {
         "metric": "wf129_p2_replay_learner_loss",
@@ -1139,8 +1154,12 @@ def _write_per_seed_json(
                 ),
             })
     root_path = output_dir / "per_seed_metrics.json"
-    with open(root_path, "w") as f:
-        json.dump(agg_doc, f, indent=2, sort_keys=True)
+    # Wf-410-A3 migration: atomic write + safe_overwrite_check so the
+    # root aggregate JSON survives concurrent writes and surfaces any
+    # substantial-content overwrite before it happens.
+    _root_payload = json.dumps(agg_doc, indent=2, sort_keys=True)
+    safe_overwrite_check(root_path, _root_payload)
+    atomic_write_file(root_path, _root_payload, encoding="utf-8")
 
 
 def _write_synthesis(
@@ -1365,7 +1384,12 @@ def _write_synthesis(
         "* `TODO/completed/85_wf39_mcts_real_trajectory.md` "
         "(Wf-39 P1 L2 baseline)",
     )
-    out_path.write_text("\n".join(lines) + "\n")
+    # Wf-410-A3 migration: atomic write + safe_overwrite_check + truncation
+    # check on the synthesis MD so closeout-drafting runs surface any
+    # half-written agent output before downstream workflows accept it.
+    _synth_content = "\n".join(lines) + "\n"
+    safe_overwrite_check(out_path, _synth_content)
+    atomic_write_file(out_path, _synth_content, encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------

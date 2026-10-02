@@ -1,0 +1,232 @@
+[molmetal] applied gfx1101 env vars: TOKENIZERS_PARALLELISM=false, TRANSFORMERS_VERBOSITY=error
+{
+  "timestamp": "2026-09-29T12:07:11+0000",
+  "schema_version": "207.v1",
+  "pipeline": "chemprop_v2_v3",
+  "summary": {
+    "pass": 14,
+    "fail": 0,
+    "skip": 0,
+    "total": 14,
+    "total_wall_sec": 72.7041
+  },
+  "gates": [
+    {
+      "name": "p1_chemprop_indices_fix",
+      "priority": "P1",
+      "pipeline": "chemprop_v2_v3",
+      "status": "PASS",
+      "evidence": "grep 'indices = train_idx.copy()' found in /home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py",
+      "wall_sec": 0.0003
+    },
+    {
+      "name": "p1_chemprop_kendall_optimizer",
+      "priority": "P1",
+      "pipeline": "chemprop_v2_v3",
+      "status": "PASS",
+      "evidence": "grep 'kendall.parameters()' found in /home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py",
+      "wall_sec": 0.0001
+    },
+    {
+      "name": "p1_chemprop_dann_per_metal",
+      "priority": "P1",
+      "pipeline": "chemprop_v2_v3",
+      "status": "PASS",
+      "evidence": "grep 'per_metal' found in /home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py",
+      "wall_sec": 0.0001
+    },
+    {
+      "name": "p1_chemprop_nan_guard",
+      "priority": "P1",
+      "pipeline": "chemprop_v2_v3",
+      "status": "PASS",
+      "evidence": "grep 'nan_to_num' found in /home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py",
+      "wall_sec": 0.0001
+    },
+    {
+      "name": "p1_chemprop_grad_clip",
+      "priority": "P1",
+      "pipeline": "chemprop_v2_v3",
+      "status": "PASS",
+      "evidence": "grep 'clip_grad_norm' found in /home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py",
+      "wall_sec": 0.0001
+    },
+    {
+      "name": "p1_chemprop_epoch_avg",
+      "priority": "P1",
+      "pipeline": "chemprop_v2_v3",
+      "status": "PASS",
+      "evidence": "grep 'w2_epoch_avg_history' found in /home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py",
+      "wall_sec": 0.0001
+    },
+    {
+      "name": "p1_chemprop_ablation_flags",
+      "priority": "P1",
+      "pipeline": "chemprop_v2_v3",
+      "status": "PASS",
+      "evidence": "help exposes all 4 token(s) of '--no-multi-task --no-wass --no-kendall --no-dann' (rc=0)",
+      "wall_sec": 4.4748
+    },
+    {
+      "name": "p1_chemprop_seeds_min",
+      "priority": "P1",
+      "pipeline": "chemprop_v2_v3",
+      "status": "PASS",
+      "evidence": "help exposes all 1 token(s) of '--n-seeds-min' (rc=0)",
+      "wall_sec": 5.4217
+    },
+    {
+      "name": "p1_chemprop_master_wass_flag",
+      "priority": "P1",
+      "pipeline": "chemprop_v2_v3",
+      "status": "PASS",
+      "evidence": "help exposes all 1 token(s) of '--use-master-wass' (rc=0)",
+      "wall_sec": 5.3124
+    },
+    {
+      "name": "p1_chemprop_master_cath_flag",
+      "priority": "P1",
+      "pipeline": "chemprop_v2_v3",
+      "status": "PASS",
+      "evidence": "help exposes all 1 token(s) of '--use-master-cath' (rc=0)",
+      "wall_sec": 5.4363
+    },
+    {
+      "name": "p1_chemprop_click_aug_flag",
+      "priority": "P1",
+      "pipeline": "chemprop_v2_v3",
+      "status": "PASS",
+      "evidence": "help exposes all 1 token(s) of '--use-click-aug' (rc=0)",
+      "wall_sec": 5.3903
+    },
+    {
+      "name": "p1_chemprop_smoke",
+      "priority": "P1",
+      "pipeline": "chemprop_v2_v3",
+      "status": "PASS",
+      "evidence": "--quick exit=0 in 39.9s (rc=0) | tail: [2026-09-29 20:07:02,688] INFO wf200 :: [metal=Ru seed=0] epoch=1/2 loss=-1.2678 coord=0.0000 w2=0.0000 domain=0.0000 elapsed=16.2s | [2026-09-29 20:07:02,847] INFO wf200 :: metal=Ru seed=0 test_auc=0.7865 epochs=2 elapsed=16.3s status=ok | [2026-09-29 20:07:02,848] INFO wf200 :: wrote /home/hugo/codes/mol-metal/molmetal/reports/wf200_chemprop_v2_v3/training_summary.json",
+      "wall_sec": 39.9132
+    },
+    {
+      "name": "p3_todo_119_p14_cpu_smoke_ready",
+      "priority": "P3",
+      "pipeline": "chemprop_v2_v3",
+      "status": "PASS",
+      "evidence": "help exposes all 4 token(s) of '--chemprop-mode v3-fix --chemprop-min-epochs --chemprop-lomo-init-scale' (rc=0)",
+      "wall_sec": 5.3218
+    },
+    {
+      "name": "p1_compute_manifest",
+      "priority": "P1",
+      "pipeline": "chemprop_v2_v3",
+      "status": "PASS",
+      "evidence": "manifest at /home/hugo/codes/mol-metal/molmetal/reports/wf350a2_compute_manifest.json schema-valid | 2 GPU(s): gpu[0]=NVIDIA RTX PRO 6000 Blackwell Workstation Edition/97887MB, gpu[1]=NVIDIA GeForce RTX 5090/32607MB | torch=2.14.0+cu130 cuda=13.0 | host=ZhaoLab kernel=7.2.6-hardened1-1-hardened",
+      "wall_sec": 1.4329
+    }
+  ],
+  "reproducibility_manifest": {
+    "compute": {
+      "cuda_version": "13.0",
+      "driver_version": "615.71.09",
+      "gpus": [
+        {
+          "driver_version": "615.71.09",
+          "index": 0,
+          "memory_total_mb": 97887,
+          "name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition"
+        },
+        {
+          "driver_version": "615.71.09",
+          "index": 1,
+          "memory_total_mb": 32607,
+          "name": "NVIDIA GeForce RTX 5090"
+        }
+      ],
+      "schema_version": "wf350a2.v1",
+      "system": {
+        "arch": "SMP PREEMPT_DYNAMIC Fri, 18 Sep 2026 23:17:15 +0000 x86_64 GNU/Linux",
+        "hostname": "ZhaoLab",
+        "kernel": "7.2.6-hardened1-1-hardened"
+      },
+      "torch_version": "2.14.0+cu130",
+      "ts": "2026-09-29T12:07:11+0000"
+    },
+    "hp_provenance": [
+      {
+        "config_path": "configs/cfm_full_retrain.yaml",
+        "current_sha": "9b12e6f574dfc397b5b5e8c568c952266e82ef37",
+        "recent_commits": [],
+        "uncommitted_changes": true
+      },
+      {
+        "config_path": "configs/cfm_per_innovation_ablation_p1.4.yaml",
+        "current_sha": "9b12e6f574dfc397b5b5e8c568c952266e82ef37",
+        "recent_commits": [],
+        "uncommitted_changes": true
+      },
+      {
+        "config_path": "configs/cfm_real_decode_lift_p1.3.yaml",
+        "current_sha": "9b12e6f574dfc397b5b5e8c568c952266e82ef37",
+        "recent_commits": [],
+        "uncommitted_changes": true
+      },
+      {
+        "config_path": "configs/default.yaml",
+        "current_sha": "9b12e6f574dfc397b5b5e8c568c952266e82ef37",
+        "recent_commits": [
+          {
+            "sha": "9b12e6f574dfc397b5b5e8c568c952266e82ef37",
+            "message": "Wf-243 to Wf-252: pre-retrain code fixes + click-aug wire + F5 32-d + Master modules M1/M2 + m18 per-residue + W₂ pic50 + 145 tests passing",
+            "date": "2026-09-28 18:54:36 +0800"
+          },
+          {
+            "sha": "4527e4f34efa222e44595e8aea18f7192a4b9d91",
+            "message": "Initial public release of Mol-Metal (R16 close-out)",
+            "date": "2026-09-18 15:51:56 +0800"
+          }
+        ],
+        "uncommitted_changes": false
+      },
+      {
+        "config_path": "configs/wf124_p3_50epoch_full_sweep_g5.yaml",
+        "current_sha": "9b12e6f574dfc397b5b5e8c568c952266e82ef37",
+        "recent_commits": [],
+        "uncommitted_changes": true
+      },
+      {
+        "config_path": "configs/wf124_p3_per_innovation_ablation_g6.yaml",
+        "current_sha": "9b12e6f574dfc397b5b5e8c568c952266e82ef37",
+        "recent_commits": [],
+        "uncommitted_changes": true
+      },
+      {
+        "config_path": "configs/wf124_p3_remaining_metals_g4.yaml",
+        "current_sha": "9b12e6f574dfc397b5b5e8c568c952266e82ef37",
+        "recent_commits": [],
+        "uncommitted_changes": true
+      }
+    ],
+    "runtime_energy": {
+      "per_gpu": [
+        {
+          "index": 0,
+          "power_draw_w": 251.18,
+          "power_limit_w": 600.0
+        },
+        {
+          "index": 1,
+          "power_draw_w": 105.71,
+          "power_limit_w": 575.0
+        }
+      ],
+      "total_duration_s": 0.03745,
+      "estimated_energy_j": 6.682832,
+      "n_gpus_reported": 2,
+      "probe_timestamp": "2026-09-29T10:46:36+0000",
+      "host": "ZhaoLab",
+      "MEASURED_vs_PROJECTED": "MEASURED"
+    },
+    "prereg_path": null
+  },
+  "v2_doc_reference": "TODO/completed/207_unified_pre_flight_checklist_v2.md (§3.1 chemprop, §4.2 CFM, §5 P2)"
+}

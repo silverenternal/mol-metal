@@ -1,0 +1,85 @@
+{
+  "metric": "protein_metal_per_residue_summary",
+  "description": "Aggregated m18 protein_metal binding AUC + per_residue binding AUC. Three on-disk sources: 100-ep baseline, 50-ep v2, per-residue redesign v1. Per-residue labels are SYNTHETIC PROXIES derived from the complex-level active label (MetalCytoToxDB does not ship per-residue binding labels) \u2014 DESIGN+1-PILOT singleton collapse per TODO/completed/247_b_per_residue_m18_redesign.md.",
+  "scope": "metric18 protein_metal aggregation (Wf-311D PART 2)",
+  "source_files": [
+    "metrics/by_metric/metric18_protein_metal.json",
+    "metrics/by_metric/metric18_protein_metal_v2.json",
+    "metrics/by_metric/metric18_protein_metal_per_residue.json"
+  ],
+  "components": {
+    "metric18_100epoch": {
+      "test_auc_mean": 0.7435730745526251,
+      "test_auc_std": 0.009216035837632744,
+      "test_pr_auc_mean": 0.5694781872338304,
+      "test_auc_per_seed": [
+        0.7561679280404878,
+        0.7343721629963946,
+        0.7401791326209931
+      ],
+      "verdict": "baseline",
+      "epochs": 50,
+      "elapsed_sec": 376.6,
+      "n_rows": 5257,
+      "n_cell_lines": 209,
+      "n_metals": 5,
+      "per_complex_auc": null,
+      "per_residue_auc": null,
+      "per_residue_pr_auc": null,
+      "per_residue_auc_synthetic_proxy": null,
+      "n_complex": null,
+      "n_residue_samples": null
+    },
+    "metric18_50epoch": {
+      "test_auc_mean": 0.7392871477727422,
+      "test_auc_std": 0.009190760313620242,
+      "test_pr_auc_mean": 0.5606730598372045,
+      "test_auc_per_seed": [
+        0.7262896193085167,
+        0.7458433844318211,
+        0.7457284395778887
+      ],
+      "verdict": "baseline",
+      "epochs": 100,
+      "elapsed_sec": 586.5,
+      "n_rows": 5257,
+      "n_cell_lines": 209,
+      "n_metals": 5,
+      "per_complex_auc": null,
+      "per_residue_auc": null,
+      "per_residue_pr_auc": null,
+      "per_residue_auc_synthetic_proxy": null,
+      "n_complex": null,
+      "n_residue_samples": null
+    },
+    "metric18_per_residue_redesign_v1": {
+      "test_auc_mean": null,
+      "test_auc_std": null,
+      "test_pr_auc_mean": null,
+      "test_auc_per_seed": null,
+      "verdict": "redesign_v1",
+      "epochs": null,
+      "elapsed_sec": 0.877,
+      "n_rows": null,
+      "n_cell_lines": null,
+      "n_metals": null,
+      "per_complex_auc": 0.9944777327825318,
+      "per_residue_auc": 0.962731433900268,
+      "per_residue_pr_auc": 0.8331151503499039,
+      "per_residue_auc_synthetic_proxy": true,
+      "n_complex": 5257,
+      "n_residue_samples": 66303
+    }
+  },
+  "honest_framing_note": "DESIGN+1-PILOT singleton collapse. The per-residue labels are SYNTHETIC PROXIES (MetalCytoToxDB has only complex-level active/inactive labels; per-residue labels are derived heuristically). Per party-twenty-spirit \u00a73.5, the per_residue_auc=0.9627 is honest but NOT a real per-residue binding signal \u2014 it reflects the model's ability to reproduce the complex-level heuristic projection. Real per-residue binding labels would require crystallographic metal-protein distance data (PDBbind-metal subset, NOT shipped).",
+  "timestamp": "2026-09-29",
+  "status": "MEASURED (singleton collapse \u2014 see honest_framing_note)",
+  "aggregate_baseline_mean_auc": 0.7414301111626836,
+  "aggregate_baseline_std_auc": 0.0021429633899414657,
+  "per_residue_redesign_v1": {
+    "per_complex_auc": 0.9944777327825318,
+    "per_residue_auc": 0.962731433900268,
+    "per_residue_pr_auc": 0.8331151503499039,
+    "synthetic_proxy_warning": true
+  }
+}

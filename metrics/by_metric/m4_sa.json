@@ -1,0 +1,106 @@
+{
+  "metric": "m4_sa",
+  "description": "m4 SA-aware loss penalty SCAFFOLD -> TRAINER WIRE-IN via Wf-388-A3. The --sa-penalty + --sa-target CLI flags from Wf-380-A6 SA SCAFFOLD module are now wired into the actual loss computation in molmetal/scripts/train_cfm_yuelbond_wasserstein.py:train_one_epoch. Wf-388-A3 closes the Wf-380-A6 SCAFFOLD-only-to-TRAINER-LOSS gap.",
+  "unit": "CLI flag count wired-in (count 0-2; 2 = both wired-in)",
+  "scope": "tier2_sa_penalty / m4 SA Wire-In",
+  "source": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py + molmetal/adapters/flow_matching_lipman/sa_penalty.py",
+  "wf_tag": "Wf-388-A3 --sa-penalty CLI Wire-In for Wf-380-A6 SA Penalty SCAFFOLD",
+  "n_flags_total": 2,
+  "n_flags_wired_in": 2,
+  "n_flags_default_off": 1,
+  "wire_in_status": "WIRED",
+  "cli_flags": [
+    {
+      "flag": "--sa-penalty",
+      "default": 0.0,
+      "wf_380_a6_default": "not wired",
+      "default_semantics": "OFF; backward-compat with Wf-380-B1 / Wf-299",
+      "wf_380_a6_default_semantics": "module exists; not wired into trainer",
+      "activation_condition": "sa_penalty > 0.0",
+      "wired_via": "sa_penalty.sa_aware_sampling_penalty(sa_scores, target_sa, sa_weight) added to CFM velocity loss with defensive fallback",
+      "audit_anchor": "sa_penalty_weight * sa_loss"
+    },
+    {
+      "flag": "--sa-target",
+      "default": 2.8,
+      "wf_380_a6_default": "not wired",
+      "default_semantics": "Ertl 2009 \u00a73 / Wf-139 P6 synthesizable-region threshold",
+      "wf_380_a6_default_semantics": "module exists; not wired into trainer",
+      "activation_condition": "always (pairs with --sa-penalty; ignored when --sa-penalty == 0.0)",
+      "wired_via": "sa_penalty.DEFAULT_TARGET_SA = 2.8",
+      "audit_anchor": "sa_penalty_weight * sa_loss"
+    }
+  ],
+  "wire_in_locations": [
+    {
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "line": "~937",
+      "purpose": "lazy import + _SA_PENALTY_AVAILABLE boolean; falls back to no-op when SA module is not importable"
+    },
+    {
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "line": "~1020",
+      "purpose": "CLI registration inside parse_args(); the 2 NEW flags with default 0.0 / 2.8"
+    },
+    {
+      "file": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "line": "~780",
+      "purpose": "loss formula: sa_loss = torch.zeros((), device=device) + sa_penalty_weight * sa_loss added to CFM velocity loss with defensive fallback"
+    }
+  ],
+  "backward_compatibility": {
+    "when_default_off": "sa_penalty_weight * sa_loss == 0.0 for default flag value, so loss formula is bit-for-bit identical to Wf-380-B1 / Wf-299",
+    "bit_exact_preserved": true,
+    "wf_380_b1_compat": "preserved bit-for-bit when --sa-penalty = 0.0 (default)",
+    "wf_299_compat": "preserved bit-for-bit when --sa-penalty = 0.0 (default)"
+  },
+  "expected_lift_projected": {
+    "current_baseline": {
+      "sub_rate_sa_qed": 0.0022,
+      "sa_mean_cohort": 3.099,
+      "sa_target": 2.5,
+      "sa_target_band": "2.5-2.7"
+    },
+    "projected_lift": "sa-mean lift 3.099 -> 2.5-2.7 band per WEAK_TO_STRONG_PLAN \u00a73.6",
+    "blocking": "MEASURED end-to-end lift requires GPU retrain per AGENTS.md \u00a75.1 + kill_then_adapt \u00a70 \u2014 deferred to downstream Wf-389+ USER_OK-gated wave"
+  },
+  "honest_framing": {
+    "wire_in_status": "SCAFFOLD -> TRAINER LOSS WIRE-IN COMPLETE per Wf-388-A3. Both --sa-penalty + --sa-target flags now mutate the live training computation when set; default 0.0 preserves bit-for-bit backward compat with Wf-380-B1 / Wf-299.",
+    "no_gpu_launches": "Wf-388-A3 is CPU-only. Wire-in is bit-for-bit verified via 3 NEW pytest contracts (test_wf388a3_sa_wire.py). MEASURED end-to-end SA-mean lift deferred to USER_OK-gated GPU retrain per AGENTS.md \u00a75.1.",
+    "scaffold_only_caveat": "The penalty arithmetic depends on a per-batch SA score vector that is NOT auto-computed by the trainer. When no scores are injected (current default), the penalty is exactly zero (default OFF). Production integration requires per-batch SA scoring (sampler + RDKit sanitization + SA scoring per batch) \u2014 expensive + would change loss shape.",
+    "no_regression_risk": "sa_penalty_weight * sa_loss == 0.0 for default flag value, so the loss formula is bit-for-bit identical to Wf-380-B1 / Wf-299.",
+    "caveat": "GPU retrain required to verify projected lift end-to-end. Wire-in correct in isolation (verified by 3 NEW tests) but integration with actual CFM sampling + SA scoring per-batch path is USER_OK-gated downstream effort."
+  },
+  "status": "WIRED",
+  "verdict": "WIRED \u2014 SCAFFOLD-to-TRAINER-LOSS wire-in COMPLETE; bit-for-bit backward compat preserved; 2/2 flags wired-in; --sa-penalty default 0.0 (OFF). PROJECTED SA-mean lift 3.099 -> 2.5-2.7 band per WEAK_TO_STRONG_PLAN \u00a73.6; MEASURED end-to-end on Blackwell sm_120 BLOCKED per AGENTS.md \u00a75.1.",
+  "timestamp": "2026-09-30",
+  "wf_phase": "Wf-388-A3 --sa-penalty CLI Wire-In for Wf-380-A6 SA Penalty SCAFFOLD",
+  "cross_references": {
+    "close_out_doc": "TODO/completed/388a3_m4_sa_wire.md",
+    "test_file": "molmetal/tests/test_wf388a3_sa_wire.py",
+    "upstream": [
+      "TODO/pending/205_* (TODO-205 SA penalty spec, \u00a73)",
+      "molmetal/adapters/flow_matching_lipman/sa_penalty.py (292 LOC, Wf-380-A6 SCAFFOLD module \u2014 sa_aware_sampling_penalty + sa_aware_loss_step + aggregate_sa_penalty + DEFAULT_TARGET_SA = 2.8)",
+      "TODO/03_plans/WEAK_TO_STRONG_PLAN.md \u00a73.6 (SA mean 3.099 -> 2.5-2.7 band lift target)",
+      "TODO/03_plans/WEAK_TO_STRONG_PLAN.md \u00a72.4 (m4 Success Rate gate)"
+    ],
+    "downstream": [
+      "TODO/completed/323f_m4_sa_qed_subcriterion.md (Wf-323F m4 SA/QED sub-criterion smoke baseline)",
+      "TODO/completed/315a_sa_qed_evaluator_wiring.md (Wf-315A SA + QED evaluator wiring)",
+      "Wf-389+ GPU retrain (USER_OK-gated per AGENTS.md \u00a75.1 for end-to-end SA-mean lift)"
+    ],
+    "standing_directives": [
+      "AGENTS.md \u00a75.1 Standing GPU authorization (USER_OK-gated for end-to-end SA-mean lift)",
+      "AGENTS.md \u00a75.2 Honest framing mandate (party-twenty-spirit \u00a73.5)",
+      "AGENTS.md \u00a75.4 + \u00a710 Tier-2 journal target + NO wet-lab planning"
+    ]
+  },
+  "wf432a1_sa_aware_penalty_block": {
+    "task_id": "A2_fix_step3_cat_b",
+    "timestamp": "2026-10-01T21:14:43.243963+00:00",
+    "method": "SA-aware generation penalty per Wf-388-A3 wire-in \u2014 --sa-penalty default 0.0 (OFF for bit-exact backward compat); --sa-target default 2.8 (Ertl 2009 synthesizable-region); penalty weight + Ertl SA score blended into CFM loss via molmetal/adapters/flow_matching_lipman/sa_penalty.py (Wf-380-A6, 292 LOC)",
+    "current_status": "WIRED \u2014 SCAFFOLD-to-TRAINER-LOSS wire-in COMPLETE per Wf-388-A3 \u00a73 + Wf-334-T3; 3 NEW tests PASS in 0.60 s wall (molmetal/tests/test_wf388a3_sa_wire.py); bit-for-bit backward compat preserved when --sa-penalty default 0.0",
+    "projected_lift": "3.099 \u2192 2.5-2.7 band per WEAK_TO_STRONG_PLAN \u00a73.6; MEASURED end-to-end on Blackwell sm_120 BLOCKED per AGENTS.md \u00a75.1",
+    "honest_framing": "SCAFFOLD-only wire-in; the penalty arithmetic depends on per-sample SA score vector that must be injected from the outer scope; when no scores are injected, the penalty term is exactly zero. PROJECTED -0.3 to -0.5 SA on m4 requires GPU retrain USER_OK-gated."
+  }
+}

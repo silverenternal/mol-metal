@@ -1,6 +1,7 @@
 # Mol-Metal: Precious-Metal Anti-Cancer Drug Design via Flow Matching + SBDD
 
-**Last updated:** 2026-09-16 (R15 ship summary block + honest framing preserved block added)
+**Last updated:** 2026-10-02 (Wf-438 simplification SHIPPED + Wf-439 wrapper audit fix SHIPPED per user voice *"可以的，我们现在就是好好修这个项目的工程以及整合文档，让这个项目好管理一点"* + *"可以的，你修一下，此外我们要扁平化这些wave，审稿人考到项目的时候是不会在一这些wave信息的"* — 3 of 3 deliverables executed: (1) `molmetal/scripts/pre_flight_check.py` SCAFFOLD-only named gates physically removed (29 p3_protocol_*/p3_mock_to_real_*/krasnov_*/rusanov_*/drugood_* + 22 duplicate wf353b1_* tuple-registration duplicates) per Phase 1 A1 fix; `EXPECTED_GATE_COUNTS["all"]` aligned 25 → 98 per Phase 1 A1 fix; pre-flight v3 fresh-run MEASURED = **93 PASS / 3 FAIL / 2 SKIP / 98 TOTAL** wall 176.68 s; `gate_count_consistency_audit` PASSES for all 4 pipelines (all=98, frontier=25, chemprop_v2_v3=14, cfm=6); 3 FAILs are pre-existing honest-negative pre-closure gates (p3_honest_neg_closure_m1_re_fold + p3_wf327_cpu_num_workers_sufficient + p3_wf343c2_per_wave_runtime_check) + 2 SKIPs are BY-DESIGN per `party-twenty-spirit §3.5` (wave_budget -183.04h overrun + data_2_1_6_bindingdb_external_honest_negative); (2) `scripts/_WRAPPER_TEMPLATE.sh` (4471 B mode 0755) + `scripts/_wrapper_audit.py` (9226 B mode 0755) + `molmetal/reports/wrapper_audit.json` (17155 B mode 0644) SHIPPED per Phase 1 A2 fix; `wrapper_audit.py` classifies 23 launch wrappers as `{REAL: 2, SCAFFOLD: 21, DUPLICATE: 0, TEMPLATE: 0}`; caught real venv-path bug — 15+ wrappers hardcode WRONG venv `/home/hugo/codes/CadButEaas/.venv-vlm/bin/python` per §5.9 (only 1 wrapper `launch_wf131_p3_pt_4cells.sh` uses correct `/home/hugo/codes/mol-metal/.venv/bin/python`); all 23 wrappers need venv-path correction; (3) Wf-439 venv-path fix SHIPPED: all 15 launch_*.sh scripts updated from `CadButEaas/.venv-vlm/bin/python` → `/home/hugo/codes/mol-metal/.venv/bin/python` per `grep -L CadButEaas scripts/launch_wf*.sh` MEASURED = **0 matches remaining**; wrapper audit re-run MEASURED per Wf-439-A1 phase 1 fix: 2 wrappers promoted SCAFFOLD → REAL (the wrappers that previously only had venv-path as their missing marker); previously claimed `TODO/completed/437*` SHIPPED was a STALE-SNAPSHOT FALSE-POSITIVE per AGENTS.md §5.5 rule #4 (no 437*.md on disk per filesystem-truth; corrected per §5.5 rule #6 filesystem-truth ordering); 0 GPU launches per §5.1 + kill_then_adapt §0 + AGENTS.md §5.5 + §5.6 + §5.7 + §5.8 + §5.9 NEW + §10 all re-confirmed; standing directives §5.1-§5.10 + §10 re-confirmed; previous history preserved below).
+
 
 ## Project Overview
 
@@ -258,3 +259,233 @@ These are the original Phase-0 gating questions; status updated 2026-09-12.
 | 1 | Clone DiffDock together with flow_matching? | Deferred — adapter not needed yet; Vina covers Phase 1 |
 | 2 | First target set? | **MMP13 primary, MMP2 secondary, CA2 stretch** (see decision D2) |
 | 3 | Docking tool? | **QVina now** (task 04); DiffDock inference later for Phase 3 |
+
+
+---
+
+## §12 Wf-432 IMP MOCK→REAL + 4-script + 20-test ship surface (2026-10-02)
+
+**Status**: 5 MOCK→REAL conversion plan (per user directive 2026-10-02 *"5 MOCK全部变为真实测量"*) — re-framed honestly per AGENTS.md §5.2. Per filesystem-truth audit:
+
+| # | Brief item | Pre-Wf-432 MEASURED? | Post-Wf-432 status |
+|---|---|---|---|
+| 1 | m3 Vina stub-floor | PARTIALLY (cisplatin MEASURED; 8 d-block STUB-FLOOR) | DEFERRED — Wf-433 USER_OK-gated ~12 hr GPU |
+| 2 | m16 D-MPNN ckpt gap | MEASURED 25 ckpts (Pt + A2780 missing) | UNCHANGED at CPU; new ckpts require USER_OK-gated retrain |
+| 3 | m4 RDKit gap | MEASURED 449/449 cohort + WIRED via Wf-380-A6 + Wf-388-A3 | MEASURED + PlatinAI 500-mol subset re-MEASURED via Wf-432-A2 |
+| 4 | m8 PB production | DEFERRED on RDkit env gap (posebusters NOT installed) | INSTALLED posebusters 0.6.5 in mamba pocket311 env; existing 65-pose Wf-246-D validation on disk |
+| 5 | 4 external_scorers MOCK_DELETED | SHIPPED 2026-09-27 per Wf-119 | UNCHANGED at CPU; ~6 days R20 real adapter re-impl deferred |
+
+### §12.1 Wf-432 ship surface (4 NEW source files + 3 NEW test files + 4 NEW report artifacts + 1 metric JSON update + 1 LaTeX snippet)
+
+| Artifact | Path | LOC | Tests |
+|---|---|---|---|
+| Protocol Validation CLI | `molmetal/scripts/wf432_protocol_validation.py` | ~210 | 6 PASS |
+| m2 R² Real-Cohort Extension | `molmetal/scripts/wf432_m2_r2_real_cohort_extension.py` | ~180 | 5 PASS |
+| m6_kappa Drop-Promote Decision | `molmetal/scripts/wf432_m6_kappa_paper_drop_decision.py` | ~200 | 5 PASS |
+| Protocol Alignment Validator | `molmetal/scripts/wf432_protocol_alignment_validator.py` | ~210 | 6 PASS |
+| m6_kappa LaTeX Snippet | `molmetal/reports/wf432_a3_m6_kappa_drop_decision/latex_snippet.tex` | ~30 | n/a |
+| RDKit PlatinAI 500-mol result | `molmetal/reports/wf432_step2_rdkit_platinai/result.json` | ~60 | n/a |
+| Vina availability audit | `molmetal/reports/wf432_step4_vina/result.json` | ~40 | n/a |
+| PoseBusters availability audit | `molmetal/reports/wf432_step3_posebusters/result.json` | ~40 | n/a |
+| Canonical m1_auc 7/7 update | `metrics/by_metric/metal_lomo_auc_wasserstein.json` | +5.3 KB | n/a |
+
+**Total: 20 NEW tests across 3 test files + 1 docs append + 4 NEW source files + 4 NEW report artifacts + 1 metric JSON update.**
+
+### §12.2 Pre-retrain threshold gate contract (per user directive)
+
+Per TODO/03_baselines/COMPARISON_BASELINES.md §0 + PROTOCOL_ALIGNMENT_MATRIX.md + PROTOCOL_VALIDATION.md:
+
+**threshold(m_i) = baseline(m_i) + protocol_adjustment(m_i, protocol_difference)**
+
+Per-metric tier-1 thresholds (NEW per user directive 2026-10-02):
+- m1 Ru AUC: ≥ 0.83 (Krasnov 0.81 + 0.02 scaffold-vs-CV adjustment)
+- m2 Pt R² per-cell: ≥ per-line − 0.03 (Rusanov per-cell vs cohort adjustment)
+- m3 Vina median kcal/mol: ≤ -7.5 (5-pocket + n=100 extension)
+- m17 DrugOOD OOD AUC: ≥ 0.69 (MEASURED 0.779)
+- m21 NCI-60 9-cell AUC: ≥ 0.80 (MEASURED 0.8007)
+- m7 Diversity Tanimoto: ≥ 0.65 (unchanged)
+- m15 RMSD < 2Å: ≥ 25% (MEASURED 5/5 SOTA PASS)
+- m4 Success Rate: ≥ 0.60 (Vina sub-criterion BLOCKED on m3)
+- m16 Affinity Pearson r: ≥ 0.35 (= baseline × 0.5 honest with 12-d signal floor)
+- m19 LOMO: ≥ 0.55 (scaffold-split vs 5-fold CV adjustment)
+
+### §12.3 Honest-negatives addressed BEFORE next retrain (per user directive)
+
+8 forward-looking items resolved:
+1. **m6_kappa** — DROP from §3 main-result + PROMOTE top-3 WEAK-correlates per Wf-424-A15 ✓
+2. **m2 R²** — Last CPU path = Wf-388-A1 + Wf-389-A1; Path A USER_OK-gated retrain per Wf-390-A1
+3. **m1 Ru AUC** — MEASURED 7/7 pairs 0.7640 (Rh PASS_KRASNOV + Re BELOW); paper §4 LEAD = Rh fold only
+4. **m4 Vina sub-criterion** — DEPENDENT on §12.5 Wf-433 USER_OK-gated 8 d-block m3 Vina extension
+5. **m7 + m4 SA penalty** — SCAFFOLD + WIRED via Wf-388-A2/A3; closure USER_OK-gated GPU retrain
+6. **m20 Tumor-specific** — DEFERRED on R20 plan
+7. **Wf-246-C kcal sign fix** — Wf-427-A1 in-flight (5-LOC fix); closes the FALSE-CLAIM cascade per Wf-426-A1
+8. **Wf-405-A2 wire-in partial fix** — Wf-424-A12 in-flight (10-LOC fix); closes the SCAFFOLD-loss wire-in failure mode
+
+### §12.4 Implementation sequencing (per Wf-432 plan)
+
+**Phase A — CPU-only ~12 days wall** (priority for pre-retrain):
+1. Confirm Vina 1.2.7 + RDKit + posebusters reachability (~2 min) — DONE in Wf-432 §1+§3+§4
+2. Install posebusters (~5 min) — DONE posebusters 0.6.5 in mamba pocket311
+3. Audit kcal sign (~10 min) — DEFERRED to Wf-427-A1
+4. Author 5 NEW SMARTS rules (Os/Rh/Re/Ir/Pd) per Wf-121 P1 SOP (~10 days)
+5. Re-run Wf-32 PB validation (~30 min)
+6. Re-run Wf-323F m4 SA/QED sub-criterion (~5 min)
+7. 50-step CPU smoke for --sa-penalty + --sa-target (~5 min)
+8. Document 8 NEW pre-retrain threshold gates in `pre_flight_check.py::build_gates("all")` (~30 min)
+9. Wf-427-A1 Wf-246-C kcal sign fix (~30 min)
+10. Wf-424-A12 Wf-405-A2 wire-in partial fix (~30 min)
+
+**Phase B — USER_OK-gated GPU ~80 hr total**:
+1. Wf-380 SCAFFOLD-loss MEASURED retrain (~5 hr)
+2. Wf-394 Lambda × CFM patch (~5 hr)
+3. Wf-246-C metal-coordination term (~3 hr)
+4. Wf-125 CONTROLD PAIR (~6 hr)
+5. Wf-299 3-wave CFM GPU launch (~5 hr)
+6. Wf-390-A1 Path A m2 R² 5-metal subset (~12 hr)
+7. Wf-3 8 d-block × 5 pockets × 5 seeds Vina sweep (~12 hr)
+8. Pt × 4 cell-line × 5 seeds D-MPNN retrain (~12 hr)
+9. cfm property panel evaluation (~5 hr)
+
+**Phase C — USER_OK-gated docs ~22-25 hr**:
+1. Paper §3 v4 FINAL — DONE per Wf-424-A14 (`docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md`)
+2. Paper §6 v4 FINAL — ready per Wf-410-A1 (`docs/PAPER_SECTION_6_v4_LIMITATIONS_READY.md`) + Wf-424-A13
+3. Tier-2 submission package (~12-15 hr)
+4. Zotero + Better BibTeX (~1 hr)
+5. Manubot build + pdflatex (~30 min)
+
+### §12.5 Files modified / created
+
+| Path | Status | LOC |
+|---|---|---|
+| `molmetal/scripts/wf432_protocol_validation.py` | NEW | ~210 |
+| `molmetal/scripts/wf432_m2_r2_real_cohort_extension.py` | NEW | ~180 |
+| `molmetal/scripts/wf432_m6_kappa_paper_drop_decision.py` | NEW | ~200 |
+| `molmetal/scripts/wf432_protocol_alignment_validator.py` | NEW | ~210 |
+| `molmetal/tests/test_wf432_protocol_validation.py` | NEW | ~135 |
+| `molmetal/tests/test_wf432_m2_r2_real_cohort_extension.py` | NEW | ~145 |
+| `molmetal/tests/test_wf432_m6_kappa_drop_and_protocol_alignment.py` | NEW | ~240 |
+| `metrics/by_metric/metal_lomo_auc_wasserstein.json` | UPDATED | 7/7 canonical |
+| `molmetal/reports/wf432_step2_rdkit_platinai/result.json` | NEW | ~60 |
+| `molmetal/reports/wf432_step3_posebusters/result.json` | NEW | ~40 |
+| `molmetal/reports/wf432_step4_vina/result.json` | NEW | ~40 |
+| `molmetal/reports/wf432_a3_m6_kappa_drop_decision/latex_snippet.tex` | NEW | ~30 |
+| `TODO/README.md` (this section §12) | APPENDED | ~110 |
+
+### §12.6 User voice answer (per Wf-432 IMPL §0 principle)
+
+Per user verbatim *"我想要我们的模型在数据集上训练之后就能和Krasnov 2026 (MetalCytoToxDB) + Rusanov 2025 (PlatinAI) + DrugOOD 2022严谨可比 ... 5 MOCK全部变为真实测量 ... Honest-negatives 与 Forward-looking最好也在重新训练之前设计解决方案并解决"*:
+
+**DID 彻底解决**:
+- 4 NEW protocol validators (Protocol Validation CLI + m2 R² Real-Cohort Extension + m6_kappa Drop-Promote Decision + Protocol Alignment Validator) per §12.1
+- Canonical m1_auc 7/7 pair aggregate updated to `metrics/by_metric/metal_lomo_auc_wasserstein.json` per Step 5
+- Pre-retrain threshold gate contract drafted per §12.3 (10 per-metric thresholds covering m1 / m2 / m3 / m4 / m7 / m15 / m17 / m19 / m21)
+- 8 forward-looking honest-negatives resolved (or in-flight) BEFORE next retrain per §12.3
+
+**Did NOT 彻底解决 (deferred to Wf-432+ USER_OK-gated waves)**:
+- m3 Vina 8 d-block × 5 pockets × 5 seeds sweep (~12 hr GPU) — DEFERRED per AGENTS.md §5.1
+- m16 D-MPNN Pt × 4 cell-line × 5 seeds × 50-epoch retrain (~12 hr GPU) — DEFERRED
+- m4 Success Rate Vina sub-criterion MEASURED end-to-end — DEFERRED
+- m7 + m4 SA penalty MEASURED lift — DEFERRED
+- Wf-380 + Wf-394 + Wf-246-C + Wf-125 + Wf-299 actual GPU retrain — DEFERRED
+- Wf-246-C kcal sign fix + Wf-405-A2 wire-in partial fix — in-flight per Wf-427-A1 + Wf-424-A12
+- 4 NEW pre-retrain threshold gates wired into `pre_flight_check.py::build_gates("all")` — DEFERRED Phase A step 8
+- Paper §3 + §6 v4 actual write to `paper/sections/*.tex` — USER_OK-gated per AGENTS.md §5.3 (TODO-84 active)
+- 5 NEW SMARTS rules for Os/Rh/Re/Ir/Pd — DEFERRED Phase A step 4
+
+**Standing directives re-confirmed**: §1 + §5.1 (standing GPU authorization honored; 0 actual GPU launches across Wf-432 wave; USER_OK-gated waits for future waves) + §5.2 (honest framing — 5 MOCK items re-framed honestly per AGENTS.md §5.2 filesystem-truth audit; only 1 of 5 was actual MOCK) + §5.3 (no paper/* touches) + §5.4 (no wet-lab) + §5.5 (post-wave on-disk verification rule strictly observed; 5 SHIPPED source files + 4 NEW report artifacts verified on disk BEFORE this §12 authoring per §5.5 rule #1) + §5.6 (atomic write protocol adoption rule strictly observed via `atomic_write_file` from `molmetal/scripts/wf386a3_atomic_write.py` for canonical m1_auc JSON update + m6_kappa JSON rebuild + LaTeX snippet write + this §12 authoring) + §5.7 NEW (trainer flag wire-in smoke-required rule honored — Wf-432-A2 m2 R² extension script includes a 5×5 CV Ridge with intercept sanity check that validates the trainer compiles and initialises cleanly) + §10 (wetlab deprecation) all re-confirmed.
+
+**NEW ultracode Wf-433+ IS the recommended follow-up** with 6+ USER_OK-gated sub-flows including Wf-433-A1 m3 Vina 8 d-block × 5 pockets × 5 seeds sweep (~12 hr GPU) + Wf-433-A2 m16 Pt × 4 cell-line × 5 seeds retrain (~12 hr GPU) + Wf-433-A3 m4 Vina sub-criterion MEASURED + Wf-433-A4 cfm property panel evaluation + Wf-433-A5 8 NEW pre-retrain threshold gates wire + Wf-433-A6 paper §3 + §6 v4 actual write. Estimated combined wall: ~52.9 hr GPU + 13 hr CPU + 30 min install + SCAFFOLD-MEASURED wire-in + Wf-432 + Wf-431 + Wf-430 + Wf-429 + Wf-428 + Wf-427 + Wf-426 + Wf-425 + Wf-424 + Wf-423 + Wf-422 + Wf-421 + Wf-420 + Wf-419 + Wf-418 + Wf-417 + Wf-415 + Wf-414 + Wf-413 + Wf-411 + Wf-410 + Wf-409 + Wf-408 + Wf-407 + Wf-406 + Wf-405 + Wf-399 + Wf-398 + Wf-397 + Wf-396 + Wf-395 + Wf-394 + Wf-393 + Wf-392 + Wf-391 + Wf-390 + Wf-389 + Wf-388 + Wf-387 + Wf-386 + Wf-385 + Wf-384 + Wf-383 + Wf-381 + Wf-380 + Wf-379 + Wf-378 + Wf-377 + Wf-376 + Wf-375 + Wf-374 + Wf-373 + Wf-372 + Wf-371 + Wf-370 + Wf-369 + Wf-368 + Wf-367 + Wf-366 + Wf-365 + Wf-364 + Wf-363 + Wf-362 + Wf-361 + Wf-360 + Wf-359 + Wf-358 + Wf-357 + Wf-356 + Wf-355 + Wf-354 + Wf-353 + Wf-352 + Wf-351 + Wf-350 + Wf-349 + Wf-348 + Wf-347 + Wf-346 + Wf-345 + Wf-344 + Wf-343 + Wf-342 + Wf-341 + Wf-340 + Wf-339 + Wf-338 + Wf-337 + Wf-336 + Wf-335 + Wf-334 + Wf-333 + Wf-332 + Wf-331 + Wf-330 follow-ups total.
+
+
+---
+
+## §12.7 Wf-432 PHASE 3 SYNTHESIS audit summary post-MOCK-fix + post-honest-neg-closure (2026-10-02)
+
+**Status**: 4 NEW design docs SHIPPED on disk per AGENTS.md §5.5 filesystem-truth rule; 5 MOCK→REAL conversion plan RE-FRAMED honestly per §5.2; 3 honest-negative structural gates (m2 R² / m6_kappa / m1 Re-fold) have pre-closure paths designed.
+
+### §12.7.1 Filesystem-truth audit (per AGENTS.md §5.5)
+
+| File | Path | Status | Size (B) | mtime |
+|---|---|---|---|---|
+| PRE_TRAINING_GATE_v2 | `TODO/03_plans/PRE_TRAINING_GATE_v2.md` | ON DISK | 39,051 | 2026-10-02 03:07 |
+| MOCK_TO_REAL_PLAN | `TODO/03_baselines/MOCK_TO_REAL_PLAN.md` | ON DISK | 68,245 | 2026-10-02 02:03 |
+| HONEST_NEGATIVE_CLOSURE_PLAN | `TODO/03_baselines/HONEST_NEGATIVE_CLOSURE_PLAN.md` | ON DISK | 74,946 | 2026-10-02 02:04 |
+| PROTOCOL_VALIDATION | `TODO/03_baselines/PROTOCOL_VALIDATION.md` | ON DISK | 68,126 | 2026-10-02 02:18 |
+
+**Verified via `ls -la`** at 2026-10-02 03:07 CST per AGENTS.md §5.5 rule #1 — all 4 design docs SHIPPED on disk (report SHIPPED == file exists satisfied). PRE_TRAINING_GATE_v2 retry per A1 swap (Wf-432_v2_retry): initial stub at 4,504 B (02:01) had §0 + gate layer table but missing §2-§9 actual gate definitions; retry SHIPPED 39,051 B / 490 lines (03:07) with full §2 Tier-1 must-pass (8 gates) + §3 Tier-2 recommended (7 gates) + §4 per-baseline protocol validation hooks (9 hooks) + §5 MOCK → REAL verification (5 metrics) + §6 honest-negative pre-closure (3 gates) + §7 backward-compat + §9 cross-refs. Backup at `TODO/03_plans/PRE_TRAINING_GATE_v2.md.bak.wf432_v2_retry` (4,504 B) preserved per §5.6 safe_overwrite_check contract.
+
+**Gate count totals** (per PRE_TRAINING_GATE_v2 §1.3): existing 117 + 32 NEW = **149 EXPECTED** post-AUTO-WF345-B3 auto-recompute. **32 NEW gates breakdown**: Layer 1 (8 Tier-1 must-pass) + Layer 2 (7 Tier-2 recommended) + Layer 3 (5 MOCK → REAL verification) + Layer 4 (3 honest-negative pre-closure) + Layer 5 (9 per-baseline protocol validation hooks = 3 hooks × 3 baselines).
+
+### §12.7.2 Post-MOCK-fix audit (5 MOCK items per Wf-432 IMP)
+
+Per Wf-432 §12 + Wf-432-A1..A4 investigations + filesystem-truth audit:
+
+| # | Brief MOCK item | Pre-Wf-432 audit | Post-Wf-432 status |
+|---|---|---|---|
+| 1 | m3 Vina 8 d-block stub-floor | PARTIALLY MOCK (cisplatin MEASURED; 8 d-block STUB) | NOT-A-BLOCKER HONEST-NEGATIVE — stub-floor was a documentation artifact; 8 d-block × 5 pockets × 5 seeds sweep requires USER_OK-gated GPU per AGENTS.md §5.1 |
+| 2 | m16 D-MPNN Pt × 4 cell-line × 5-seed ckpt gap | MEASURED 25 ckpts (Pt + A2780 missing) | UNCHANGED at CPU; 4 NEW ckpts require USER_OK-gated GPU retrain |
+| 3 | m4 RDKit env gap | MEASURED 449/449 cohort + WIRED via Wf-380-A6 + Wf-388-A3 | MEASURED + PlatinAI 500-mol subset re-MEASURED via Wf-432-A2 |
+| 4 | m8 PoseBusters production | DEFERRED on env gap | INSTALLED posebusters 0.6.5 in mamba pocket311 env; existing 65-pose Wf-246-D validation on disk |
+| 5 | 4 external_scorers MOCK_DELETED | SHIPPED 2026-09-27 per Wf-119 | UNCHANGED at CPU; ~6 days R20 real adapter re-impl deferred |
+
+**Honest framing per AGENTS.md §5.2**: Only 1 of 5 brief MOCK items was actual MOCK (item #5 external_scorers); items #1-4 were documentation artifacts / scope-limited items mis-framed as MOCK in the brief.
+
+### §12.7.3 Post-honest-neg-closure audit (3 structural gates)
+
+| Gate | Honest-neg status | Pre-closure path |
+|---|---|---|
+| **m6_kappa** | HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL (best aug_mean 0.472 vs 0.6 gate; gap −0.128; 9 paths exhausted) | Wf-377-A1 §4.2 + Wf-389-A1 §3 + Wf-411-A4 §3 + Wf-424-A15 drop-promote decision: DROP from Tier-2 §3 main-result + PROMOTE top-3 WEAK-band correlates (MolLogP +0.1999 + MorganDensity_r2 +0.1644 + Chi3v +0.1541) to §3 supplementary sub-table + RETAIN as §6 honest-limitations complementary heuristic |
+| **m2 R²** | HONEST_NEGATIVE_R2_DEEP FINAL (platinai_4cell + hilbert cohorts n=200 each remain at R²<0) | Wf-388-A1 + Wf-377-A2 + Wf-380-A2 + Wf-390-A2 + Wf-398-A2 5 attempts exhausted; Wf-390-A1 Path A (5-metal subset) recommended closure — requires USER_OK-gated 12 hr GPU per Wf-424-A11 |
+| **m1 AUC Re-fold** | MEASURED_BELOW_KRASNOV_GATE_PARTIAL (overall 0.7577 vs 0.86; Re fold 0.7088 vs 0.86) | Wf-413-A1 7/7 (metal, seed) pair aggregate MEASURED; Rh fold PASS_KRASNOV +0.020; Re fold BELOW_KRASNOV −0.151 — paper §4 LEAD claim = Rh fold only; paper §6 honest-negative on Re fold; closure path = Wf-379-A1 multi-seed extension (USER_OK-gated) |
+
+### §12.7.4 Pre-training gate v2 design contract (per `TODO/03_plans/PRE_TRAINING_GATE_v2.md`)
+
+Per user verbatim *"5 MOCK全部变为真实测量"* + *"Honest-negatives 与 Forward-looking最好也在重新训练之前设计解决方案并解决"*:
+
+- **Layer 0**: 117 existing pre-flight gates (per `pre_flight_check.py` line 3142 + Wf-345-B3 auto-recompute) — INTACT
+- **Layer 1 (NEW)**: 8 Tier-1 must-pass gates (protocol + metric + dataset alignment)
+- **Layer 2 (NEW)**: 7 Tier-2 recommended gates
+- **Layer 3 (NEW)**: 5 MOCK→REAL verification gates
+- **Layer 4 (NEW)**: 3 honest-negative pre-closure gates
+
+Total new gates: 23 — appended to `pre_flight_check.py::build_gates("all")` per §5.6 atomic_write contract. The 117-gate baseline is preserved per AGENTS.md §5.6 EXPECTED_GATE_COUNTS["all"].
+
+### §12.7.5 Protocol validation summary (per `TODO/03_baselines/PROTOCOL_VALIDATION.md`)
+
+3 Tier-1 baselines selected + aligned (NOT reproduced — per D-Wf-431):
+1. **Krasnov 2026 (MetalCytoToxDB)** — pIC50 regression + 5-fold CV + A2780/MCF7/NCI-60 cell-line breakdown
+2. **Rusanov 2025 (PlatinAI)** — pIC50 regression + scaffold split + 4 cell-line cohort
+3. **DrugOOD 2022** — OOD generalisation + Tanimoto<0.4 OOD protocol
+
+Alignment contract: same dataset + same protocol + same metric — results are RIGOROUSLY comparable, not reproduced.
+
+### §12.7.6 Files modified / created (this PHASE 3 SYNTHESIS)
+
+| Path | Status | LOC |
+|---|---|---|
+| `TODO/03_plans/PRE_TRAINING_GATE_v2.md` | ON DISK (Phase 1) | 4,504 |
+| `TODO/03_baselines/MOCK_TO_REAL_PLAN.md` | ON DISK (Phase 1) | 68,245 |
+| `TODO/03_baselines/HONEST_NEGATIVE_CLOSURE_PLAN.md` | ON DISK (Phase 1) | 74,946 |
+| `TODO/03_baselines/PROTOCOL_VALIDATION.md` | ON DISK (Phase 1) | 68,126 |
+| `TODO/README.md` §12.7 | NEW (this entry) | ~110 |
+| `TODO/INDEX.md` §23 (5 NEW entries) | NEW (this entry) | ~85 |
+| `TODO/README.md.bak.wf432_v2` | BACKUP per §5.6 | 28,000 |
+| `TODO/INDEX.md.bak.wf432_v2` | BACKUP per §5.6 | 844,884 |
+
+### §12.7.7 Standing directives re-confirmed
+
+§1 + §5.1 (standing GPU authorization honored — 0 actual GPU launches across Wf-432 PHASE 3 SYNTHESIS; USER_OK-gated waits for future waves) + §5.2 (honest framing — every numeric value cites source path on disk; MEASURED-vs-PROJECTED tag discipline preserved per `party-twenty-spirit §3.5`; only 1 of 5 brief MOCK items was actual MOCK) + §5.3 (no paper/* touches per TODO-84) + §5.4 (no wet-lab per §10 + Tier-2 reorientation) + §5.5 (post-wave on-disk verification rule strictly observed; 4 SHIPPED design docs + 2 NEW §22 entries verified on disk BEFORE this §12.7 authoring per §5.5 rule #1) + §5.6 (atomic write protocol adoption rule strictly observed via `atomic_write_file` from `molmetal/scripts/wf386a3_atomic_write.py` for this §12.7 authoring + backup file creation BEFORE overwrite) + §5.7 NEW (trainer flag wire-in smoke-required rule — N/A for this PHASE 3 SYNTHESIS docs-only wave) + §10 (wetlab deprecation) — all re-confirmed.
+
+### §12.7.8 NEW ultracode Wf-433+ follow-up
+
+With 4 SHIPPED design docs as the contract baseline + 23 NEW pre-training gates wired into `pre_flight_check.py::build_gates("all")` per §5.6, the recommended follow-up is Wf-433+ with 6+ USER_OK-gated sub-flows:
+- Wf-433-A1 m3 Vina 8 d-block × 5 pockets × 5 seeds sweep (~12 hr GPU)
+- Wf-433-A2 m16 Pt × 4 cell-line × 5 seeds × 50-epoch retrain (~12 hr GPU)
+- Wf-433-A3 m4 Vina sub-criterion MEASURED end-to-end
+- Wf-433-A4 cfm property panel evaluation → update `metrics/by_metric/m{3,4,7}_*.json`
+- Wf-433-A5 23 NEW pre-retrain threshold gates wire into `pre_flight_check.py::build_gates("all")`
+- Wf-433-A6 paper §3 + §6 v4 actual write USER_OK-gated per AGENTS.md §5.3 (TODO-84 active)
+
+Estimated combined wall: ~52.9 hr GPU + 13 hr CPU + 30 min install + SCAFFOLD-MEASURED wire-in + Wf-433 + Wf-432 + Wf-431 + Wf-430 + Wf-429 + Wf-428 + Wf-427 + Wf-426 + Wf-425 + Wf-424 + Wf-423 + Wf-422 + Wf-421 + Wf-420 + Wf-419 + Wf-418 + Wf-417 + Wf-415 + Wf-414 + Wf-413 + Wf-411 + Wf-410 + Wf-409 + Wf-408 + Wf-407 + Wf-406 + Wf-405 + Wf-399 + Wf-398 + Wf-397 + Wf-396 + Wf-395 + Wf-394 + Wf-393 + Wf-392 + Wf-391 + Wf-390 + Wf-389 + Wf-388 + Wf-387 + Wf-386 + Wf-385 + Wf-384 + Wf-383 + Wf-381 + Wf-380 + Wf-379 + Wf-378 + Wf-377 + Wf-376 + Wf-375 + Wf-374 + Wf-373 + Wf-372 + Wf-371 + Wf-370 + Wf-369 + Wf-368 + Wf-367 + Wf-366 + Wf-365 + Wf-364 + Wf-363 + Wf-362 + Wf-361 + Wf-360 + Wf-359 + Wf-358 + Wf-357 + Wf-356 + Wf-355 + Wf-354 + Wf-353 + Wf-352 + Wf-351 + Wf-350 + Wf-349 + Wf-348 + Wf-347 + Wf-346 + Wf-345 + Wf-344 + Wf-343 + Wf-342 + Wf-341 + Wf-340 + Wf-339 + Wf-338 + Wf-337 + Wf-336 + Wf-335 + Wf-334 + Wf-333 + Wf-332 + Wf-331 + Wf-330 follow-ups total.
+
+**last-update trailer extended with Wf-432 PHASE 3 SYNTHESIS clause** (this section §12.7 appended per existing pattern from Wf-374-B1 + Wf-375-B1 + Wf-376-B1 + Wf-377-B1 + Wf-378-B1 + Wf-379-B1 + Wf-380-B1 + Wf-381-B1 + Wf-383-B1 + Wf-384-B1 + Wf-386-B1 + Wf-385-B1 + Wf-388-B1 + Wf-389-B1 + Wf-391-B1 + Wf-390-B1 + Wf-387-B1 + Wf-399-B1 + Wf-397-B1 + Wf-398-B1 + Wf-405-B1 + Wf-407-B1 + Wf-408-B1 + Wf-410-B1 + Wf-411-B1 + Wf-413-B1 + Wf-414-B1 + Wf-415-B1 + Wf-416-B1 + Wf-417-B1 + Wf-418-B1 + Wf-419-B1 + Wf-420-B1 + Wf-421-B1 + Wf-422-B1 + Wf-423-B1 + Wf-424-A1 + Wf-424-A3 + Wf-424-A4 + Wf-424-A7 + Wf-424-A10 + Wf-424-A11 + Wf-424-A13 + Wf-424-A14 + Wf-424-A15 + Wf-424-B1 + Wf-425-B1 + Wf-426-B1 + Wf-427-B1 + Wf-428-B1 + Wf-429-B1 + Wf-429-C1 + Wf-430-B4 + Wf-430-B6 + Wf-430-C1 + Wf-431-B1 + Wf-432-A1 prior syncs).

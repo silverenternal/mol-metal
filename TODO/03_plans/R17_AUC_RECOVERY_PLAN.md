@@ -343,3 +343,120 @@ class FocalLoss(nn.Module):
 4. ⏳ 等 2 周，看 Ru AUC + A2780cis AUC 是否达成
 5. ⏳ 如果达成，重写 paper §4 abstract + update TODO/02_metrics/METRICS_TARGETS.md Table 2
 6. ⏳ 如果不达成，drop Tier-1 claim 改用 honest negative framing
+
+---
+
+## 10. 2026-09-30 refresh (Wf-393-A1 ultracode CPU-only docs-only)
+
+**Date**: 2026-09-30
+**Workflow**: Wf-393-A1 (ultracode CPU-only docs-only; 0 NEW tests; 0 GPU launches; 0 `paper/*` touches; 0 wet-lab planning per AGENTS.md §10)
+**Trigger**: User 2026-09-30 directive *"todo目录里没有被刚才启动的workflow覆盖的任务也启动额外的ultracode去做"* — refresh R17 with Wf-380..390 SCAFFOLD/wire-in status
+**Skill alignment**: `party-twenty-spirit` §3.5 (MEASURED-vs-PROJECTED tag discipline); `mol-metal-anticancer` (Krasnov 0.86 gate); no `paper/*` touches (TODO-84 honored); no wet-lab planning (§10)
+
+This refresh is **docs-only**: §1-§9 preserved verbatim as historical baseline; §10 (this section) adds 5 subsections capturing the Wf-380..390 ship surface that supersedes the Stage 1-4 strategies. All numbers tagged MEASURED (from on-disk JSON) or PROJECTED (per upstream paper benchmarks).
+
+### §10.1 Background — Wf-387 m1 AUC aggregation 6/7 pairs MEASURED
+
+Per `TODO/completed/387a1_wf379_a1_gpu_aggregation_fix.md` (canonical 6/7 pair summary) — the Wf-379-A1 GPU wrapper `scripts/launch_wf131_p3_deferred_runs.sh` terminated after 6 of 7 (metal, seed) pairs completed. The canonical Tier-2 catalog `metrics/by_metric/metal_lomo_auc_wasserstein.json` was overwritten by the trainer at Re seed=3 completion with only its own data (n=1). Wf-387-A1 fixed this by computing the correct aggregate across all 6 completed pairs:
+
+| Field | OLD (wrong, Re seed=4 only) | NEW (correct, 6 runs) |
+|---|---:|---:|
+| `value` | 0.6220 (n=1) | **0.7640** (6 runs) |
+| `value_std` | 0.0000 | **0.0995** (sample std) |
+| `n_runs` | 1 | **6** |
+| `n_folds` | 1 (Re only) | **2 (Rh, Re)** |
+| `metals` | ["Re"] | **["Rh", "Re"]** |
+| `seeds` | [4] | **[3, 4, 0, 1, 2, 3]** |
+| `per_fold_auc_mean` | {Re: 0.6220} | **{Rh: 0.8798, Re: 0.7061}** |
+| `per_fold_auc_std` | {Re: 0.0000} | **{Rh: 0.0115, Re: 0.0552}** |
+
+**Per-pair MEASURED test_auc (sourced from on-disk `per_seed_metrics_seed{n}.json` + per-directory `aggregate.json`):**
+
+| # | (metal, seed) | test_auc | n_test | Source path |
+|:---:|:---:|---:|---:|---|
+| 1 | (Rh, 3) | **0.8879** | 1618 | `Rh/seed3/Rh/per_seed_metrics_seed3.json` |
+| 2 | (Rh, 4) | **0.8717** | 1618 | `Rh/seed4/Rh/per_seed_metrics_seed4.json` |
+| 3 | (Re, 0) | **0.7018** | 868 | `Re/seed0/Re/per_seed_metrics_seed0.json` |
+| 4 | (Re, 1) | **0.7463** | 868 | `Re/seed1/Re/per_seed_metrics_seed1.json` |
+| 5 | (Re, 2) | **0.7467** | 868 | `Re/seed2/Re/per_seed_metrics_seed2.json` |
+| 6 | (Re, 3) | **0.6295** | 868 | `Re/seed3/Re/per_seed_metrics_seed3.json` |
+| 7 | (Re, 4) | **NOT_RUN** | — | GPU wrapper terminated after Re seed=3; Re seed=4 deferred to follow-up launch |
+
+**Krasnov 0.86 gate verdict** per `mol-metal-anticancer` skill:
+
+| Fold | Mean test_auc | Krasnov 0.86 | gap |
+|---|---:|:---:|---:|
+| **Rh** | 0.8798 ± 0.0115 | **PASS** | +0.020 |
+| **Re** | 0.7061 ± 0.0552 | **BELOW** | −0.154 |
+| **Overall** | 0.7640 ± 0.0995 | **BELOW** | −0.096 |
+
+### §10.2 Phase 1 — Rh cohort balanced (per Wf-387-A2 TODO-135 structural fix)
+
+Per `TODO/completed/387a2_balanced_rh_cohort.md` — the Rh val_auc lift (test_auc 0.7613 from Wf-124 P3 Ru baseline) was contaminated by the Wf-139 P7 synthetic-500 injection (Tanimoto-proxy-labeled cohort with mean Tanimoto to nearest real active = 0.14 — WEAK band, NOT bioactivity-validated). The structural fix per Wf-387-A2:
+
+- **Cohort**: `molmetal/reports/wf387a2_balanced_rh_cohort/balanced_rh_cohort.json` — 500 entries (250 active + 250 inactive), all `is_synthetic=False`, all `is_wf139_p7_carryover=False`, all from Rh `train` split under the Wf-261 strict scaffold split
+- **Source**: `/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv` (Rh train; n=696 available; 250+250 sampled with seed=42)
+- **Verify path**: If Wf-125 P1 re-run with this REAL 500 (instead of synthetic 500) yields val_auc ≥ Krasnov 0.86 gate, the lift is REAL; if val_auc ≤ 0.5, the lift was an artifact of the Wf-139 P7 synthetic injection
+- **Verdict**: per `party-twenty-spirit` §3.5, the Wf-139 P7 similarity-proxied lift is "achievable" but PROJECTED — not MEASURED until wet-lab validation closes the loop; since AGENTS.md §5.4 deprecates wet-lab planning, this verification gap must close via the real-cohort comparison route (Wf-387-A2)
+- **Stage 1 strategy revision**: Replace the Wf-124 P3 1-seed × 5-epoch multi-task D-MPNN with Wf-125 P1 re-run using the Wf-387-A2 REAL balanced cohort; tmQM pretrain + multi-task + 5-seed × 100-epoch protocol unchanged from §2 Stage 1
+- **Cross-ref**: `molmetal/scripts/wf376a2_m1_auc_multiseed_scaffold.py` (SHIPPED per Wf-376-A2) + `scripts/launch_wf131_p3_deferred_runs.sh` (LIVE mode — Wf-355-B1 USER_OK-gated — Re seed=4 pending launch)
+
+### §10.3 Phase 2 — TODO-376 5-metal subset retrain (per Wf-390-A1 Path A)
+
+Per `TODO/completed/390a2_todo179_deeper_audit.md` (TODO-179 deeper audit) + `TODO/completed/388a1_m2_per_cohort_real.md` (real-cohort verification) + Wf-369-A2 m2 R² FINAL verdict, the Stage 2 strategy is now scoped to a **5-metal subset retrain** with Path A as the recommended first move:
+
+**Stage 2 strategy revision (Path A)**:
+1. **5-metal subset**: Ru + Ir + Rh + Re + Os (matches D-MPNN `FIVE_METALS = ("Ru", "Ir", "Rh", "Os", "Re")` constraint at `train_dmpnn_multitask_wasserstein.py` line 247)
+2. **Per-cohort config axis** (per Wf-380-A2 + Wf-388-A1): 12-d RDKit (n<300) / 24-d RDKit (300≤n<1000) / 32-d RDKit (n≥1000) matched to cohort size
+3. **MEASURED real-cohort R²** (per Wf-388-A1, 5-seed × 5-fold Ridge baseline):
+   - `platinai_4cell` (n=200, 12-d RDKit, α=1.0) → **−0.1440 ± 0.0325** HONEST_NEGATIVE_R2_DEEP
+   - `hilbert` (n=200, 12-d RDKit, α=1.0) → **−0.1440 ± 0.0325** HONEST_NEGATIVE_R2_DEEP
+   - `metalcytotox_combined` (n=2000, 32-d RDKit, α=0.1) → **+0.1981 ± 0.0056** WEAK_RECOVERY (lift −0.0246 vs Wf-335-M2 best +0.2227)
+4. **Aggregate verdict**: `MEASURED_PARTIAL_LIFT` (1/3 cohorts WEAK_RECOVERY; 0/3 CEILING_BREAK; 2/3 HONEST_NEGATIVE_R2_DEEP preserved)
+5. **Honest finding** (`party-twenty-spirit` §3.5): per-cohort config axis VALIDATED as methodology (Wf-380-A2 synthetic R² > 0 across all tiers), but REAL-cohort lift smaller than synthetic validation projected (Wf-380-A2 synthetic platinai_4cell + hilbert at n=200 + 12-d RDKit → R²=+0.1970 vs Wf-388-A1 real → R²=−0.1440, DELTA −0.3410); synthetic ground-truth is clean signal-to-noise model; real cohort pIC50 has more variance + non-uniform signal distribution + per-cell heterogeneity
+6. **Path A launch wrapper**: `scripts/launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh` (472 LOC, EXISTS on disk) — but per Wf-379-A2 SCAFFOLD_NOT_FUNCTIONAL, trainer `--metals` is restricted to 5 metals (matches Stage 2 Path A constraint); alternative trainer `train_cisplatin_resistance_v2.py` requires `models/tmqm_pretrained/tmqm_pretrained_encoder.pt` which DOES NOT EXIST on disk — Path A targets the 5-metal subset directly via existing trainer
+7. **Wall PROJECTED**: ~5 hr GPU for Path A; if Path A R² < +0.40 ceiling, follow up with Path B (alt encoder bootstrap per Wf-390-A2 §7, ~10 hr GPU)
+
+### §10.4 Phase 3 — Forward-looking GPU retrain priority order (per Wf-391-A3 §10)
+
+Per `TODO/completed/391a3_metric_strategy_refresh.md` §10 (NEW Forward-looking 2026-Q4 GPU retrain priority order), 3-batch sequential priority:
+
+| Batch | Wall PROJECTED | Wrappers | USER_OK gate | Pre-flight gate |
+|:---:|---:|---|---|---|
+| **Batch 1 (install)** | ~30 min CPU | Zotero 10.0.3 + Tectonic 0.17.0 (per Wf-372-A1 + Wf-372-A2 SHIPPED) | None (already installed) | N/A |
+| **Batch 2 (m1 + m2 lift)** | ~5-10 hr GPU | Re seed=4 (Wf-355-B1) + Path A 5-metal retrain (Wf-376-A3 + Wf-390-A2 Path A) | USER_OK=1 + VRAM ≥ 35 GB | wf343c2 + wf343c3 PASS |
+| **Batch 3 (m3 + m4 + m7 + m15)** | ~12-15 hr GPU | `cfm_vina_dock_panel.py` (BLOCKED on Pt+2 parameterisation per Wf-299B) + SA penalty wire (Wf-380-A6 SHIPPED) + m7 wire (Wf-388-A2 SHIPPED) + m15 redesign (Wf-341-T1 SHIPPED) | USER_OK=1 + VRAM ≥ 35 GB | wf343c2 + wf343c3 PASS |
+| **Paper write batch** | ~12-15 hr CPU | 7 paper artefacts (Tier-2 §6 Limitations + 4 LOI/SOP Tier-2 markers + paper §3 R² honesty gate) | USER_OK=1 (TODO-84 active) | N/A |
+
+**Combined wall PROJECTED**: ~52.9 hr GPU + ~13 hr CPU + ~30 min install (4-batch total)
+
+**Forward-looking honest-negative caveats** (per `docs/HONEST_NEGATIVE_CATALOG.md` Wf-369-A3 expansion 40 → 65 entries):
+- m6_kappa gate PRESERVED HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL (5 architectural + 1 literature attempts exhausted per Wf-365-A3 + Wf-377-A1 deep-dive-research move; Wf-377-A1 recommendation: drop-from-§3 + USER_OK-gated paper conversion of `docs/M6_KAPPA_REDESIGN_PROPOSAL.md`)
+- m2 R² gate PRESERVED HONEST_NEGATIVE_R2_DEEP FINAL (platinai_4cell + hilbert cohorts n=200 SMILES each; metalcytotox_combined n=2000 CEILING_BREAK at Wf-335-M2 stands; FINAL per Wf-369-A2 verdict doc + Wf-377-A2 5 alternative splits in `docs/M2_R2_COHORT_DIAGNOSTIC.md`)
+- m1 Ru AUC 0.7640 ± 0.0995 BELOW Krasnov 0.86 by −0.096 margin; Rh fold 0.8798 PASS; Re fold 0.7061 BELOW; aggregate 0.7640 NOT HIT
+
+### §10.5 Honest framing — Rh fold hit Krasnov 0.86; Re fold BELOW; aggregate 0.7640 NOT hit
+
+Per Wf-387-A1 canonical aggregation + Wf-388-A1 real-cohort verification + Wf-377-A1 m6_kappa redesign + Wf-377-A2 m2 R² diagnostic, the honest framing per `party-twenty-spirit` §3.5 for R17 is:
+
+**m1 (Ru + Ir + Rh + Re + Os 5-metal LOMO AUC)**:
+- **Rh fold 0.8798 ± 0.0115 — PASS Krasnov 0.86** (gap +0.020) — per Wf-387-A1 MEASURED
+- **Re fold 0.7061 ± 0.0552 — BELOW Krasnov 0.86** (gap −0.154) — per Wf-387-A1 MEASURED
+- **Aggregate 0.7640 ± 0.0995 — NOT HIT** (gap −0.096) — per Wf-387-A1 MEASURED
+- **Rh val_auc 0.7613 lift** (Wf-124 P3 1-seed) was artifact of Wf-139 P7 synthetic-500 injection per Wf-387-A2 §2; Wf-387-A2 balanced REAL 500 from Wf-261 strict scaffold split substitute needs verification via Wf-125 P1 re-run
+
+**m2 (Pt 4-cell PlatinAI R² on pIC50)**:
+- **platinai_4cell + hilbert n=200 — HONEST_NEGATIVE_R2_DEEP** (−0.1440 ± 0.0325 each, per Wf-388-A1 MEASURED)
+- **metalcytotox_combined n=2000 — WEAK_RECOVERY** (+0.1981 ± 0.0056, lift −0.0246 vs Wf-335-M2 best +0.2227 CEILING_BREAK)
+- **Per-cohort config axis VALIDATED as methodology** (Wf-380-A2 synthetic R² > 0), but REAL-cohort lift smaller than synthetic projection; structural finding: 50+ feature Ridge ensemble OVERFITS on small cohorts per Wf-367-B1
+
+**m6_kappa (Shape Kappa Index per molecule)**:
+- **PRESERVED HONEST_NEGATIVE_PARTIAL_STRUCTURAL — FINAL** (best aug_mean MEASURED 0.472 vs threshold 0.6 — gap −0.128; 7 architectural + 1 literature attempts exhausted; structural CV-R² ceiling LIFTED +0.5410 → +0.6814 CEILING_BREAK but threshold-reaching axis NOT lifted)
+- **Wf-377-A1 deep-dive-research move**: 16 per-molecule topological invariants evaluated on n=5460 MetalCytoToxDB labelled pIC50; best alternative MolLogP Pearson r=+0.1999 WEAK band; no cohort-level MODERATE band discovery
+- **Forward-looking**: drop-from-§3 + USER_OK-gated paper conversion of `docs/M6_KAPPA_REDESIGN_PROPOSAL.md`
+
+**Tier-2 paper §6 Limitations draft** (per Wf-359-B2): m6_kappa + m2 R² + m1 Ru AUC 0.7640 NOT HIT all surface as honest-negative entries in §6; cross-ref `docs/PAPER_SECTION_6_LIMITATIONS_DRAFT.md` + `docs/SECTION_6_LIMITATIONS_TEMPLATE.md` (Wf-364-A4 LaTeX template)
+
+**Tier-1 paper claim DEPRECATED** per AGENTS.md §5.4 + 2026-09-29 user directive *"我们发二区就可以了，不用规划湿实验"* — Tier-2 journal target (JCAMD / Mol. Divers. / Comput. Chem.) does NOT require Tier-1 AUC gate
+
+**Constraints honoured**: 0 NEW tests, 0 GPU launches, 0 `paper/*` touches, 0 wet-lab planning, only Bash + Read + Edit + Write tools used. AGENTS.md §5.1 + §5.2 + §5.3 + §5.4 + §10 all preserved unchanged.

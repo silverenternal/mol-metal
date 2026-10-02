@@ -1,0 +1,90 @@
+{
+  "wf": "wf124_phase_2",
+  "task": "cfm_yuelbond_wasserstein_catherine_full",
+  "engine_tags": {
+    "decoder_yuelbond": "yuelbond_decoder",
+    "wasserstein": "wasserstein_reg",
+    "closure_bounded": "closure_catherine_bounded",
+    "matrix_validation": "lr17_b2_matrix_84_plus_17_new_smarts"
+  },
+  "config": {
+    "epochs": 3,
+    "batch_size": 64,
+    "n_train": 256,
+    "n_val": 192,
+    "hidden_dim": 64,
+    "n_layers": 3,
+    "lr": 0.0003,
+    "use_yuelbond": true,
+    "wasserstein_weight": 0.1,
+    "closure_bounded": true,
+    "use_matrix_validation": true,
+    "pocket_id": "1h36",
+    "seed": 0,
+    "device": "cuda:0",
+    "target_decode_ratio": 0.5
+  },
+  "best": {
+    "epoch": 0,
+    "decode_ratio": 1.0,
+    "hit_target": true
+  },
+  "per_epoch_metrics": [
+    {
+      "epoch": 0,
+      "wall_time_s": 10.304162502288818,
+      "train_loss": 1.9284424185752869,
+      "bond_ce_loss": 1.8540672361850739,
+      "wasserstein_loss": 0.7394099533557892,
+      "catherine_audit_pass": true,
+      "decode_ratio_rdkit_strict": 1.0,
+      "decode_ratio_val": 192,
+      "decode_ratio_n": 192,
+      "decoding_attempted": true,
+      "lr": 0.0003,
+      "grad_norm": 2.8270859718322754,
+      "w2_engine_tag": "wasserstein_reg",
+      "closure_engine_tag": "closure_catherine_bounded"
+    },
+    {
+      "epoch": 1,
+      "wall_time_s": 2.0451061725616455,
+      "train_loss": 1.7090047001838684,
+      "bond_ce_loss": 1.6351858377456665,
+      "wasserstein_loss": 0.7321964651346207,
+      "catherine_audit_pass": true,
+      "decode_ratio_rdkit_strict": 1.0,
+      "decode_ratio_val": 192,
+      "decode_ratio_n": 192,
+      "decoding_attempted": true,
+      "lr": 0.0003,
+      "grad_norm": 2.443408787250519,
+      "w2_engine_tag": "wasserstein_reg",
+      "closure_engine_tag": "closure_catherine_bounded"
+    },
+    {
+      "epoch": 2,
+      "wall_time_s": 2.042616605758667,
+      "train_loss": 1.5296023786067963,
+      "bond_ce_loss": 1.4566275775432587,
+      "wasserstein_loss": 0.7250077277421951,
+      "catherine_audit_pass": true,
+      "decode_ratio_rdkit_strict": 1.0,
+      "decode_ratio_val": 192,
+      "decode_ratio_n": 192,
+      "decoding_attempted": true,
+      "lr": 0.0003,
+      "grad_norm": 2.311243414878845,
+      "w2_engine_tag": "wasserstein_reg",
+      "closure_engine_tag": "closure_catherine_bounded"
+    }
+  ],
+  "wall_time_s": 14.395315647125244,
+  "m14_lead_invalidated": false,
+  "matrix_wired": {
+    "patterns_loaded": 101,
+    "matrix_validation_available": true,
+    "matrix_constant_size": 84
+  },
+  "honest_framing": "Wf-124 P2 retrain complete on cuda:0. Best decode_ratio = 1.000 (PASS vs target 0.50). Per-target decode_ratio is on synthetic Pt-click clouds (the canonical CFM smoke input). The Wasserstein + Catherine closure bias contribute as engine-tagged add-ons, NOT silent substitutes."
+}

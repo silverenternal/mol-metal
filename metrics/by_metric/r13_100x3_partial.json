@@ -1,0 +1,56 @@
+{
+  "metric": "r13_100x3_partial",
+  "description": "Round-13 100×3 paper-grade sweep — partial deliverable (30/300 cells) per Round-13 structural ship (2026-09-15). Lambda path killed mid-run at 55% (no final report.json); PB path 30/30 search-bound (n_no_candidates=15 + n_seed_only=15, pb_pass_rate_aggregate=null); CFM path BLOCKED (r10_cfg_real_crossdocked.py import + dGPU HSA userland outage). Source: metrics/by_round/r13_100x3_partial.json (round-level audit).",
+  "unit": "n_evaluations / n_evaluations_spec (ratio); paper_grade_data_ready boolean",
+  "scope": "Round-13 paper-grade 100×3 sweep (300 evaluations); production target for §4.5 paper-grade cells",
+  "source": "metrics/by_round/r13_100x3_partial.json (round-level audit; this by_metric file mirrors the by_round source verbatim + adds the Wf-318G honest-negative schema)",
+  "value": {
+    "n_evaluations_total": 30,
+    "n_evaluations_spec": 300,
+    "n_evaluations_ratio": 0.1,
+    "lambda_path_evaluated": 0,
+    "lambda_path_status": "missing (process killed before report.json produced)",
+    "pb_path_evaluated": 30,
+    "pb_path_n_no_candidates": 15,
+    "pb_path_n_seed_only": 15,
+    "pb_path_n_docked": 0,
+    "pb_path_pb_eligible_cells": 0,
+    "pb_path_pb_pass_rate_aggregate": null,
+    "pb_path_wall_seconds_mean": 7.75,
+    "cfm_path_status": "BLOCKED (ModuleNotFoundError + GPU HSA userland outage)",
+    "lambda_diversity_tanimoto_mean": null,
+    "lambda_n_distinct_mean": null,
+    "cfm_vina_mean": null,
+    "paper_grade_data_ready": false
+  },
+  "phase_results": {
+    "phase_1_sweep_design": "DELIVERED — molmetal/reports/wf_round13_100x3/sweep_design.md",
+    "phase_2_sweep_execution": "PARTIAL — process killed mid-run at 55% (no final report.json)",
+    "phase_3_paper_integration": "DELIVERED — paper §4.2/§4.3/§4.6 updated with honest framing"
+  },
+  "honest_deviation_from_spec": {
+    "lambda_n_sim": "spec=1000, executed=200 (reached pocket test_055 /165 cells before being killed)",
+    "pb_n_pockets": "spec=100, executed=10 (per-cell cost dominated by MCTS search, not Vina/PB)",
+    "cfm_path": "spec=run full sweep, BLOCKED (r10_cfg_real_crossdocked.py import fails + dGPU HSA userland outage)"
+  },
+  "verdict_status": "NEGATIVE_RESULT_HONEST",
+  "verdict_summary": "Round-13 100x3 sweep NOT deliverable as paper-grade 300-cell sweep in this session. Lambda path killed mid-run; PB path 30/30 search-bound (n_distinct=1 collapse persists across 10 new pockets); CFM path BLOCKED. The PathA-10x3 diversity lift (n_distinct 1->20, div_tan 0->0.1065) was on a 1x1 smoke of 10 specific pockets (test_000..test_009) — does NOT generalize to 100 pockets when search-bound reappears.",
+  "key_insights": [
+    "GPU is healthier than wf_gpu_auto_recover/final.md claimed (cuda_available=True under uv run, 2 devices RX 7800 XT + Radeon 780M iGPU). System Python (3.14) cannot import ROCm libtorch but uv run can.",
+    "PB path is SEARCH-BOUND, not compute-bound. 30/30 cells produced no_candidates or seed_only. Bottleneck is upstream of Vina/PB; the MCTSProofSearch cannot produce a kept candidate from reference ligand at n_sim<=200/depth=3 for these 10 NEW pockets (test_010..test_019).",
+    "Concurrent sweeps contended for CPU. n_sim=200 reached test_055 in ~60min; n_sim=1000 reached test_012 in ~102min. n_sim=1000 still in flight at /tmp/round13_lambda.log with ETA ~9 more hours."
+  ],
+  "path_forward": [
+    "Serialize Lambda runs (kill PID 110660, launch single n_sim=200 sweep, ETA ~110 min)",
+    "Fix r10_cfg_real_crossdocked.py import (one-line sys.path or PYTHONPATH)",
+    "PB path needs MCTS search budget lift before re-running at scale (per wf_lambda_fix_full_path_v2)",
+    "F2(a) MetalLigandExchange SMARTS rule is structural fix for singleton attractor — currently NOT shipped"
+  ],
+  "timestamp": "2026-09-15",
+  "HONEST_NEGATIVE": true,
+  "honest_negative_reason": "Round-13 100×3 paper-grade sweep delivered only 30/300 cells (10%); paper_grade_data_ready=false; Lambda path killed mid-run at 55% (no final report.json); PB path 30/30 search-bound (n_no_candidates=15 + n_seed_only=15); CFM path BLOCKED (ModuleNotFoundError + GPU HSA userland outage); per AGENTS.md §5.4 Tier-2 strategy accepts the partial deliverable + DESIGN cell tags as honest-tier-2-shippable; honest-negative close per Wf-318G.",
+  "wf_tag": "Wf-318G honest-negative close",
+  "wf_design_ref": "TODO/completed/r13_100x3_final_honest_negative.md + TODO/completed/318g_r13_diversity_steric_final.md",
+  "verdict": "FAIL",
+  "honest_framing_note": "Per AGENTS.md §5.4, Tier-2 strategy nullifies 300-cell paper-grade sweep dependency; Tier-2 is computational-only and accepts the partial 30/300 + DESIGN cell tags (paper §4.2/§4.3/§4.6) + the R15 structural ship + the cite-only SOTA column + the path-A 10×3 (n_distinct 1->20, div_tan 0->0.1065) on 10 specific pockets. Phase-3G 10×3 rotation BLOCKED on TODO-29 F2(a) MetalLigandExchange SMARTS rule + GPU HSA userland recovery + GPU pipeline Phase 3 (R16-W42-W44). Flagged HONEST_NEGATIVE per party-twenty-spirit §3.5 (do not silently mask)."
+}

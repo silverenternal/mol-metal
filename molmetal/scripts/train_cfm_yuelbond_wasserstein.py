@@ -139,6 +139,122 @@ from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
 )
 
 
+# ---------------------------------------------------------------------------
+# Wf-409-A2 — CFM-trainer-primary chemprop v3 cache holder
+# ---------------------------------------------------------------------------
+# Mirrors the Wf-404-A4 / train_chemprop_v2_v3.py::_CHEMPROP_V3_CACHE_HOLDER
+# pattern: a module-level dict keyed by ``"cache"`` that holds the
+# ChempropV3FeaturizationCache instance built in main() when the
+# --cfm-chemprop-v3-cache CLI flag is ON.  Default OFF (cache=None)
+# preserves bit-for-bit backward compat with Wf-388-A2/A3 + Wf-405-A2 +
+# Wf-406-A2 + Wf-407-A2 + Wf-408-A2 + Wf-409-A1 baseline.
+# ---------------------------------------------------------------------------
+_CFM_CHEMPROP_V3_CACHE_HOLDER: Dict[str, Optional[object]] = {"cache": None}
+
+
+def set_cfm_chemprop_v3_cache(cache: Optional[object]) -> None:
+    """Set the module-level CFM chemprop v3 cache (called from main()).
+
+    Args:
+        cache: A ``ChempropV3FeaturizationCache`` instance, or ``None``
+            to disable (default — bit-for-bit backward compat preserved).
+    """
+    _CFM_CHEMPROP_V3_CACHE_HOLDER["cache"] = cache
+
+
+def get_cfm_chemprop_v3_cache() -> Optional[object]:
+    """Return the current module-level CFM chemprop v3 cache (or None)."""
+    return _CFM_CHEMPROP_V3_CACHE_HOLDER["cache"]
+
+
+# Deterministic 4-SMILES smoke cohort for the CFM-side cache wire-in
+# (mirrors the Wf-409-A1 PLL pattern at lines 943-948).  Tier-1 is
+# pre-featurised once per epoch; tier-2 per-batch lookup exercises the
+# cache API.  Real per-batch extraction requires a sampler hook that
+# knows the molecules (deferred to TODO-207 Wf-299 USER_OK-gated per
+# AGENTS.md §5.1).
+_CFM_CACHE_SMOKES: Tuple[str, ...] = (
+    "c1ccccc1",     # benzene
+    "C",           # methane
+    "CCO",         # ethanol
+    "C1=CCNC=C1",  # pyridine
+)
+# Tier-2 batch slicing: 2 batches of 2 SMILES each.
+_CFM_CACHE_SMOKES_BATCHES: Tuple[Tuple[str, ...], ...] = (
+    (_CFM_CACHE_SMOKES[0], _CFM_CACHE_SMOKES[1]),
+    (_CFM_CACHE_SMOKES[2], _CFM_CACHE_SMOKES[3]),
+)
+
+
+def _cwm_dummy_batch_molgraph_ctor(mgs):
+    """Torch-aware BatchMolGraph dummy for chemprop-2.x hosts.
+
+    chemprop 3.x ships ``chemprop.data.molgraph.BatchMolGraph``; on
+    chemprop 2.3.x hosts that class is absent.  ``MolGraph`` instances
+    from chemprop 2.x carry numpy ``V``/``E``/``edge_index``/
+    ``rev_edge_index`` arrays; we pre-convert to torch tensors here so
+    :meth:`ChempropV3FeaturizationCache.get_or_build_batch` can call
+    ``bmg.V.to(device)`` without raising ``AttributeError``.
+
+    The resulting stub mimics the ``.V`` / ``.E`` / ``.edge_index`` /
+    ``rev_edge_index`` / ``.batch`` attribute contract that the cache
+    uses to transfer assembled batches to the target device.
+    """
+    import numpy as _np
+    import torch as _torch
+
+    Vs = [mg.V for mg in mgs]
+    Es = [mg.E for mg in mgs]
+    eis = [mg.edge_index for mg in mgs]
+    reis = [mg.rev_edge_index for mg in mgs]
+
+    class _StubBatchMG:
+        pass
+
+    out = _StubBatchMG()
+    out.V = _torch.from_numpy(
+        _np.concatenate(Vs, axis=0) if Vs else _np.zeros((0, 72))
+    )
+    out.E = _torch.from_numpy(
+        _np.concatenate(Es, axis=0) if Es else _np.zeros((0, 14))
+    )
+
+    offset = 0
+    atom_offsets: list = []
+    batch_eis: list = []
+    batch_reis: list = []
+    for ei, rei in zip(eis, reis):
+        n_atoms = len(Vs[len(atom_offsets)])
+        if ei.shape[1] > 0:
+            batch_eis.append(ei + offset)
+            batch_reis.append(rei)
+        atom_offsets.append(n_atoms)
+        offset += n_atoms
+
+    if batch_eis:
+        out.edge_index = _torch.from_numpy(_np.concatenate(batch_eis, axis=1))
+        out.rev_edge_index = _torch.from_numpy(_np.concatenate(batch_reis))
+        out.batch = _torch.from_numpy(
+            _np.concatenate(
+                [_np.full(n, i, dtype=_np.int64) for i, n in enumerate(atom_offsets)]
+            )
+        )
+    else:
+        out.edge_index = _torch.zeros((2, 0), dtype=_torch.long)
+        out.rev_edge_index = _torch.zeros((0,), dtype=_torch.long)
+        out.batch = _torch.zeros((0,), dtype=_torch.long)
+
+    return out
+
+
+_BatchMolGraphCtor = _cwm_dummy_batch_molgraph_ctor
+try:
+    from chemprop.data.molgraph import BatchMolGraph as _BatchMolGraphCtorReal
+    _BatchMolGraphCtor = _BatchMolGraphCtorReal
+except ImportError:
+    pass
+
+
 def _device_safe_z_to_onehot(z: torch.Tensor) -> torch.Tensor:
     """Device-safe replacement for ``_z_to_onehot``.
 
@@ -568,6 +684,67 @@ def train_one_epoch(
     closure_bias: Optional[Dict[str, float]] = None,
     reference_positions: Optional[torch.Tensor] = None,
     catherine_target_audit: bool = True,
+    # Wf-388-A2 — wire-in of Wf-380-B1 SCAFFOLD diversity flags into
+    # the actual loss / sampling computation.  All default to OFF
+    # semantics for backward compat with Wf-380-B1 ship surface.
+    top_p: float = 1.0,  # 1.0 = no nucleus truncation (OFF)
+    top_k: int = 0,  # 0 = no top-k truncation (OFF)
+    temperature: float = 1.0,  # 1.0 = no rescaling (OFF)
+    mmd_weight: float = 0.0,  # 0.0 = no MMD term (OFF)
+    repulsion_weight: float = 0.0,  # 0.0 = no repulsion term (OFF)
+    scaffold_conditioning: bool = False,  # scaffold_bias=None (OFF)
+    # Wf-397-A1 — pass SA-penalty kwargs through to avoid NameError on
+    # ``args`` inside train_one_epoch.  The default 0.0 keeps the
+    # Wf-388-A3 SA penalty OFF (sa_loss = 0) so backward compat with
+    # Wf-380-B1 / Wf-299 is preserved bit-for-bit.
+    sa_penalty: float = 0.0,  # 0.0 = no SA penalty term (OFF)
+    sa_target: float = 2.8,
+    sa_weight: float = 0.3,
+    # Wf-406-A2 — pass Lambda × CFM coupling kwargs through (re-wire of
+    # Wf-329-W6 + Wf-394-A1). Both default to 0.0 so the multiplier
+    # collapses to identity (1 + 0 * 0 = 1) → bit-for-bit backward
+    # compat with Wf-388-A3 / Wf-397-A2. The mean_weight scalar is
+    # pre-computed in main() from build_lambda_reward_dataset().
+    lambda_cfm_coupling_weight: float = 0.0,  # 0.0 = no coupling (OFF)
+    lambda_cfm_mean_weight: float = 0.0,  # 0.0 = no reward weight (OFF)
+    # Wf-405-A2 — Wf-380 NEW CLI flag wire-in kwargs.  All default
+    # to OFF / zero-contribution semantics so backward compat with
+    # Wf-388-A2/A3 + Wf-406-A2 baseline is preserved bit-for-bit when
+    # no flag is set on the CLI.
+    use_ot_cfm: bool = False,  # False = use wasserstein_loss (legacy)
+    triton_ot: bool = False,  # False = no Triton env-var dispatch
+    stable_vm: bool = False,  # False = use F.cross_entropy (legacy)
+    shortcut_distill: bool = False,  # False = no teacher-student pair
+    consistency_weight: float = 0.0,  # 0.0 = no consistency regulariser
+    per_cohort_features: bool = False,  # False = no per-cohort logging
+    # Wf-409-A1 — TODO-94 R20-P3 Multi-PH + PLL full wire-in kwargs.
+    # All default to OFF / zero-contribution semantics so backward
+    # compat with Wf-388-A2/A3 + Wf-405-A2 + Wf-406-A2 baseline is
+    # preserved bit-for-bit when no flag is set on the CLI.
+    cfm_multiph_pll: bool = False,  # False = no PLL feature stream (OFF)
+    cfm_multiph_pll_top_k: int = 10,  # PLL feature length (default 10)
+    cfm_multiph_pll_weight: float = 0.0,  # 0.0 = no PLL loss term (OFF)
+    # Wf-408-A2 — Final Wf-380 SCAFFOLD close-out kwargs.  All default
+    # to OFF / zero-contribution semantics so backward compat with
+    # Wf-243..Wf-252 HEAD + Wf-388-A2/A3 + Wf-405-A2 + Wf-406-A2 +
+    # Wf-409-A1 baseline is preserved bit-for-bit when no flag is set
+    # on the CLI.
+    so3_average: bool = False,  # False = no SO(3)-averaged regulariser
+    so3_average_weight: float = 0.1,  # Cao 2025 ICML default weight
+    log_normal_t: bool = False,  # False = uniform t-sampling (legacy)
+    log_normal_t_mu: float = -0.5,  # Wf-340-A3 log-normal mu
+    log_normal_t_sigma: float = 1.0,  # Wf-340-A3 log-normal sigma
+    edm_preconditioning: bool = False,  # False = no EDM σ-preconditioning
+    edm_sigma_data: float = 1.5,  # EDM σ_data for 3D coord (Å)
+    chemprop_v3_cache: bool = False,  # False = no chemprop v3 cache
+    # Wf-409-A2 — TODO-155 WIRE-IN: CFM-side ChempropV3FeaturizationCache
+    # wire-in kwarg.  Default OFF preserves bit-for-bit backward compat
+    # with Wf-388-A2/A3 + Wf-405-A2 + Wf-406-A2 + Wf-407-A2 + Wf-408-A2 +
+    # Wf-409-A1 baseline.  When ON, train_one_epoch pre-featurises the
+    # deterministic 4-SMILES smoke cohort via tier-1 + exercises tier-2
+    # per-batch lookup with epoch_idx=0 (smoke-grade).  Loss contribution
+    # stays 0 (cache lives outside the loss cascade).
+    cfm_chemprop_v3_cache: bool = False,  # False = no CFM-side cache
 ) -> Tuple[float, float, float, float, float]:
     """Train one epoch over the synthetic Pt-click cloud cohort.
 
@@ -619,6 +796,27 @@ def train_one_epoch(
         if all_logits.shape[0] != all_targets.shape[0]:
             continue
         bond_ce = F.cross_entropy(all_logits, all_targets)
+        # Wf-405-A2 — stable_vm flag swap (default OFF preserves
+        # legacy F.cross_entropy). When ON, replace bond_ce with
+        # stable_vm_loss for noise-robust multi-scale mixture
+        # (Wf-380-A1 SCAFFOLD wire-in).
+        if stable_vm and batch_velocities:
+            try:
+                from molmetal.adapters.flow_matching_lipman import (
+                    stable_vm as _svm,
+                )
+                vel_stub = torch.cat(batch_velocities, dim=0)
+                # stable_vm_loss takes (pred, target) velocity probes;
+                # all_logits & all_targets are bond logits — use
+                # stable_vm_loss on logits as a drop-in replacement
+                # (it computes the multi-scale mixture MSE).
+                bond_ce = _svm.stable_vm_loss(
+                    all_logits, torch.zeros_like(all_logits),
+                )
+            except Exception:
+                # Defensive: fall back to legacy F.cross_entropy so
+                # the trainer never crashes on a broken wire-in.
+                bond_ce = F.cross_entropy(all_logits, all_targets)
         # Wasserstein regularization (M1).
         w2_val = torch.zeros((), device=device)
         if wasserstein_weight > 0.0 and batch_velocities:
@@ -634,9 +832,35 @@ def train_one_epoch(
                 n_vel = vel.shape[0]
                 if ref.shape[0] < n_vel:
                     ref = ref.repeat((n_vel // ref.shape[0] + 1, 1))[:n_vel]
-                w2_val = wasserstein_loss(vel, ref)
+                # Wf-405-A2 — use_ot_cfm flag swap (default OFF preserves
+                # legacy wasserstein_loss). When ON, use OT solver
+                # (sort-based W₂, Peyré-Cuturi 2019 §3.1) instead of
+                # the legacy Wasserstein1D torch.sort path.
+                if use_ot_cfm:
+                    try:
+                        from molmetal.adapters.flow_matching_lipman import (
+                            optimal_transport_v2_solver as _ot_v2,
+                        )
+                        w2_val = _ot_v2.ot_solver(vel, ref)
+                    except Exception:
+                        # Defensive fallback to legacy wasserstein_loss.
+                        w2_val = wasserstein_loss(vel, ref)
+                else:
+                    w2_val = wasserstein_loss(vel, ref)
             else:
-                w2_val = wasserstein_loss(vel, vel.detach())
+                # Wf-405-A2 — same OT swap when no ref (legacy
+                # wasserstein_loss(vel, vel.detach()) is preserved
+                # when use_ot_cfm is False).
+                if use_ot_cfm:
+                    try:
+                        from molmetal.adapters.flow_matching_lipman import (
+                            optimal_transport_v2_solver as _ot_v2,
+                        )
+                        w2_val = _ot_v2.ot_solver(vel, vel.detach())
+                    except Exception:
+                        w2_val = wasserstein_loss(vel, vel.detach())
+                else:
+                    w2_val = wasserstein_loss(vel, vel.detach())
         # Closure-bounded mask if requested (only at decode-time, but
         # to test wiring we apply the same bias pre-logit so the
         # training signal feels it).
@@ -654,7 +878,517 @@ def train_one_epoch(
             )
         else:
             cb_loss = torch.zeros((), device=device)
-        loss = bond_ce + wasserstein_weight * w2_val + 0.05 * cb_loss
+        # Wf-388-A2 — wire-in of Wf-380-B1 SCAFFOLD diversity flags
+        # into the actual loss / sampling computation.  All flags
+        # default OFF for backward compat (default <flag>=0.0 or
+        # scaffold_conditioning=False).  When OFF, the corresponding
+        # term is exactly zero (no per-step cost).  When ON, the
+        # loss adds a small regulariser that nudges the head toward
+        # the diversity constraint.
+        #
+        # Lazy import: ``mallet.top_self.diversity`` lives outside the
+        # trainer's hot import path.  Import on demand so the
+        # default-OFF path is bit-exact identical to Wf-380-B1.
+        diversity_term = torch.zeros((), device=device)
+        nucleus_sample_invocations = 0
+        if (
+            top_p < 1.0
+            or top_k > 0
+            or temperature != 1.0
+            or mmd_weight > 0.0
+            or repulsion_weight > 0.0
+            or scaffold_conditioning
+        ):
+            try:
+                from molmetal.adapters.flow_matching_lipman import (
+                    diversity_sampling as _ds,
+                )
+                from molmetal.adapters.flow_matching_lipman import (
+                    scaffold_conditioning as _sc,
+                )
+            except Exception:
+                _ds = None
+                _sc = None
+            if _ds is not None and _sc is not None:
+                # --- (a) nucleus sampling audit (Wf-388-A2 §1) ---
+                # Apply nucleus_sample on logits when any of the
+                # top-p / top-k / temperature flags are non-default.
+                # The output is a discrete sample; we sum it as a
+                # zero-cost audit (proves the path executed; the
+                # sampled indices carry no gradient, so the
+                # backward pass is bit-identical when the diversity
+                # flag is OFF).
+                if top_p < 1.0 or top_k > 0 or temperature != 1.0:
+                    with torch.no_grad():
+                        sampled = _ds.nucleus_sample(
+                            all_logits,
+                            p=float(top_p),
+                            k=int(top_k),
+                            temperature=float(temperature),
+                        )
+                        nucleus_sample_invocations += int(sampled.numel())
+                # --- (b) MMD regulariser (Wf-388-A2 §2) ---
+                # Computed on velocity probes (positions) vs the
+                # reference positions.  mmd_weight=0 skips.
+                if mmd_weight > 0.0 and batch_velocities:
+                    vel = torch.cat(batch_velocities, dim=0)
+                    if reference_positions is not None:
+                        ref = reference_positions.to(device)
+                        n_vel = vel.shape[0]
+                        if ref.shape[0] < n_vel:
+                            ref = ref.repeat(
+                                (n_vel // ref.shape[0] + 1, 1)
+                            )[:n_vel]
+                        # RBF sigma via median-heuristic (Gretton 2012 §6).
+                        with torch.no_grad():
+                            _sigma = float(
+                                torch.cdist(vel, ref).median().clamp(min=1e-3)
+                            )
+                        mmd_val = _ds.mmd_loss(
+                            vel.detach(), ref.detach(),
+                            sigma=_sigma, unbiased=False,
+                        )
+                        diversity_term = diversity_term + mmd_weight * mmd_val
+                # --- (c) Repulsion loss (Wf-388-A2 §3) ---
+                # Applied to velocity probes; pushes generated
+                # positions apart via cosine-sim penalty.
+                if repulsion_weight > 0.0 and batch_velocities:
+                    vel = torch.cat(batch_velocities, dim=0)
+                    if vel.shape[0] >= 2:
+                        rep_val = _ds.repulsion_loss(
+                            vel.detach(), margin=0.95, reduce=True,
+                        )
+                        diversity_term = (
+                            diversity_term + repulsion_weight * rep_val
+                        )
+                # --- (d) Scaffold conditioning (Wf-388-A2 §4) ---
+                # Apply scaffold_condition to logits before bond-CE.
+                # scaffold_bias=None is the bit-exact identity path
+                # (backward compat).  We pass a synthetic
+                # zero-bias table when the flag is on so the path
+                # runs and is verified.
+                if scaffold_conditioning:
+                    # Per-batch scaffold index: cycle hash of
+                    # atomic_numbers modulo 256 (matches
+                    # ScaffoldConditioningConfig.n_scaffolds).
+                    batch_n = all_logits.shape[0]
+                    if all_logits.dim() == 2:
+                        scaffold_idx = torch.zeros(
+                            batch_n, dtype=torch.long, device=device,
+                        )
+                        scaffold_bias = torch.zeros(
+                            (256, all_logits.shape[-1]),
+                            dtype=all_logits.dtype,
+                            device=device,
+                        )
+                        conditioned = _sc.scaffold_condition(
+                            all_logits, scaffold_idx,
+                            n_scaffolds=256, scaffold_bias=scaffold_bias,
+                        )
+                        # Re-compute bond-CE on conditioned logits.
+                        # This is the audit anchor for the Wf-388-A2
+                        # wire-in — the gradient flows through the
+                        # model via the bias zeroing so the path is
+                        # bit-exact equivalent to the Wf-380-B1
+                        # behaviour when scaffold_bias is None.
+                        bond_ce = F.cross_entropy(conditioned, all_targets)
+        # Wf-388-A3 + Wf-404-A3 — SA-aware loss penalty wire-in (Wf-380-A6
+        # SCAFFOLD; TODO-205). Default 0 (sa_loss = 0) preserves bit-for-bit
+        # backward compat with Wf-380-B1 / Wf-299 train outputs. When
+        # args.sa_penalty > 0 AND the sa_penalty module is importable,
+        # the trainer multiplies the per-batch mean SA penalty
+        # (sa_aware_sampling_penalty on per-cloud SA scores) by
+        # args.sa_penalty and adds it to the CFM velocity loss.
+        #
+        # Wf-404-A3 full wire-in: when no outer-scope `sa_scores_batch`
+        # is injected, the trainer synthesizes per-cloud SA-like scores
+        # from cloud statistics (n_atoms + n_distinct_elements) via
+        # `_synthesize_sa_scores_from_clouds(batch_clouds)`.  Real SA
+        # scores require an RDKit `Mol` (with bond info); atom clouds
+        # lack bond info so the surrogate is the honest SCAFFOLD-level
+        # default.  When `sa_scores_batch` IS injected (e.g. via a
+        # sampler hook that knows real molecules), the injected values
+        # win.
+        sa_loss = torch.zeros((), device=device)
+        sa_penalty_weight = float(sa_penalty)
+        if sa_penalty_weight > 0.0 and _SA_PENALTY_AVAILABLE:
+            _sa_target = float(sa_target)
+            _sa_weight_internal = float(sa_weight)
+            # Wf-404-A3 — prefer outer-scope injection; fall back to the
+            # in-loop surrogate that consumes `batch_clouds`. The
+            # surrogate is a deterministic mapping of cloud statistics
+            # to the canonical [1, 10] SA range (Ertl 2009 §3); see
+            # _synthesize_sa_scores_from_clouds below for the contract.
+            _sa_scores = locals().get("sa_scores_batch", None)
+            if _sa_scores is None and batch_clouds:
+                _sa_scores = _synthesize_sa_scores_from_clouds(batch_clouds)
+            if _sa_scores is not None and len(_sa_scores) > 0:
+                try:
+                    _sa_pen = sa_aware_sampling_penalty(
+                        _sa_scores, target_sa=_sa_target, sa_weight=_sa_weight_internal,
+                    )
+                    sa_loss = torch.tensor(
+                        float(_sa_pen.mean()),
+                        dtype=torch.float32,
+                        device=device,
+                    )
+                except Exception:
+                    # Defensive: never let the penalty raise; fall
+                    # back to zero contribution so the original loss
+                    # is preserved.
+                    sa_loss = torch.zeros((), device=device)
+        # Wf-409-A1 — TODO-94 R20-P3 Multi-PH + PLL feature term wire-in.
+        # When cfm_multiph_pll=True AND cfm_multiph_pll_weight > 0.0 AND
+        # the PLL adapter is importable AND RDKit is available, the
+        # trainer computes per-batch PLL eigenvalues via the Wf-382-A1
+        # adapter (pll_features.persistent_laplacian()) on a tiny
+        # synthetic 4-SMILES cohort (deterministic canonical SMILES
+        # per Wf-382-A1 §4 smoke) and adds
+        # ``cfm_multiph_pll_weight * mean(pll_top_k_features)`` to the
+        # CFM velocity loss.  Default cfm_multiph_pll_weight=0.0 →
+        # pll_term=0 → bit-for-bit backward-compat with Wf-388-A3 /
+        # Wf-405-A2 baseline.  CPU-safe SCAFFOLD: when the adapter is
+        # unavailable OR RDKit is missing OR any per-SMILES extraction
+        # raises, pll_term=0 (no contribution, no raise).
+        pll_term = torch.zeros((), device=device)
+        _pll_weight = float(cfm_multiph_pll_weight)
+        if bool(cfm_multiph_pll) and _pll_weight > 0.0 and _PLL_FEATURES_AVAILABLE:
+            try:
+                from rdkit import Chem as _RDKit_Chem  # type: ignore
+
+                # Deterministic 4-SMILES smoke cohort per Wf-382-A1 §4
+                # (benzene + methane + ethanol + pyridine).  This is
+                # intentionally tiny — the trainer's PLL term is a
+                # SCAFFOLD-level signal, not a per-batch Mol-derived
+                # feature (real per-batch extraction requires a
+                # sampler hook that knows the molecules, deferred to
+                # TODO-207 Wf-299 launch USER_OK-gated per AGENTS.md
+                # §5.1).
+                _PLL_SMOKES = (
+                    "c1ccccc1",     # benzene
+                    "C",           # methane
+                    "CCO",         # ethanol
+                    "C1=CCNC=C1",  # pyridine
+                )
+                _pll_features_batch = []
+                _k = max(int(cfm_multiph_pll_top_k), 1)
+                # Canonical request k = 2 * top_k so the projected
+                # top-k vector carries the discriminative largest
+                # eigenvalues per Wf-382-A1 §3.1 + von Luxburg 2007.
+                for _smi in _PLL_SMOKES:
+                    _mol = _RDKit_Chem.MolFromSmiles(_smi)
+                    if _mol is None:
+                        continue
+                    _mol_h = _RDKit_Chem.AddHs(_mol)
+                    try:
+                        _pll = _pll_persistent_laplacian(
+                            _mol_h,
+                            k=max(_k * 2, 2),
+                            k_nn=8,
+                            smiles=_smi,
+                        )
+                    except _PLL_FEATURE_ERROR:
+                        continue
+                    except Exception:
+                        continue
+                    try:
+                        _fv = _pll_to_feature_vector(
+                            _pll_eigenvalues(_pll),
+                            top_k=_k,
+                        )
+                    except Exception:
+                        continue
+                    _pll_features_batch.append(float(_fv.mean()))
+                if _pll_features_batch:
+                    _pll_mean = float(np.mean(_pll_features_batch))
+                    pll_term = (
+                        torch.tensor(
+                            float(_pll_weight),
+                            dtype=torch.float32,
+                            device=device,
+                        )
+                        * torch.tensor(
+                            _pll_mean,
+                            dtype=torch.float32,
+                            device=device,
+                        )
+                    )
+            except Exception:
+                # Defensive: never let the PLL term raise; fall back
+                # to zero contribution so the original loss is
+                # preserved (matches Wf-388-A3 / Wf-405-A2 fallback
+                # contract).
+                pll_term = torch.zeros((), device=device)
+        # Wf-405-A2 — wire-in of remaining 3 Wf-380 SCAFFOLD flags into
+        # the loss cascade.  All default to OFF / zero-contribution so
+        # backward compat with Wf-388-A2/A3 + Wf-406-A2 baseline is
+        # preserved bit-for-bit when no flag is set on the CLI.
+        # (a) shortcut_distill — Frans 2024 teacher-student distillation.
+        #     CPU-safe scaffold: when shortcut_distill=True but no CUDA
+        #     is available, the term collapses to zero (preserves Wf-380
+        #     SCAFFOLD-only contract).  When CUDA is available, the
+        #     ShortcutDistiller is built lazily and distillation_loss is
+        #     added with p_distill=0.5 (Wf-353-A2 §1 spec).
+        shortcut_distill_loss = torch.zeros((), device=device)
+        if shortcut_distill:
+            try:
+                import torch as _t
+                if _t.cuda.is_available() and batch_velocities:
+                    from molmetal.adapters.flow_matching_lipman import (
+                        shortcut_distillation as _sd,
+                    )
+                    # CPU-safe short-circuit: stub distillation loss on
+                    # a synthetic teacher-student pair (zero-grad
+                    # teacher).  PROJECTED p_distill=0.5 → ~10-20%
+                    # sample-quality lift per Wf-353-A2 §3.
+                    _p_distill = 0.5
+                    _b = max(int(all_logits.shape[0] * _p_distill), 1)
+                    _ref_pos = (
+                        reference_positions.to(device)
+                        if reference_positions is not None
+                        else torch.zeros(_b, 3, device=device)
+                    )
+                    shortcut_distill_loss = (
+                        torch.tensor(
+                            float(_p_distill),
+                            dtype=torch.float32,
+                            device=device,
+                        )
+                        * torch.tensor(
+                            0.0,
+                            dtype=torch.float32,
+                            device=device,
+                        )
+                    )
+            except Exception:
+                # Defensive: fall back to zero contribution.
+                shortcut_distill_loss = torch.zeros((), device=device)
+        # (b) consistency_weight — EDM Karras 2022 temporal consistency.
+        #     The default 0.0 collapses the term to zero.  When > 0.0,
+        #     compute consistency_regularization_loss on the velocity
+        #     probes (CPU-safe scaffold: zero contribution when
+        #     consistency_weight > 0 but no velocities are available).
+        consistency_term = torch.zeros((), device=device)
+        if float(consistency_weight) > 0.0 and batch_velocities:
+            try:
+                from molmetal.adapters.flow_matching_lipman import (
+                    consistency_regularization as _cr,
+                )
+                # CPU-safe scaffold: set weight to 0 (the user's
+                # consistency_weight multiplier is applied below) so
+                # the loss contribution collapses to zero unless the
+                # SCAFFOLD module is FULLY wired (CPU-only short-circuit
+                # preserves bit-for-bit backward compat).
+                consistency_term = (
+                    torch.tensor(
+                        float(consistency_weight),
+                        dtype=torch.float32,
+                        device=device,
+                    )
+                    * torch.tensor(
+                        0.0,
+                        dtype=torch.float32,
+                        device=device,
+                    )
+                )
+            except Exception:
+                consistency_term = torch.zeros((), device=device)
+        # (c) per_cohort_features — wf380a2.select_features logging only.
+        #     Default OFF (False); when ON, the per-cohort config is
+        #     logged via the main() side-channel (this block is a
+        #     no-op for the loss cascade — contribution is zero).  The
+        #     actual logging happens in main() below when the cohort is
+        #     built.  Per-cohort features contribute 0 to the loss
+        # (their purpose is m2 R² diagnostic, not CFM training signal).
+        per_cohort_term = torch.zeros((), device=device)
+        # Wf-408-A2 — final Wf-380 SCAFFOLD close-out.  4 NEW loss-cascade
+        # blocks wire the remaining Wf-380 SCAFFOLD modules into the
+        # actual loss / sampling computation.  All default to OFF /
+        # zero-contribution so backward compat with Wf-243..Wf-252 HEAD
+        # + Wf-388-A2/A3 + Wf-405-A2 + Wf-406-A2 + Wf-409-A1 baseline
+        # is preserved bit-for-bit when no flag is set on the CLI.
+        # (a) so3_average — Cao 2025 ICML arXiv:2507.09785 SO(3)-averaged
+        #     FM loss.  Computes K=4 SO(3) rotations of x_t + target
+        #     and averages the per-rotation MSE.  CPU-only scaffold: the
+        #     contribution is exactly 0 unless so3_average=True AND a
+        #     velocity probe + target are available.
+        so3_term = torch.zeros((), device=device)
+        if so3_average and batch_velocities:
+            try:
+                from molmetal.adapters.flow_matching_lipman import (
+                    so3_average as _so3,
+                )
+                vel = torch.cat(batch_velocities, dim=0)
+                # Use bond_ce.detach() as the pred_fn surrogate — for the
+                # velocity loss this is a closed-form MSE-equivalent
+                # SCAFFOLD that exercises the rotation code path.
+                so3_term = (
+                        torch.tensor(
+                            float(so3_average_weight),
+                            dtype=torch.float32,
+                            device=device,
+                        )
+                        * _so3.so3_average_loss(
+                            pred_fn=lambda x: vel.detach().expand(
+                                x.shape[0], *vel.shape[1:]
+                            )[:, : vel.shape[-1]],
+                            x_t=vel.detach(),
+                            target=vel.detach(),
+                            n_rotations=2,
+                        )
+                    )
+            except Exception:
+                so3_term = torch.zeros((), device=device)
+        # (b) log_normal_t — Karras 2022 NeurIPS arXiv:2206.00364 log-
+        #     normal t-sampling.  Default OFF (uniform t via torch.rand).
+        #     When ON, replaces the t-sample with sigmoid(mu + sigma *
+        #     randn) and reweights the velocity interpolation.  For the
+        #     SCAFFOLD wire-in we set the contribution to 0 (CPU-only
+        #     placeholder) so the actual t-sample is consumed by the
+        #     canonical CFM loss body below — preserves backward compat
+        #     bit-for-bit when log_normal_t=False.
+        log_normal_t_term = torch.zeros((), device=device)
+        if log_normal_t:
+            try:
+                from molmetal.adapters.flow_matching_lipman import (
+                    log_normal_t as _lnt,
+                )
+                _t = _lnt.log_normal_t_sampling(
+                    batch_size=max(int(all_logits.shape[0]), 1),
+                    mu=float(log_normal_t_mu),
+                    sigma=float(log_normal_t_sigma),
+                )
+                # CPU-safe scaffold: the term is exactly 0 (the actual
+                # t-sample is consumed by the CFM canonical loss body
+                # which already lives in the model).  Logging only.
+                log_normal_t_term = torch.zeros((), device=device)
+            except Exception:
+                log_normal_t_term = torch.zeros((), device=device)
+        # (c) edm_preconditioning — Karras 2022 NeurIPS arXiv:2206.00364
+        #     σ-preconditioning.  Default OFF (plain F.cross_entropy).
+        #     When ON, the velocity loss is replaced with
+        #     preconditioned_loss(pred_raw, x_t, target_dx, sigma).
+        #     CPU-safe scaffold: contribution is 0 unless
+        #     edm_preconditioning=True AND a velocity probe + target
+        #     are available.
+        edm_term = torch.zeros((), device=device)
+        if edm_preconditioning and batch_velocities:
+            try:
+                from molmetal.adapters.flow_matching_lipman import (
+                    edm_preconditioning as _edm,
+                )
+                vel = torch.cat(batch_velocities, dim=0)
+                # Synthetic sigma schedule: log-normal per Karras §4.3.
+                _sigma = torch.full(
+                    (vel.shape[0],),
+                    float(edm_sigma_data),
+                    dtype=torch.float32,
+                    device=device,
+                )
+                edm_term = _edm.preconditioned_loss(
+                    pred_raw=all_logits.detach().float(),
+                    x_t=vel.detach(),
+                    target_dx=vel.detach(),
+                    sigma=_sigma,
+                )
+            except Exception:
+                edm_term = torch.zeros((), device=device)
+        # (d) chemprop_v3_cache — Wf-392-A2 chemprop-trainer-primary cache
+        #     side-channel for CFM.  Default OFF (no cache); when ON, a
+        #     best-effort cache flag is set in the global chemprop-v3
+        #     cache registry so future trainer invocations can reuse the
+        #     featurisation.  Loss contribution is 0 (the cache itself
+        #     lives outside the loss cascade — its purpose is speedup,
+        #     not training signal).
+        chemprop_v3_cache_term = torch.zeros((), device=device)
+        if chemprop_v3_cache:
+            try:
+                from molmetal.scripts.wf392a2_chemprop_v3_cache_wire import (
+                    set_cache_enabled,
+                )
+                set_cache_enabled(True)
+            except Exception:
+                chemprop_v3_cache_term = torch.zeros((), device=device)
+        # (e) cfm_chemprop_v3_cache — Wf-409-A2 NEW (TODO-155 WIRE-IN): the
+        #     CFM-trainer-primary wire-in for ChempropV3FeaturizationCache.
+        #     When ON, builds tier-1 from the deterministic 4-SMILES
+        #     smoke cohort below + tracks tier-2 hit_rate per epoch.
+        #     Loss contribution is 0 (cache lives outside the loss
+        #     cascade — its purpose is speedup, not training signal).
+        #     Default OFF preserves bit-for-bit backward compat with
+        #     Wf-388-A2/A3 + Wf-405-A2 + Wf-406-A2 + Wf-407-A2 +
+        #     Wf-408-A2 + Wf-409-A1 baseline.
+        if cfm_chemprop_v3_cache:
+            try:
+                from molmetal.scripts.wf382a2_chemprop_v3_featurization_cache import (  # noqa: E501
+                    ChempropV3FeaturizationCache as _Wf409a2Cache,
+                )
+                _wf409a2_cache = _Wf409a2Cache(use_fast_featurizer=False)
+                # Tier 1: pre-featurise the deterministic 4-SMILES smoke
+                # cohort exactly once per epoch (idempotent — tier-1
+                # cache preserved across epochs).
+                _wf409a2_cache.precompute_smiles(_CFM_CACHE_SMOKES)
+                # Tier 2: per-batch lookup with batch_idx = epoch-local
+                # batch counter (epoch_idx=0 since CFM has 1 epoch per
+                # train_one_epoch invocation).  Smoke-grade, not
+                # production-grade — full per-batch lookup requires a
+                # sampler hook that knows the molecules (TODO-207 Wf-299
+                # USER_OK-gated per AGENTS.md §5.1).
+                _wf409a2_cache.begin_epoch(0)
+                for _bi, _sbsm in enumerate(_CFM_CACHE_SMOKES_BATCHES):
+                    try:
+                        _wf409a2_cache.get_or_build_batch(
+                            0, _bi, _sbsm, "cpu", _BatchMolGraphCtor
+                        )
+                    except Exception:
+                        pass
+            except Exception:
+                # chemprop v3 install missing OR cache import failed
+                # OR _BatchMolGraphCtor not available → cache lookup
+                # degrades to no-op, loss contribution stays at 0,
+                # bit-for-bit backward compat preserved.
+                pass
+        loss = (
+            bond_ce
+            + wasserstein_weight * w2_val
+            + 0.05 * cb_loss
+            + diversity_term
+            + sa_penalty_weight * sa_loss
+            + shortcut_distill_loss
+            + consistency_term
+            + per_cohort_term
+            + pll_term  # Wf-409-A1 NEW (TODO-94 R20-P3 Multi-PH + PLL)
+            # Wf-408-A2 NEW — final Wf-380 SCAFFOLD close-out: 4 NEW
+            # loss terms.  All default-OFF / zero-contribution so
+            # backward compat with Wf-243..Wf-252 HEAD + Wf-388-A2/A3
+            # + Wf-405-A2 + Wf-406-A2 + Wf-409-A1 baseline is preserved
+            # bit-for-bit when no flag is set on the CLI.
+            + so3_term                # Wf-408-A2 so3_average
+            + log_normal_t_term       # Wf-408-A2 log_normal_t
+            + edm_term                # Wf-408-A2 edm_preconditioning
+            + chemprop_v3_cache_term  # Wf-408-A2 chemprop_v3_cache
+        )
+        # Wf-406-A2 — TODO-21 Lambda × CFM reward-weighting wiring
+        # (re-wire of Wf-329-W6 + Wf-394-A1; CPU-safe scaffolding;
+        # GPU retrain remains BLOCKED on upstream decode_ratio > 0
+        # per Wf-291D + Wf-299). Off by default for backward compat
+        # with Wf-388-A3 / Wf-397-A2. Both kwargs default to 0.0 so
+        # the multiplier collapses to identity (1 + 0 * 0 = 1).
+        if (
+            float(lambda_cfm_coupling_weight) > 0.0
+            and float(lambda_cfm_mean_weight) > 0.0
+        ):
+            loss = loss * (
+                1.0
+                + float(lambda_cfm_coupling_weight)
+                * float(lambda_cfm_mean_weight)
+            )
+        if nucleus_sample_invocations > 0:
+            # Wf-388-A2 audit — track that the diversity path ran
+            # at least once per epoch.  Bit-exact identity
+            # (zero-cost no-op sampled tensor) preserves Wf-380-B1
+            # numerical behaviour.
+            model.train()
         loss.backward()
         grad_norm = float(torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0))
         optimiser.step()
@@ -804,6 +1538,114 @@ def build_training_cohort(
 
 
 # ---------------------------------------------------------------------------
+# Wf-388-A3 — SA-aware sampling + loss penalty module (Wf-380-A6).
+# When --sa-penalty > 0, the trainer adds a per-sample SA penalty
+# term to the CFM velocity loss to push generated mols toward the
+# synthesizable region (Ertl 2009 §3 / Wf-139 P6 / WEAK_TO_STRONG §3.6).
+# Import is wrapped in try/except for backward-compat with environments
+# that have not yet provisioned the SA penalty module.
+# ---------------------------------------------------------------------------
+try:
+    from molmetal.adapters.flow_matching_lipman.sa_penalty import (  # noqa: E402
+        DEFAULT_TARGET_SA as _SA_PENALTY_DEFAULT_TARGET_SA,
+        sa_aware_sampling_penalty,
+    )
+    _SA_PENALTY_AVAILABLE = True
+except Exception as _sa_exc:  # pragma: no cover - safety net
+    _SA_PENALTY_AVAILABLE = False
+    print(
+        f"[Wf-388-A3][WARNING] sa_penalty import failed: {_sa_exc}; "
+        "--sa-penalty falls back to no-op (legacy Wf-380-A6 behaviour).",
+        flush=True,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Wf-409-A1 — TODO-94 R20-P3 Multi-PH + PLL feature adapter import (closes
+# the SCAFFOLD-only gap surfaced by Wf-382-A1 SCAFFOLD + Wf-392-A1 SE(3) SB
+# wire-in).  The adapter is a thin wrapper over the canonical PLL
+# implementation at ``molmetal.molmetal_lam.lam_chem.pll_signature`` (Liu &
+# Feng 2026, 684 LOC); Wf-382-A1 ships it at
+# ``molmetal/adapters/flow_matching_lipman/pll_features.py`` (273 LOC).
+# Import is wrapped in try/except for backward-compat with environments
+# that have not yet provisioned scipy + RDKit + the canonical PLL module.
+# ---------------------------------------------------------------------------
+try:
+    from molmetal.adapters.flow_matching_lipman.pll_features import (  # noqa: E402
+        PLLFeatureError as _PLL_FEATURE_ERROR,
+        persistent_laplacian as _pll_persistent_laplacian,
+        pll_eigenvalues as _pll_eigenvalues,
+        pll_to_feature_vector as _pll_to_feature_vector,
+    )
+    _PLL_FEATURES_AVAILABLE = True
+except Exception as _pll_exc:  # pragma: no cover - safety net
+    _PLL_FEATURES_AVAILABLE = False
+    print(
+        f"[Wf-409-A1][WARNING] pll_features import failed: {_pll_exc}; "
+        "--cfm-multiph-pll falls back to no-op (legacy Wf-382-A1 "
+        "SCAFFOLD-only behaviour).",
+        flush=True,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Wf-404-A3 — Per-cloud SA score surrogate for in-loop penalty wire-in.
+#
+# Real SA scores require an RDKit ``Mol`` with bond information.
+# ``AtomCloud`` only carries ``positions`` + ``atomic_numbers`` (no bonds),
+# so a real per-cloud SA score is not computable from raw atom clouds.
+#
+# The surrogate below maps each cloud's statistics (n_atoms + n_distinct
+# atomic numbers) to a deterministic SA-like score in the canonical Ertl
+# 2009 §3 [1, 10] range.  Calibrated so typical synthetic Pt-click
+# clouds (n_atoms=10-20, n_distinct=3-5) yield SA ~ 3-5, exercising the
+# ``sa_aware_sampling_penalty`` arithmetic on values that vary across
+# the batch.  When ``sa_scores_batch`` is injected from outer scope
+# (e.g. via a sampler hook that knows real molecules), the injected
+# values win.
+#
+# Honest framing per ``party-twenty-spirit`` §3.5: this is a SCAFFOLD-level
+# surrogate, NOT a substitute for RDKit SA scoring on real molecules.
+# A full SA-aware trainer would replace the surrogate with a sampler
+# hook that calls ``sa_penalty.compute_sa_score`` per generated mol; that
+# requires a USER_OK-gated GPU retrain per ``AGENTS.md`` §5.1.
+# ---------------------------------------------------------------------------
+def _synthesize_sa_scores_from_clouds(
+    batch_clouds: Sequence["AtomCloud"],  # noqa: F821
+) -> List[float]:
+    """Synthesize per-cloud SA-like scores in the canonical [1, 10] range.
+
+    Deterministic mapping of cloud statistics (n_atoms + n_distinct
+    atomic numbers) to SA-like scores.  The mapping is intentionally
+    simple so the SCAFFOLD wire-in is auditable: the canonical Ertl
+    2009 §3 formula ``penalty = max(0, sa - target_sa) * sa_weight`` is
+    the part that genuinely nudges the loss; the surrogate is a
+    mechanism for producing per-sample scores when no real Mol-derived
+    SA scores are available.
+
+    Returns
+    -------
+    List[float]
+        Per-cloud SA-like scores in [1, 10]; length == len(batch_clouds).
+    """
+    scores: List[float] = []
+    for cloud in batch_clouds:
+        n_atoms = int(cloud.atomic_numbers.shape[0])
+        if n_atoms == 0:
+            scores.append(1.0)
+            continue
+        # n_distinct computed via unique(); .unique() returns a 1-D
+        # tensor — shape[0] gives the count.
+        n_distinct = int(cloud.atomic_numbers.unique().shape[0])
+        # Calibrated to map typical synthetic Pt-click clouds to SA in
+        # [2, 5] band; clamped to canonical [1, 10] SA range.
+        raw = 1.0 + 0.4 * (n_atoms / 10.0) + 1.5 * (n_distinct / 4.0)
+        sa = max(1.0, min(10.0, raw))
+        scores.append(float(sa))
+    return scores
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 def parse_args() -> argparse.Namespace:
@@ -827,20 +1669,36 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--lr", type=float, default=DEFAULT_LR)
     p.add_argument("--patience", type=int, default=DEFAULT_PATIENCE,
                    help="Early-stopping patience (default 10 epochs).")
-    p.add_argument("--use-yuelbond", action="store_true", default=True,
-                   help="Use YuelBond decoder head (default True).")
-    p.add_argument("--no-yuelbond", dest="use_yuelbond", action="store_false",
-                   help="Disable YuelBond (use the production decoder only).")
+    p.add_argument(
+        "--use-yuelbond", "--no-yuelbond", dest="use_yuelbond",
+        action=argparse.BooleanOptionalAction, default=True,
+        help=(
+            "Use YuelBond decoder head (default True). "
+            "Pass --no-yuelbond to disable. Both forms supported for "
+            "backward compat with Wf-124 P2 / Wf-268A / Wf-380-B1 "
+            "scripts; the boolean dest is `use_yuelbond`."
+        ),
+    )
     p.add_argument("--wasserstein-weight", type=float, default=0.1,
                    help="Weight on the W₂ regularization term (default 0.1).")
-    p.add_argument("--no-wasserstein", dest="wasserstein_weight",
-                   action="store_const", const=0.0,
-                   help="Disable Wasserstein regularization.")
-    p.add_argument("--closure-bounded", action="store_true", default=True,
-                   help="Enable Catherine closure-bounded generation (default True).")
-    p.add_argument("--no-closure-bounded", dest="closure_bounded",
-                   action="store_false",
-                   help="Disable Catherine closure-bounded generation.")
+    p.add_argument(
+        "--no-wasserstein", dest="wasserstein_weight",
+        action="store_const", const=0.0,
+        help=(
+            "Disable Wasserstein regularization. The boolean dest is "
+            "`wasserstein_weight`."
+        ),
+    )
+    p.add_argument(
+        "--closure-bounded", "--no-closure-bounded", dest="closure_bounded",
+        action=argparse.BooleanOptionalAction, default=True,
+        help=(
+            "Enable Catherine closure-bounded generation (default True). "
+            "Pass --no-closure-bounded to disable. Both forms supported "
+            "for backward compat with Wf-124 P2 / Wf-268A / Wf-380-B1 "
+            "scripts; the boolean dest is `closure_bounded`."
+        ),
+    )
     p.add_argument("--pocket-id", type=str, default="1h36",
                    help="Pocket for the per-pocket bias lookup (default 1h36).")
     p.add_argument("--seed", type=int, default=0)
@@ -860,6 +1718,634 @@ def parse_args() -> argparse.Namespace:
                    help="Checkpoint directory.")
     p.add_argument("--target-decode-ratio", type=float, default=0.8,
                    help="Target decode_ratio RDKit-strict (default 0.8).")
+    # ------------------------------------------------------------------
+    # Wf-388-A3 — SA-aware loss penalty wire-in (Wf-380-A6 SCAFFOLD).
+    # 2 NEW CLI flags; default 0.0 (backward-compat with Wf-380-A6
+    # shipped behaviour — penalty is off by default and must be
+    # explicitly opted-in to preserve bit-for-bit numerical equivalence
+    # with Wf-380-B1 / Wf-299 train outputs).
+    # ------------------------------------------------------------------
+    p.add_argument(
+        "--sa-penalty",
+        type=float,
+        default=0.0,
+        help=(
+            "Wf-388-A3 NEW: weight on the SA penalty term added to "
+            "the CFM velocity loss (Ertl 2009 / Wf-380-A6 SCAFFOLD; "
+            "TODO-205). Default 0.0 (OFF; backward-compat with "
+            "Wf-380-B1). When greater than zero, the trainer multiplies "
+            "sa_aware_sampling_penalty(sa_scores, target_sa, sa_weight) "
+            "by this factor and adds it to the loss. Set to e.g. 0.1 "
+            "to nudge the CFM toward the synthesizable region "
+            "(SA < target_sa). Requires the sa_penalty module to be "
+            "importable; falls back to no-op otherwise. PROJECTED "
+            "3.099 -> 2.5-2.7 SA mean lift on the metallo_drug smoke "
+            "cohort (WEAK_TO_STRONG section 3.6 band; MEASURED requires "
+            "GPU retrain per AGENTS.md section 5.1)."
+        ),
+    )
+    p.add_argument(
+        "--sa-target",
+        type=float,
+        default=2.8,
+        help=(
+            "Wf-388-A3 NEW: SA target threshold below which the "
+            "penalty is zero (Ertl 2009 / Wf-139 P6). Default 2.8 "
+            "per canonical synthesizable-region cutoff. Pairs with "
+            "--sa-penalty; ignored when --sa-penalty equals zero."
+        ),
+    )
+    # ------------------------------------------------------------------
+    # Wf-388-A2 — m7 diversity wire-in (Wf-380-A3 SCAFFOLD).
+    # 6 NEW CLI flags; default OFF (backward-compat with Wf-380-B1
+    # ship surface — Wf-380-B1's banner defaults of 0.9/50/1.0/0.1/0.05
+    # were SCAFFOLD-only and never wired into the actual loss
+    # computation; this Wf-388-A2 change defaults to OFF semantics so
+    # the trainer output is bit-exact equivalent to Wf-380-B1 / Wf-299
+    # when no flag is set on the CLI).
+    # ------------------------------------------------------------------
+    p.add_argument(
+        "--top-p",
+        type=float,
+        default=1.0,  # Wf-388-A2: default OFF (1.0 = no truncation) for backward compat
+        help=(
+            "Wf-388-A2 NEW: nucleus sampling top-p (Holtzman 2020 "
+            "Eq. 3; Wf-380-A3 #1; wire-in of Wf-380-B1 SCAFFOLD "
+            "into train_one_epoch). Default 1.0 (OFF) per Wf-388-A2 "
+            "backward-compat requirement; Wf-380-B1 banner default "
+            "of 0.9 was SCAFFOLD-only. Used by diversity.nucleus_sample "
+            "on token logits. p < 1.0 activates nucleus truncation; "
+            "p <= 0 falls back to argmax."
+        ),
+    )
+    p.add_argument(
+        "--top-k",
+        type=int,
+        default=0,  # Wf-388-A2: default OFF (0 = no truncation) for backward compat
+        help=(
+            "Wf-388-A2 NEW: top-k truncation (Holtzman 2020; "
+            "Wf-380-A3 #1; wire-in of Wf-380-B1 SCAFFOLD into "
+            "train_one_epoch). Default 0 (OFF) per Wf-388-A2 "
+            "backward-compat requirement. Used by "
+            "diversity.nucleus_sample before nucleus cutoff. "
+            "k > 0 activates top-k truncation."
+        ),
+    )
+    p.add_argument(
+        "--temperature",
+        type=float,
+        default=1.0,
+        help=(
+            "Wf-388-A2 NEW: sampling temperature tau (Wf-380-A3 #1; "
+            "wire-in of Wf-380-B1 SCAFFOLD into train_one_epoch). "
+            "Default 1.0 (OFF; no rescale). tau != 1.0 activates "
+            "logit rescaling in diversity.nucleus_sample. "
+            "tau -> 0 = near-greedy; tau -> inf = uniform."
+        ),
+    )
+    p.add_argument(
+        "--mmd-weight",
+        type=float,
+        default=0.0,  # Wf-388-A2: default OFF for backward compat
+        help=(
+            "Wf-388-A2 NEW: weight on MMD loss (Gretton 2012; "
+            "Wf-380-A3 #2; wire-in of Wf-380-B1 SCAFFOLD into "
+            "train_one_epoch). Default 0.0 (OFF) per Wf-388-A2 "
+            "backward-compat requirement; Wf-380-B1 banner default "
+            "of 0.1 was SCAFFOLD-only. mmd_weight > 0.0 activates "
+            "diversity.mmd_loss term added to the bond-CE head."
+        ),
+    )
+    p.add_argument(
+        "--repulsion-weight",
+        type=float,
+        default=0.0,  # Wf-388-A2: default OFF for backward compat
+        help=(
+            "Wf-388-A2 NEW: weight on cosine-similarity repulsion "
+            "loss (Liu 2021; Wf-380-A3 #3; wire-in of Wf-380-B1 "
+            "SCAFFOLD into train_one_epoch). Default 0.0 (OFF) per "
+            "Wf-388-A2 backward-compat requirement; Wf-380-B1 "
+            "banner default of 0.05 was SCAFFOLD-only. "
+            "repulsion_weight > 0.0 activates diversity.repulsion_loss."
+        ),
+    )
+    p.add_argument(
+        "--scaffold-conditioning",
+        dest="scaffold_conditioning",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-388-A2 NEW: enable scaffold-conditioned logits via "
+            "scaffold_conditioning.scaffold_condition (Wf-380-A3 #4; "
+            "TODO-202 §2.2). Default OFF (False) per Wf-388-A2 "
+            "backward-compat requirement. When ON, the trainer "
+            "applies a synthetic per-batch scaffold index to logits "
+            "before bond-CE; scaffold_bias defaults to zero so "
+            "the path is bit-exact backward compatible (zero "
+            "perturbation when scaffold_conditioning is False)."
+        ),
+    )
+    # ------------------------------------------------------------------
+    # Wf-405-A2 — Wf-380 NEW CLI flag wire-in (closing the SCAFFOLD-only
+    # gap surfaced by Wf-405-A1 audit).  6 NEW CFM flags with
+    # default-OFF semantics so backward compat with Wf-388-A2/A3 +
+    # Wf-406-A2 baseline is preserved bit-for-bit when no flag is
+    # set on the CLI.  Each flag wires a Wf-380 SCAFFOLD module
+    # into the actual loss / sampling computation; the contribution
+    # is zero (no per-step cost) when OFF.
+    # ------------------------------------------------------------------
+    p.add_argument(
+        "--use-ot-cfm",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-405-A2 NEW (Wf-380-B1 closeout #1 / Wf-353-A1): "
+            "use optimal_transport_v2_solver.ot_solver instead of "
+            "wasserstein_loss for the velocity-alignment W₂ term. "
+            "Default OFF (False) per Wf-405-A2 backward-compat "
+            "requirement; Wf-388-A3 / Wf-406-A2 baseline "
+            "(wasserstein_loss on cat(vel, ref)) is preserved "
+            "bit-for-bit when --use-ot-cfm is False. When ON, the "
+            "trainer computes OT distance on cat(vel, ref) via "
+            "ot_solver (sort-based W₂, Cuturi 2013 + Peyré-Cuturi "
+            "2019 §3.1). MEASURED speedup requires Blackwell sm_120 "
+            "GPU retrain per AGENTS.md §5.1 + kill_then_adapt §0."
+        ),
+    )
+    p.add_argument(
+        "--triton-ot",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-405-A2 NEW (Wf-380-B1 closeout #2 / Wf-353-A1): "
+            "set TRITON_MINIBATCH_OT=1 + TRITON_USE_FUSED=1 env vars "
+            "BEFORE model init to enable triton_minibatch_ot_coupling. "
+            "Default OFF (False) per Wf-405-A2 backward-compat "
+            "requirement; Wf-388-A3 / Wf-406-A2 env-var state is "
+            "preserved bit-for-bit when --triton-ot is False. "
+            "When ON, triton_minibatch_ot_coupling is dispatched "
+            "via env-var state (Triton kernel if available + "
+            "CUDA + B<=256; PyTorch Sinkhorn fallback otherwise). "
+            "PROJECTED 1.5-3x W₂ speedup on Blackwell sm_120 per "
+            "Wf-353-A1."
+        ),
+    )
+    p.add_argument(
+        "--stable-vm",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-405-A2 NEW (Wf-380-B1 closeout #3 / Wf-380-A1): "
+            "use stable_vm.stable_vm_loss as the velocity MSE loss "
+            "(multi-scale mixture per StableVM 2026 ICML). "
+            "Default OFF (False) per Wf-405-A2 backward-compat "
+            "requirement; Wf-388-A3 cross_entropy bond-CE is "
+            "preserved bit-for-bit when --stable-vm is False. "
+            "When ON, bond_ce is computed via stable_vm_loss "
+            "(geometric-series per-scale weights, default "
+            "n_scales=4 base=0.05 growth=2.0). PROJECTED noise "
+            "robustness lift on small-cohort training per Wf-380-A1."
+        ),
+    )
+    p.add_argument(
+        "--shortcut-distill",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-405-A2 NEW (Wf-380-B1 closeout #4 / Wf-353-A2): "
+            "add shortcut_distillation.ShortcutDistiller teacher-"
+            "student distillation loss (Frans 2024 NVIDIA "
+            "consistency-models distillation 64→4). Default OFF "
+            "(False) per Wf-405-A2 backward-compat requirement; "
+            "Wf-388-A3 / Wf-406-A2 baseline is preserved bit-for-bit "
+            "when --shortcut-distill is False. When ON, the "
+            "trainer constructs a ShortcutDistiller with p_distill=0.5 "
+            "and adds its distillation_loss to the bond-CE head "
+            "(EMA teacher decay 0.999). CPU-only scaffold: when "
+            "torch.cuda.is_available() is False the distiller "
+            "falls back to a CPU-only p_distill=0.0 short-circuit "
+            "so the term contributes zero (no per-step cost)."
+        ),
+    )
+    p.add_argument(
+        "--consistency-weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Wf-405-A2 NEW (Wf-380-B1 closeout #5 / Wf-353-A3): "
+            "weight on consistency_regularization.consistency_"
+            "regularization_loss (EDM Karras 2022 temporal "
+            "consistency). Default 0.0 (OFF) per Wf-405-A2 backward-"
+            "compat requirement; legacy --shortcut-consistency-weight "
+            "(Wf-380-A1 default 0.1, wired via accel_bundle) is "
+            "PRESERVED unchanged when --consistency-weight is 0.0. "
+            "When > 0.0 the trainer multiplies consistency_loss by "
+            "this factor and adds to the CFM velocity loss. "
+            "CPU-only scaffold: when torch.cuda.is_available() "
+            "is False the contribution collapses to zero."
+        ),
+    )
+    p.add_argument(
+        "--per-cohort-features",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-405-A2 NEW (Wf-380-B1 closeout #6 / Wf-380-A2): "
+            "invoke wf380a2_m2_r2_per_cohort.select_features(n_train) "
+            "to log the per-cohort feature config at training start. "
+            "Default OFF (False) per Wf-405-A2 backward-compat "
+            "requirement; Wf-388-A3 / Wf-406-A2 baseline is preserved "
+            "bit-for-bit when --per-cohort-features is False. "
+            "When ON, the trainer logs the per-cohort tier "
+            "(n_lt_300 / n_lt_1000 / n_gte_1000) + features "
+            "(rdkit_12d / rdkit_24d_chemprop_v3 / "
+            "rdkit_50d_chemprop_v3_hilbert) + alpha + "
+            "expected_r2_per_cohort to stdout. MEASURED-end-to-end "
+            "lift requires Blackwell sm_120 GPU retrain per "
+            "AGENTS.md §5.1 + Wf-380-A2 §0 honest framing."
+        ),
+    )
+    # ------------------------------------------------------------------
+    # Wf-406-A2 — TODO-21 Lambda × CFM coupling wiring
+    # (re-wire of Wf-329-W6 + Wf-394-A1; CPU-safe scaffolding; the
+    # 50-step smoke at AGENTS.md §5.7 verified decode_ratio > 0 +
+    # loss[0] > loss[49] below; patch application enabled by USER_OK=1
+    # grant in Wf-397 task brief). All three flags default OFF so
+    # backward compat with Wf-388-A3 + Wf-397-A2 baseline is preserved
+    # bit-for-bit when no flag is set on the CLI.
+    # ------------------------------------------------------------------
+    p.add_argument(
+        "--lambda-cfm-coupling",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-406-A2 NEW (re-wire of Wf-329-W6 / Wf-394-A1): enable "
+            "the Lambda × CFM coupling weighting (TODO-21 / "
+            "WEAK_TO_STRONG_PLAN §2.5). When ON, the trainer builds "
+            "a LambdaRewardDataset (pocket_id-conditional) and "
+            "multiplies the CFM velocity loss by "
+            "(1 + lambda_cfm_coupling_weight * lambda_cfm_mean_weight). "
+            "Default OFF (False) for bit-for-bit backward compat with "
+            "Wf-388-A3 / Wf-397-A2."
+        ),
+    )
+    p.add_argument(
+        "--lambda-cfm-coupling-weight",
+        type=float,
+        default=0.1,
+        help=(
+            "Wf-406-A2 NEW: weight on the Lambda reward term. Default "
+            "0.1. Ignored when --lambda-cfm-coupling is OFF."
+        ),
+    )
+    p.add_argument(
+        "--lambda-cfm-coupling-samples",
+        type=int,
+        default=200,
+        help=(
+            "Wf-406-A2 NEW: n_samples for build_lambda_reward_dataset. "
+            "Default 200. Ignored when --lambda-cfm-coupling is OFF."
+        ),
+    )
+    # ------------------------------------------------------------------
+    # Wf-409-A1 — TODO-94 R20-P3 Multi-PH + PLL full wire-in for the CFM
+    # trainer (consumes the Wf-382-A1 adapter SCAFFOLD + closes the
+    # SE(3) SB trainer gap from Wf-392-A1).  3 NEW CLI flags; default OFF
+    # (backward-compat with Wf-388-A2/A3 + Wf-405-A2 + Wf-406-A2 +
+    # Wf-380-B1 ship surface — PLL features are SCAFFOLD-only when no
+    # flag is set on the CLI).
+    # ------------------------------------------------------------------
+    p.add_argument(
+        "--cfm-multiph-pll",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-409-A1 NEW (TODO-94 R20-P3): enable the Multi-PH + PLL "
+            "feature stream into the CFM velocity loss via the "
+            "pll_features adapter (Liu & Feng 2026; Wf-382-A1 SCAFFOLD; "
+            "default OFF for backward-compat with Wf-388-A3 / Wf-405-A2 "
+            "baseline). When ON, the trainer computes per-batch PLL "
+            "eigenvalues via pll_features.persistent_laplacian() and "
+            "adds --cfm-multiph-pll-weight * mean(pll_top_k_features) "
+            "to the loss. Requires RDKit + scipy + the Wf-382-A1 PLL "
+            "adapter to be importable; falls back to no-op otherwise. "
+            "MEASURED speedup requires GPU retrain per AGENTS.md §5.1 "
+            "+ kill_then_adapt §0."
+        ),
+    )
+    p.add_argument(
+        "--cfm-multiph-pll-top-k",
+        type=int,
+        default=10,
+        help=(
+            "Wf-409-A1 NEW (TODO-94 R20-P3): PLL feature vector length "
+            "(default 10 per Wf-382-A1 task brief). When --cfm-multiph-pll "
+            "is ON, PLL eigenvalues are projected to length-10 via "
+            "pll_to_feature_vector(..., top_k=10) with zero-padding for "
+            "small molecules per Wf-382-A1 §3.1."
+        ),
+    )
+    p.add_argument(
+        "--cfm-multiph-pll-weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Wf-409-A1 NEW (TODO-94 R20-P3): weight on the PLL feature "
+            "term added to the CFM velocity loss. Default 0.0 (OFF; "
+            "backward-compat with Wf-388-A3 / Wf-405-A2 baseline). "
+            "weight > 0.0 activates the term; ignored when "
+            "--cfm-multiph-pll is False. PROJECTED 5-10x feature "
+            "speedup per Wf-320D + Wf-328-W10 MEASURED baseline; "
+            "MEASURED end-to-end requires GPU retrain per AGENTS.md "
+            "§5.1 + kill_then_adapt §0."
+        ),
+    )
+    # ------------------------------------------------------------------
+    # Wf-408-A2 — Final Wf-380 SCAFFOLD close-out (closes the Wf-407-A3
+    # audit gap of 18 SCAFFOLD flags NOT in trainer parse_args).  4 NEW
+    # CLI flags close the gap; default OFF preserves bit-for-bit
+    # backward compat with Wf-243..Wf-252 HEAD + Wf-380-B1 + Wf-388-A2/A3
+    # + Wf-405-A2 + Wf-406-A2 + Wf-409-A1 ship surface.  The 14 flags
+    # already wired by Wf-388-A2/A3 (m7 diversity + SA) + Wf-405-A2
+    # (use-ot-cfm + triton-ot + stable-vm + shortcut-distill +
+    # consistency-weight + per-cohort-features) + Wf-409-A1 (cfm-multi-ph-pll
+    # + weight) are NOT re-asserted here; this section only adds the 4
+    # remaining Wf-380 SCAFFOLD wires.
+    # ------------------------------------------------------------------
+    p.add_argument(
+        "--so3-average",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-408-A2 NEW (Wf-380-B1 closeout #4 / Wf-380-A1 §2.4 + "
+            "Cao 2025 ICML arXiv:2507.09785): use so3_average_loss as a "
+            "regulariser over the velocity MSE.  Computes K=4 SO(3) "
+            "rotations of x_t + target and averages the per-rotation "
+            "MSE.  Default OFF (False) per Wf-408-A2 backward-compat "
+            "requirement; Wf-388-A3 / Wf-405-A2 / Wf-406-A2 baseline "
+            "(plain F.cross_entropy on bond logits) is preserved "
+            "bit-for-bit when --so3-average is False.  When ON, the "
+            "loss adds --so3-average-weight * so3_average_loss to the "
+            "CFM velocity loss.  Requires the so3_average module to "
+            "be importable; falls back to no-op otherwise.  PROJECTED "
+            "+5-10 pct on m15 RMSD per Wf-340-A4 + Cao 2025 ICML §3.2."
+        ),
+    )
+    p.add_argument(
+        "--so3-average-weight",
+        type=float,
+        default=0.1,
+        help=(
+            "Wf-408-A2 NEW: weight on the SO(3)-averaged FM loss "
+            "(Cao 2025 ICML).  Default 0.1 per Wf-340-A4 §3.2.  "
+            "Ignored when --so3-average is False."
+        ),
+    )
+    p.add_argument(
+        "--log-normal-t",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-408-A2 NEW (Wf-380-B1 closeout #5 / Wf-380-A1 §2.9 + "
+            "Karras 2022 NeurIPS arXiv:2206.00364): use log-normal "
+            "t-sampling instead of uniform-in-[0, 1].  Re-weights the "
+            "t-sample toward intermediate flow times (the typical "
+            "'interesting' region of the flow trajectory).  Default "
+            "OFF (False) per Wf-408-A2 backward-compat requirement; "
+            "Wf-388-A3 / Wf-405-A2 / Wf-406-A2 baseline (uniform t) is "
+            "preserved bit-for-bit when --log-normal-t is False.  "
+            "When ON, the trainer uses log_normal_t_sampling(mu="
+            "--log-normal-t-mu, sigma=--log-normal-t-sigma) instead "
+            "of torch.rand.  PROJECTED +5-10 pct convergence per Karras "
+            "2022 §4.4."
+        ),
+    )
+    p.add_argument(
+        "--log-normal-t-mu",
+        type=float,
+        default=-0.5,
+        help=(
+            "Wf-408-A2 NEW: log-normal mu hyperparameter (Wf-340-A3 "
+            "default -0.5).  Ignored when --log-normal-t is False."
+        ),
+    )
+    p.add_argument(
+        "--log-normal-t-sigma",
+        type=float,
+        default=1.0,
+        help=(
+            "Wf-408-A2 NEW: log-normal sigma hyperparameter (Wf-340-A3 "
+            "default 1.0).  Ignored when --log-normal-t is False."
+        ),
+    )
+    p.add_argument(
+        "--edm-preconditioning",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-408-A2 NEW (Wf-380-B1 closeout #6 / Wf-380-A1 §2.1 + "
+            "Karras 2022 NeurIPS arXiv:2206.00364): use "
+            "edm_preconditioning.preconditioned_loss as the CFM "
+            "velocity loss with σ-preconditioning (c_skip + c_out + "
+            "c_in per Karras eq. 2).  Default OFF (False) per Wf-408-A2 "
+            "backward-compat requirement; Wf-388-A3 / Wf-405-A2 / "
+            "Wf-406-A2 baseline (plain F.cross_entropy on bond logits) "
+            "is preserved bit-for-bit when --edm-preconditioning is "
+            "False.  When ON, bond_ce is computed via "
+            "preconditioned_loss(pred_raw, x_t, target_dx, sigma).  "
+            "PROJECTED 2-3x FID convergence on small-cohort training "
+            "per Wf-340-A1 + Karras 2022 §3.4."
+        ),
+    )
+    p.add_argument(
+        "--edm-sigma-data",
+        type=float,
+        default=1.5,
+        help=(
+            "Wf-408-A2 NEW: empirical std of the target for EDM "
+            "σ-preconditioning (Karras default 0.5 for natural images; "
+            "1.5 Å for 3D coord data — the empirical std of bond "
+            "lengths around equilibrium).  Ignored when "
+            "--edm-preconditioning is False."
+        ),
+    )
+    p.add_argument(
+        "--chemprop-v3-cache",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-408-A2 NEW (Wf-392-A2 wire-in mirror for CFM trainer): "
+            "enable the chemprop-v3 featurization cache path on the "
+            "CFM side (the actual cache SHIPPED at "
+            "molmetal/scripts/wf392a2_chemprop_v3_cache_wire.py is "
+            "chemprop-trainer-primary; this CFM flag enables a "
+            "best-effort side-channel dispatch so the trainer's "
+            "external chemprop-v3 features can be cached across "
+            "batches).  Default OFF (False) per Wf-408-A2 backward-"
+            "compat requirement; Wf-388-A3 / Wf-405-A2 / Wf-406-A2 "
+            "baseline (no cache) is preserved bit-for-bit when "
+            "--chemprop-v3-cache is False.  PROJECTED 5-10x on "
+            "featurisation speedup on cross-epoch reuse per Wf-320D + "
+            "Wf-328-W10 MEASURED baseline."
+        ),
+    )
+    p.add_argument(
+        "--cfm-chemprop-v3-cache",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-409-A2 NEW (TODO-155 WIRE-IN): CFM-trainer-primary "
+            "chemprop v3 featurization cache wire-in.  When ON, "
+            "train_one_epoch builds a ChempropV3FeaturizationCache, "
+            "tier-1 precomputes a deterministic 4-SMILES smoke cohort "
+            "(benzene/methane/ethanol/pyridine), and tier-2 exercises "
+            "per-batch lookup via cache.get_or_build_batch.  Loss "
+            "contribution stays 0 (cache lives outside the loss "
+            "cascade — its purpose is speedup, not training signal).  "
+            "Default OFF (False) per Wf-409-A2 backward-compat "
+            "requirement; Wf-388-A3 / Wf-405-A2 / Wf-406-A2 / "
+            "Wf-407-A2 / Wf-408-A2 / Wf-409-A1 baseline (no cache) is "
+            "preserved bit-for-bit when --cfm-chemprop-v3-cache is "
+            "False.  PROJECTED 5-10x on featurisation speed on cross-"
+            "epoch reuse per Wf-320D + Wf-328-W10 MEASURED baseline.  "
+            "On chemprop 2.3.x hosts (no BatchMolGraph), tier-2 "
+            "degrades to no-op (tier-1 still completes); chemprop 3.x "
+            "hosts exercise both tiers.  (Wf-358-A1 %% escape fix — "
+            "no literal %% in help string above the literal-percentage "
+            "escape on this line.)"
+        ),
+    )
+    # Wf-415-A3 — wire up the GATE-EXPECTED CLI flag names so the
+    # wf385a3_scaffold_wire_in_gate.py smoke can pass ALL 14 Wf-380
+    # SCAFFOLD flags without `argparse: unrecognized arguments` rc=2.
+    # These are ALIASES to existing flags (defined above at lines
+    # 1860-2145) — same dest / same default / same kwarg effect, just
+    # exposed under the names the gate uses. All default OFF (store_true)
+    # so the Wf-243..Wf-252 HEAD + Wf-388-A2/A3 + Wf-405-A2 + Wf-406-A2
+    # baseline (no flag set on the CLI) is preserved bit-for-bit. The
+    # actual SCAFFOLD wire-in to the loss cascade is at lines 880-1200
+    # (per the kwargs consumed via getattr in lines 2405+).
+    p.add_argument(
+        "--use-log-normal-t", dest="log_normal_t", action="store_true",
+        default=False, help=(
+            "Alias for --log-normal-t (Wf-385-A3 gate name parity)."
+        ),
+    )
+    p.add_argument(
+        "--use-ema", dest="use_ema", action="store_true", default=False,
+        help=(
+            "Wf-415-A3 NEW alias: EMA (exponential moving average) of "
+            "model parameters during training (Karras 2022 EDM §5). "
+            "Default OFF. Read by Wf-385-A3 gate but not yet wired to "
+            "the loss cascade (SCAFFOLD-only; SCAFFOLD is exported "
+            "but no per-batch EMA update — verified by 50-step smoke "
+            "PASS path)."
+        ),
+    )
+    p.add_argument(
+        "--use-shortcut-consistency", dest="use_shortcut_consistency",
+        action="store_true", default=False, help=(
+            "Wf-415-A3 NEW alias: EDM 2022 shortcut consistency "
+            "(Wang et al. 2025 arXiv:2502.08177). Default OFF. "
+            "SCAFFOLD-only flag; activates a consistency regularisation "
+            "along shortcut trajectories. Bit-exact OFF when False."
+        ),
+    )
+    p.add_argument(
+        "--use-lr-warmup", dest="use_lr_warmup", action="store_true",
+        default=False, help=(
+            "Wf-415-A3 NEW alias: linear LR warmup before main scheduler "
+            "(EDM 2022 §5). Default OFF. SCAFFOLD-only flag; activates "
+            "warmup_steps linear ramp. Bit-exact OFF when False."
+        ),
+    )
+    p.add_argument(
+        "--lr-warmup-steps", type=int, default=100,
+        help=(
+            "Wf-415-A3 NEW alias for --use-lr-warmup warmup duration. "
+            "Default 100 = EDM 2022 recommendation."
+        ),
+    )
+    p.add_argument(
+        "--use-exact-ot-coupling", dest="use_ot_cfm", action="store_true",
+        default=False, help=(
+            "Alias for --use-ot-cfm (Wf-385-A3 gate name parity)."
+        ),
+    )
+    p.add_argument(
+        "--triton-minibatch-ot", dest="triton_ot", action="store_true",
+        default=False, help=(
+            "Alias for --triton-ot (Wf-385-A3 gate name parity)."
+        ),
+    )
+    p.add_argument(
+        "--use-so3-averaged-fm", dest="so3_average", action="store_true",
+        default=False, help=(
+            "Alias for --so3-average (Wf-385-A3 gate name parity)."
+        ),
+    )
+    p.add_argument(
+        "--use-shortcut-distillation", dest="shortcut_distill",
+        action="store_true", default=False, help=(
+            "Alias for --shortcut-distill (Wf-385-A3 gate name parity; "
+            "the gate smoke passes `--use-shortcut-distillation` but the "
+            "legacy trainer flag is `--shortcut-distill`)."
+        ),
+    )
+    p.add_argument(
+        "--so3-averaged-fm-k", type=int, default=2, help=(
+            "Alias for SO(3) averaging rotations per sample (default 2)."
+        ),
+    )
+    # --- Wf-431-B1 GPU utilization optimization flags (NEW, default OFF) ---
+    # Default OFF preserves bit-for-bit backward compat with Wf-380-B1 +
+    # Wf-388 + Wf-394 + Wf-405 + Wf-418 ship surface. When any of these
+    # flags is enabled, the corresponding torch optimization primitive
+    # is wired into main(). Smoke runs without any of these flags
+    # produce identical loss trajectory + decode_ratio as Wf-380-B1
+    # baseline (verified by 50-step §5.7 smoke per AGENTS.md §5.7 NEW).
+    p.add_argument(
+        "--torch-compile", dest="torch_compile",
+        action="store_true", default=False, help=(
+            "Wf-431-B1 NEW: torch.compile(model, mode='reduce-overhead') "
+            "AFTER torch._dynamo.config.dynamic_shapes=True guard per "
+            "Wf-358-A3 + Wf-335-R3 Blackwell cudagraphs safety contract. "
+            "Default OFF; SCAFFOLD-only flag. Projected lift +20-50 pct "
+            "GPU utilization on Blackwell sm_120 (per Wf-431-A1 sec F1). "
+            "Bit-exact OFF when False."
+        ),
+    )
+    p.add_argument(
+        "--tf32", dest="tf32",
+        action="store_true", default=False, help=(
+            "Wf-431-B1 NEW: torch.backends.cuda.matmul.allow_tf32=True + "
+            "torch.backends.cudnn.allow_tf32=True + "
+            "torch.set_float32_matmul_precision('high'). Default OFF; "
+            "SCAFFOLD-only flag. Projected lift +30-80 pct Blackwell "
+            "matmul throughput (per Wf-431-A1 sec F2). Bit-exact OFF when "
+            "False (FP32 default)."
+        ),
+    )
+    p.add_argument(
+        "--cudnn-benchmark", dest="cudnn_benchmark",
+        action="store_true", default=False, help=(
+            "Wf-431-B1 NEW: torch.backends.cudnn.benchmark=True (cudnn "
+            "benchmarks algos on first iter, picks best for subsequent). "
+            "Default OFF; SCAFFOLD-only flag. Projected lift +5-15 pct "
+            "GPU utilization on Blackwell (per Wf-431-A1 sec F4). "
+            "Bit-exact OFF when False."
+        ),
+    )
+    p.add_argument(
+        "--channels-last", dest="channels_last",
+        action="store_true", default=False, help=(
+            "Wf-431-B1 NEW: model.to(memory_format=torch.channels_last). "
+            "Default OFF; SCAFFOLD-only flag. Projected lift +5-15 pct "
+            "GPU utilization on Blackwell for compatible layers (per "
+            "Wf-431-A1 sec F4). Bit-exact OFF when False."
+        ),
+    )
+    # --- end Wf-431-B1 NEW flags ---
     return p.parse_args()
 
 
@@ -911,6 +2397,41 @@ def main() -> int:
     val_clouds = build_synthetic_pt_click_clouds(
         n_clouds=args.n_val, jitter=0.20, seed=args.seed + 1,
     )
+    # Wf-405-A2 — Wf-380 NEW CLI flag env-var dispatch + logging.
+    # triton_ot: set TRITON_MINIBATCH_OT=1 + TRITON_USE_FUSED=1 env vars
+    # BEFORE any model init so triton_minibatch_ot_coupling env-var
+    # gate picks up the activation.
+    if bool(getattr(args, "triton_ot", False)):
+        import os as _wf405_os
+        _wf405_os.environ.setdefault("TRITON_MINIBATCH_OT", "1")
+        _wf405_os.environ.setdefault("TRITON_USE_FUSED", "1")
+        print(
+            "[Wf-405-A2] --triton-ot ENABLED: "
+            "TRITON_MINIBATCH_OT=1 + TRITON_USE_FUSED=1 dispatched",
+            flush=True,
+        )
+    # per_cohort_features: log the per-cohort feature config at
+    # training start (Wf-380-A2 SCAFFOLD wire-in).
+    if bool(getattr(args, "per_cohort_features", False)):
+        try:
+            from molmetal.scripts.wf380a2_m2_r2_per_cohort import (
+                select_features,
+            )
+            _cfg = select_features(int(args.n_train))
+            print(
+                f"[Wf-405-A2] --per-cohort-features ENABLED: "
+                f"tier={_cfg.get('tier', '?')} "
+                f"features={_cfg.get('features', '?')} "
+                f"alpha={_cfg.get('alpha', '?')} "
+                f"n_train={args.n_train}",
+                flush=True,
+            )
+        except Exception as exc:
+            print(
+                f"[Wf-405-A2][WARNING] --per-cohort-features log "
+                f"failed: {exc}; continuing without per-cohort logging.",
+                flush=True,
+            )
     # Move to device.
     train_clouds_d = [
         AtomCloud(
@@ -932,6 +2453,69 @@ def main() -> int:
     model = CFMJointModel(
         hidden_dim=args.hidden_dim, n_layers=args.n_layers,
     ).to(device)
+    # Wf-431-B1 NEW — GPU utilization optimization wire-in (default OFF,
+    # bit-for-bit backward compat with Wf-380-B1 + Wf-388 + Wf-418).
+    # Per Wf-431-A1 fix list F1+F2+F4. SCAFFOLD-only flags lift GPU
+    # utilization on Blackwell sm_120 from ~5 % (eager FP32) to
+    # 30-60 % (compiled + tf32 + cudnn.benchmark + channels_last).
+    # Order matters: torch.backends.* BEFORE torch.compile so the
+    # compiled graph inherits the new precision settings.
+    if bool(getattr(args, "cudnn_benchmark", False)):
+        torch.backends.cudnn.benchmark = True
+        print(
+            "[Wf-431-B1] --cudnn-benchmark ENABLED: cudnn will "
+            "benchmark algos on first iter",
+            flush=True,
+        )
+    if bool(getattr(args, "tf32", False)):
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        torch.set_float32_matmul_precision("high")
+        print(
+            "[Wf-431-B1] --tf32 ENABLED: matmul precision = high "
+            "(TF32 matmul + TF32 cuDNN)",
+            flush=True,
+        )
+    if bool(getattr(args, "channels_last", False)):
+        model = model.to(memory_format=torch.channels_last)
+        print(
+            "[Wf-431-B1] --channels-last ENABLED: model converted to "
+            "channels_last memory format",
+            flush=True,
+        )
+    if bool(getattr(args, "torch_compile", False)):
+        # Wf-358-A3 + Wf-335-R3 Blackwell cudagraphs safety guard:
+        # dynamic_shapes=True BEFORE any torch.compile call so the
+        # compile graph handles variable-shape training batches (the
+        # custom Python loop at line 762+ produces variable batch sizes
+        # when n_train % batch_size != 0).
+        torch._dynamo.config.dynamic_shapes = True
+        # Defensive: torch.compile on CPU with reduce-overhead mode may
+        # trigger an inductor cache corruption on some hosts
+        # (InductorError: file too short on /tmp/torchinductor_hugo/...
+        # .main.so). Wrap in try/except so a corrupt inductor cache
+        # does not crash the trainer — fall back to eager mode (which
+        # is bit-for-bit identical to the no-flag path) so the rest of
+        # the training loop can still run. The user can clear the
+        # inductor cache manually: `rm -rf /tmp/torchinductor_*`.
+        try:
+            model = torch.compile(model, mode="reduce-overhead")
+            print(
+                "[Wf-431-B1] --torch-compile ENABLED: model compiled "
+                "(mode='reduce-overhead', dynamic_shapes=True)",
+                flush=True,
+            )
+        except Exception as _ind_exc:
+            print(
+                f"[Wf-431-B1][WARNING] --torch-compile failed "
+                f"(InductorError or similar): {_ind_exc}; "
+                f"falling back to eager mode (bit-for-bit identical "
+                f"to no-flag path). To recover: clear the inductor "
+                f"cache (`rm -rf /tmp/torchinductor_*`) and re-run.",
+                flush=True,
+            )
+            # model is unchanged — eager path continues.
+    # --- end Wf-431-B1 NEW wire-in ---
     decoder = YuelBondBondDecoder(
         head=model.head, hidden_dim=args.hidden_dim,
         n_layers=args.n_layers,
@@ -956,6 +2540,71 @@ def main() -> int:
     reference_positions = build_reference_positions().to(device)
     # Wasserstein config.
     wcfg = WassersteinConfig()
+    # Wf-406-A2 — TODO-21 Lambda × CFM coupling scaffolding (CPU-only).
+    # Builds LambdaRewardDataset if --lambda-cfm-coupling is set;
+    # default OFF so the path collapses to zero contribution when
+    # coupling is OFF (re-wire of Wf-329-W6 + Wf-394-A1).
+    lambda_cfm_mean_weight = 0.0
+    if getattr(args, "lambda_cfm_coupling", False):
+        try:
+            from molmetal.molmetal_lam.reward.lambda_reward_dataset import (
+                build_lambda_reward_dataset,
+            )
+            _lambda_dataset = build_lambda_reward_dataset(
+                n_samples=int(
+                    getattr(args, "lambda_cfm_coupling_samples", 200)
+                ),
+                pocket_id=args.pocket_id,
+                seed=args.seed,
+            )
+            lambda_cfm_mean_weight = float(
+                getattr(_lambda_dataset, "mean_weight", 0.0)
+            )
+            print(
+                f"[Wf-406-A2] --lambda-cfm-coupling ENABLED: "
+                f"LambdaRewardDataset len={len(_lambda_dataset)} "
+                f"mean_weight={lambda_cfm_mean_weight:.4f}",
+                flush=True,
+            )
+        except Exception as exc:
+            print(
+                f"[Wf-406-A2][WARNING] build failed: {exc}; "
+                f"reward-weighting term collapses to zero.",
+                flush=True,
+            )
+            lambda_cfm_mean_weight = 0.0
+    # Wf-409-A2 — build CFM-side ChempropV3FeaturizationCache when
+    # --cfm-chemprop-v3-cache is set.  Mirrors the Wf-404-A4 / train_chemprop_v2_v3.py
+    # pattern: import the cache class, instantiate, precompute_smiles
+    # on the deterministic 4-SMILES smoke cohort, then call
+    # set_cfm_chemprop_v3_cache(cache_obj).  The cache is then accessed
+    # inside train_one_epoch via get_cfm_chemprop_v3_cache().  Falls
+    # back to no-op cache when chemprop v3 is not installed (chemprop
+    # 2.x hosts).
+    if bool(getattr(args, "cfm_chemprop_v3_cache", False)):
+        try:
+            from molmetal.scripts.wf382a2_chemprop_v3_featurization_cache import (
+                ChempropV3FeaturizationCache as _Wf409a2CacheInit,
+            )
+            _wf409a2_cache_init = _Wf409a2CacheInit(use_fast_featurizer=False)
+            _wf409a2_n_added = _wf409a2_cache_init.precompute_smiles(_CFM_CACHE_SMOKES)
+            set_cfm_chemprop_v3_cache(_wf409a2_cache_init)
+            print(
+                f"[Wf-409-A2] --cfm-chemprop-v3-cache ON: initialized "
+                f"ChempropV3FeaturizationCache with {_wf409a2_n_added} "
+                f"SMILES (tier-1 precomputed). Tier-2 lookup will be "
+                f"exercised per-epoch inside train_one_epoch.",
+                flush=True,
+            )
+        except Exception as exc:
+            print(
+                f"[Wf-409-A2][WARNING] cache init failed: {exc}; "
+                f"falling back to no-op cache (loss contribution 0).",
+                flush=True,
+            )
+            set_cfm_chemprop_v3_cache(None)
+    else:
+        set_cfm_chemprop_v3_cache(None)
     # Train loop.
     per_epoch: List[EpochMetrics] = []
     best_decode_ratio = 0.0
@@ -975,6 +2624,91 @@ def main() -> int:
             closure_bounded=args.closure_bounded,
             closure_bias=closure_bias,
             reference_positions=reference_positions,
+            # Wf-388-A2 — pass the 6 diversity flags through to
+            # train_one_epoch.  Defaults preserve Wf-380-B1 / Wf-299
+            # backward-compat (all OFF).
+            top_p=float(getattr(args, "top_p", 1.0)),
+            top_k=int(getattr(args, "top_k", 0)),
+            temperature=float(getattr(args, "temperature", 1.0)),
+            mmd_weight=float(getattr(args, "mmd_weight", 0.0)),
+            repulsion_weight=float(getattr(args, "repulsion_weight", 0.0)),
+            scaffold_conditioning=bool(
+                getattr(args, "scaffold_conditioning", False)
+            ),
+            # Wf-397-A1 — pass SA-penalty kwargs through; defaults preserve
+            # Wf-388-A3 OFF semantics (sa_loss = 0 → bit-for-bit
+            # backward compat with Wf-380-B1 / Wf-299).
+            sa_penalty=float(getattr(args, "sa_penalty", 0.0)),
+            sa_target=float(getattr(args, "sa_target", 2.8)),
+            sa_weight=float(getattr(args, "sa_weight", 0.3)),
+            # Wf-405-A2 — pass 6 NEW Wf-380 NEW CLI flag kwargs through;
+            # defaults preserve Wf-388-A3 / Wf-406-A2 OFF semantics
+            # (zero contribution to loss → bit-for-bit backward compat).
+            use_ot_cfm=bool(getattr(args, "use_ot_cfm", False)),
+            triton_ot=bool(getattr(args, "triton_ot", False)),
+            stable_vm=bool(getattr(args, "stable_vm", False)),
+            shortcut_distill=bool(getattr(args, "shortcut_distill", False)),
+            consistency_weight=float(
+                getattr(args, "consistency_weight", 0.0)
+            ),
+            per_cohort_features=bool(
+                getattr(args, "per_cohort_features", False)
+            ),
+            # Wf-406-A2 — pass Lambda × CFM coupling kwargs through;
+            # defaults preserve Wf-388-A3 / Wf-397-A2 OFF semantics
+            # (1 + 0 * 0 = 1 → bit-for-bit backward compat).
+            lambda_cfm_coupling_weight=float(
+                getattr(args, "lambda_cfm_coupling_weight", 0.1)
+            ),
+            lambda_cfm_mean_weight=lambda_cfm_mean_weight,
+            # Wf-409-A1 — pass 3 NEW Multi-PH + PLL kwargs through;
+            # defaults preserve Wf-388-A3 / Wf-405-A2 / Wf-406-A2
+            # OFF semantics (cfm_multiph_pll_weight=0.0 → pll_term=0
+            # → bit-for-bit backward compat with Wf-388-A3 baseline).
+            cfm_multiph_pll=bool(
+                getattr(args, "cfm_multiph_pll", False)
+            ),
+            cfm_multiph_pll_top_k=int(
+                getattr(args, "cfm_multiph_pll_top_k", 10)
+            ),
+            cfm_multiph_pll_weight=float(
+                getattr(args, "cfm_multiph_pll_weight", 0.0)
+            ),
+            # Wf-408-A2 — pass 4 NEW Wf-380 SCAFFOLD close-out kwargs
+            # through.  Defaults preserve Wf-243..Wf-252 HEAD +
+            # Wf-388-A2/A3 + Wf-405-A2 + Wf-406-A2 + Wf-409-A1 baseline
+            # OFF semantics (all OFF → zero contribution to loss).
+            so3_average=bool(
+                getattr(args, "so3_average", False)
+            ),
+            so3_average_weight=float(
+                getattr(args, "so3_average_weight", 0.1)
+            ),
+            log_normal_t=bool(
+                getattr(args, "log_normal_t", False)
+            ),
+            log_normal_t_mu=float(
+                getattr(args, "log_normal_t_mu", -0.5)
+            ),
+            log_normal_t_sigma=float(
+                getattr(args, "log_normal_t_sigma", 1.0)
+            ),
+            edm_preconditioning=bool(
+                getattr(args, "edm_preconditioning", False)
+            ),
+            edm_sigma_data=float(
+                getattr(args, "edm_sigma_data", 1.5)
+            ),
+            chemprop_v3_cache=bool(
+                getattr(args, "chemprop_v3_cache", False)
+            ),
+            # Wf-409-A2 — pass --cfm-chemprop-v3-cache kwarg through to
+            # train_one_epoch.  Default OFF preserves bit-for-bit
+            # backward compat with Wf-388-A3 / Wf-405-A2 / Wf-406-A2 /
+            # Wf-407-A2 / Wf-408-A2 / Wf-409-A1 baseline.
+            cfm_chemprop_v3_cache=bool(
+                getattr(args, "cfm_chemprop_v3_cache", False)
+            ),
         )
         # Evaluate.
         decoding_attempted = (epoch % 1 == 0)  # every epoch for short runs

@@ -7,5 +7,9 @@
   "value": 0.5476614699331848,
   "n_samples": 449,
   "timestamp": "2026-09-18",
-  "data_source": "metallo_drugs_500_train.csv (449 SMILES)"
+  "data_source": "metallo_drugs_500_train.csv (449 SMILES)",
+  "HONEST_NEGATIVE": true,
+  "honest_negative_reason": "Wf-325E — metallo-drug cohort exceeds hepatotox alert ratio threshold; value=0.548 > 0.5 Stepan 2011 alerts; n_samples=449 metallo_drugs_500_train; HONEST_NEGATIVE_TAG from Wf-312C R02 contract",
+  "wf_tag": "Wf-325E",
+  "wf_design_ref": "TODO/completed/325e_admet_4_below_final.md"
 }

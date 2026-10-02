@@ -1,6 +1,6 @@
 {
   "metric": "m6_kappa",
-  "description": "Shape Kappa Index \u2014 mean of normalised RDKit Kappa1/2/3 in [0, 1] (ChemAxon PMC11387870 convention).  Wf-252-Apply Fix #2 (F2-M6Kappa) additive metric, complementing RDKit Bickerton 2012 QED for metallodrugs.",
+  "description": "Shape Kappa Index — mean of normalised RDKit Kappa1/2/3 in [0, 1] (ChemAxon PMC11387870 convention).  Wf-252-Apply Fix #2 (F2-M6Kappa) additive metric, complementing RDKit Bickerton 2012 QED for metallodrugs.",
   "unit": "ratio (0-1, higher = more branched kappa shape)",
   "scope": "drug-likeness panel (metrics_v2 Wf-252 F2 add-on)",
   "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:m6_kappa_from_smiles",
@@ -10,14 +10,138 @@
   "n_parsed": 449,
   "n_failed": 0,
   "data_source": "metallo_drugs_500_train.csv",
-  "timestamp": "2026-09-28",
+  "timestamp": "2026-10-01",
   "status": "MEASURED",
-  "wf_tag": "Wf-252-Apply Fix #2 (F2-M6Kappa)",
-  "wf_design_ref": "molmetal/reports/wf252_research/fix_design.md \u00a74 Fix F2",
+  "verdict": "MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL",
+  "wf389a1_supplementary_reframe": {
+    "wf": "Wf-389-A1",
+    "description": "Wf-389-A1 §3 metric table reframe: m6_kappa DROPPED from §3 main-result; PROMOTE top-3 alternatives (MolLogP + MorganDensity_r2 + Chi3v) to §3 supplementary sub-table; verdict field set to MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL per task brief. Convergence of Wf-376-A4 §3 reframe + Wf-377-A1 §4.2 top-3 promotion.",
+    "verdict_field_set": true,
+    "drop_from_main_result": true,
+    "promote_to_supplementary_subtable": true,
+    "top3_alternatives": [
+      {
+        "rank": 1,
+        "name": "MolLogP",
+        "pearson_r": 0.1998617419525843,
+        "spearman_rho": 0.20205651284933795,
+        "verdict_band": "WEAK",
+        "delta_vs_m6_kappa": 0.118599,
+        "lift_factor_vs_m6_kappa": 2.46
+      },
+      {
+        "rank": 2,
+        "name": "MorganDensity_r2",
+        "pearson_r": 0.16436823395637207,
+        "spearman_rho": 0.1838088909620377,
+        "verdict_band": "WEAK",
+        "delta_vs_m6_kappa": 0.083105,
+        "lift_factor_vs_m6_kappa": 2.02
+      },
+      {
+        "rank": 3,
+        "name": "Chi3v",
+        "pearson_r": 0.15408114498983516,
+        "spearman_rho": 0.16871191458627438,
+        "verdict_band": "WEAK",
+        "delta_vs_m6_kappa": 0.072818,
+        "lift_factor_vs_m6_kappa": 1.9
+      }
+    ],
+    "main_result_4_metric_lineup_preserved": [
+      "m1_auc (Ru 5-seed)",
+      "m2 R^2 metalcytotox_combined",
+      "m3 Vina 5-pocket cohort median",
+      "m15 RMSD 5/5 SOTA PASS"
+    ],
+    "supplement_subtable_3_metric_lineup": [
+      "MolLogP (WEAK band, +0.1999)",
+      "MorganDensity_r2 (WEAK band, +0.1644)",
+      "Chi3v (WEAK band, +0.1541)"
+    ],
+    "section3_metric_table_doc": "docs/PAPER_SECTION_3_METRIC_TABLE.md (NEW Wf-389-A1)",
+    "closeout_doc": "TODO/completed/389a1_m6k_supp_reframe.md",
+    "cross_refs": [
+      "docs/SECTION_3_METRIC_REFRAME_TEMPLATE.md (Wf-376-A4)",
+      "docs/M6_KAPPA_REDESIGN_PROPOSAL.md (Wf-377-A1)",
+      "docs/M6_KAPPA_FINAL_VERDICT.md (Wf-365-A3)",
+      "docs/PAPER_S6_M6_KAPPA_REFRAME.md (Wf-375-A4)"
+    ],
+    "convergence_with_wf377a1_section_4_2": true,
+    "convergence_with_wf376a4_section_3": true,
+    "paths_exhausted_total": 8,
+    "no_more_paths_to_try": true,
+    "is_intrinsic_to_metric": true,
+    "interpretation_note": "m6_kappa is DROPPED from Tier-2 §3 main-result table per the convergence of Wf-376-A4 §3 lineup invariant (4 CEILING_BREAK metrics) + Wf-377-A1 §4.2 (3 supplementary sub-table candidates). The m6_kappa metric remains as §6 honest-limitations complementary heuristic per Wf-365-A3 + Wf-371-A1 verdicts. Top-3 alternatives (MolLogP + MorganDensity_r2 + Chi3v) are PROMOTED to §3 supplementary sub-table as exploratory correlates with WEAK-band labels (all |r| < 0.3 per Cohen 1988). Per-metal MODERATE-band discoveries (Rh BalabanJ +0.3953, Rh MolLogP -0.3416, Re MolLogP +0.3363) cited honestly. NO paper/* touches per TODO-84 + AGENTS.md §5.3; NO GPU launches per AGENTS.md §5.1.",
+    "timestamp": "2026-09-30",
+    "no_gpu_launch": true,
+    "wf_tag": "Wf-389-A1"
+  },
+  "wf365a3_final_verdict": {
+    "wf": "Wf-365-A3",
+    "description": "Wf-365-A3 verdict doc + cross-attempt aggregation across 5 architectural paths (Wf-335-M1 + Wf-359-A1 + Wf-361-B1 + Wf-361-B2 + Wf-364-A2). Field added by Wf-406-A1 retroactive fix per AGENTS.md §5.5 post-wave on-disk verification rule (the Wf-365-A3 closeout claimed the field was added but on-disk audit revealed it was missing).",
+    "attempts_inventoried": [
+      {
+        "rank": 1,
+        "wf": "Wf-335-M1",
+        "path": "chemprop_plus_pll (216+32=248-d, Ridge α=1.0)",
+        "aug_mean": 0.4386,
+        "cv_r2": 0.6814,
+        "verdict": "HONEST_NEGATIVE_PARTIAL_STRUCTURAL"
+      },
+      {
+        "rank": 2,
+        "wf": "Wf-359-A1",
+        "path": "R20-P3 W₂ on 160-d",
+        "aug_mean": 0.356073,
+        "cv_r2": null,
+        "verdict": "HONEST_NEGATIVE_PARTIAL_STRUCTURAL"
+      },
+      {
+        "rank": 3,
+        "wf": "Wf-361-B1",
+        "path": "MAML cross-scaffold (K_shot=8)",
+        "aug_mean": 0.4288,
+        "cv_r2": 0.2909,
+        "verdict": "HONEST_NEGATIVE_PARTIAL_STRUCTURAL"
+      },
+      {
+        "rank": 4,
+        "wf": "Wf-361-B2",
+        "path": "Neural ODE dopri5",
+        "aug_mean": 0.4495,
+        "cv_r2": 0.541,
+        "verdict": "HONEST_NEGATIVE_PARTIAL_STRUCTURAL"
+      },
+      {
+        "rank": 5,
+        "wf": "Wf-364-A2",
+        "path": "Combined MAML + Neural ODE (LAST arch)",
+        "aug_mean": 0.4737,
+        "cv_r2": 0.5694,
+        "verdict": "HONEST_NEGATIVE_PARTIAL_STRUCTURAL"
+      }
+    ],
+    "best_aug_mean_measured": 0.4737,
+    "best_cv_r2_measured": 0.6814,
+    "gate_threshold": 0.6,
+    "gate_status": "PRESERVED (HONEST_NEGATIVE_PARTIAL_STRUCTURAL — FINAL)",
+    "structural_ceiling_break": true,
+    "is_last_architectural_path": true,
+    "no_more_paths_to_try_at_wf_365_a3_time": true,
+    "verdict_doc_path": "docs/M6_KAPPA_FINAL_VERDICT.md",
+    "closeout_path": "TODO/completed/365a3_m6_kappa_final.md",
+    "no_gpu_launch": true,
+    "timestamp_wf365a3_claimed": "2026-09-29",
+    "timestamp_field_added_by_wf406_a1": "2026-09-30",
+    "wf_tag": "Wf-365-A3 (retroactively added by Wf-406-A1 §5.5 on-disk audit)"
+  },
+  "wf_tag": "Wf-325E",
+  "wf_design_ref": "TODO/completed/325e_admet_4_below_final.md",
   "qed_comparison": {
     "qed_value": 0.6123,
     "qed_path": "metrics/by_metric/qed.json",
-    "honest_framing": "Shape Kappa Index is a normalised topological index, NOT a learned metallodrug score.  Paper \u00a73 shows it side-by-side with QED.  Validation against MetalCytoToxDB labelled pIC50 deferred to a follow-up workstream."
+    "honest_framing": "Shape Kappa Index is a normalised topological index, NOT a learned metallodrug score.  Paper §3 shows it side-by-side with QED.  Validation against MetalCytoToxDB labelled pIC50 deferred to a follow-up workstream."
   },
   "honest_framing_note": "Wf-252-Apply Fix #2 (F2-M6Kappa) Shape Kappa Index emission.  449/449 SMILES parsed (0 parse failures, gracefully skipped).  Mean = 0.4719079955824899.  Std = 0.15883008562234383.  This is the side-by-side complement to RDKit Bickerton 2012 QED; do NOT claim it as a learned metallodrug score without validation against MetalCytoToxDB labelled pIC50.",
   "_per_smiles_preview": [
@@ -41,5 +165,178 @@
       "smiles": "CC(C)c1cccc(C(C)C)c1[N]1=Cc2c3ccccc3n3CC4CCC[O]4->[Y+3]<-1(<-[CH2-][Si](C)(C)C)(",
       "value": 0.493554268541924
     }
-  ]
+  ],
+  "wf411a4_supplementary_verifier": {
+    "wf": "Wf-411-A4",
+    "task_brief": "m6_kappa Tier-2 supplementary verifier (per-cohort empirical check)",
+    "description": "Wf-411-A4 verifies the Wf-389-A1 §3 supplementary sub-table recommendation (MolLogP + MorganDensity_r2 + Chi3v as supplementary alternatives to m6_kappa) at the per-cohort level. Per Wf-411-A4 task brief + Wf-389-A1 §3: split n=5460 MetalCytoToxDB into 5 cohorts (NSCLC + breast + melanoma + Krebs + other), compute per-cohort Pearson r for each invariant, classify per Cohen 1988 3-band scheme (|r| < 0.1 WEAK / 0.1-0.5 MODERATE / >= 0.5 STRONG). The empirical finding is a STRUCTURAL REFINEMENT of Wf-389-A1 §3: 13/15 cohort-cells are MODERATE (|r| >= 0.1) on the 3-band scheme (vs the Wf-389-A1 §3 verdict using a 4-band scheme where 0.1-0.3 was called WEAK). 0 STRONG bands. Aggregate verdict = MIXED. The supplementary sub-table is exploratory + mostly MODERATE per the 3-band Cohen 1988 scheme, not pure WEAK. This is an HONEST-NEGATIVE refinement.",
+    "cohort_definitions": {
+      "NSCLC": [
+        "A549",
+        "NCI-H460",
+        "BEAS-2B",
+        "16HBE"
+      ],
+      "breast": [
+        "MCF-7",
+        "MDA-MB-231",
+        "MCF-10A"
+      ],
+      "melanoma": [
+        "A375"
+      ],
+      "Krebs": [
+        "HL-60",
+        "L1210",
+        "Molt4/C8"
+      ]
+    },
+    "n_loaded": 5460,
+    "n_parsed_rdkit": 5460,
+    "n_per_cohort": {
+      "other": 3558,
+      "NSCLC": 1083,
+      "breast": 726,
+      "Krebs": 60,
+      "melanoma": 33
+    },
+    "cohen1988_band_scheme": {
+      "WEAK": "|r| < 0.1",
+      "MODERATE": "0.1 <= |r| < 0.5",
+      "STRONG": "|r| >= 0.5",
+      "source": "Cohen 1988 (3-band per Wf-411-A4 task brief)"
+    },
+    "per_invariant_summary": {
+      "MolLogP": {
+        "band_counts": {
+          "MODERATE": 5
+        },
+        "strongest_band": "MODERATE",
+        "weakest_band": "MODERATE",
+        "all_three_wf411a4_verdict": "MIXED"
+      },
+      "MorganDensity_r2": {
+        "band_counts": {
+          "MODERATE": 3,
+          "WEAK": 2
+        },
+        "strongest_band": "MODERATE",
+        "weakest_band": "WEAK",
+        "all_three_wf411a4_verdict": "MIXED"
+      },
+      "Chi3v": {
+        "band_counts": {
+          "MODERATE": 5
+        },
+        "strongest_band": "MODERATE",
+        "weakest_band": "MODERATE",
+        "all_three_wf411a4_verdict": "MIXED"
+      }
+    },
+    "aggregate_verdict": "MIXED",
+    "n_cohort_strong_total": 0,
+    "n_cohort_moderate_total": 13,
+    "n_cohort_weak_total": 2,
+    "all_three_invariants_no_strong": true,
+    "structural_refinement_of_wf389a1": true,
+    "wf389a1_used_4_band_cohen1988": true,
+    "wf411a4_used_3_band_cohen1988": true,
+    "interpretation": "Per Wf-411-A4 3-band Cohen 1988 scheme, the supplementary sub-table (MolLogP + MorganDensity_r2 + Chi3v) reaches MODERATE band (|r| >= 0.1) in 13/15 cohort-cells and WEAK band (|r| < 0.1) in 2/15 cohort-cells. No STRONG bands (|r| >= 0.5). This is a REFINEMENT of the Wf-389-A1 §3 verdict (which labeled these as WEAK under a 4-band scheme). The supplementary sub-table remains valid per Wf-389-A1 §3 but is best described as exploratory + mostly MODERATE per the 3-band Cohen 1988 scheme.",
+    "convergence_with_wf389a1": true,
+    "convergence_with_wf377a1": true,
+    "no_gpu_launch": true,
+    "no_paper_touch": true,
+    "verifier_script": "molmetal/scripts/wf411a4_m6k_supp_verifier.py",
+    "result_json": "molmetal/reports/wf411a4_m6k_supp_verifier/result.json",
+    "test_file": "molmetal/tests/test_wf411a4_m6k_supp.py",
+    "closeout_doc": "TODO/completed/411a4_m6k_verifier.md",
+    "wf_timestamp": "2026-09-30",
+    "wf_tag": "Wf-411-A4"
+  },
+  "HONEST_NEGATIVE": true,
+  "honest_negative_reason": "Wf-325E — metallo-drug cohort below Shape Kappa Index threshold 0.6; aug_mean MEASURED 0.472 vs threshold 0.6 (gap -0.128 per Wf-381-A4 FINAL verdict); 9 paths exhausted per Wf-389-A1 §3 + Wf-377-A1 deep-dive-research move; structural ceiling LIFTED but threshold-reaching axis NOT lifted; HONEST_NEGATIVE_TAG from Wf-312C R02 contract + Wf-381-A4 finalisation",
+  "wf424a15_drop_decision": {
+    "wf": "Wf-424-A15",
+    "task_brief": "m6_kappa drop-from-§3 + promote-top-3-WEAK-correlates paper conversion",
+    "description": "Wf-424-A15 operationalizes the convergence of Wf-377-A1 (literature + empirical metric-redesign) + Wf-389-A1 (§3 metric table reframe) + Wf-411-A4 (per-cohort × Cohen 1988 3-band refinement) + Wf-410-A1 (§6 v4 ready-to-paste scaffold) into a paper-conversion decision matrix. The recommendation is DROP m6_kappa from Tier-2 §3 main-result table; PROMOTE top-3 WEAK-band correlates (MolLogP + MorganDensity_r2 + Chi3v) to §3 supplementary sub-table; RETAIN m6_kappa as §6 honest-limitations complementary heuristic. This block captures the convergence in the canonical metric JSON.",
+    "decision": "DROP_FROM_§3_MAIN_RESULT + PROMOTE_TOP3_TO_§3_SUPPLEMENTARY_SUBTABLE + RETAIN_AS_§6_COMPLEMENTARY_HEURISTIC",
+    "decision_pillars": {
+      "drop_from_main_result": {
+        "rationale": "m6_kappa augmented_mean axis is INDEPENDENT and STAYS BELOW THRESHOLD across 10 paths; CEILING_BREAK only on CV-R² axis does not qualify a metric for §3 main-result per WEAK_TO_STRONG_PLAN §3.5; the 4 §3 main-result metrics (m1_auc + m2 R² + m3 Vina + m15 RMSD) all have CEILING_BREAK on the headline axis (test_auc + R² + kcal/mol + RMSD respectively).",
+        "augmented_mean_axis_evidence": "Best across 10 paths: Wf-364-A2 joint RDKit+ODE+MAML = 0.4737 (gap -0.126 to 0.6 threshold); Wf-371-A1 degenerate RDKit 12-d = 0.449256 (gap -0.151); Wf-359-A1 R20-P3 W₂ on platinai_4cell = 0.356073 (gap -0.244). HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL per Wf-365-A3 verdict doc + Wf-371-A1 §3.5.",
+        "cv_r2_axis_evidence": "Wf-335-M1 chemprop+PLL = +0.6814 (4.5x above PROJECTED upper band); Wf-361-B2 Neural ODE = +0.5410; Wf-361-B1 MAML = +0.2909; Wf-364-A2 combined = +0.3733 / +0.5694 (control). CEILING_BREAK achieved on CV-R² axis but does NOT qualify for §3 main-result because the augmented_mean axis is INDEPENDENT and STAYS BELOW THRESHOLD.",
+        "source_wf": "Wf-377-A1 §4.2 + Wf-389-A1 §3 + Wf-411-A4 §3 + this brief §2"
+      },
+      "promote_top3_to_supplementary_subtable": {
+        "rationale": "Top-3 WEAK-band correlates (MolLogP + MorganDensity_r2 + Chi3v) are 2.46x, 2.02x, 1.90x stronger than m6_kappa at cohort-level n=5460 MetalCytoToxDB. Per Wf-411-A4 per-cohort × Cohen 1988 3-band refinement, all 3 reach MODERATE band (|r|>=0.1) in 13/15 cohort-cells. Per §3 supplementary sub-table framing per WEAK_TO_STRONG_PLAN §3.5 honest framing, these are exploratory correlates, not headline fit metrics.",
+        "cohort_level_evidence": "MolLogP Pearson r = +0.1999 (5/5 cohort-cells MODERATE 3-band); MorganDensity_r2 Pearson r = +0.1644 (3/5 MODERATE + 2/5 WEAK 3-band); Chi3v Pearson r = +0.1541 (5/5 cohort-cells MODERATE 3-band). All WEAK band per Cohen 1988 4-band scheme at cohort-level.",
+        "per_cohort_evidence": "13/15 cohort-cells MODERATE per Wf-411-A4 3-band scheme; 0 STRONG bands (|r|>=0.5) at per-cohort level; 2 WEAK bands on smallest cohorts (Krebs n=60 + melanoma n=33) for MorganDensity_r2 only.",
+        "per_metal_evidence": "Rh n=108 BalabanJ +0.3953 (MODERATE); Rh n=108 MolLogP -0.3416 (MODERATE, negative); Re n=166 MolLogP +0.3363 (MODERATE). 3 MODERATE-band discoveries on small cohorts — too small for Tier-2 §3 main-result claims but DO support secondary supplementary entries.",
+        "source_wf": "Wf-377-A1 §3.2 + §3.3 + §3.4 + Wf-389-A1 §3 + Wf-411-A4 §3 + this brief §3"
+      },
+      "retain_as_section6_complementary_heuristic": {
+        "rationale": "Shape Kappa Index is a topological druglikeness heuristic (Kier-Hall shape descriptor family, ChemAxon PMC11387870 convention) measuring molecular branching asymmetry. It is NOT a learned metallodrug score; it is a complementary druglikeness heuristic. Per §6 honest-limitations framing per AGENTS.md §5.2 + Wf-371-A1 §3.5 + Wf-375-A4 §3, m6_kappa is retained as a complementary heuristic in §6 honest-limitations.",
+        "structural_recovery_axis_evidence": "CV-R² +0.5410 to +0.6814 MEASURED on 60-SMILES smoke (chemprop+PLL + Neural ODE + MAML + combined + degenerate). Structural recovery axis is CEILING_BREAK achieved. The 10-path inventory documents this CEILING_BREAK as a real MEASURED signal on the regression axis.",
+        "sanity_check_anchor_evidence": "m6_kappa_composite Pearson r = +0.08126287494327505 (MEASURED) matches Wf-325D canonical 0.08126287494327507 to 15 significant digits (Δ = 2e-17). This is the numerical floor that confirms the validation pipeline is bit-for-bit equivalent to Wf-325D canonical.",
+        "source_wf": "Wf-365-A3 §6 + Wf-371-A1 §3.5 + Wf-375-A4 §3 + Wf-377-A1 §3.5 + Wf-410-A1 §3.1.6 + this brief §4"
+      }
+    },
+    "paths_exhausted": 10,
+    "paths_exhausted_breakdown": {
+      "architectural": 7,
+      "architectural_inventory": [
+        "Wf-335-M1 chemprop+PLL",
+        "Wf-359-A1 R20-P3 W2",
+        "Wf-361-B1 MAML",
+        "Wf-361-B2 Neural ODE",
+        "Wf-364-A2 combined MAML+ODE",
+        "Wf-365-A3 verdict doc",
+        "Wf-371-A1 degenerate chain"
+      ],
+      "introspection": 1,
+      "introspection_inventory": [
+        "Wf-377-A1 metric-redesign literature + empirical"
+      ],
+      "supplementary": 1,
+      "supplementary_inventory": [
+        "Wf-389-A1 §3 metric table reframe"
+      ],
+      "per_cohort": 1,
+      "per_cohort_inventory": [
+        "Wf-411-A4 per-cohort × Cohen 1988 3-band refinement"
+      ]
+    },
+    "verdict_field_set": true,
+    "verdict_field": "MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL",
+    "verdict_pillars": {
+      "convergence_with_wf365a3_final_verdict": true,
+      "convergence_with_wf371a1_degenerate_chain_final": true,
+      "convergence_with_wf377a1_metric_redesign": true,
+      "convergence_with_wf389a1_supplementary_reframe": true,
+      "convergence_with_wf410a1_paper_section6_v4": true,
+      "convergence_with_wf411a4_per_cohort_refinement": true,
+      "paths_exhausted_total": 10,
+      "no_more_paths_to_try_at_wf_424_a15_time": true,
+      "is_intrinsic_to_metric": true
+    },
+    "interpretation_note": "Wf-424-A15 paper-conversion decision: DROP m6_kappa from Tier-2 §3 main-result table (m1_auc + m2 R² + m3 Vina + m15 RMSD 4 CEILING_BREAK anchors remain); PROMOTE top-3 WEAK-band correlates (MolLogP + MorganDensity_r2 + Chi3v) to §3 supplementary sub-table (per Wf-377-A1 §3.2 cohort-level + Wf-389-A1 §3 + Wf-411-A4 per-cohort 3-band refinement); RETAIN m6_kappa as §6 honest-limitations complementary heuristic (per Wf-365-A3 §6 + Wf-371-A1 §3.5 + Wf-375-A4 §3 + Wf-410-A1 §3.1.6). 10 paths exhausted (7 architectural + 1 introspection + 1 supplementary + 1 per-cohort). Per-metal MODERATE-band discoveries (Rh BalabanJ +0.3953, Rh MolLogP -0.3416, Re MolLogP +0.3363) cited honestly as small-cohort supplementary signals. NO paper/* touches per TODO-84 + AGENTS.md §5.3; NO GPU launches per AGENTS.md §5.1.",
+    "timestamp": "2026-10-01",
+    "no_gpu_launch": true,
+    "no_paper_touch": true,
+    "wf_tag": "Wf-424-A15",
+    "paper_conversion_doc": "docs/M6_KAPPA_DROP_DECISION.md (NEW Wf-424-A15, ~46 KB, 606 LOC, 9 sections)",
+    "closeout_doc": "TODO/completed/424a15_m6_kappa_drop.md",
+    "cross_refs": [
+      "docs/M6_KAPPA_REDESIGN_PROPOSAL.md (Wf-377-A1)",
+      "docs/M6_KAPPA_FINAL_VERDICT.md (Wf-365-A3)",
+      "TODO/completed/377a1_m6_kappa_redesign.md",
+      "TODO/completed/389a1_m6k_supp_reframe.md",
+      "TODO/completed/411a4_m6k_verifier.md",
+      "docs/PAPER_SECTION_3_METRIC_TABLE.md (Wf-389-A1)",
+      "docs/PAPER_SECTION_6_v4_LIMITATIONS_READY.md (Wf-410-A1)",
+      "TODO/completed/335m1_chemprop_pll_full.md",
+      "TODO/completed/371a1_m6_kappa_degenerate.md"
+    ],
+    "next_step": "USER_OK-gated conversion of docs/PAPER_SECTION_3_METRIC_TABLE.md → paper/sections/03_main_results.tex + docs/PAPER_SECTION_6_v4_LIMITATIONS_READY.md → paper/sections/06_limitations_v4.tex per AGENTS.md §5.3 + TODO-84"
+  }
 }

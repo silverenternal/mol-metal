@@ -1,0 +1,26 @@
+===== PIPELINE: all =====
+  pass=90  fail=2  skip=2  total=94  wall_sec=150.70
+    FAIL  p2_tests_pass                                      [tests]
+           -> pytest FAIL (rc=1): 2 failed, 712 passed, 8 warnings in 10.26s
+    SKIP  p3_wf343c4_wave_budget_remaining_nonneg            [wf343c4]
+           -> remaining_hr=-183.04h is negative AND 8 DEFERRED wave(s) (['Wave-cfm:cfm_real_decode_lift_p1.3', 'Wave-cfm:cfm_per_innovation_ablation_p1.4', 'Wave-dmpnn:wf124_
+    FAIL  p3_wf343c2_per_wave_runtime_check                  [wf347a1]
+           -> wf343c2_per_wave_check.py FAIL (rc=1, wave='Wf-347A1 pre-retrain smoke', --skip-live --strict): (no output)
+    SKIP  data_2_1_6_bindingdb_external_honest_negative      [data]
+           -> BindingDB 1.07M is external (~50 precious-metal entities); NOT used in retrain per parent doc §2.1.6. Honest-negative: data fact, not blocker.
+
+===== PIPELINE: frontier =====
+  pass=25  fail=0  skip=0  total=25  wall_sec=12.40
+
+===== PIPELINE: chemprop_v2_v3 =====
+  pass=14  fail=0  skip=0  total=14  wall_sec=60.27
+
+===== PIPELINE: cfm =====
+  pass=6  fail=0  skip=0  total=6  wall_sec=0.00
+
+===== PIPELINE: tests =====
+  ERROR parsing JSON: Expecting value: line 1 column 29 (char 28)
+
+===== PIPELINE: chemprop_v2_v3_only =====
+  ERROR parsing JSON: Expecting value: line 1 column 29 (char 28)
+

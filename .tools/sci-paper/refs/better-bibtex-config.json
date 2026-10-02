@@ -1,0 +1,41 @@
+{
+  "$schema": "https://retorquere.github.io/zotero-better-bibtex/schemas/preferences.json",
+  "$comment": "Better BibTeX configuration template for Mol-Metal Zotero library. Zotero regenerates this file under ~/Zotero/profiles/<id>/preferences.json on launch; this file is a REFERENCE for which settings to enable — copy individual keys into Zotero's GUI (Edit → Settings → Better BibTeX). Per AGENTS.md §1 audit discipline (Wf-351-A3 license audit: Zotero = AGPL-3.0; Better BibTeX = MIT).",
+
+  "citeCommand": "cite",
+  "citeFormat": "bibtex",
+  "citekeyFormat": "auth+year",
+  "citekeyFold": true,
+  "citekeyCase": "lower",
+
+  "autoExport": "idle",
+  "autoExportIdleDelay": 5,
+  "autoExportOnSave": true,
+
+  "quickCopyFormat": "citekey",
+  "quickCopyMarkdown": false,
+
+  "parseJabrefAbbreviations": true,
+  "parseReferrerUrl": false,
+
+  "scrubDatabase": {
+    "enabled": true,
+    "autoRunDelay": 30,
+    "fieldsToKeep": ["title", "author", "date", "DOI", "ISBN", "ISSN", "url"]
+  },
+
+  "autoPin": true,
+  "removeBraces": false,
+  "parseParticles": true,
+
+  "extraExtensions": [
+    {
+      "name": "Mol-Metal SCI Paper",
+      "path": "$HOME/codes/mol-metal/.tools/sci-paper/refs/references.bib",
+      "format": "bibtex",
+      "onChange": true,
+      "collection": "Mol-Metal",
+      "$comment": "Better BibTeX 'On Change' auto-export target — every Zotero item add/edit/delete re-emits references.bib within 5 s. Zotero GUI: right-click collection → 'Export Collection…' → format 'Better BibTeX' → enable 'On Change' → set path to .tools/sci-paper/refs/references.bib."
+    }
+  ]
+}

@@ -39,6 +39,17 @@ if _ref is None:  # pragma: no cover
         "configure_reference(<path>) before importing _reference.path"
     )
 
+# Wf-415-A3 fix: when `_reference_root` points to the shim directory (where
+# `path/` + `solver/` + `utils/` shim subpackages live), the upstream flow_matching
+# clone lives at `_reference_root / flow_matching/` (a symlink). Detect this and
+# adjust `_UPSTREAM` accordingly so the auto-bootstrap loop finds the upstream
+# `interpolation.py` + `loss.py` + `sampler.py` modules.
+_UPSTREAM_CANDIDATE = _ref / "flow_matching"
+if _UPSTREAM_CANDIDATE.is_dir() and (
+    _UPSTREAM_CANDIDATE / "__init__.py"
+).is_file():
+    _ref = _UPSTREAM_CANDIDATE
+
 # Inject the upstream clone into sys.modules under the ``flow_matching``
 # name so the import shims below can ``from flow_matching import ...``.
 import importlib.util

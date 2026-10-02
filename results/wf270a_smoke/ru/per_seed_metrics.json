@@ -1,0 +1,44 @@
+{
+  "metal": "Ru",
+  "seeds": [
+    0
+  ],
+  "n_seeds_total": 1,
+  "n_seeds_trained_now": 1,
+  "per_seed": [
+    {
+      "seed": 0,
+      "ckpt_path": "results/wf270a_smoke/ckpts/dmpnn_mtw_ru_seed0.pt",
+      "n_train": 12471,
+      "n_val": 2166,
+      "n_test": 4350,
+      "elapsed_seconds": 134.90245127677917,
+      "val_auc": 0.6653363758133429,
+      "test_auc": 0.5853637103274444,
+      "test_pearson": 0.19388628992778537,
+      "test_rmse": 1.0560690162814315,
+      "test_mae": 0.827253200816012,
+      "wasserstein_history": [
+        1.2608871293958346
+      ],
+      "status": "OK"
+    }
+  ],
+  "aggregate": {
+    "n_seeds": 1,
+    "n_train": 12471,
+    "n_val": 2166,
+    "n_test": 4350,
+    "test_auc_mean": 0.5853637103274444,
+    "test_auc_std": 0.0,
+    "test_pearson_mean": 0.19388628992778537,
+    "test_pearson_std": 0.0,
+    "test_rmse_mean": 1.0560690162814315,
+    "test_rmse_std": 0.0,
+    "ckpt_paths": [
+      "results/wf270a_smoke/ckpts/dmpnn_mtw_ru_seed0.pt"
+    ],
+    "status": "OK"
+  },
+  "status": "OK"
+}

@@ -1,0 +1,19 @@
+{
+  "launcher": "launch_wf264_cfm_property_panel.sh",
+  "wave": "Wf-394-A2",
+  "mode": "DRY_RUN",
+  "smiles_csv": "/home/hugo/codes/mol-metal/molmetal/data/metalcytotox_rdkit_features.csv",
+  "n_rows_smiles_csv": 26802,
+  "out_json": "results/wf264_cfm_property_panel/aggregate.json",
+  "runner": "molmetal/scripts/wf394a2_property_panel_runner.py",
+  "diversity_aware_eval": 1,
+  "sa_aware": 1,
+  "diversity_sample_size": 1000,
+  "diversity_seed": 42,
+  "sa_target": 2.8,
+  "sa_weight": 0.3,
+  "wall_budget_hr": 0.5,
+  "kill_then_adapt_directive": "USER_OK gate HARD-REQUIRED per mol-metal-gpu-execution §0 + AGENTS.md §5.1 (panel is CPU-only but reproducibility audit gate still enforced)",
+  "MEASURED_today": "wrapper ready; USER_OK gate enforced; DRY_RUN.log + plan.json emitted",
+  "ts": "2026-09-30T12:21:34+08:00"
+}

@@ -113,6 +113,34 @@ DEFAULT_EXHAUSTIVENESS = 16
 # ---------------------------------------------------------------------------
 
 
+def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+    """Wf-416-A1 atomic-write-protocol wrapper around direct write_text.
+
+    Falls back to direct write_text if atomic_write_file is unavailable
+    (e.g. when the script is run standalone without the molmetal package
+    on PYTHONPATH).
+    """
+    if _WF416_HAS_ATOMIC and atomic_write_file is not None:
+        if safe_overwrite_check is not None:
+            _risk = safe_overwrite_check(path, content, min_lines=min_lines)
+            if _risk is not None:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "[Wf-416-A1] safe_overwrite_check diff_ratio=%.3f at %s",
+                    _risk, path,
+                )
+        atomic_write_file(path, content, encoding="utf-8")
+        if detect_truncation is not None:
+            _trunc = detect_truncation(content, expected_min_length=expected_min_length)
+            if _trunc is not None:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "[Wf-416-A1] detect_truncation reason=%r at %s",
+                    _trunc, path,
+                )
+    else:  # pragma: no cover — fallback when atomic primitive unavailable
+        Path(path).write_text(content, encoding="utf-8")
+
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -382,6 +410,20 @@ def smiles_to_pdbqt_3d(
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import sys
+
+try:
+    from molmetal.scripts.wf386a3_atomic_write import (
+        atomic_write_file,
+        safe_overwrite_check,
+        detect_truncation,
+    )
+    _WF416_HAS_ATOMIC = True
+except ImportError:  # pragma: no cover — fallback when running as standalone
+    _WF416_HAS_ATOMIC = False
+    atomic_write_file = None  # type: ignore[assignment]
+    safe_overwrite_check = None  # type: ignore[assignment]
+    detect_truncation = None  # type: ignore[assignment]
+
 mol = Chem.MolFromSmiles("{smiles}")
 if mol is None:
     sys.stderr.write("SMILES parse fail: {smiles}\\n")
@@ -481,7 +523,7 @@ def _run_pocket_from_existing_poses(
         for pose_idx, model_text in enumerate(models):
             pose_pdbqt = pocket_out_dir / f"pose_seed{seed}_p{pose_idx + 1}.pdbqt"
             if not pose_pdbqt.exists():
-                pose_pdbqt.write_text(model_text)
+                _wf416_atomic_write_text(pose_pdbqt, model_text)
             elems, coords = parse_pdbqt_heavy_atoms(pose_pdbqt)
             rmsd = heavy_atom_rmsd(elems, coords, ref_elements, ref_coords)
             if rmsd is None:
@@ -576,7 +618,7 @@ def _run_pocket_full(
             seed_rmsds: List[float] = []
             for pose_idx, model_text in enumerate(models):
                 pose_pdbqt = pocket_out_dir / f"pose_seed{seed}_p{pose_idx + 1}.pdbqt"
-                pose_pdbqt.write_text(model_text)
+                _wf416_atomic_write_text(pose_pdbqt, model_text)
                 elems, coords = parse_pdbqt_heavy_atoms(pose_pdbqt)
                 rmsd = heavy_atom_rmsd(elems, coords, ref_elements, ref_coords)
                 if rmsd is None:
@@ -830,7 +872,7 @@ def _write_metric_json(out_dir: Path, results: Dict[str, PocketResult],
     # friendly path so paper §3.5 / metrics/by_metric pickers see it.
     out_metric = PROJECT_ROOT / "metrics" / "by_metric" / "docked_pose_rmsd.json"
     out_metric.parent.mkdir(parents=True, exist_ok=True)
-    out_metric.write_text(json.dumps(payload, indent=2))
+    _wf416_atomic_write_text(out_metric, json.dumps(payload, indent=2))
     return out_metric
 
 
@@ -864,7 +906,7 @@ def _write_summary(out_dir: Path, results: Dict[str, PocketResult],
         "from_existing_poses": bool(from_existing),
         "generated_utc": _utc_now_iso(),
     }
-    (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
+    (_wf416_atomic_write_text(out_dir / "summary.json"), json.dumps(summary, indent=2))
 
     md_lines: List[str] = []
     md_lines.append("# BD-9 m15 RMSD Phase 2 — Vina redocking benchmark")
@@ -926,7 +968,7 @@ def _write_summary(out_dir: Path, results: Dict[str, PocketResult],
     md_lines.append("* `<pocket>/per_seed_metrics.json` — per-pocket per-seed RMSD records.")
     md_lines.append("* `<pocket>/per_pose_metrics.json` — per-pocket per-seed per-pose RMSD records.")
     md_lines.append("* `<pocket>/pose_seed<N>_p<M>.pdbqt` — individual docked poses.")
-    (out_dir / "synthesis.md").write_text("\n".join(md_lines) + "\n")
+    (_wf416_atomic_write_text(out_dir / "synthesis.md"), "\n".join(md_lines) + "\n")
     return summary
 
 
@@ -999,9 +1041,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         pocket_out.mkdir(parents=True, exist_ok=True)
         r.box_center = box_centers.get(pocket_id, [0.0, 0.0, 0.0])
         # Per-seed / per-pose JSON (also written by helper functions for full mode)
-        (pocket_out / "per_seed_metrics.json").write_text(
-            json.dumps(asdict(r), indent=2)
-        )
+        (_wf416_atomic_write_text(pocket_out / "per_seed_metrics.json"), json.dumps(asdict(r), indent=2))
         results[pocket_id] = r
         if r.status == "MEASURED":
             print(f"  median={r.median_best_rmsd_angstrom:.4f}A "

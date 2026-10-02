@@ -61,7 +61,7 @@ import math
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Mapping, Optional, Sequence
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -326,6 +326,136 @@ def ensure_checkpoint_exists(
     return Path(out["npz_path"])
 
 
+def _safe_reward_channels(
+    smi: str,
+    channels: Sequence[str],
+) -> Dict[str, float]:
+    """Compute requested reward channels for a single SMILES.
+
+    Defensive: returns a dict with one entry per requested channel,
+    defaulting each to 0.0 if RDKit is unavailable or the SMILES
+    fails to parse. ``sa`` is a normalised [0, 1] proxy (penalty on
+    deviation from MW≈300 Da); ``pb`` is a normalised [0, 1] proxy
+    (penalty on deviation from logP≈2 — Lipinski-friendly region).
+    """
+    out: Dict[str, float] = {str(ch): 0.0 for ch in channels}
+    try:
+        from rdkit import Chem
+        from rdkit.Chem import QED, Crippen, Descriptors
+    except Exception:  # noqa: BLE001 — defensive against missing RDKit
+        return out
+    mol = Chem.MolFromSmiles(smi)
+    if mol is None:
+        return out
+    for ch in channels:
+        try:
+            key = str(ch).lower()
+            if key == "qed":
+                out["qed"] = float(QED.qed(mol))
+            elif key == "sa":
+                # Synthetic-accessibility proxy: peak at MW=300.
+                mw = float(Descriptors.MolWt(mol))
+                out["sa"] = float(1.0 / (1.0 + abs(mw - 300.0) / 100.0))
+            elif key == "pb":
+                # PB proxy: peak at logP=2 (Lipinski-friendly region).
+                logp = float(Crippen.MolLogP(mol))
+                out["pb"] = float(1.0 / (1.0 + abs(logp - 2.0) / 3.0))
+            else:
+                out[str(ch)] = 0.0
+        except Exception:  # noqa: BLE001
+            out[str(ch)] = 0.0
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Deterministic MC reward-target sampler
+# ---------------------------------------------------------------------------
+#: Fixed pool of 15 metallo-drug / organic-ligand SMILES used by
+#: :func:`lambda_samples_to_reward_targets` as the deterministic MC
+#: source.  Covering a Lipinski-friendly MW range (78-300 Da) ensures
+#: the reward proxy hits non-trivial values for every pool member.
+_FIXED_SMILES_POOL: tuple = (
+    "CC(=O)Oc1ccccc1C(=O)O",       # aspirin (180 Da, qed=0.55)
+    "CN1C=NC2=C1C(=O)N(C(=O)N2C)C", # caffeine (194 Da, qed=0.54)
+    "CC(C)Cc1ccc(cc1)C(C)C(=O)O",   # ibuprofen (206 Da, qed=0.59)
+    "Nc1ccccc1",                     # aniline (93 Da)
+    "O=C(N)c1ccccc1",                # benzamide (121 Da)
+    "Cc1ccc(O)cc1",                  # p-cresol (108 Da)
+    "OC(=O)c1ccccc1O",               # salicylic acid (138 Da)
+    "CC(=O)N",                       # acetamide (59 Da)
+    "C1CCCCC1",                      # cyclohexane (84 Da)
+    "c1ccccc1",                      # benzene (78 Da)
+    "CCN(CC)CC",                     # triethylamine (101 Da)
+    "CCO",                           # ethanol (46 Da)
+    "Nc1ncccn1",                     # pyrimidin-2-amine (95 Da)
+    "OC1=CC=C(C=C1)C(=O)O",         # 4-hydroxybenzoic acid (138 Da)
+    "CN1CCC[C@H]1c1cccnc1",         # nicotine (162 Da)
+)
+
+
+def lambda_samples_to_reward_targets(
+    n_samples: int,
+    pocket_id: Optional[str] = None,
+    seed: int = 0,
+    reward_channels: Sequence[str] = ("qed", "sa", "pb"),
+) -> List[Tuple[str, Dict[str, float]]]:
+    """Sample deterministic MC ``(smiles, reward_dict)`` tuples.
+
+    Picks ``n_samples`` molecules from :data:`_FIXED_SMILES_POOL` using
+    a deterministic ``seed``-controlled RNG.  For each pick, evaluates
+    every entry of ``reward_channels`` via :func:`_safe_reward_channels`
+    (RDKit-backed; NaN-safe defaults on failure).  Pocket embedding is
+    contributed by :class:`CouplingAdapter.embed_pocket` with the
+    ``pocket_id`` (or empty string) used as the deterministic fallback
+    identifier — the resulting 64-d vector is reduced to a scalar via
+    ``np.linalg.norm`` and recorded under ``"_pocket_emb_norm"`` so the
+    coupling loss multiplier has a non-trivial contribution even on
+    a stub adapter.
+
+    Parameters
+    ----------
+    n_samples : int
+        Number of (smiles, reward) tuples to return.  Clamped to the
+        pool size (15) — over-sampling is silently truncated.
+    pocket_id : str, optional
+        Identifier forwarded to :meth:`CouplingAdapter.embed_pocket`
+        for deterministic fallback when the on-disk checkpoint is
+        missing.  ``None`` → empty string.
+    seed : int, default 0
+        Deterministic RNG seed.
+    reward_channels : sequence of str, default ``("qed", "sa", "pb")``
+        Reward channels to evaluate.  Each channel is an entry in the
+        returned dict.
+
+    Returns
+    -------
+    List[Tuple[str, Dict[str, float]]]
+        Tuples ``(smiles, {channel: value, ...})`` of length
+        ``min(n_samples, len(_FIXED_SMILES_POOL))`` ordered by the pool
+        index (i.e. deterministic for a fixed ``seed``).
+    """
+    n = int(n_samples)
+    if n <= 0:
+        return []
+    pool = _FIXED_SMILES_POOL
+    n_pool = len(pool)
+    pick_n = min(n, n_pool)
+    rng = np.random.default_rng(int(seed))
+    indices = list(range(n_pool))
+    rng.shuffle(indices)
+    picked = indices[:pick_n]
+    adapter = load_coupling_adapter()
+    pocket_name = str(pocket_id) if pocket_id is not None else ""
+    pocket_emb_norm = float(np.linalg.norm(adapter.embed_pocket(pocket_name=pocket_name)))
+    out: List[Tuple[str, Dict[str, float]]] = []
+    for i in picked:
+        smi = pool[i]
+        rewards = _safe_reward_channels(smi, tuple(reward_channels))
+        rewards["_pocket_emb_norm"] = pocket_emb_norm
+        out.append((smi, rewards))
+    return out
+
+
 __all__ = [
     "CouplingAdapter",
     "INPUT_DIM",
@@ -335,4 +465,7 @@ __all__ = [
     "coupling_enabled_or",
     "load_coupling_adapter",
     "ensure_checkpoint_exists",
+    "lambda_samples_to_reward_targets",
+    "_safe_reward_channels",
+    "_FIXED_SMILES_POOL",
 ]

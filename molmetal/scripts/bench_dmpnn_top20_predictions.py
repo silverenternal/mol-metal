@@ -76,6 +76,17 @@ if str(PROJECT_ROOT) not in sys.path:
 import numpy as np
 import torch
 
+# Atomic write protocol — closes the "half-merged file state" failure mode
+# (concurrent writers racing on the rename) and the "direct overwrite
+# without risk check" failure mode (closeout-drafting scripts silently
+# overwriting prior closeouts).  See `wf386a3_atomic_write.py` §0 +
+# AGENTS.md §5.6 adoption rule.
+from molmetal.scripts.wf386a3_atomic_write import (
+    atomic_write_file,
+    safe_overwrite_check,
+    detect_truncation,
+)
+
 from molmetal.baselines.dmpnn import (
     ATOM_FEATURE_DIM,
     BOND_FEATURE_DIM,
@@ -463,7 +474,12 @@ def build_synthesis_md(
         "* ``TODO/completed/82d_m16m19m8_retrain.md`` — Wf-32 P2 ship (m18 anchor)",
         "* ``molmetal/scripts/train_platinai_4cell.py`` — 4-cell D-MPNN model defs",
     ]
-    out_path.write_text("\n".join(lines) + "\n")
+    # Wf-410-A3 migration: use atomic_write_file + safe_overwrite_check so
+    # concurrent closeout-drafting runs (e.g. Wf-58 re-runs) don't race on
+    # the rename and don't silently overwrite prior reports.
+    _content = "\n".join(lines) + "\n"
+    safe_overwrite_check(out_path, _content)
+    atomic_write_file(out_path, _content, encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -632,7 +648,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         "compounds": per_compound_table,
         "per_compound_std": per_compound_std,
     }
-    per_compound_json.write_text(json.dumps(per_compound_payload, indent=2) + "\n")
+    # Wf-410-A3 migration: atomic write to per-compound JSON.
+    _per_compound_payload = json.dumps(per_compound_payload, indent=2) + "\n"
+    safe_overwrite_check(per_compound_json, _per_compound_payload)
+    atomic_write_file(per_compound_json, _per_compound_payload, encoding="utf-8")
 
     per_cell_payload = {
         "meta": {
@@ -643,7 +662,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         },
         "per_cell_aggregate": per_cell_agg,
     }
-    per_cell_json.write_text(json.dumps(per_cell_payload, indent=2) + "\n")
+    # Wf-410-A3 migration: atomic write to per-cell JSON.
+    _per_cell_payload = json.dumps(per_cell_payload, indent=2) + "\n"
+    safe_overwrite_check(per_cell_json, _per_cell_payload)
+    atomic_write_file(per_cell_json, _per_cell_payload, encoding="utf-8")
 
     auc_payload = {
         "meta": {
@@ -654,7 +676,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         },
         "per_seed": per_seed_meta,
     }
-    auc_per_seed_json.write_text(json.dumps(auc_payload, indent=2) + "\n")
+    # Wf-410-A3 migration: atomic write to AUC per-seed JSON.
+    _auc_payload = json.dumps(auc_payload, indent=2) + "\n"
+    safe_overwrite_check(auc_per_seed_json, _auc_payload)
+    atomic_write_file(auc_per_seed_json, _auc_payload, encoding="utf-8")
 
     # 5) Synthesis markdown
     build_synthesis_md(args, top20, per_seed_meta, per_seed_pic50,

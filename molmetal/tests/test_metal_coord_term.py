@@ -187,15 +187,17 @@ class TestMetalCoordinationTerm:
 
     def test_cisplatin_full_composite(self):
         """cisplatin has geometry=1.0 + HSAB=1.0 (no pocket context)
-        + distance=None → composite = 1.0 → +1.0 kcal/mol bonus."""
+        + distance=None → composite = 1.0 → -1.0 kcal/mol
+        (Vina convention: lower / more negative kcal/mol = better binding;
+        Wf-333-V1 + Wf-246-C sign-fix per `(1 - 2*c) * kcal_per_unit`)."""
         term = MetalCoordinationTerm()
         score = term.score("[Pt](N)(N)(Cl)Cl")
         assert score.geometry_score == 1.0
         assert score.hsab_score == 1.0
         assert score.distance_score is None
         assert score.total == pytest.approx(1.0, abs=1e-6)
-        # kcal_adjustment = (2 * 1.0 - 1.0) * 1.0 = +1.0
-        assert term.kcal_adjustment(score) == pytest.approx(1.0, abs=1e-6)
+        # kcal_adjustment = (1 - 2 * 1.0) * 1.0 = -1.0
+        assert term.kcal_adjustment(score) == pytest.approx(-1.0, abs=1e-6)
 
     def test_organic_returns_none_total(self):
         """Organic SMILES → composite is None → adjustment 0.0."""

@@ -1,0 +1,24 @@
+Wf-379-B1 final pre-flight fresh-run
+Date: 2026-09-29 17:02 UTC
+Wall: 139.61 s
+JSON: molmetal/reports/wf379b1_preflight.json (32,438 bytes)
+
+preflight_state: 89 PASS / 2 FAIL / 3 SKIP / 94 TOTAL
+pipeline: all
+expected_total: 94 (PRESERVED at Wf-353-B1 baseline)
+actual_total: 94 (gate_count_consistency_audit PASS)
+
+2 FAILs (preserved baseline per Wf-376-B1 §22.70):
+- p3_loi_send_ready (Tier-2 reclassification cascade from 2026-09-30 wetlab deprecation inline edits)
+- p3_wf343c4_anchor_freshness_24h (wf269c_report.json 24.3h STALE — natural drift across Wf-374/375/376/379 wave activity)
+
+3 SKIPs (preserved BY-DESIGN):
+- p3_wf343c4_yuelbond_decoder_env (env-aware SKIP per Wf-345-A2)
+- p3_wf343c4_wave_budget_remaining_nonneg (per Wf-262 §7.1 with -183.04h overrun)
+- data_2_1_6_bindingdb_external_honest_negative (external 1.07M dependency)
+
+gpu_count: 2
+  gpu0 315.57W / limit 600.0W (RTX PRO 6000 Blackwell - Wf-379-A1 Rh seed 3 RUNNING)
+  gpu1 95.29W / limit 575.0W (RTX 5090 - idle)
+
+MEASURED-vs-PROJECTED: MEASURED

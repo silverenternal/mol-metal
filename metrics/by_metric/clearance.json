@@ -1,0 +1,21 @@
+{
+  "cross_check_via_metrics_v2_mean_helper": 0.5087061247216036,
+  "data_source": "metallo_drugs_500_train.csv",
+  "description": "Hepatic intrinsic clearance CLint in mL/min/kg (Lobell/Obach 1996-1997); typical 5-30",
+  "honest_framing_note": "clearance computed via metrics_v2 pass-through on the 449 metallo-drug SMILES cohort. 449/449 parsed (0 parse failures, gracefully skipped). Mean = 0.5087061247216036, std = 0.12141039727096876, verdict = INFO. Descriptive physico-chemical proxy \u2014 NOT a learned metallodrug score. For paper \u00a73 cohort panel only.",
+  "metric": "clearance",
+  "n_failed": 0,
+  "n_parsed": 449,
+  "n_samples": 449,
+  "scope": "ADMET pass-through panel (Wf-303C T1 / Wf-312C R01 5-NEW extension)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:clearance",
+  "status": "MEASURED",
+  "std": 0.12141039727096876,
+  "target_band": "5-30 mL/min/kg (typical oral drug sweet spot)",
+  "timestamp": "2026-09-29",
+  "unit": "mL/min/kg (hepatic intrinsic clearance CLint)",
+  "value": 0.5087061247216036,
+  "verdict": "INFO",
+  "wf_design_ref": "molmetal/reports/wf312c_admet_extension/design.md \u00a7R01",
+  "wf_tag": "Wf-312C R01 ADMET 5-NEW extension"
+}

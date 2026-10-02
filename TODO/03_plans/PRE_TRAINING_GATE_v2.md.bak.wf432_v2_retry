@@ -1,0 +1,66 @@
+# PRE_TRAINING_GATE_v2 — 重新训练前置门槛 v2 设计
+
+**Date**: 2026-10-02 (Wf-432 A1 docs-only wave — PRE_TRAINING_GATE_v2 design)
+**Status**: Active — single source of truth for the pre-training gate that ensures rigorous alignment (NOT reproduction) with Krasnov 2026 + Rusanov 2025 + DrugOOD 2022 baselines.
+**Owner**: Mol-Metal (TODO docs agents; party-twenty-spirit §3.5 honest framing mandate).
+**Cross-references**:
+- `TODO/03_baselines/COMPARISON_BASELINES.md` — selected baselines + protocol alignment detail
+- `TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md` — quick reference table (Tier-1 metric × baseline × alignment level)
+- `TODO/02_metrics/METRICS_TARGETS.md` §11 — Tier 1 LEAD + Tier 2 internal metrics status
+- `TODO/02_metrics/MECHANISM_METRIC_MAPPING.md` — 21 mechanisms × 20 metrics contribution matrix
+- `TODO/decisions.md` D-Wf-431 — alignment 不是 reproduction (the principle that motivated this gate)
+- `AGENTS.md` §1 + §5.1 + §5.2 + §5.3 + §5.4 + §5.5 + §5.6 + §5.7 — standing directives
+- `molmetal/scripts/pre_flight_check.py` line 3142 `EXPECTED_GATE_COUNTS` — the 117-gate contract this gate extends
+- `molmetal/scripts/wf386a3_atomic_write.py` — the atomic_write_file primitive that enforces §5.6
+
+---
+
+## §0 TL;DR (per AGENTS.md §5.2 honest framing)
+
+### What this document is
+
+This is the **PRE_TRAINING_GATE_v2** design — a new layer of pre-training gates that augments
+the existing **117 pre-flight gates** (`molmetal/scripts/pre_flight_check.py` lines 3142 +
+gate count consistency auto-recompute per Wf-345-B3). The new gates ensure that:
+
+1. **Post-training results are rigorously comparable** (per user directive 2026-10-02 verbatim
+   *"我想要我们的模型在数据集上训练之后就能和Krasnov 2026 (MetalCytoToxDB) + Rusanov 2025 (PlatinAI) + DrugOOD 2022 严谨可比*") to the 3 Tier-1 baselines selected in `TODO/03_baselines/COMPARISON_BASELINES.md`.
+2. **5 MOCK metrics are converted to REAL measurements** before any retrain launch —
+   CPU-only feasible parts verified now; GPU-required parts verified post-launch (USER_OK-gated).
+3. **3 honest-negative structural gates** (m2 R² / m6_kappa / m1 Re-fold) have pre-closure
+   paths designed and ready.
+
+### What this document is NOT
+
+- **NOT** a reproduction protocol — per D-Wf-431 alignment 不是 reproduction; we use same
+  dataset + same protocol + same metric; we do NOT replicate paper's k-fold seed or seed
+  initialization. Protocol differences (5-fold CV vs scaffold-split) are documented in §6
+  honest limitations.
+- **NOT** a paper-writing contract — per `TODO-84 + AGENTS.md §5.3` no paper/* touches
+  without USER_OK; this doc lives in `TODO/03_plans/` (project doc) + `docs/` (operator
+  doc), NOT in `paper/`.
+- **NOT** a wet-lab plan — per `AGENTS.md §5.4 + §10` Tier-2 reorientation + NO wet-lab
+  planning per user directive 2026-09-29 + 2026-09-30; the 4 LOIs + 3 SOPs + IC50 pipeline
+  are DEPRECATED.
+- **NOT** a substitute for the existing 117 pre-flight gates — those gates remain INTACT;
+  new gates are ADDITIVE.
+
+### Core principle (verbatim from D-Wf-431)
+
+> **我们不需要 reproduce 别人的数字 — 我们需要 same dataset + same protocol + same metric 来 make results comparable.**
+
+### Gate layers (new layer is HIGHER than current 117 pre-flight gates)
+
+| Layer | Count | When | Purpose |
+|---|---|---|---|
+| **Layer 0**: `molmetal/scripts/pre_flight_check.py` 117 gates | 117 | Pre-retrain | Hardware / data / config sanity |
+| **Layer 1 (NEW)**: PRE_TRAINING_GATE_v2 Tier-1 must-pass | 8 (NEW) | Pre-retrain | Protocol + metric + dataset alignment gates |
+| **Layer 2 (NEW)**: PRE_TRAINING_GATE_v2 Tier-2 recommended | 7 (NEW) | Pre-retrain | Recommended best-practice gates |
+| **Layer 3 (NEW)**: MOCK→REAL verification gates | 5 (NEW) | Pre-retrain (CPU-only) + Post-retrain (GPU) | MOCK metric → REAL measurement |
+| **Layer 4 (NEW)**: Honest-negative pre-closure gates | 3 (NEW) | Pre-retrain | m2 R² / m6_kappa / m1 Re-fold pre-closure paths |
+| **Layer 5 (NEW)**: Per-baseline protocol validation hooks | 9 (NEW) | Post-retrain | Auto-computed per-seed + per-split statistics |
+
+**Total new gates**: 8 Tier-1 + 7 Tier-2 + 5 MOCK→REAL + 3 honest-negative + 9 per-baseline = **32 NEW gates** (additive on existing 117).
+
+**Expected total after this wave**: `EXPECTED_GATE_COUNTS["all"] = 117 + 32 = 149` (auto-recompute per Wf-345-B3 keeps the hardcoded count consistent).
+

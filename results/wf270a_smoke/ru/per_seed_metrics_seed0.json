@@ -1,0 +1,43 @@
+{
+  "metal": "Ru",
+  "seed": 0,
+  "epochs": 1,
+  "alpha": 0.5,
+  "wasserstein_weight": 0.05,
+  "use_l2_guard": true,
+  "ckpt_path": "results/wf270a_smoke/ckpts/dmpnn_mtw_ru_seed0.pt",
+  "hidden": 64,
+  "depth": 2,
+  "n_train": 12471,
+  "n_val": 2166,
+  "n_test": 4350,
+  "elapsed_seconds": 134.90245127677917,
+  "val_metrics": {
+    "roc_auc": 0.6653363758133429,
+    "n": 2166,
+    "n_pos": 605,
+    "n_neg": 1561
+  },
+  "test_metrics": {
+    "roc_auc": 0.5853637103274444,
+    "n": 4350,
+    "n_pos": 1159,
+    "n_neg": 3191
+  },
+  "val_pic50_metrics": {
+    "mae": 0.9240553500139372,
+    "rmse": 1.233608356858747,
+    "pearson": 0.028408676368832875,
+    "n": 2166
+  },
+  "test_pic50_metrics": {
+    "mae": 0.827253200816012,
+    "rmse": 1.0560690162814315,
+    "pearson": 0.19388628992778537,
+    "n": 4350
+  },
+  "wasserstein_history": [
+    1.2608871293958346
+  ],
+  "status": "OK"
+}

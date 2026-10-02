@@ -916,7 +916,45 @@ def _pcgrad_apply_to_params(
 # ``molmetal/references/flow_matching``).  We import lazily inside
 # ``setup()`` so the adapter is import-safe without the optional clone.
 def _import_fm_lib(reference_path: str | Path):
+    """Anchor ``reference_path`` against molmetal / repo root before
+    passing to :func:`configure_reference`.
+
+    Wf-415-A3 fix (Wf-344-A3 follow-up): relative paths like
+    ``"molmetal/references/flow_matching"`` or
+    ``"references/flow_matching"`` resolve relative to ``os.getcwd()``.
+    When the caller (subprocess, notebook, CI runner) is in a foreign
+    CWD, ``Path(relative_path).resolve()`` produces a path that does
+    NOT exist.  We always anchor relative paths against the repo root
+    (where ``molmetal/`` lives) and the molmetal package directory
+    (``<repo>/molmetal/``) before falling back to the default behaviour.
+    """
     from ._reference_loader import configure_reference
+    import os
+    from pathlib import Path
+
+    if isinstance(reference_path, str) and not os.path.isabs(reference_path):
+        cand = Path(reference_path)
+        # Path traversal: `<this file>` = .../molmetal/adapters/flow_matching_lipman/__init__.py
+        # so 4 .parent hops gives the repo root (where ``molmetal/`` lives).
+        repo_root = Path(__file__).resolve().parent.parent.parent.parent
+        molmetal_dir = repo_root / "molmetal"
+        # Try (1) molmetal-package-relative — strip the leading
+        # ``molmetal/`` and anchor against the package dir.
+        if cand.parts and cand.parts[0] == "molmetal":
+            cand_pkg = molmetal_dir / Path(*cand.parts[1:])
+            if cand_pkg.exists():
+                reference_path = str(cand_pkg)
+        # Try (2) anchor against the molmetal package directory
+        # (where the references/flow_matching clone actually lives).
+        cand_mpkg = molmetal_dir / cand
+        if cand_mpkg.exists():
+            reference_path = str(cand_mpkg)
+        # Try (3) repo-relative — anchor against repo_root directly.
+        elif (repo_root / cand).exists():
+            reference_path = str(repo_root / cand)
+        # If neither anchor works, fall through with the original
+        # relative path (configure_reference will raise a clean
+        # FileNotFoundError explaining the missing clone).
     configure_reference(reference_path)
     from ._reference.path import AffineProbPath
     from ._reference.path.scheduler import CondOTScheduler

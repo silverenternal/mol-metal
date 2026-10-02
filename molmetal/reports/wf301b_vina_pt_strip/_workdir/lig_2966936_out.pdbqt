@@ -1,0 +1,75 @@
+MODEL 1
+REMARK VINA RESULT:    -3.813      0.000      0.000
+REMARK INTER + INTRA:          -4.373
+REMARK INTER:                  -4.370
+REMARK INTRA:                  -0.002
+REMARK UNBOUND:                -0.002
+REMARK SMILES CCCCO
+REMARK SMILES IDX 3 1 2 2 1 3 4 4 5 5
+REMARK H PARENT 5 6
+ROOT
+ATOM      1  C   UNL     1      29.712  58.020  46.401  1.00  0.00    +0.028 C 
+ENDROOT
+BRANCH   1   2
+ATOM      2  C   UNL     1      31.128  58.395  46.829  1.00  0.00    -0.001 C 
+ATOM      3  C   UNL     1      31.608  59.653  46.122  1.00  0.00    +0.004 C 
+ENDBRANCH   1   2
+BRANCH   1   4
+ATOM      4  C   UNL     1      29.209  56.788  47.142  1.00  0.00    +0.156 C 
+BRANCH   4   5
+ATOM      5  O   UNL     1      27.801  56.870  47.314  1.00  0.00    -0.396 OA
+ATOM      6  H   UNL     1      27.391  56.710  46.446  1.00  0.00    +0.210 HD
+ENDBRANCH   4   5
+ENDBRANCH   1   4
+TORSDOF 3
+ENDMDL
+MODEL 2
+REMARK VINA RESULT:    -3.680      3.394      4.171
+REMARK INTER + INTRA:          -4.221
+REMARK INTER:                  -4.215
+REMARK INTRA:                  -0.005
+REMARK UNBOUND:                -0.002
+REMARK SMILES CCCCO
+REMARK SMILES IDX 3 1 2 2 1 3 4 4 5 5
+REMARK H PARENT 5 6
+ROOT
+ATOM      1  C   UNL     1      31.946  59.608  45.932  1.00  0.00    +0.028 C 
+ENDROOT
+BRANCH   1   2
+ATOM      2  C   UNL     1      30.610  58.935  46.233  1.00  0.00    -0.001 C 
+ATOM      3  C   UNL     1      30.776  57.779  47.207  1.00  0.00    +0.004 C 
+ENDBRANCH   1   2
+BRANCH   1   4
+ATOM      4  C   UNL     1      32.827  58.737  45.046  1.00  0.00    +0.156 C 
+BRANCH   4   5
+ATOM      5  O   UNL     1      34.104  59.341  44.894  1.00  0.00    -0.396 OA
+ATOM      6  H   UNL     1      34.528  58.937  44.118  1.00  0.00    +0.210 HD
+ENDBRANCH   4   5
+ENDBRANCH   1   4
+TORSDOF 3
+ENDMDL
+MODEL 3
+REMARK VINA RESULT:    -3.395      3.595      3.999
+REMARK INTER + INTRA:          -3.894
+REMARK INTER:                  -3.877
+REMARK INTRA:                  -0.017
+REMARK UNBOUND:                -0.002
+REMARK SMILES CCCCO
+REMARK SMILES IDX 3 1 2 2 1 3 4 4 5 5
+REMARK H PARENT 5 6
+ROOT
+ATOM      1  C   UNL     1      30.841  58.366  45.053  1.00  0.00    +0.028 C 
+ENDROOT
+BRANCH   1   2
+ATOM      2  C   UNL     1      31.604  57.775  43.871  1.00  0.00    -0.001 C 
+ATOM      3  C   UNL     1      31.104  58.337  42.549  1.00  0.00    +0.004 C 
+ENDBRANCH   1   2
+BRANCH   1   4
+ATOM      4  C   UNL     1      31.667  59.411  45.789  1.00  0.00    +0.156 C 
+BRANCH   4   5
+ATOM      5  O   UNL     1      32.972  59.477  45.230  1.00  0.00    -0.396 OA
+ATOM      6  H   UNL     1      33.044  58.766  44.571  1.00  0.00    +0.210 HD
+ENDBRANCH   4   5
+ENDBRANCH   1   4
+TORSDOF 3
+ENDMDL

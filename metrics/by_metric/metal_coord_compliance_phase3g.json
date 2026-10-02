@@ -1,0 +1,30 @@
+{
+  "metric": "metal_coord_compliance_phase3g",
+  "description": "Phase-3G metal_coord_compliance completion summary \u2014 the on-disk metal_coord_compliance.json reports singleton 1.0 on a 5x1 cisplatin + all-5 pilot (DESIGN+1-PILOT, n_distinct=1). Per the file's own honest framing, this is a TRIVIAL PASS (seed itself is Pt_II square-planar). Real non-degenerate compliance verification requires F2(a) MetalLigandExchange SMARTS rule (TODO-29) + n_simulations>=1000 + multiple metal seeds \u2014 currently BLOCKED by GPU outage + SMARTS rule TODO.",
+  "scope": "Phase-3G metal_coord_probe + Phase-4 dispatch (Wf-311D PART 5)",
+  "source_file": "metrics/by_metric/metal_coord_compliance.json",
+  "current_pilot_status": "DESIGN+1-PILOT singleton collapse (n_distinct=1)",
+  "metal_ligand_exchange_matrix": {
+    "test_file_exists": true,
+    "test_path": "molmetal/tests/test_metal_ligand_exchange_matrix.py",
+    "test_runs_locally": false,
+    "shipped": true,
+    "note": "metal_ligand_exchange_matrix test file exists; Phase-3G F2(a) MetalLigandExchange SMARTS rule TODO-29 is a separate dependency. Until TODO-29 ships, the 10x3 rotation (3 metal seeds x 10 pockets x 3 random seeds) cannot be re-run end-to-end."
+  },
+  "phase3g_completion_verdict": "DESIGN+1-PILOT singleton collapse \u2014 current metal_coord_compliance = 1.0 is HONEST but TRIVIAL (n_distinct=1, all 30 cells collapse to single candidate [NH2][Pt]([NH2])([Cl])[Cl] when --metal-seed cisplatin + --click-rules all-5). Per party-twenty-spirit \u00a73.5, this is an honest-negative: the 1.0 value is MEASURED on a SINGLETON, not a measurable non-degenerate compliance signal. Phase-3G completion therefore requires (a) TODO-29 F2(a) MetalLigandExchange SMARTS rule SHIPPED, (b) n_simulations >= 1000, (c) multiple metal seeds (Re/Rh/Os/Au beyond Pt). Until (a)-(c) all clear, the Phase-3G completion stays honest-negative.",
+  "blockers": [
+    "TODO-29 F2(a) MetalLigandExchange SMARTS rule (NOT SHIPPED)",
+    "GPU outage (per wf_gpu_diag_fix) \u2014 full 10x3 rotation deferred",
+    "Singleton collapse \u2014 current pilot has n_distinct=1"
+  ],
+  "shipped_artifacts": [
+    "molmetal/molmetal_lam/sbdd_env/metal_coord_probe.py (NEW Phase 3G)",
+    "molmetal/tests/test_metal_coord_probe.py (NEW)",
+    "molmetal/scripts/r4_lambda_only_run.py (Phase 4 wire-in: metric_metal_coord_compliance_mean)",
+    "molmetal/tests/test_metal_ligand_exchange_matrix.py (NEW \u2014 F2(a) test scaffold)"
+  ],
+  "next_step": "Once TODO-29 F2(a) MetalLigandExchange SMARTS rule ships + GPU unblocked: re-run the 10x3 rotation (3 metal seeds \u00d7 10 pockets \u00d7 3 random seeds) and re-emit metal_coord_compliance.json with non-trivial n_distinct > 1. Until then, current 1.0 is honest-negative singleton collapse.",
+  "honest_framing_note": "HONEST-NEGATIVE \u2014 singleton collapse (n_distinct=1). The current metal_coord_compliance = 1.0 is a real measurement but on a SINGLETON (cisplatin itself is Pt_II square-planar, so the metric trivially passes). Per party-twenty-spirit \u00a73.5, cite the metric as '1.0 on 5x1 cisplatin + all-5 pilot' and NOT as a generalised d-block geometry compliance number. Phase-3G completion requires the 10x3 rotation, which is BLOCKED on TODO-29 F2(a) MetalLigandExchange SMARTS rule + GPU unblock.",
+  "timestamp": "2026-09-29",
+  "status": "DESIGN+1-PILOT (singleton collapse, honest-negative)"
+}

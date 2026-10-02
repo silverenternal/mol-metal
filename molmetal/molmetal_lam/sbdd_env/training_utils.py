@@ -137,15 +137,19 @@ def apply_default_cuda_visible_devices(
 
     Precedence
     ----------
-    1. ``override`` (CLI ``--cuda-visible-devices`` value) — wins.
-    2. ``os.environ['CUDA_VISIBLE_DEVICES']`` if already set.
+    1. ``override`` (CLI ``--cuda-visible-devices`` value) — wins. An
+       empty-string ``""`` is treated as an explicit "force empty"
+       override (used by wf385a3 SCAFFOLD wire-in gate to force CPU).
+    2. ``os.environ['CUDA_VISIBLE_DEVICES']`` if already set (including
+       empty-string "").
     3. :data:`DEFAULT_CUDA_VISIBLE_DEVICES` (``"1"``).
 
     Parameters
     ----------
     override :
-        Explicit value from CLI.  ``""`` or ``None`` means "no
-        override, fall through to env var / default".
+        Explicit value from CLI.  ``None`` means "no override, fall
+        through to env var / default"; ``""`` means "force empty
+        CUDA_VISIBLE_DEVICES" (CPU-only mode for wf385a3 SCAFFOLD gate).
     logger :
         Logger for the "defaulting to GPU 1" message.  Defaults to
         the module-level :data:`_LOGGER`.
@@ -158,8 +162,10 @@ def apply_default_cuda_visible_devices(
     """
     log = logger or _LOGGER
     chosen: Optional[str] = None
-    if override is not None and str(override).strip():
-        chosen = str(override).strip()
+    if override is not None:
+        # Wf-415-A3 fix: explicit "" override forces CPU even when env
+        # var is unset (default fallback would otherwise kick in).
+        chosen = str(override).strip() if override is not None else None
     elif os.environ.get("CUDA_VISIBLE_DEVICES", "").strip():
         chosen = os.environ["CUDA_VISIBLE_DEVICES"].strip()
     else:

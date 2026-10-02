@@ -1,0 +1,16 @@
+{
+  "metric": "gi50_proxy_summary",
+  "description": "gi50_proxy aggregation verification \u2014 the existing on-disk gi50_proxy.json carries a single cohort-level MEASURED value (8.0, clipped) over n=5000 MetalCytoToxDB-derived samples. The value is model-derived (Hou 2007 descriptor heuristic), NOT a wet-lab GI50 measurement; per party-twenty-spirit \u00a73.5 it must be cited as 'model proxy' and NOT as 'GI50' in paper \u00a74.",
+  "scope": "metrics_v2 gi50_proxy aggregation verification (Wf-311D PART 3)",
+  "source_file": "metrics/by_metric/gi50_proxy.json",
+  "source_module": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:gi50_proxy",
+  "value": 8.0,
+  "n_samples": 5000,
+  "unit": "-log10(mol/L)",
+  "data_source": "data/MetalCytoToxDB.csv (cap 5000)",
+  "timestamp": "2026-09-18",
+  "status": "MEASURED",
+  "aggregation_already_present": true,
+  "aggregation_verdict": "ALREADY AGGREGATED \u2014 gi50_proxy.json carries a single cohort-level value (8.0, clipped). No further aggregation required. The value is a model proxy (Hou 2007 heuristic on -log10[GI50_molair]); wet-lab GI50 NOT shipped. Per party-twenty-spirit \u00a73.5, cite as 'model proxy' (not 'GI50') in paper \u00a74.",
+  "honest_framing_note": "Model proxy \u2014 value=8.0 (clipped at the upper end of the -log10(mol/L) range), n=5000 samples derived from MetalCytoToxDB.csv. This is NOT a wet-lab GI50 measurement; the proxy uses Hou 2007 descriptors. Per party-twenty-spirit \u00a73.5, do not cite as 'GI50 = 8.0' \u2014 cite as 'gi50_proxy (Hou 2007 model) = 8.0 on n=5000'."
+}

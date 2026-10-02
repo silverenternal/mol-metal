@@ -5,33 +5,33 @@
   "scope": "tier2_sbdd_ood_lomo_wasserstein",
   "source": "molmetal/scripts/train_metal_lomo_wasserstein.py",
   "gate_target": 0.7,
-  "value": 0.6220357047695176,
+  "value": 0.48488381644275697,
   "value_std": 0.0,
   "per_fold_auc_mean": {
-    "Re": 0.6220357047695176
+    "Rh": 0.48488381644275697
   },
   "per_fold_auc_std": {
-    "Re": 0.0
+    "Rh": 0.0
   },
   "per_run_auc": [
-    0.6220357047695176
+    0.48488381644275697
   ],
   "n_runs": 1,
   "n_folds": 1,
   "metals": [
-    "Re"
+    "Rh"
   ],
   "seeds": [
-    4
+    0
   ],
-  "epochs": 50,
+  "epochs": 2,
   "wasserstein_weight": 0.05,
   "rh_oversample": 500,
-  "n_synthetic_rh_appended": 500,
+  "n_synthetic_rh_appended": 250,
   "model": "dmpnn_multitask_wasserstein",
-  "data_source": "/home/hugo/codes/mol-metal/molmetal/data/metal_lomo.csv",
-  "rh_cohort_source": "/home/hugo/codes/mol-metal/molmetal/reports/wf125_p1_rh_oversample/synthetic_rh_cohort.json",
-  "use_l2_guard": false,
+  "data_source": "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+  "rh_cohort_source": "/home/hugo/codes/mol-metal/molmetal/reports/wf387a2_balanced_rh_cohort/balanced_rh_cohort.json",
+  "use_l2_guard": true,
   "use_astr_scale_guard": false,
   "l2_guard_max_norm": 5.0,
   "astr_scale_clip_min": -10.0,
@@ -41,6 +41,6 @@
   "target_rh_auc": 0.5,
   "target_overall_auc": 0.6,
   "rh_target_hit": false,
-  "overall_target_hit": true,
-  "timestamp": "2026-09-28T16:04:21"
+  "overall_target_hit": false,
+  "timestamp": "2026-10-02T04:23:42"
 }

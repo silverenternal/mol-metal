@@ -2,7 +2,8 @@
 
 **Document ID:** LOI-ORNL-2026-09
 **Version:** 1.0 (draft, ready for review)
-**Status:** **DRAFT — not sent at this revision** (Hugo Lee coordinates the cold-email per `TODO/INDEX.md` §12.3 P3 mitigation)
+**Status:** **TEMPLATE_NOT_NEEDED_FOR_TIER2** — see AGENTS.md §5.4 + §10 + 2026-09-30 user reinforcement "搞清楚我们不用做湿实验，这一点我已经明确了好多遍了". Tier-2 journal acceptance does not require wet-lab data. Retained as **historical artifact only**; any agent action attempting to send this LOI must REFUSE per AGENTS.md §10.3.
+**(Historical note: DRAFT — not sent at this revision)** (Hugo Lee coordinates the cold-email per `TODO/INDEX.md` §12.3 P3 mitigation; no action will be taken — wet-lab DEPRECATED per AGENTS.md §5.4 + §10)
 **Target PI:** Oak Ridge National Laboratory (ORNL) protein-metal binding group
 **Authoring date:** 2026-09-27
 **Owner:** Hugo Lee (Mol-Metal project lead) — `hugo.lee@mol-metal.org`

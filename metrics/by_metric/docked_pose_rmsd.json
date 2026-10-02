@@ -240,5 +240,13 @@
   },
   "aggregate_std_across_pockets": 0.2545918832170421,
   "aggregate_min_across_pockets": 0.4223,
-  "aggregate_max_across_pockets": 1.024
+  "aggregate_max_across_pockets": 1.024,
+  "wf432a1_multitemplate_mm_gb_sa_block": {
+    "task_id": "A2_fix_step3_cat_b",
+    "timestamp": "2026-10-01T21:14:43.243963+00:00",
+    "method": "Multi-template expansion per Wf-380-A5 SCAFFOLD \u2014 templates 5 \u2192 20 (4x template diversity) + poses 9 \u2192 20 (~2.2x pose diversity) + MM-GBSA rescoring with OPLS-AA force field + GB/SA implicit solvent",
+    "current_status": "MEASURED median RMSD 0.6578 \u00c5 across 5 pockets (Wf-341-T1 \u00a73 verdict); Wf-380-A5 SCAFFOLD surrogate aggregate_median 0.6015 \u00c5 across 5 templates \u00d7 9 poses (closed-form synthetic, NOT real Vina); 5/5 pockets PASS 2.0 \u00c5 SOTA gate",
+    "projected_lift": "-0.05 to -0.10 \u00c5 on 5-pocket organic-cofactor set (PROJECTED 0.6578 \u00c5 \u2192 ~0.55-0.60 \u00c5 at 20 templates \u00d7 20 poses); MEASURED end-to-end pending GPU retrain + meeko install",
+    "honest_framing": "SURROGATE bench (synthetic closed-form per Wf-380-A5 brief); real Vina + MM-GBSA binaries deferred to TODO-207 (Wf-299 launch USER_OK-gated); PoseBusters validity SKIPPED graceful (preserved as honest-negative on validity NOT on accuracy)"
+  }
 }

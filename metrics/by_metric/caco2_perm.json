@@ -1,0 +1,21 @@
+{
+  "cross_check_via_metrics_v2_mean_helper": -3.0347563140311804,
+  "data_source": "metallo_drugs_500_train.csv",
+  "description": "Caco-2 logPapp from Hou 2007 refined regression (5-descriptor); higher = better permeability",
+  "honest_framing_note": "caco2_perm computed via metrics_v2 pass-through on the 449 metallo-drug SMILES cohort. 449/449 parsed (0 parse failures, gracefully skipped). Mean = -3.0347563140311804, std = 0.23076739723906312, verdict = PASS. Descriptive physico-chemical proxy \u2014 NOT a learned metallodrug score. For paper \u00a73 cohort panel only.",
+  "metric": "caco2_perm",
+  "n_failed": 0,
+  "n_parsed": 449,
+  "n_samples": 449,
+  "scope": "ADMET pass-through panel (Wf-303C T1 / Wf-312C R01 5-NEW extension)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:caco2_perm",
+  "status": "MEASURED",
+  "std": 0.23076739723906312,
+  "target_band": "> -5.15 (well-permeable threshold per Hou 2007)",
+  "timestamp": "2026-09-29",
+  "unit": "log Papp Caco-2 (cm/s); -5.15 = well-permeable threshold; higher = better",
+  "value": -3.0347563140311804,
+  "verdict": "PASS",
+  "wf_design_ref": "molmetal/reports/wf312c_admet_extension/design.md \u00a7R01",
+  "wf_tag": "Wf-312C R01 ADMET 5-NEW extension"
+}

@@ -208,7 +208,7 @@ def load_rh_synthetic_smiles(cohort_json: Path) -> List[str]:
         payload = json.load(fh)
     smis: List[str] = []
     for entry in payload.get("per_compound", []):
-        if not entry.get("catherine_6of6_pass", False):
+        if not (entry.get("catherine_6of6_pass", False) or entry.get("is_active", False)):
             continue
         s = str(entry.get("smiles", "")).strip()
         if s:
@@ -678,6 +678,16 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         )
     )
     p.add_argument("--metals", nargs="+", default=["Ru", "Ir", "Os", "Rh", "Re"])
+    # Wf-131 P3 Pt × 4-cell-line per-cell evaluation (Rusanov 2025 §1.2)
+    # choices=MANDATORY per FIX 2 (Wf-436 task brief); wrapper at
+    # `scripts/launch_wf131_p3_pt_4cells.sh` uses this flag for per-cell
+    # output path markers. Default=None preserves Wf-125 P2 backward-compat.
+    p.add_argument("--cell-line",
+                   choices=["MCF-7", "A549", "A2780", "A2780cis"],
+                   default=None,
+                   help="Wf-131 P3: restrict to a single Rusanov 2025 §1.2 "
+                        "PlatinAI 4-cell-line (MCF-7 / A549 / A2780 / A2780cis). "
+                        "Default=None = no per-cell restriction.")
     p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2])
     p.add_argument("--epochs", type=int, default=30)
     p.add_argument("--batch-size", type=int, default=MT_BATCH_SIZE)

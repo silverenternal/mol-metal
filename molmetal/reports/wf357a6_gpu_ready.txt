@@ -1,0 +1,25 @@
+[2026-09-29T12:05:59+0000] Wf-350-B1 pre_flight_gpu_ready.sh — run 20260929T120559Z
+[2026-09-29T12:05:59+0000]   REPO_ROOT=/home/hugo/codes/mol-metal
+[2026-09-29T12:05:59+0000]   DRY_RUN=1 MIN_VRAM_MB=16000 REQUIRE_GPUS=1
+[2026-09-29T12:05:59+0000]   MANIFEST_PATH=/home/hugo/codes/mol-metal/molmetal/reports/wf350a2_compute_manifest.json
+[2026-09-29T12:05:59+0000]   STRICT=0
+[2026-09-29T12:05:59+0000] 
+[2026-09-29T12:05:59+0000] ===== Gate 1/5: pre_flight_check.py --pipeline all (informative) =====
+[12:08:45] pre_flight_all                 PASS    preflight v3 n_gates=94 PASS=90 FAIL=2 SKIP=2 — pre-existing FAILs (informative; not a Wf-350-B1 blocker; see Wf-350-A2 §5)
+[2026-09-29T12:08:45+0000] 
+[2026-09-29T12:08:45+0000] ===== Gate 2/5: compute-manifest schema + GPU count + VRAM (Wf-350-B1 BLOCKER) =====
+[12:08:45] compute_manifest               PASS    PASS: manifest=/home/hugo/codes/mol-metal/molmetal/reports/wf350a2_compute_manifest.json schema-valid | 2 GPU(s); smallest VRAM=32607 MB; torch=2.14.0+cu130 cuda=13.0; host=ZhaoLab kernel=7.2.6-hardened1-1-hardened
+[2026-09-29T12:08:45+0000] 
+[2026-09-29T12:08:45+0000] ===== Gate 3/5: wf343c2_per_wave_check.py --skip-live --strict =====
+[12:08:45] wf343c2_per_wave               FAIL    wf343c2 rc=1 tail=  (cascading from pre-flight pre-existing FAILs per Wf-350-A2 §5)
+[2026-09-29T12:08:45+0000] 
+[2026-09-29T12:08:45+0000] ===== Gate 4/5: wf343c3_data_quality_check.py --strict =====
+[12:08:49] wf343c3_data_quality           PASS    wf343c3 25-verdict surface all PASS (5 loaders × 5 checks)
+[2026-09-29T12:08:49+0000] 
+[2026-09-29T12:08:49+0000] ===== Gate 5/5: USER_OK (kill_then_adapt standing directive) =====
+[12:08:49] USER_OK_gate                   SKIP    --dry-run; USER_OK not required for CPU verification
+[2026-09-29T12:08:49+0000] 
+[2026-09-29T12:08:49+0000] ===== Wf-350-B1 verdict =====
+[2026-09-29T12:08:49+0000]   PASS=3  FAIL=1  SKIP=1  BLOCKING_FAIL=0
+[2026-09-29T12:08:49+0000]   STRICT=0  DRY_RUN=1
+[2026-09-29T12:08:49+0000] VERDICT: PASS (dry-run; all hard gates green; USER_OK SKIP expected on --dry-run)

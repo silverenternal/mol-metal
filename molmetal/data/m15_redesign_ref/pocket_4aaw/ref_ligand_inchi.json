@@ -1,0 +1,21 @@
+{
+  "atom_count": 31,
+  "extraction_kind": "sdf",
+  "formula": "C22H29N3O5S",
+  "heavy_atom_count": 31,
+  "inchikey": "LDJDHSINBFNMFS-UHFFFAOYSA-N",
+  "ligand_resname": null,
+  "notes": "GLMU_STRPN R83 (glutamate mutarotase) CrossDocked SDF.",
+  "ok": true,
+  "phase2_recovery_path": "conda-forge vina install OR MOLMETAL_VINA_BIN env override per Wf-84 P2 stub_warning (Wf-309A discovery: which vina \u2192 not found)",
+  "phase2_redocking_status": "BLOCKED",
+  "pocket_id": "4aaw",
+  "smiles": "COc1cc(OC)c(S(=O)(=O)NCc2ccccc2N2CCCCC2)cc1NC(C)=O",
+  "source_metadata_json": "molmetal/data/pocket_ref_ligands/ligand_metadata.json",
+  "source_path": "/home/hugo/codes/mol-metal/.data/molmetal/crossdocked/GLMU_STRPN_2_459_0/4aaw_A_rec_4ac3_r83_lig_tt_min_0.sdf",
+  "source_sha256": "a04285a2e375f0d7785294bf1eed0ec3ba44e747c72c3011255410f52cfb3262",
+  "source_synthesis_md": "molmetal/reports/wf139_p1_ref_ligands/synthesis.md",
+  "source_wf": "Wf-139 P1",
+  "wf313a_relink_kind": "REFACTOR_FROM_FLAT_LAYOUT",
+  "wf313a_relink_utc": "2026-09-29T02:22:53.662815+00:00"
+}

@@ -1,0 +1,67 @@
+{
+  "metric": "pharmacophore_pass_rate_prod",
+  "description": "Fraction of candidate SMILES passing Lipinski Ro5 + Veber + ring-count >= 1 strict gate (lower is harder to pass) \u2014 PRODUCTION cohort of 449 metallo-drug SMILES from molmetal/data/metallo_drugs_500_train.csv",
+  "unit": "ratio (0-1, higher = more drug-like)",
+  "scope": "Lambda MCTS candidate pool \u2014 production (449 metallo-drug SMILES from Wf-303C ADMET pass-through cohort)",
+  "measurements": [
+    {
+      "run": "wf311d_pharmacophore_prod (449 metallo-drug SMILES, strict pass)",
+      "value": 0.17371937639198218,
+      "n_samples": 449,
+      "n_parsed": 449,
+      "n_strict_pass": 78,
+      "n_lenient_pass": 170,
+      "n_fail_parse": 0,
+      "n_fail_strict": 371,
+      "status": "MEASURED",
+      "date_utc": "2026-09-29",
+      "module": "molmetal.molmetal_lam.lam_chem.pharmacophore_filter.compute_pharmacophore_report"
+    }
+  ],
+  "aggregate": {
+    "strict_pass_rate": 0.17371937639198218,
+    "lenient_pass_rate": 0.37861915367483295,
+    "n_strict_pass": 78,
+    "n_lenient_pass": 170,
+    "n_fail_strict": 371,
+    "n_fail_parse": 0,
+    "n_total": 449,
+    "n_parsed": 449,
+    "mean_n_violations": 1.7238307349665924,
+    "median_n_violations": 2,
+    "lit_target_drug_like_pool": ">=0.6 (Lipinski 2001 + Hopkins 2008)",
+    "lit_baseline_promiscuous_smiles": "~0.85 (QED-validated organic)",
+    "curated_smoke_value": 0.7,
+    "gap_curated_vs_prod": "curated smoke 0.7 (10 hand-picked SMILES) vs production 0.1737 (449 SMILES, metallo-drug cohort) \u2014 curated value is biased upward (smoke set was selected to be drug-like); production value is the honest cohort-level drug-likeness measurement."
+  },
+  "per_source": {
+    "metal_cytotox": {
+      "n_total": 19,
+      "n_strict_pass": 3,
+      "strict_pass_rate": 0.15789473684210525
+    },
+    "platinai": {
+      "n_total": 96,
+      "n_strict_pass": 21,
+      "strict_pass_rate": 0.21875
+    },
+    "tmqm": {
+      "n_total": 334,
+      "n_strict_pass": 54,
+      "strict_pass_rate": 0.16167664670658682
+    }
+  },
+  "verdict": "MEASURED \u2014 pharmacophore_pass_rate_prod strict_pass_rate=0.1737 (n=449 metallo-drug SMILES from Wf-303C ADMET cohort). Lenient_pass_rate=0.3786. Mean violations per mol = 1.7238307349665924. Curated smoke (n=10) was 0.7 \u2014 biased upward as expected; production is the honest cohort-level drug-likeness number.",
+  "comparison_to_curated": {
+    "curated_smoke_value": 0.7,
+    "curated_n": 10,
+    "production_value": 0.17371937639198218,
+    "production_n": 449,
+    "delta": -0.5262806236080178,
+    "interpretation": "Production value is LOWER than curated smoke, as expected \u2014 the 10 curated SMILES were hand-picked to be drug-like; the 449-mol metallo-drug cohort includes larger / acyclic / metal-organic structures (cisplatin, Pt(PPh3)4, etc.) that fail the strict gate. The production value is the honest cohort-level measurement."
+  },
+  "honest_framing_note": "PRODUCTION cohort \u2014 replaces the curated 10-SMILES smoke (MEASURED 0.7) with a 449-SMILES metallo-drug cohort from Wf-303C ADMET pass-through data. Per party-twenty-spirit \u00a73.5, the curated smoke was biased upward (hand-picked to be drug-like); the production value is the honest cohort-level drug-likeness number for metallo-drug generation. Use production value as the headline number; curated 0.7 retained as an upper-bound sanity check.",
+  "source": "molmetal/molmetal_lam/lam_chem/pharmacophore_filter.py:compute_pharmacophore_report",
+  "data_source": "/home/hugo/codes/mol-metal/molmetal/data/metallo_drugs_500_train.csv",
+  "timestamp": "2026-09-29"
+}

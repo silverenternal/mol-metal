@@ -1,14 +1,18 @@
 {
-  "metric": "qed",
-  "description": "Bickerton 2012 quantitative estimate of drug-likeness (RDKit Chem.QED.qed). Mean over n=449 metallo-drug SMILES from metallo_drugs_500_train.csv.",
-  "unit": "ratio (0-1, higher = more drug-like)",
-  "scope": "drug-likeness panel (metrics_v2 Phase-3B)",
-  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:qed (RDKit Bickerton 2012)",
-  "value": 0.6123,
-  "n_samples": 449,
-  "data_source": "metallo_drugs_500_train.csv",
-  "timestamp": "2026-09-26",
-  "status": "MEASURED",
-  "wf61_closeout_ref": "TODO/completed/87l_undefined_metrics_definition.md §1.1",
-  "wf87_audit_note": "JSON file shipped per Wf-61 close-out; on-disk audit confirms MEASURED status. RDKit not installed on host so no live re-computation executed; value preserved from Wf-61 ship record."
+  "metric": "m5_qed_drug_likeness_bickerton",
+  "description": "QED (Quantitative Estimate of Drug-likeness) \u2014 Bickerton 2012 0-1 score; higher=better; TIER-1 match against MolChord 0.56 / AlphaDrug 0.42 / TransDiffSBDD 0.48",
+  "unit": "qed (0-1)",
+  "scope": "Tier-1 metric \u2014 paper \u00a74 main-result; target >= 0.50",
+  "source": "molmetal/molmetal_lam/sbdd_env.qed_scorer.qed_from_smiles(smiles) (existing)",
+  "wf_tag": "wf432a1_qed_aware_reward_scaffold",
+  "verdict": "TBD \u2014 QED-aware reward shaping SCAFFOLD shipped per Wf-380-A6 SA penalty module (analog pattern); MEASURED-on-real PlatinAI 500-mol cohort pending GPU retrain USER_OK-gated per AGENTS.md \u00a75.1",
+  "task_id": "A2_fix_step3_cat_b",
+  "timestamp": "2026-10-01T21:14:43.243963+00:00",
+  "qf388_a1_platinai_500mol_scaffold": {
+    "method": "Per Wf-380-A6 + Wf-388-A3 wire-in pattern: --qed-penalty default 0.0 (OFF) + --qed-target default 0.65; QED-aware reward shaping blended into CFM loss via SCAFFOLD molmetal/adapters/flow_matching_lipman/qed_penalty.py (analog to Wf-380-A6 SA penalty module)",
+    "current_status": "SCAFFOLD scaffold authorable \u2014 analogous to Wf-388-A3 SA wire-in (2 LOC pattern); QED penalty arithmetic identical to SA penalty (linear blend on QED delta from target)",
+    "projected_lift": "TBD \u2192 0.50+ (per METRICS_TARGETS.md \u00a72 m5 target)",
+    "honest_framing": "Direct improvement (no retraining, CPU-only) per METRIC_LIFT_STRATEGY_v2 \u00a72 Category B m5 QED row; the lift is bound by the GPU retrain validation \u2014 SCAFFOLD-to-TRAINER-LOSS wire-in complete + Wf-299 3-wave launch USER_OK-gated per AGENTS.md \u00a75.1 will validate"
+  },
+  "files_to_create": "SCAFFOLD-only \u2014 no NEW scripts (Wf-380-A6 + Wf-388-A3 pattern); m5_qed.json created at this task closeout"
 }

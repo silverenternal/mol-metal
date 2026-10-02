@@ -76,6 +76,20 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+try:
+    from molmetal.scripts.wf386a3_atomic_write import (
+        atomic_write_file,
+        safe_overwrite_check,
+        detect_truncation,
+    )
+    _WF416_HAS_ATOMIC = True
+except ImportError:  # pragma: no cover — fallback when running as standalone
+    _WF416_HAS_ATOMIC = False
+    atomic_write_file = None  # type: ignore[assignment]
+    safe_overwrite_check = None  # type: ignore[assignment]
+    detect_truncation = None  # type: ignore[assignment]
+
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -119,6 +133,34 @@ RE_SAVED_CKPT = re.compile(r"saved checkpoint:\s+(?P<path>\S+)")
 # ---------------------------------------------------------------------------
 # GPU detection
 # ---------------------------------------------------------------------------
+def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+    """Wf-416-A1 atomic-write-protocol wrapper around direct write_text.
+
+    Falls back to direct write_text if atomic_write_file is unavailable
+    (e.g. when the script is run standalone without the molmetal package
+    on PYTHONPATH).
+    """
+    if _WF416_HAS_ATOMIC and atomic_write_file is not None:
+        if safe_overwrite_check is not None:
+            _risk = safe_overwrite_check(path, content, min_lines=min_lines)
+            if _risk is not None:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "[Wf-416-A1] safe_overwrite_check diff_ratio=%.3f at %s",
+                    _risk, path,
+                )
+        atomic_write_file(path, content, encoding="utf-8")
+        if detect_truncation is not None:
+            _trunc = detect_truncation(content, expected_min_length=expected_min_length)
+            if _trunc is not None:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "[Wf-416-A1] detect_truncation reason=%r at %s",
+                    _trunc, path,
+                )
+    else:  # pragma: no cover — fallback when atomic primitive unavailable
+        Path(path).write_text(content, encoding="utf-8")
+
 def _run_cli(cmd: List[str], timeout: float = 5.0) -> Tuple[int, str, str]:
     """Run a CLI command; return (returncode, stdout, stderr).  Never raises."""
     try:
@@ -577,9 +619,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                      "decision": "SKIPPED", "probed_at": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
     else:
         gpu_probe = detect_gpu()
-    (args.log_root / "gpu_probe.json").write_text(
-        json.dumps(gpu_probe, indent=2)
-    )
+    (_wf416_atomic_write_text(args.log_root / "gpu_probe.json"), json.dumps(gpu_probe, indent=2))
     print(f"[r17_gpu] GPU probe: vendor={gpu_probe['vendor']}"
           f" usable={gpu_probe['usable']} decision={gpu_probe['decision']}")
     if not gpu_probe["usable"]:
@@ -617,7 +657,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             if args.dry_run:
                 # Don't actually launch - just record the cmd + decision
                 cmd_record = args.log_root / f"seed_{seed}_cmd_attempt_{attempts}.txt"
-                cmd_record.write_text("\n".join(cmd) + "\n")
+                _wf416_atomic_write_text(cmd_record, "\n".join(cmd) + "\n")
                 print(f"[r17_gpu] dry-run: would launch -> {cmd_record}")
                 # Synthesize a tiny scaffold decode event so the metric
                 # file has a valid shape (probe=0, n_decoded=0,
@@ -738,7 +778,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         args, global_start,
     )
     args.metric_path.parent.mkdir(parents=True, exist_ok=True)
-    args.metric_path.write_text(json.dumps(final_metrics, indent=2))
+    _wf416_atomic_write_text(args.metric_path, json.dumps(final_metrics, indent=2))
     print(f"[r17_gpu] wrote {args.metric_path}")
 
     # -- Step 4: Final summary ---------------------------------------------
@@ -814,7 +854,7 @@ def _dump_state(args: argparse.Namespace, sup: TrainSupervisor,
         ),
     }
     state_path = args.log_root / "probe_state.json"
-    state_path.write_text(json.dumps(state, indent=2))
+    _wf416_atomic_write_text(state_path, json.dumps(state, indent=2))
 
 
 if __name__ == "__main__":

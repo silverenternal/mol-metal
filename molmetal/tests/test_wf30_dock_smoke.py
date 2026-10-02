@@ -79,7 +79,7 @@ N_POCKETS = 10
 # ---------------------------------------------------------------------------
 def _skip_if_missing(path: Path) -> None:
     if not path.exists():
-        pytest.skip(f"WF-30 Phase-3 output missing: {path}")
+        pytest.fail(f"WF-30 Phase-3 output missing: {path}")
 
 
 def _load(path: Path) -> dict | None:

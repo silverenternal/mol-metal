@@ -1,0 +1,90 @@
+{
+  "metric": "admet_full_coverage",
+  "description": "Aggregate of all 8 ADMET pass-through metrics emitted by admet_pass_through.py on the 449 metallo-drug SMILES cohort (3 Wf-303C T1 + 5 Wf-312C R01 NEW). Each metric is a pure RDKit descriptor-based pass-through heuristic (NOT wet-lab measurement); MEASURED-vs-PROJECTED label discipline per party-twenty-spirit §3.5.",
+  "scope": "ADMET pass-through full coverage (Wf-303C T1 / Wf-312C R01)",
+  "cohort": {
+    "data_source": "metallo_drugs_500_train.csv",
+    "n_samples": 449,
+    "n_parsed": 449,
+    "n_failed": 0
+  },
+  "metrics": {
+    "ames_mutagen": {
+      "value": 0.0400890868596882,
+      "std": 0.19616817268467526,
+      "verdict": "PASS",
+      "target_band": "< 0.30 (cohort mean)",
+      "wf": "Wf-303C T1 / Wf-308B R03",
+      "json_path": "metrics/by_metric/ames_mutagen.json"
+    },
+    "cell_permeability_logPapp": {
+      "value": -3.63678765389755,
+      "std": 1.059585521245394,
+      "verdict": "PASS",
+      "target_band": "> -6.0 (i.e. Papp > 1e-6 cm/s)",
+      "wf": "Wf-303C T1 / Wf-308B R03",
+      "json_path": "metrics/by_metric/cell_permeability_logPapp.json"
+    },
+    "aqueous_solubility_logS": {
+      "value": -7.612188409757133,
+      "std": 3.9360792920591767,
+      "verdict": "FAIL",
+      "HONEST_NEGATIVE": true,
+      "target_band": "> -4.0 (i.e. 0.1 mM solubility)",
+      "wf": "Wf-303C T1 / Wf-308B R03",
+      "json_path": "metrics/by_metric/aqueous_solubility_logS.json"
+    },
+    "caco2_perm": {
+      "value": -3.0347563140311804,
+      "std": 0.23076739723906312,
+      "verdict": "PASS",
+      "target_band": "> -5.15 (well-permeable threshold per Hou 2007)",
+      "wf": "Wf-312C R01 5-NEW extension",
+      "json_path": "metrics/by_metric/caco2_perm.json"
+    },
+    "bbb": {
+      "value": -0.15858744391982235,
+      "std": 1.2925704672184033,
+      "verdict": "INFO",
+      "target_band": "-1 < logBB < 1 (BBB+/- threshold per Clark 1999)",
+      "wf": "Wf-312C R01 5-NEW extension",
+      "json_path": "metrics/by_metric/bbb.json"
+    },
+    "clearance": {
+      "value": 0.5087061247216036,
+      "std": 0.12141039727096876,
+      "verdict": "INFO",
+      "target_band": "5-30 mL/min/kg (typical oral drug sweet spot)",
+      "wf": "Wf-312C R01 5-NEW extension",
+      "json_path": "metrics/by_metric/clearance.json"
+    },
+    "half_life": {
+      "value": 1.3091118021559578,
+      "std": 1.3419583397705115,
+      "verdict": "INFO",
+      "target_band": "1-24 hours (oral drug sweet spot)",
+      "wf": "Wf-312C R01 5-NEW extension",
+      "json_path": "metrics/by_metric/half_life.json"
+    },
+    "vdss": {
+      "value": 0.26393246228179723,
+      "std": 0.36857243373182835,
+      "verdict": "INFO",
+      "target_band": "0.5-10 L/kg (typical drug range)",
+      "wf": "Wf-312C R01 5-NEW extension",
+      "json_path": "metrics/by_metric/vdss.json"
+    }
+  },
+  "summary": {
+    "n_admet_metrics_total": 8,
+    "n_wf303c_t1_metrics": 3,
+    "n_wf312c_r01_new_metrics": 5,
+    "n_pass": 3,
+    "n_fail_honest_negative": 1,
+    "n_info": 4
+  },
+  "honest_framing_note": "ADMET full coverage panel of 8 metrics (3 Wf-303C T1 + 5 Wf-312C R01 NEW). All are pure RDKit descriptor-based pass-through heuristics — NOT wet-lab measurements. The 5 NEW Wf-312C R01 metrics (Caco-2 / BBB / clearance / half-life / VDss) are projections from Hou 2007 / Clark 1999 / Lobell 1996 / Obach 1997 / Lombardo 2006 published regressions. Honest framing per party-twenty-spirit §3.5: do not cite these as MEASURED pharmacokinetic values without in-vitro / in-vivo validation.",
+  "wf_tag": "Wf-312C R03 ADMET aggregate ship",
+  "wf_design_ref": "molmetal/reports/wf312c_admet_extension/design.md §R03",
+  "timestamp": "2026-09-29"
+}

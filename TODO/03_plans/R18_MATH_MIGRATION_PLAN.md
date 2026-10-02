@@ -289,3 +289,127 @@ Week 8   : paper §3 final update + Table 2 re-fill
 
 **R18 的核心叙事**:
 > "我们不是把模型变复杂。我们是把 2026 年数学一区关于 SE(3) 上 Schrödinger Bridge 的存在唯一性 + Wasserstein gradient flow + Monge-Ampère regularity 三个定理，第一次迁移到贵金属抗癌药物设计里。这三个定理让我们在 Blackwell 单卡上严格保证 3D 坐标生成的几何正确性。"
+
+---
+
+## 12. 2026-09-30 refresh (Wf-393-A1 ultracode CPU-only docs-only)
+
+**Date**: 2026-09-30
+**Workflow**: Wf-393-A1 (ultracode CPU-only docs-only; 0 NEW tests; 0 GPU launches; 0 `paper/*` touches; 0 wet-lab planning per AGENTS.md §10)
+**Trigger**: User 2026-09-30 directive *"todo目录里没有被刚才启动的workflow覆盖的任务也启动额外的ultracode去做"* — refresh R18 with Wf-380..390 SCAFFOLD/wire-in status
+**Skill alignment**: `party-twenty-spirit` §3.5 (MEASURED-vs-PROJECTED tag discipline); `mol-metal-r18-math` (8/8 P0-P1 theorem catalog); no `paper/*` touches (TODO-84 honored); no wet-lab planning (§10)
+
+This refresh is **docs-only**: §1-§11 preserved verbatim as historical baseline; §12 (this section) adds 4 subsections capturing the Wf-380..390 ship surface that supersedes the P0-1 SE(3) SB wire-in plan + the M29/M30 multi-PH PLL scaffold + the M36-M44 CFM acceleration SCAFFOLD. All numbers tagged MEASURED (from on-disk JSON / AST audit) or PROJECTED (per upstream paper benchmarks).
+
+### §12.1 R18 W1 M22 SE(3) SB — Wf-390-A3 + Wf-383-A2 wire-in plan + step count revision (10000 → 1500-2500)
+
+Per `TODO/completed/390a3_se3_sb_wire.md` (SE(3) SB trainer integration audit + smoke scaffold) + `TODO/completed/383a2_se3_sb_integration_plan.md` (10 Wf-340 + Wf-353 fast-converging innovations SE(3) SB-specific integration plan), the P0-1 SE(3) Schrödinger Bridge migration is now SCAFFOLD-AUDITED + PLAN-READY but TRAINER-WIRE DEFERRED:
+
+**Trainer surface (per Wf-390-A3 §1.2 MEASURED audit)**:
+
+| Field | Value |
+|---|---|
+| `trainer_path` | `/home/hugo/codes/mol-metal/molmetal/scripts/train_se3sb.py` |
+| `trainer_exists` | True |
+| `trainer_loc` | 750 |
+| `parse_args_importable` | True |
+| `parse_args_loc` | 557 |
+| `parse_args_loc_match` | True |
+| `n_se3_specific_flags_current` | **0** |
+| `n_se3_specific_flags_total` | **10** (target per Wf-383-A2 §1.2) |
+| `ast_parses` | True |
+
+**Step count revision (per Wf-383-A1 §3.2 + Wf-390-A3 §1.2 PROJECTED bands)**:
+
+| Field | OLD (R18 baseline) | NEW (Wf-383-A1 / Wf-390-A3 revision) |
+|---|---:|---|
+| `baseline_mechanical_steps` | 10000 | **10000** (MEASURED — unchanged) |
+| `mechanical_step_count_band` | (not specified) | **1500-2500 conservative** (PROJECTED) |
+| `aggressive_step_count_band` | (not specified) | **500-1000 aggressive** (PROJECTED) |
+| `ceiling_step_count` | (not specified) | **625** (PROJECTED) |
+| `blackwell_retrain_status` | DEFERRED | **DEFERRED per AGENTS.md §5.1 + USER_OK-gated** |
+
+**Wire-in plan (per Wf-383-A2 §1 + §2)**:
+- **10 fast-converging innovations** SHIPPED as CPU-only SCAFFOLDS in `molmetal/adapters/flow_matching_lipman/` + `molmetal/scripts/train_cfm_yuelbond_wasserstein.py` (per Wf-340 + Wf-353): EDM σ-preconditioning (Karras 2022) + log-normal t-sampling + shortcut consistency (Frans 2024) + EMA + linear lr-warmup + exact-OT solver (POT `ot.emd`) + Triton mini-batch OT (Khainb 2025) + MacroGuide PH + Coordination-Aware GNN + Quotient-Space Diffusion
+- **10 NEW files in `molmetal/adapters/flow_matching_lipman/` + 3 NO-NEW-FILE re-imports** = ~760 LOC production + ~150 LOC tests = ~910 LOC total per Wf-383-A2 §0
+- **10 NEW tests** (1 per innovation) + 2 integration regression tests = ~12 NEW tests
+- **Wall PROJECTED**: ~8-16 days CPU-only (conservative midpoint ~10-12 days) for SE(3) SB trainer wire-in
+- **GPU launches performed**: 0 (CPU-only plan per AGENTS.md §5.1)
+- **Defaults all OFF for safety**: every new flag defaults to legacy SE(3) SB behavior; no silent regression on existing callers
+
+**Honest framing** (`party-twenty-spirit` §3.5):
+- **MEASURED**: file paths, LOC estimates, NEW test counts, default-OFF flag design, integration points, priority order, license classification — all on disk at `TODO/pending/383_se3_sb_fast_converging_integration.md` (~520 LOC)
+- **PROJECTED**: per-technique step reduction estimates — sourced from upstream papers (Karras 2022 / Frans 2024 / Mahmood 2026 / Khainb 2025 / Dunn & Koes 2024), NOT measured on Mol-Metal A/B
+- **NOT MEASURED**: actual wall-time impact on SE(3) SB retrain (deferred per AGENTS.md §5.1 until user OK)
+
+### §12.2 R18 W2 M29 M30 — Multi-PH + PLL SCAFFOLD status (per Wf-380-A1 + Wf-382-A1)
+
+Per `TODO/completed/380a1_deep_integration_scaffolds.md` (10 CFM innovation SCAFFOLDS) + `TODO/completed/382a1_multiph_pll_scaffold.md` (Multi-PH PLL SCAFFOLD specifically), the P1-1 Multi-parameter Persistent Homology (Kim & Jung 2026, M29) + P1-2 Persistent Local Laplacian (Liu & Feng 2026, M30) are now SCAFFOLD-CPU-only SHIPPED:
+
+**Multi-PH SCAFFOLD (M29 per mol-metal-mechanism-mapping)**:
+- **Module**: `molmetal/adapters/flow_matching_lipman/` (NEW SCAFFOLD per Wf-380-A1)
+- **Test file**: `molmetal/tests/test_wf380a1_*.py` (41/41 NEW tests PASS in ~1.61 s wall)
+- **Status**: SCAFFOLD CPU-only SHIPPED via Wf-380-A1 + Wf-382-A1
+- **Trainer wire**: NOT WIRED into `train_se3sb.py` per Wf-383-A2 §1.1 (10/10 wires currently in `train_cfm_yuelbond_wasserstein.py` only)
+- **Expected metric lift (per Wf-380-A1 SCAFFOLD paper PROJECTED)**: m7 Diversity 0.65 → 0.75; m11 n_distinct 3 → 4
+
+**PLL SCAFFOLD (M30 per mol-metal-mechanism-mapping)**:
+- **Module**: `molmetal/molmetal_lam/lam_chem/pll_signature.py` (existing) + Wf-380-A1 NEW extension
+- **Status**: SCAFFOLD CPU-only SHIPPED via Wf-380-A1
+- **Trainer wire**: NOT WIRED into SE(3) SB trainer
+- **PH hardness guarantee (per Kolbe & Mayr 2026)**: paper-only reference, no code change; cross-ref `TODO/03_plans/R18_MATH_MIGRATION_PLAN.md` §3 P1-2
+
+**Honest framing**: SCAFFOLD-only, no trainer integration yet (deferred to Wf-380-B1 / Wf-383-A2 wire-in plan). All speedup / lift claims are PROJECTED per upstream papers (Karras 2022, Frans 2024, Pooladian 2023, Cao 2025 ICML, Khainb 2025, Qiang 2024, Goyal 2017). MEASURED speedup requires a 5-seed × 30-epoch A/B retrain, OUT OF SCOPE here. 0 GPU launches performed.
+
+### §12.3 R18 W3 M36-M44 — CFM acceleration SCAFFOLD status (per Wf-380-A1 + Wf-353-A1..A4)
+
+Per `TODO/completed/380a1_deep_integration_scaffolds.md` (10 CFM innovation SCAFFOLDS, 41/41 tests) + `TODO/completed/353{a1,a2,a3,a4}_*.md` (Wf-353 CFM acceleration Triton + + kernel + FlowMol + consistency), the CFM acceleration mechanisms (M36-M44 per mol-metal-mechanism-mapping) are now SCAFFOLD CPU-only SHIPPED:
+
+| M# | Innovation | Module | SCAFFOLD status | Tests | Source |
+|:---:|---|---|:---:|:---:|---|
+| M36 | EDM σ-preconditioning (Karras 2022) | `acceleration.py` (80 LOC) | ✅ SHIPPED Wf-340-A1 + Wf-380-A1 | 4/4 | `molmetal/tests/test_wf380a1_*.py` |
+| M37 | Log-normal t-sampling | `acceleration.py` (25 LOC) | ✅ SHIPPED Wf-340-A2 + Wf-380-A1 | 4/4 | same |
+| M38 | Shortcut consistency (Frans 2024) | `acceleration.py` (70 LOC) | ✅ SHIPPED Wf-340-I1 + Wf-380-A1 | 4/4 | same |
+| M39 | EMA (NVlabs/edm halflife) | `acceleration.py` (50 LOC) | ✅ SHIPPED Wf-340-I1 + Wf-380-A1 | 4/4 | same |
+| M40 | Linear lr-warmup | `acceleration.py` (40 LOC) | ✅ SHIPPED Wf-340-I1 + Wf-380-A1 | 4/4 | same |
+| M41 | Exact-OT solver (POT `ot.emd`) | `optimal_transport_v2.py` (85 LOC) | ✅ SHIPPED Wf-340-I1 + Wf-380-A1 | 4/4 | same |
+| M42 | Triton mini-batch OT (Khainb 2025) | `triton_minibatch_ot.py` (561 LOC) | ✅ SHIPPED Wf-353-A1 + Wf-380-A1 | 4/4 | `molmetal/tests/test_wf353a1_*.py` |
+| M43 | Consistency regularization (EDM Karras 2022) | `consistency.py` (80 LOC) | ✅ SHIPPED Wf-353-A3 + Wf-380-A1 | 4/4 | `molmetal/tests/test_wf353a3_*.py` |
+| M44 | FlowMol unified atom-bond flow (CC-BY-NC) | `flowmol.py` (180 LOC) | ⚠ LICENSE-GATED SHIPPED Wf-353-A4 | 4/4 | `molmetal/tests/test_wf353a4_*.py` (USER_OK required for production) |
+
+**Total**: 10 NEW SCAFFOLD modules (~1055 LOC total) in `molmetal/adapters/flow_matching_lipman/` + 10 NEW test files (~544 LOC total) in `molmetal/tests/` = 41/41 NEW tests PASS in ~1.61 s wall (CPU-only) per Wf-380-A1
+
+**Trainer wire status** (per Wf-383-A2 §1.1 + §1.2):
+- **CFM YuelBond trainer** (`molmetal/scripts/train_cfm_yuelbond_wasserstein.py`): 10/10 wires SHIPPED with default-OFF CLI flags
+- **SE(3) SB trainer** (`molmetal/scripts/train_se3sb.py`): 0/10 wires currently (target = 10/10 per Wf-383-A2 §1.2 audit)
+- **chemprop v2/v3 trainer** (`molmetal/scripts/train_chemprop_v2_v3.py`): 0/10 wires (out of R18 P1 scope)
+
+**Honest framing** (`party-twenty-spirit` §3.5): SCAFFOLD-only; NO trainer integration into SE(3) SB yet (deferred to Wf-380-B1 / Wf-383-A2 wire-in plan). All speedup / lift claims are PROJECTED per upstream papers. MEASURED speedup requires a 5-seed × 30-epoch A/B retrain, OUT OF SCOPE for Wf-380-A1 + Wf-353-A1..A4 SCAFFOLD phase.
+
+### §12.4 Forward-looking Blackwell retrain
+
+Per `TODO/completed/391a3_metric_strategy_refresh.md` §10 (NEW Forward-looking 2026-Q4 GPU retrain priority order) + `TODO/completed/391a1_lambda_roadmap_refresh.md` §6.6 (NEW Forward-looking 2026-Q4 GPU retrain priorities) + Wf-390-A3 §1.2 (Blackwell retrain DEFERRED per AGENTS.md §5.1 + USER_OK-gated), the Blackwell retrain priority order for R18 P0-1 SE(3) Schrödinger Bridge is:
+
+**Blackwell retrain priority order** (3-batch sequential per Wf-391-A3 §10):
+
+| Priority | Wall PROJECTED | Target | Mechanism | USER_OK gate |
+|:---:|---:|---|---|---|
+| **P1-A** | ~8-16 days CPU + ~5 hr GPU | M22 SE(3) SB wire-in (Wf-383-A2 §2) | M22 (SE(3)-SB solver) | USER_OK=1 + VRAM ≥ 35 GB |
+| **P2-A** | ~10-12 days CPU + ~5 hr GPU | Multi-PH + PLL wire into SE(3) SB (Wf-380-A1 + Wf-382-A1) | M29 + M30 (Multi-PH + PLL) | USER_OK=1 + VRAM ≥ 35 GB |
+| **P3-A** | ~10-12 days CPU + ~5 hr GPU | CFM acceleration wire into SE(3) SB (Wf-380-A1 + Wf-353-A1..A4) | M36-M44 (CFM acceleration) | USER_OK=1 + VRAM ≥ 35 GB |
+
+**Combined wall PROJECTED**: ~28-40 days CPU + ~15 hr GPU for full R18 P0-1 + P1-1 + P1-2 wire-in across 3 sequential Blackwell retrain batches
+
+**Constraint priorities per AGENTS.md §5.1**:
+- VRAM budget check first (`nvidia-smi` ≥ 35 GB free on RTX PRO 6000 Blackwell 98GB)
+- Hyperparameters via config files (reference peer papers in same domain)
+- Pre-flight PASS still required (`pre_flight_check.py` before any retrain)
+- `--dry-run` defaults still the script default; agents promote to actual launch after VRAM + pre-flight check
+
+**Forward-looking honest-negative caveats** (per `docs/HONEST_NEGATIVE_CATALOG.md` Wf-369-A3 expansion 40 → 65 entries + Wf-391-A3 §10):
+- M22 SE(3) SB wire-in DEFERRED on Blackwell cudagraphs per Wf-335-R3 + AGENTS.md §5.1; `--no-cudagraphs` safety lever added to `scripts/launch_wf124_p3_g6.sh` per Wf-335-R3
+- Triton fused_relu_mlp / fused_wasserstein_sliced / fused_bond_head_aggregation / fused_smiles_featurize kernel wires (Wf-333-T2) — Blackwell sm_120 GPU retune DEFERRED per AGENTS.md §5.1
+- Wf-379-A1 m1_auc 5-seed IN-FLIGHT on GPU 0 Blackwell at Wf-379-B1 timestamp (Rh seed 3 RUNNING); 6 (metal, seed) pairs queued; Krasnov 0.86 gate target; full multi-pair result deferred to Wf-380
+- Wf-379-A2 SCAFFOLD_NOT_FUNCTIONAL on R20 §5 tmQM + PlatinAI joint retrain wrapper (trainer `--metals` restricted to 5 metals; alternative trainer missing `tmqm_pretrained_encoder.pt` checkpoint)
+
+**Constraints honoured**: 0 NEW tests, 0 GPU launches, 0 `paper/*` touches, 0 wet-lab planning, only Bash + Read + Edit + Write tools used. AGENTS.md §5.1 + §5.2 + §5.3 + §5.4 + §10 all preserved unchanged.

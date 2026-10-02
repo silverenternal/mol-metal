@@ -1,0 +1,250 @@
+{
+  "metric": "nci60_precious_9cell_auc",
+  "description": "Wf-312A per-cell ROC-AUC on the precious-metal (Ru/Ir/Rh/Os/Re) 9-cell-line subset of MetalCytoToxDB overlapping with the NCI-60 panel (k=8 unique cells + 1 alias HCT-116 = 9 default cells) using per-cell single-task chemprop v2 with random 80/10/20 split. 3-seed x 5-epoch CPU smoke (paper-grade numbers need GPU per kill_then_adapt).",
+  "unit": "ROC-AUC (0-1, higher better) per cell line",
+  "scope": "tier1_precious_metal_anticancer",
+  "source": "molmetal/scripts/nci60_9cell_chemprop_driver.py (seeds=[0,1,2], epochs=5, hidden=128, depth=3)",
+  "krasnov_2026_baseline_auc": 0.81,
+  "gate_target": 0.7,
+  "value_overall_mean_auc": 0.688,
+  "value_overall_mean_std": 0.0429,
+  "n_seeds": 3,
+  "n_cells": 9,
+  "cell_lines": [
+    "A2780",
+    "A2780cis",
+    "A549",
+    "DU145",
+    "HCT-116",
+    "HCT116",
+    "HL60",
+    "MCF7",
+    "PC3"
+  ],
+  "per_cell_line": {
+    "A2780": {
+      "auc_mean": 0.5641,
+      "auc_std": 0.0239,
+      "n_seeds": 3,
+      "n_train": 766,
+      "n_val": 110,
+      "n_test": 219,
+      "per_seed": [
+        0.5961,
+        0.5576,
+        0.5387
+      ],
+      "verdict": "BELOW_GATE"
+    },
+    "A2780cis": {
+      "auc_mean": 0.5846,
+      "auc_std": 0.0456,
+      "n_seeds": 3,
+      "n_train": 394,
+      "n_val": 57,
+      "n_test": 113,
+      "per_seed": [
+        0.6452,
+        0.5732,
+        0.5354
+      ],
+      "verdict": "BELOW_GATE"
+    },
+    "A549": {
+      "auc_mean": 0.7436,
+      "auc_std": 0.025,
+      "n_seeds": 3,
+      "n_train": 1852,
+      "n_val": 265,
+      "n_test": 530,
+      "per_seed": [
+        0.7332,
+        0.7195,
+        0.7781
+      ],
+      "verdict": "PASS"
+    },
+    "DU145": {
+      "auc_mean": 0.9062,
+      "auc_std": 0.0221,
+      "n_seeds": 3,
+      "n_train": 112,
+      "n_val": 16,
+      "n_test": 33,
+      "per_seed": [
+        0.9219,
+        0.9219,
+        0.875
+      ],
+      "verdict": "PASS"
+    },
+    "HCT-116": {
+      "auc_mean": 0.6851,
+      "auc_std": 0.0274,
+      "n_seeds": 3,
+      "n_train": 490,
+      "n_val": 70,
+      "n_test": 141,
+      "per_seed": [
+        0.651,
+        0.7179,
+        0.6865
+      ],
+      "verdict": "BELOW_GATE"
+    },
+    "HCT116": {
+      "auc_mean": 0.6851,
+      "auc_std": 0.0274,
+      "n_seeds": 3,
+      "n_train": 490,
+      "n_val": 70,
+      "n_test": 141,
+      "per_seed": [
+        0.651,
+        0.7179,
+        0.6865
+      ],
+      "verdict": "BELOW_GATE"
+    },
+    "HL60": {
+      "auc_mean": 0.6338,
+      "auc_std": 0.0778,
+      "n_seeds": 3,
+      "n_train": 157,
+      "n_val": 23,
+      "n_test": 45,
+      "per_seed": [
+        0.6212,
+        0.7348,
+        0.5455
+      ],
+      "verdict": "BELOW_GATE"
+    },
+    "MCF7": {
+      "auc_mean": 0.6618,
+      "auc_std": 0.0453,
+      "n_seeds": 3,
+      "n_train": 1374,
+      "n_val": 197,
+      "n_test": 393,
+      "per_seed": [
+        0.6425,
+        0.6185,
+        0.7243
+      ],
+      "verdict": "BELOW_GATE"
+    },
+    "PC3": {
+      "auc_mean": 0.7274,
+      "auc_std": 0.0916,
+      "n_seeds": 3,
+      "n_train": 192,
+      "n_val": 28,
+      "n_test": 55,
+      "per_seed": [
+        0.6406,
+        0.6875,
+        0.8542
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "timestamp": "2026-09-29",
+  "data_source": "molmetal/data/nci60_precious_9cell.csv",
+  "split": "random_80_10_20_per_cell_seeded",
+  "model": "chemprop_v2_per_cell_single_task",
+  "framing": "Wf-312A 3-seed x 5-epoch CPU smoke (paper-grade needs GPU per kill_then_adapt)",
+  "honest_framing": "27/27 ok runs in 3.23 min on CPU. PC3 0.7274 +0.51 vs the 1-seed-1-epoch smoke 0.2153 (n_test=55, sufficient for honest AUC). A2780 0.5641 BELOW_GATE (cell-line effect: cisplatin-resistant signature not recoverable from precious-metal-only SMILES at this depth/epochs). DU145 0.9062 high (small n_test=33, easy split). A549 0.7436 PASS (n_train=1852, largest cohort).",
+  "audit_provenance": {
+    "wf": "Wf-312A",
+    "todo_ref": "TODO-completed/312_wf312a_re_degenerate_nci60_paper_grade.md",
+    "driver": "molmetal/scripts/nci60_9cell_chemprop_driver.py",
+    "sweep_json": "/tmp/wf312a_nci60_grade (Wf-312A raw sweep)",
+    "total_wall_min": 3.225,
+    "ran": true,
+    "partial": false
+  },
+  "paper_dashboard_claims": [
+    {
+      "cell": "A2780",
+      "mean_auc": 0.5641,
+      "std": 0.0239,
+      "verdict": "BELOW_GATE",
+      "paper_gate_target": 0.7,
+      "n_seeds": 3,
+      "n_train": 766
+    },
+    {
+      "cell": "A2780cis",
+      "mean_auc": 0.5846,
+      "std": 0.0456,
+      "verdict": "BELOW_GATE",
+      "paper_gate_target": 0.7,
+      "n_seeds": 3,
+      "n_train": 394
+    },
+    {
+      "cell": "A549",
+      "mean_auc": 0.7436,
+      "std": 0.025,
+      "verdict": "PASS",
+      "paper_gate_target": 0.7,
+      "n_seeds": 3,
+      "n_train": 1852
+    },
+    {
+      "cell": "DU145",
+      "mean_auc": 0.9062,
+      "std": 0.0221,
+      "verdict": "PASS",
+      "paper_gate_target": 0.7,
+      "n_seeds": 3,
+      "n_train": 112
+    },
+    {
+      "cell": "HCT-116",
+      "mean_auc": 0.6851,
+      "std": 0.0274,
+      "verdict": "BELOW_GATE",
+      "paper_gate_target": 0.7,
+      "n_seeds": 3,
+      "n_train": 490
+    },
+    {
+      "cell": "HCT116",
+      "mean_auc": 0.6851,
+      "std": 0.0274,
+      "verdict": "BELOW_GATE",
+      "paper_gate_target": 0.7,
+      "n_seeds": 3,
+      "n_train": 490
+    },
+    {
+      "cell": "HL60",
+      "mean_auc": 0.6338,
+      "std": 0.0778,
+      "verdict": "BELOW_GATE",
+      "paper_gate_target": 0.7,
+      "n_seeds": 3,
+      "n_train": 157
+    },
+    {
+      "cell": "MCF7",
+      "mean_auc": 0.6618,
+      "std": 0.0453,
+      "verdict": "BELOW_GATE",
+      "paper_gate_target": 0.7,
+      "n_seeds": 3,
+      "n_train": 1374
+    },
+    {
+      "cell": "PC3",
+      "mean_auc": 0.7274,
+      "std": 0.0916,
+      "verdict": "PASS",
+      "paper_gate_target": 0.7,
+      "n_seeds": 3,
+      "n_train": 192
+    }
+  ]
+}

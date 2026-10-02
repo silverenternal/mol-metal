@@ -522,9 +522,11 @@ class MetalCoordinationTerm:
         Weight of the distance sub-score.
     kcal_per_unit : float, default 1.0
         Multiplier converting the composite (in [0, 1]) to kcal/mol.
-        1.0 means a "perfect" coordination term is worth 1 kcal/mol
-        of binding free-energy; a "perfect mismatch" is -1 kcal/mol.
-        Final adjustment is ``(2 * composite - 1) * kcal_per_unit``.
+        1.0 means a "perfect" coordination term is worth -1 kcal/mol
+        of binding free-energy (Vina convention: lower / more negative
+        kcal/mol = better binding). A "perfect mismatch" (composite = 0.0)
+        is +1 kcal/mol (penalising the absence of coordination).
+        Final adjustment is ``(1 - 2 * composite) * kcal_per_unit``.
     """
 
     def __init__(
@@ -626,13 +628,17 @@ class MetalCoordinationTerm:
         When ``score.total is None`` (organic ligand, no donors), the
         adjustment is exactly 0.0 — backward-compat safe.
 
-        Adjustment = (2 * composite - 1) * kcal_per_unit
-        so a perfect composite (1.0) yields +1.0 * kcal_per_unit
-        and a zero composite yields -1.0 * kcal_per_unit.
+        Adjustment = (1 - 2 * composite) * kcal_per_unit
+        so a perfect composite (1.0) yields -1.0 * kcal_per_unit
+        (better binding — Vina convention: lower kcal/mol = better)
+        and a zero composite yields +1.0 * kcal_per_unit
+        (worse binding — penalising absence of coordination).
+        Wf-333-V1 + Wf-246-C sign-fix: ``(1 - 2*c) * kcal_per_unit``
+        per Vina convention "lower (more negative) = better binding".
         """
         if score.total is None:
             return 0.0
-        return float((2.0 * score.total - 1.0) * self.kcal_per_unit)
+        return float((1.0 - 2.0 * score.total) * self.kcal_per_unit)
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,54 @@
+MODEL 1
+REMARK VINA RESULT:    -3.586      0.000      0.000
+REMARK INTER + INTRA:          -3.586
+REMARK INTER:                  -3.586
+REMARK INTRA:                   0.000
+REMARK UNBOUND:                 0.000
+REMARK SMILES [O][Cl+3]([O-])([O-])[O-]
+REMARK SMILES IDX 3 1 2 2 4 3 5 4 1 5
+REMARK H PARENT
+ROOT
+ATOM      1  O   UNL     1      31.026  57.653  47.911  1.00  0.00    -0.179 OA
+ATOM      2 Cl   UNL     1      30.026  57.069  47.039  1.00  0.00    +0.140 Cl
+ATOM      3  O   UNL     1      29.384  58.116  46.268  1.00  0.00    -0.179 OA
+ATOM      4  O   UNL     1      29.033  56.379  47.839  1.00  0.00    -0.179 OA
+ATOM      5  O   UNL     1      30.662  56.126  46.139  1.00  0.00    +0.398 OA
+ENDROOT
+TORSDOF 0
+ENDMDL
+MODEL 2
+REMARK VINA RESULT:    -3.574      0.128      2.121
+REMARK INTER + INTRA:          -3.574
+REMARK INTER:                  -3.574
+REMARK INTRA:                   0.000
+REMARK UNBOUND:                 0.000
+REMARK SMILES [O][Cl+3]([O-])([O-])[O-]
+REMARK SMILES IDX 3 1 2 2 4 3 5 4 1 5
+REMARK H PARENT
+ROOT
+ATOM      1  O   UNL     1      30.561  56.046  46.203  1.00  0.00    -0.179 OA
+ATOM      2 Cl   UNL     1      29.931  57.010  47.084  1.00  0.00    +0.140 Cl
+ATOM      3  O   UNL     1      28.962  56.335  47.926  1.00  0.00    -0.179 OA
+ATOM      4  O   UNL     1      29.260  58.022  46.292  1.00  0.00    -0.179 OA
+ATOM      5  O   UNL     1      30.940  57.637  47.916  1.00  0.00    +0.398 OA
+ENDROOT
+TORSDOF 0
+ENDMDL
+MODEL 3
+REMARK VINA RESULT:    -3.103      7.105      7.863
+REMARK INTER + INTRA:          -3.103
+REMARK INTER:                  -3.103
+REMARK INTRA:                   0.000
+REMARK UNBOUND:                 0.000
+REMARK SMILES [O][Cl+3]([O-])([O-])[O-]
+REMARK SMILES IDX 3 1 2 2 4 3 5 4 1 5
+REMARK H PARENT
+ROOT
+ATOM      1  O   UNL     1      37.287  54.645  46.027  1.00  0.00    -0.179 OA
+ATOM      2 Cl   UNL     1      37.346  55.687  45.021  1.00  0.00    +0.140 Cl
+ATOM      3  O   UNL     1      38.481  56.550  45.285  1.00  0.00    -0.179 OA
+ATOM      4  O   UNL     1      36.125  56.467  45.062  1.00  0.00    -0.179 OA
+ATOM      5  O   UNL     1      37.491  55.084  43.709  1.00  0.00    +0.398 OA
+ENDROOT
+TORSDOF 0
+ENDMDL

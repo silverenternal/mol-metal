@@ -1,0 +1,11 @@
+SUMMARY: {
+  "pass": 112,
+  "fail": 2,
+  "skip": 3,
+  "total": 117,
+  "total_wall_sec": 191.1923
+}
+
+FAILS:
+  - p2_tests_pass
+  - p3_wf343c4_anchor_freshness_24h

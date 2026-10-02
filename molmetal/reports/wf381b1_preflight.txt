@@ -1,0 +1,25 @@
+    ],
+    "runtime_energy": {
+      "per_gpu": [
+        {
+          "index": 0,
+          "power_draw_w": 315.95,
+          "power_limit_w": 600.0
+        },
+        {
+          "index": 1,
+          "power_draw_w": 98.38,
+          "power_limit_w": 575.0
+        }
+      ],
+      "total_duration_s": 0.076323,
+      "estimated_energy_j": 15.811512,
+      "n_gpus_reported": 2,
+      "probe_timestamp": "2026-09-29T17:17:10+0000",
+      "host": "ZhaoLab",
+      "MEASURED_vs_PROJECTED": "MEASURED"
+    },
+    "prereg_path": null
+  },
+  "v2_doc_reference": "TODO/completed/207_unified_pre_flight_checklist_v2.md (§3.1 chemprop, §4.2 CFM, §5 P2)"
+}

@@ -1,0 +1,40 @@
+[Wf-371-A1] Loading cohort from /home/hugo/codes/mol-metal/molmetal/data/metallo_drugs_500_train.csv (max 60) ...
+[Wf-371-A1] Loaded 60 SMILES in 0.00s
+[Wf-371-A1] Computing baseline m6_kappa on cohort ...
+[molmetal] applied gfx1101 env vars: TOKENIZERS_PARALLELISM=false, TRANSFORMERS_VERBOSITY=error
+[Wf-371-A1] baseline m6_kappa: mean=0.4511 (std=0.1821, n_parsed=60, n_failed=0, pass_rate@0.60=0.2167, pass_rate_adaptive@0.55=0.3667, 1.43s)
+[Wf-371-A1] Computing RDKit 12-d descriptor features (degenerate chain — NO MAML, NO NeuralODE, NO chemprop+PLL) ...
+[Wf-371-A1] RDKit 12-d features: shape=(60, 12), min=-5.7795, max=1244.2460, mean=75.5752 (0.05s)
+[Wf-371-A1] Running DEGENERATE K-fold Ridge (alpha=1.0, cv=5, epochs=5) ...
+[Wf-371-A1] DEGENERATE: cv_r2=+0.5694, aug_mean=0.4493, pass_lift=-0.0167, lift_adapt=-0.0167 (0.02s)
+
+================================================================================
+Wf-371-A1 DEGENERATE CHAIN SUMMARY
+  m6_kappa baseline mean        : 0.4511 (Wf-325D MEASURED=0.4719, Wf-359-A1 platinai_4cell=0.3561)
+  pass_rate @0.60               : 0.2167
+  pass_rate @0.55 (adaptive)    : 0.3667
+
+  DEGENERATE candidate          : rdkit_12d_baseline_degenerate
+  n_features                    : 12
+  CV-R²                         : +0.5694
+  augmented_mean                : 0.4493
+  delta_mean                    : -0.0018
+  pass_rate_lift @0.60          : -0.0167
+  pass_rate_lift @0.55 (adapt)  : -0.0167
+  verdict                       : HONEST_NEGATIVE_PERSISTENT
+  aggregate_status              : HONEST_NEGATIVE_PARTIAL_STRUCTURAL
+  ceiling_break                 : False
+  paths_exhausted_prior         : 6
+  paths_exhausted_total         : 7
+================================================================================
+
+[Wf-371-A1] Wrote molmetal/reports/wf371a1_degenerate_chain/result.json
+[Wf-371-A1] Wrote molmetal/reports/wf371a1_degenerate_chain/per_axis.csv
+
+Wf-371-A1 OUTPUT (PLAIN TEXT):
+  degenerate_implementation : RDKit 12-d descriptor + standard K-fold Ridge regression (alpha=1.0, cv=5). NO MAML, NO NeuralODE, NO chemprop+PLL. Cheapest possible baseline per Wf-369-A3 §5.
+  augmented_mean_before      : 0.4511 (Wf-325D MEASURED=0.4719; Wf-359-A1 platinai_4cell=0.3561; Wf-361-B2 Neural ODE aug_mean=0.4495; Wf-364-A2 rdkit_baseline aug_mean=0.4493)
+  augmented_mean_after       : 0.4493 (threshold=0.6, cv_r2=+0.5694)
+  gate_status                : HONEST_NEGATIVE_PARTIAL_STRUCTURAL (PRESERVED — augmented_mean < 0.6, FINAL FINAL after 7 paths exhausted (PARTIAL_STRUCTURAL preserved))
+  tests_status               : 2 NEW tests in test_wf371a1_m6_kappa_degenerate.py (test_degenerate_chain_runs + test_backward_compat)
+  final_verdict              : HONEST_NEGATIVE_PARTIAL_STRUCTURAL (this is the LAST CPU-only path per Wf-369-A3 §5 forward-looking recommendation; 6 paths already exhausted prior to this attempt)

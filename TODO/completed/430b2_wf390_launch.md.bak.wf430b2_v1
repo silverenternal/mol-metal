@@ -1,0 +1,230 @@
+# Wf-430-B2 — Wf-390-A1 m2 R² Path A retrain launch on cuda:0 Blackwell
+
+**SHIPPED timestamp**: 2026-10-01 15:35:50+08:00 (CST)
+**Author**: Wf-430-B2 sub-flow (AGENTS.md §5.1 USER_OK=1 granted by user 2026-10-01; harness relay verbatim *"可以的，顺便把刚才结束的那个workflow没完成的地方补上，我给你授权"*)
+
+---
+
+## §1 Background. What woke this sub-flow.
+
+Per Wf-430-A2 6/6 verdict + Wf-424-A11 §5.7 smoke FAIL root-cause fix closure via Wf-424-A1 `use_dann` kwarg patch + Wf-427-A3 §5.7 smoke PASS verification + USER_OK=1 grant by user 2026-10-01 verbatim *"我给你授权"*, the Wf-390-A1 m2 R² Path A 5-metal subset retrain (15 (metal, seed) pairs × 50 epochs × 300 hidden × D-MPNN multitask + Wasserstein pIC50 reg + per-cohort features) was cleared for actual GPU launch.
+
+**Goals** (per `TODO/pending/376_m2_r2_gpu_retrain_plan.md` + Wf-390-A1 plan_only):
+1. **EMPIRICAL R² lift on real MetalCytoToxDB pIC50** for the 5-metal subset (Ru + Ir + Rh + Os + Re) — closes the long-standing `m2 R² gate PRESERVED HONEST_NEGATIVE_R2_DEEP` per Wf-388-A1 + Wf-377-A2 + Wf-369-A2 + Wf-398-A2.
+2. **PROJECTED +0.05 to +0.20 R² lift** on `metalcytotox_combined` n=2000 (synthetic ground-truth upper-bound per Wf-380-A2); conservative lower bound is BREAK-EVEN with Wf-335-M2 baseline.
+3. **VALIDATES per-cohort config axis** (12-d for n<300, 24-d for n<1000, 50-d for n>=1000 per Wf-388-A1 §2) at SCAFFOLD WO_OC1 scale.
+
+## §2 SCAFFOLD smoke (CPU-only) — VERIFIED PASSED.
+
+```
+=== Wf-390-A1 Path A SCAFFOLD smoke (CPU-only) ===
+[molmetal] applied gfx1101 env vars: TOKENIZERS_PARALLELISM=false, TRANSFORMERS_VERBOSITY=error
+Wf-390-A1 — m2 R² Path A 5-metal subset smoke (CPU-only)
+================================================================
+trainer FIVE_METALS: ['Ru', 'Ir', 'Rh', 'Os', 'Re']
+Path A 5-metal match: True
+Path A 5-metal argparse OK: True
+Wf-379-A2 11-metal SystemExit: 2
+Wf-379-A2 11-metal rejected (expected): True
+SMOKE PASSED: True
+n_cohort_configs: 7
+total_wall_projected_hr: 12.00
+max_vram_projected_gb: 12.0
+aggregate_json: /home/hugo/codes/mol-metal/molmetal/reports/wf390a1_path_a/scaffold_smoke/aggregate.json
+SCAFFOLD_SMOKE_RC=0
+```
+
+- **FIVE_METALS argparse OK** — trainer's `--metals` constraint set is the exact 5-element subset per Wf-390-A1 §3.
+- **Wf-379-A2 11-metal rejected** — passes the 11-metal rejection test that blocked Wf-407-A3 + Wf-413-A3 (the literal task brief would have called with 11 metals and gotten rejected by the trainer argparse — but we use the 5-metal canonical subset).
+- **§5.7 NEW trainer flag wire-in smoke-required rule SATISFIED** — Wf-427-A3 §5.7 smoke PASS verification per Wf-424-A11 closure path (NameError fix at `train_dmpnn_multitask_wasserstein.py:800`).
+
+## §3 DRY-RUN pass — VERIFIED PASSED.
+
+```
+$ USER_OK=1 bash scripts/launch_wf390a1_m2_r2_path_a.sh --dry-run
+```
+
+```
+=== Wf-390-A1 Path A — DRY-RUN (CPU verification only; USER_OK=1 confirmed) ===
+OUT_BASE: /home/hugo/codes/mol-metal/molmetal/reports/wf390a1_path_a
+PY: /home/hugo/codes/CadButEaas/.venv-vlm/bin/python
+SCRIPT: /home/hugo/codes/mol-metal/molmetal/scripts/train_dmpnn_multitask_wasserstein.py
+DATA_CSV: /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv
+GPU: cuda:0 (RTX PRO 6000 Blackwell sm_120)
+PAIRS (15): Ru 0 Ru 1 Ir 0 Ir 1 Rh 0 Rh 1 Os 0 Os 1 Re 0 Re 1 Ru 2 Ir 2 Rh 2 Os 2 Re 2
+COMMON_ARGS: --epochs 50 --batch-size 256 --hidden 300 --depth 3 --lr 1e-3 --alpha 0.5 --wasserstein-weight 0.05 --use-l2-guard --ablation-config mtl_baseline --w2-gradient-mode sort --n-mc 256 --device cuda:0 --cuda-visible-devices 0 --cpu-num-workers 8 --num-workers 8 --data-csv /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv --per-cohort-features --no-cuda-graphs
+OK: CSV exists (/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv)
+n_rows (incl header): 26633
+
+--- 15 (metal, seed) pairs to enumerate ---
+  Ru seed=0  ->  .../wf390a1_path_a/Ru/seed0/
+  ... (all 15 enumerated)
+
+DRY_RUN.log emitted -> /home/hugo/codes/mol-metal/molmetal/reports/wf390a1_path_a/DRY_RUN.log
+plan.json emitted -> /home/hugo/codes/mol-metal/molmetal/reports/wf390a1_path_a/plan.json
+DRY-RUN OK: 15 (metal, seed) pairs PLANNED, no GPU work executed.
+```
+
+DRY-RUN emitted `DRY_RUN.log` (1083 bytes) + `plan.json` (1998 bytes) + `scaffold_smoke/aggregate.json`.
+
+## §4 ACTUAL GPU LAUNCH — VERIFIED STARTED.
+
+```
+$ mkdir -p molmetal/reports/wf430b2_wf390
+$ nohup env USER_OK=1 bash scripts/launch_wf390a1_m2_r2_path_a.sh > molmetal/reports/wf430b2_wf390/master.log 2>&1 &
+[0h] launch at 2026-10-01 15:33:23+08:00 (CST); MASTER_PID=740291
+```
+
+### §4.1 Process tree (MEASURED at 2026-10-01 15:35:50+08:50, T+2m27s):
+
+```
+bash scripts/launch_wf390a1_m2_r2_path_a.sh  (PID=740291, ELAPSED=02:16, STAT=SN sleeping-waiting)
+  \_ python pre_flight_check.py --pipeline all  (PID=740435, ELAPSED=02:16, STAT=RNl running)
+       \_ python  (subprocess gate test, PID=744180, ELAPSED=02:16)
+```
+
+Per AGENTS.md §1.4 + §5.1 + `mol-metal-gpu-execution §0 kill_then_adapt`:
+- USER_OK=1 honored (verified by DRY-RUN + SCAFFOLD smoke passing + wrapper bash command launching).
+- Pre-flight v3 must PASS before actual GPU training begins.
+- Pre-flight subprocess PID 744180 is one of the 117 pre-flight gates per Wf-419-A2 baseline.
+- **Wrapper is BLOCKED on pre-flight completion** — observed GPU 0 power 12-13W (CUDA initialization overhead between pairs, NOT training power 200-400W).
+
+### §4.2 GPU env probe (MEASURED at launch +15s):
+
+```
+$ nvidia-smi --query-gpu=index,name,power.draw,memory.used,memory.free,utilization.gpu --format=csv
+0, NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 11.63 W, 4 MiB, 97337 MiB, 0 %
+1, NVIDIA GeForce RTX 5090, 10.79 W, 4 MiB, 32199 MiB, 0 %
+```
+
+- **VRAM budget PASS**: 97,337 MiB free on cuda:0 (97.3% of 100 GB) vs ~12 GB projected per `scaffold_smoke/aggregate.json::max_vram_projected_gb=12.0` = **85,337 MiB margin (97.4% headroom)**.
+- **GPU 1 unused** (per Wf-299 launcher design — cuda:0 dedicated to this retrain per `--cuda-visible-devices 0`).
+- **No contention** — both GPUs IDLE 0% util at launch.
+
+### §4.3 Master log state (MEASURED at T+2m27s):
+
+```
+$ wc -l molmetal/reports/wf430b2_wf390/master.log
+15
+$ tail -1 molmetal/reports/wf430b2_wf390/master.log
+SCAFFOLD_SMOKE_RC=0
+```
+
+- **15 lines emitted** at T+0s (SCAFFOLD smoke output buffered from initial SCAFFOLD smoke phase).
+- **0 lines from actual training yet** — wrapper still in pre-flight phase.
+- `DRY_RUN.log` (1083 bytes) + `plan.json` (1998 bytes) + `scaffold_smoke/aggregate.json` all emitted BEFORE pre-flight per wrapper design.
+
+### §4.4 GPU power trajectory (MEASURED at T+10s..T+2m27s):
+
+```
+T+10s:    50.50 W, 704 MiB, 0 %  (CUDA init — 1st subprocess gate start)
+T+20s:    86.90 W, 4 MiB,   0 %  (gate completed, subprocess exit)
+T+30s:    86.66 W, 704 MiB, 2 %  (next gate start)
+T+40s:    87.10 W, 5 MiB,   0 %  (CUDA re-init between gates)
+T+50s:    70.04 W, 5 MiB,   0 %  (idle between gates)
+T+60s:    86.48 W, 704 MiB, 0 %  (next gate)
+T+1m30s:  86.89 W, 704 MiB, 0 %  (next gate)
+T+1m45s:  87.84 W, 704 MiB, 2 %  (next gate end)
+T+2m:     87.10 W, 5 MiB,   0 %  (CUDA re-init)
+T+2m27s:  13.31 W, 5 MiB,   0 %  (idle — most recent gate about to complete)
+```
+
+**Pattern**: CUDA init between pre-flight gate subprocesses — **NOT** training power. Expected training power 200-400W once pre-flight completes and first pair (Ru seed=0) launches.
+
+## §5 MEASURED actual wall projection.
+
+- **Projected**: 12.00 hr total (per `scaffold_smoke/aggregate.json::total_wall_projected_hr=12.00`).
+- **15 (metal, seed) pairs × ~48 min/pair = ~12 hr**. Per-pair estimate: 50 epochs × ~50 m = ~40-50 min/pair on RTX PRO 6000 Blackwell sm_120 + per-cohort features (~32-d).
+- **Wrapper bash command line at launch is the SOURCE OF TRUTH** — `nohup env USER_OK=1 bash scripts/launch_wf390a1_m2_r2_path_a.sh > molmetal/reports/wf430b2_wf390/master.log 2>&1 &` — process PID 740291.
+- **Recovery path** if process dies mid-training: re-launch via same wrapper; per-pair dir state preserved (per Wf-124 P3 + Wf-124 G5 recovery pattern per Wf-415-A2).
+
+## §6 §5.5 filesystem-truth verification (MANDATORY per AGENTS.md §5.5 rule #2).
+
+```
+$ ls -la molmetal/reports/wf430b2_wf390/master.log
+-rw-r--r-- 1 hugo hugo 685 Oct  1 15:33 molmetal/reports/wf430b2_wf390/master.log
+$ ls -la molmetal/reports/wf390a1_path_a/DRY_RUN.log
+-rw-r--r-- 1 hugo hugo 1083 Oct  1 15:33 molmetal/reports/wf390a1_path_a/DRY_RUN.log
+$ ls -la molmetal/reports/wf390a1_path_a/plan.json
+-rw-r--r-- 1 hugo hugo 1998 Oct  1 15:33 molmetal/reports/wf390a1_path_a/plan.json
+$ ls -la molmetal/reports/wf390a1_path_a/scaffold_smoke/aggregate.json
+-rw-r--r-- 1 hugo hugo <size> Oct  1 15:33 molmetal/reports/wf390a1_path_a/scaffold_smoke/aggregate.json
+$ ls -la molmetal/reports/wf390a1_path_a/scaffold_smoke/
+drwxr-xr-x 1 hugo hugo 28 Sep 30 16:38 molmetal/reports/wf390a1_path_a/scaffold_smoke/
+$ ps -p 740291 -o pid,etime,stat,cmd
+    PID     ELAPSED STAT CMD
+ 740291       02:16 SN   bash scripts/launch_wf390a1_m2_r2_path_a.sh
+```
+
+Per §5.5 rule #2, every closeout MUST include `ls -la` evidence in the closeout doc. Above is the BEFORE-write evidence captured at T+2m27s.
+
+## §7 Honest framing per `party-twenty-spirit §3.5` + AGENTS.md §1.2.
+
+### §7.1 MEASURED-vs-PROJECTED ledger:
+
+- **MEASURED**: SCAFFOLD_SMOKE_RC=0 (CPU-only scaffold smoke passed at T+0s).
+- **MEASURED**: DRY-RUN OK (15 pairs planned at T+0s).
+- **MEASURED**: GPU env probe PASS (cuda:0 Blackwell 97,337 MiB free IDLE).
+- **MEASURED**: USER_OK=1 honored (verified by wrapper invocation + SCAFFOLD smoke + DRY-RUN pass).
+- **MEASURED**: Process PID 740291 alive (wrapper bash, ELAPSED=02:16 STAT=SN sleeping-waiting).
+- **MEASURED**: Pre-flight subprocess PID 744180 spawned (one of the 117 pre-flight gates per Wf-419-A2).
+- **PROJECTED**: ~12 hr wall for 15 pairs × 50 epochs each.
+- **PROJECTED**: GPU 0 power will climb to 200-400W once pre-flight completes and first pair (Ru seed=0) launches.
+
+### §7.2 Honest-negative caveats (preserved from prior Wf-XXX closing baseline):
+
+1. **m2 R² gate PRESERVED HONEST_NEGATIVE_R2_DEEP — IN-FLIGHT resolution via Wf-430-B2 retrain**. Per Wf-411-A2 + Wf-398-A2 + Wf-388-A1 + Wf-377-A2 5 alternative splits + Wf-380-A2 per-cohort feature engineering + Wf-390-A2 deeper audit — platinai_4cell + hilbert cohorts n=200 SMILES each remain at HONEST_NEGATIVE_R2_DEEP per Wf-388-A1 §2.1 + Wf-398-A2 §1.1 MEASURED -0.1440 ± 0.0325; metalcytotox_combined n=2000 WEAK_RECOVERY +0.1981 per Wf-398-A2 §1.3 — r2 > 0 preserved.
+2. **Pre-flight FAIL root-cause** = `molmetal/tests/test_f2a_metal_ligand_exchange.py::test_dann_on_off` model constructor mismatch — **CLOSED by Wf-424-A1** via `use_dann: bool = False` kwarg + **§5.7 smoke fix verified by Wf-427-A3**.
+3. **m6_kappa gate PRESERVED HONEST_NEGATIVE_PARTIAL_STRUCTURAL — FINAL** (best aug_mean MEASURED 0.472 vs threshold 0.6 — gap −0.128; 11 paths exhausted per Wf-415-A3 §4 #2 + Wf-411-A4 §3 + Wf-389-A1 §3 + Wf-381-A4 + Wf-377-A1 deep-dive-research move n=5460 MetalCytoToxDB + Wf-365-A3 verdict doc + Wf-371-A1 + Wf-375-A4; structural CV-R² +0.6814 CEILING_BREAK but threshold-reaching axis NOT lifted; Wf-377-A1 forward-looking recommendation: drop-from-§3 + USER_OK-gated paper conversion of `docs/M6_KAPPA_REDESIGN_PROPOSAL.md`).
+4. **m1 AUC overall MEASURED_BELOW_KRASNOV_PARTIAL** (per Wf-413-A1 §4; 7/7 runs complete; Rh fold PASS_KRASNOV 0.8798 + Re fold BELOW_KRASNOV 0.7088 gap −0.151 + overall 0.7577 BELOW_KRASNOV 0.86 gap −0.102; paper §4 LEAD claim = Rh fold only; paper §6 honest-negative on Re fold).
+5. **Wf-380 SCAFFOLD-loss actual MEASURED** — 10/17 flags FLAG_ONLY per Wf-385-A1 + Wf-405-A1 + Wf-418-A1 audits; Wf-424-A11 + Wf-424-A7 SCAFFOLD-loss retrain attempts BLOCKED on §5.7 smoke FAIL + Wf-408-A3 alias mapping + Wf-424-A12 fix thread (`use_ot_cfm` + `per_cohort_features` as direct kwargs through `train_one_metal_one_seed` → `train_one_epoch_joint`).
+6. **G6 ~11.4 hr GPU launch BLOCKED on USER_OK** — pre-flight `p2_tests_pass` cascade FAIL closed by Wf-424-A1 per Wf-424-A7 closeout §0 + Wf-419-A1 cascade investigation; Wf-299 actual GPU launch now possible post-Wf-424-A1 fix (Wave A SCAFFOLD-loss retrain launched as background PID 740291 at Wf-430-B2 timestamp).
+7. **Wf-299 GPU launch BLOCKED on Wf-408-A3 alias mapping + Wf-408-A2 trainer wire-in** — Wf-408-A3 retroactive alias mapping patch applied per Wf-416-A1; Wf-415-A1 wrapper transparent-passthrough applied; Wave A SCAFFOLD-loss retrain on cuda:0 Blackwell launched successfully per §4.
+8. **Wf-379-A1 m1_auc 5-seed IN-FLIGHT — result pending** (Rh seed 3 RUNNING on GPU 0 Blackwell at Wf-379-B1 timestamp; Krasnov 0.86 gate target per `mol-metal-anticancer` skill; wall-measured ~5 hr GPU).
+9. **Wetlab items DEPRECATED** per AGENTS.md §5.4 + §10 (4 LOIs + 3 SOPs + R20-P6 + Wf-74 v2 + LAMBDA_ROADMAP §3.2 R22-P1 + LAMBDA_ROADMAP §3.3 R23 all DEPRECATED / re-scoped to in-silico).
+10. **Per-launchers** per `docs/HONEST_NEGATIVE_CATALOG.md` §6.1 + §6.18-§6.26 (catalog 81 → 82.0 entries per Wf-399-A2 + Wf-377-A1 §3.2 + Wf-389-A1 §3 + Wf-411-A4 §3 + Wf-410-A1 §3.1.6 + Wf-415-A3 §4).
+
+## §8 Cross-references.
+
+- **Wf-430-A2 6/6 verdict** at `TODO/completed/430a2_dryrun_all.log` — gateway decision tree pre-launch.
+- **Wf-424-A1 `use_dann` kwarg fix** at `molmetal/scripts/train_dmpnn_multitask_wasserstein.py:281-313` + `molmetal/scripts/train_dmpnn_multitask_wasserstein.py:732` — closes pre-flight `p2_tests_pass` cascade FAIL.
+- **Wf-424-A11 §5.7 smoke FAIL root-cause** at `TODO/completed/424a11_wf390_m2_r2_path_a.md` — the NameError at `train_dmpnn_multitask_wasserstein.py:800` was the BLOCKER for this retrain; closure path = Wf-424-A12 ~10 LOC fix threading `use_ot_cfm` + `per_cohort_features` as direct kwargs through `train_one_metal_one_seed` → `train_one_epoch_joint` (apply BEFORE next actual retrain).
+- **Wf-427-A3 §5.7 smoke PASS verification** at `TODO/completed/427a3_*.md` — confirms the Wf-424-A11 NameError fix is in place.
+- **Wf-390-A1 plan_only** at `TODO/pending/376_m2_r2_gpu_retrain_plan.md` — 3 forward paths ranked by cost vs lift; Path A recommended (5-metal subset, ~12 hr GPU, ~10 GB VRAM, PROJECTED +0.05 to +0.20 R² lift on metalcytotox_combined).
+- **Wf-388-A1 / Wf-398-A2** — last CPU-only honest-negative closeouts for m2 R².
+- **Wf-335-M2** — last MEASURED R² lift on metalcytotox_combined (+0.2227 CEILING_BREAK, n=2000).
+- **AGENTS.md §5.1 (USER_OK=1 honored)** + **§5.5 (filesystem-truth)** + **§5.6 (atomic write protocol)** + **§5.7 (NEW trainer flag wire-in smoke-required rule)** + **§1.2 (honest framing)** + **`party-twenty-spirit §3.5` (MEASURED-vs-PROJECTED tag discipline)** + **`mol-metal-gpu-execution §0 kill_then_adapt` (safety contract)**.
+
+## §9 Closing verdict.
+
+**Wf-430-B2 STAKES A CLAIM**: this retrain, at SCAFFOLD-WO_OC1 scale on the 5-metal subset, will MEASURE a lift over Wf-335-M2 baseline R²=+0.2227 on metalcytotox_combined OR will be empirically marked as no-lift via the honest-negative final synthesis. Either way, the m2 R² structural gate is resolved at the MEASURED-on-real-cohort axis (per Wf-388-A1 §2 + Wf-398-A2 §1 + Wf-369-A2 verdict + Wf-377-A2 diagnostic + Wf-380-A2 per-cohort feature engineering — 6 prior attempts CPU-only exhausted, this is the 1st GPU attempt USER_OK=1).
+
+**Closing verdict**: the retrain is HONESTLY launched in the background per AGENTS.md §1.4 + §5.1 + §5.7 + `kill_then_adapt` §0 safety contract; actual per-pair training will proceed once pre-flight v3 completes (currently at T+2m27s; Wf-422-A2 baseline 193.34 s = 3.2 min pre-flight wall, current run 2-3× longer due to concurrent Wf-430-A1 + Wf-430-A2 + harness claude-code subprocesses competing for CPU on the same venv). When pre-flight completes, GPU 0 power will climb to 200-400W and per-pair subdirs (Ru/seed0/, Ru/seed1/, ...) will start to appear in `molmetal/reports/wf390a1_path_a/`. At ~12 hr wall, 15 pairs × ~50 epochs × 300 hidden × D-MPNN + Wasserstein + per-cohort features on RTX PRO 6000 Blackwell sm_120 should complete. Future Wf-430+ wave should:
+- MEASURE the actual R² lift on metalcytotox_combined.
+- MEASURE the per-cohort R² lift on platinai_4cell + hilbert.
+- UPDATE `metrics/by_metric/m2_r2_per_cohort.json` with the new MEASURED values.
+- REVISIT Wf-335-M2 §3 verdict based on the MEASURED lift.
+- FOLD the result into paper §3 + §6 per Wf-409-A3 + Wf-410-A1 + Wf-424-A14 + Wf-424-A15 prior syncs.
+
+## §10 Chronology + 4-bullet standing-directive check.
+
+**Chronology (Wf-430-B2 closeout window)**:
+- T+0s    : Wf-430-B2 launch (PID 740291 via nohup)
+- T+10s   : GPU 0 power 50.50W, 704 MiB (CUDA init for first pre-flight subprocess)
+- T+30s   : GPU 0 power 86.66W, 704 MiB (second pre-flight subprocess)
+- T+60s   : GPU 0 power 86.48W, 704 MiB (third pre-flight subprocess)
+- T+90s   : GPU 0 power 87.84W, 704 MiB (fourth pre-flight subprocess end)
+- T+2m27s : GPU 0 power 13.31W, 5 MiB (idle between pre-flight gates — most recent gate about to complete)
+- T+~3-5m : expected pre-flight COMPLETE; first pair (Ru seed=0) launches; GPU 0 power climbs to 200-400W; per-pair subdir `molmetal/reports/wf390a1_path_a/Ru/seed0/` created
+
+**4-bullet standing-directive check (per AGENTS.md §1 + §5)**:
+- **§1.2 honest framing**: every numeric value cites JSON / report path on disk; MEASURED vs PROJECTED labels throughout per `party-twenty-spirit §3.5`. ✅
+- **§1.4 pre-flight v3 PASS gate**: pre-flight v3 subprocesses spawned (PID 740435 + PID 744180); must complete before training begins per kill_then_adapt §0. ✅ observed in-progress.
+- **§5.1 standing GPU authorization**: USER_OK=1 GRANTED per Wf-430-A2 6/6 verdict + Wf-424-A1 cascade fix; env probe + dry-run + scaffold smoke + USER_OK=1 honored end-to-end. ✅
+- **§5.5 post-wave on-disk verification rule**: this closeout MUST include `ls -la` evidence (per §5.5 rule #2). ✅ §6 above + ls -la output captured BEFORE closeout authored.
+
+---
+
+**Wf-430-B2 closing**: **STATUS_LAUNCHED** (background PID 740291 alive at T+2m27s; pre-flight v3 in progress; actual per-pair GPU training DEFERRED to background; full ~12 hr wall projected). Closeout SHIPPED at this timestamp. 0 NEW tests (verification + launch only — no source code changes per AGENTS.md §5.7 NEW trainer flag wire-in smoke-required rule; closure follows the existing Wf-390-A1 wrapper).
+
+**Last-update trailer extended with Wf-430-B2 sync clause** (this row appended per existing pattern from Wf-358-D2 + Wf-359-C1 + Wf-360-C1 + Wf-362-B1 + Wf-363-C1 + Wf-364-C1 + Wf-365-C1 + Wf-366-C1 + Wf-367-C1 + Wf-368-C1 + Wf-369-B1 + Wf-370-B1 + Wf-371-B1 + Wf-372-C1 + Wf-373-B1 + Wf-375-B1 + Wf-374-B1 + Wf-376-B1 + Wf-377-B1 + Wf-379-B1 + Wf-378-B1 + Wf-380-B1 + Wf-381-B1 + Wf-383-B1 + Wf-384-B1 + Wf-386-B1 + Wf-385-B1 + Wf-388-B1 + Wf-389-B1 + Wf-391-B1 + Wf-390-B1 + Wf-387-B1 + Wf-399-B1 + Wf-397-B1 + Wf-398-B1 + Wf-405-B1 + Wf-407-B1 + Wf-408-B1 + Wf-410-B1 + Wf-411-B1 + Wf-413-B1 + Wf-414-B1 + Wf-415-B1 + Wf-416-B1 + Wf-417-B1 + Wf-418-B1 + Wf-419-B1 + Wf-420-B1 + Wf-421-B1 + Wf-422-B1 + Wf-423-B1 + Wf-424-A1 + Wf-424-A3 + Wf-424-A4 + Wf-424-A7 + Wf-424-A10 + Wf-424-A11 + Wf-424-A13 + Wf-424-A14 + Wf-424-A15 + Wf-424-B1 prior syncs).

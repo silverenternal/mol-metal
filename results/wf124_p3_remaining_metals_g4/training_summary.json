@@ -1,0 +1,208 @@
+{
+  "wf_tag": "Wf-278A \u2014 TODO-180 G4 nested-path re-aggregation (Wf-276C path-mismatch fix)",
+  "input_dir": "/home/hugo/codes/mol-metal/results/wf124_p3_remaining_metals_g4",
+  "metals": [
+    "Ru",
+    "Ir",
+    "Os",
+    "Rh",
+    "Re"
+  ],
+  "epochs": 30,
+  "backbone": {
+    "hidden": 300,
+    "depth": 3
+  },
+  "n_pairs_total": 15,
+  "todo_180_g4_total_pairs": 15,
+  "expected_pairs": 14,
+  "per_metal": {
+    "Ru": {
+      "metal": "Ru",
+      "n_seeds": 3,
+      "test_auc_mean": 0.7560681478781593,
+      "test_auc_std": 0.011228648559126309,
+      "test_auc_per_seed": {
+        "0": 0.7715537578862466,
+        "1": 0.7452805547526491,
+        "2": 0.7513701309955821
+      },
+      "val_auc_mean": 0.7771312801887609,
+      "val_auc_std": 0.030996899692258013,
+      "test_pearson_mean": 0.45824108862088836,
+      "test_pearson_std": 0.06355778528059074,
+      "test_rmse_mean": 0.8846674758907721,
+      "test_rmse_std": 0.08801427357485521,
+      "test_mae_mean": 0.6751821697534729,
+      "test_mae_std": 0.07570131382516443,
+      "w_final_mean": 0.32259145302395964,
+      "w_final_std": 0.08918764659939402,
+      "elapsed_seconds_mean": 2108.0671083927155,
+      "elapsed_seconds_total": 6324.201325178146,
+      "n_train_mean": 12471,
+      "n_val_mean": 2166,
+      "n_test_mean": 4350,
+      "epochs": 50,
+      "hidden": 300,
+      "depth": 3,
+      "ckpt_paths": [
+        "results/wf124_p3_50epoch_full_sweep_g5/Ru/seed0/ckpts/dmpnn_mtw_ru_seed0.pt",
+        "results/wf124_p3_remaining_metals_g4/A/Ru/seed1/ckpts/dmpnn_mtw_ru_seed1.pt",
+        "results/wf124_p3_remaining_metals_g4/A/Ru/seed2/ckpts/dmpnn_mtw_ru_seed2.pt"
+      ],
+      "status": "OK"
+    },
+    "Ir": {
+      "metal": "Ir",
+      "n_seeds": 3,
+      "test_auc_mean": 0.6702473529282544,
+      "test_auc_std": 0.0056381851556034455,
+      "test_auc_per_seed": {
+        "0": 0.6659297602358101,
+        "1": 0.6782115340834204,
+        "2": 0.6666007644655332
+      },
+      "val_auc_mean": 0.851284830420449,
+      "val_auc_std": 0.0027121050552537333,
+      "test_pearson_mean": -0.007206938733150671,
+      "test_pearson_std": 0.04159126826751794,
+      "test_rmse_mean": 0.9867805893384064,
+      "test_rmse_std": 0.10441549313898867,
+      "test_mae_mean": 0.8290192311153332,
+      "test_mae_std": 0.08347057030385467,
+      "w_final_mean": 0.5359203111534657,
+      "w_final_std": 0.14970108331766455,
+      "elapsed_seconds_mean": 459.2565308411916,
+      "elapsed_seconds_total": 1377.7695925235748,
+      "n_train_mean": 3444,
+      "n_val_mean": 243,
+      "n_test_mean": 859,
+      "epochs": 30,
+      "hidden": 300,
+      "depth": 3,
+      "ckpt_paths": [
+        "results/wf124_p3_remaining_metals_g4/A/Ir/seed0/ckpts/dmpnn_mtw_ir_seed0.pt",
+        "results/wf124_p3_remaining_metals_g4/A/Ir/seed1/ckpts/dmpnn_mtw_ir_seed1.pt",
+        "results/wf124_p3_remaining_metals_g4/A/Ir/seed2/ckpts/dmpnn_mtw_ir_seed2.pt"
+      ],
+      "status": "OK"
+    },
+    "Os": {
+      "metal": "Os",
+      "n_seeds": 3,
+      "test_auc_mean": 0.7025316455696203,
+      "test_auc_std": 0.02048834967390493,
+      "test_auc_per_seed": {
+        "0": 0.7136708860759494,
+        "1": 0.6737974683544303,
+        "2": 0.720126582278481
+      },
+      "val_auc_mean": 0.7745551352108729,
+      "val_auc_std": 0.04579807014888156,
+      "test_pearson_mean": 0.3553738049946502,
+      "test_pearson_std": 0.13055176774468677,
+      "test_rmse_mean": 1.6491048512956124,
+      "test_rmse_std": 0.8612374714510505,
+      "test_mae_mean": 1.4720971855149365,
+      "test_mae_std": 0.8463067039743086,
+      "w_final_mean": 0.5244611085509415,
+      "w_final_std": 0.19138083875097894,
+      "elapsed_seconds_mean": 116.59151649475098,
+      "elapsed_seconds_total": 349.77454948425293,
+      "n_train_mean": 834,
+      "n_val_mean": 100,
+      "n_test_mean": 179,
+      "epochs": 30,
+      "hidden": 300,
+      "depth": 3,
+      "ckpt_paths": [
+        "results/wf124_p3_remaining_metals_g4/A/Os/seed0/ckpts/dmpnn_mtw_os_seed0.pt",
+        "results/wf124_p3_remaining_metals_g4/A/Os/seed1/ckpts/dmpnn_mtw_os_seed1.pt",
+        "results/wf124_p3_remaining_metals_g4/A/Os/seed2/ckpts/dmpnn_mtw_os_seed2.pt"
+      ],
+      "status": "OK"
+    },
+    "Rh": {
+      "metal": "Rh",
+      "n_seeds": 3,
+      "test_auc_mean": 0.7226596675415573,
+      "test_auc_std": 0.054028633803485215,
+      "test_auc_per_seed": {
+        "0": 0.796998031496063,
+        "1": 0.6701935695538058,
+        "2": 0.7007874015748032
+      },
+      "val_auc_mean": 0.745016835016835,
+      "val_auc_std": 0.06191808422193366,
+      "test_pearson_mean": 0.15148164519478244,
+      "test_pearson_std": 0.03689234786695509,
+      "test_rmse_mean": 1.31467600198893,
+      "test_rmse_std": 0.22923335137359005,
+      "test_mae_mean": 1.1627460752011058,
+      "test_mae_std": 0.22661556023796597,
+      "w_final_mean": 0.35339431264848087,
+      "w_final_std": 0.042963721628947404,
+      "elapsed_seconds_mean": 101.4145799477895,
+      "elapsed_seconds_total": 304.24373984336853,
+      "n_train_mean": 696,
+      "n_val_mean": 199,
+      "n_test_mean": 223,
+      "epochs": 30,
+      "hidden": 300,
+      "depth": 3,
+      "ckpt_paths": [
+        "results/wf124_p3_remaining_metals_g4/B/Rh/seed0/ckpts/dmpnn_mtw_rh_seed0.pt",
+        "results/wf124_p3_remaining_metals_g4/B/Rh/seed1/ckpts/dmpnn_mtw_rh_seed1.pt",
+        "results/wf124_p3_remaining_metals_g4/B/Rh/seed2/ckpts/dmpnn_mtw_rh_seed2.pt"
+      ],
+      "status": "OK"
+    },
+    "Re": {
+      "metal": "Re",
+      "n_seeds": 3,
+      "test_auc_mean": 0.77,
+      "test_auc_std": 0.02436012392948945,
+      "test_auc_per_seed": {
+        "0": 0.7755555555555557,
+        "1": 0.7966666666666667,
+        "2": 0.7377777777777778
+      },
+      "val_auc_mean": 0.8812415654520919,
+      "val_auc_std": 0.06222478749472875,
+      "test_pearson_mean": 0.39482510005408683,
+      "test_pearson_std": 0.11285311164511894,
+      "test_rmse_mean": 0.7196248535101644,
+      "test_rmse_std": 0.03394228499126165,
+      "test_mae_mean": 0.5798549582163494,
+      "test_mae_std": 0.017877887129313045,
+      "w_final_mean": 0.3903372069544415,
+      "w_final_std": 0.108496301742333,
+      "elapsed_seconds_mean": 95.21983512242635,
+      "elapsed_seconds_total": 285.65950536727905,
+      "n_train_mean": 692,
+      "n_val_mean": 51,
+      "n_test_mean": 125,
+      "epochs": 30,
+      "hidden": 300,
+      "depth": 3,
+      "ckpt_paths": [
+        "results/wf124_p3_remaining_metals_g4/B/Re/seed0/ckpts/dmpnn_mtw_re_seed0.pt",
+        "results/wf124_p3_remaining_metals_g4/B/Re/seed1/ckpts/dmpnn_mtw_re_seed1.pt",
+        "results/wf124_p3_remaining_metals_g4/B/Re/seed2/ckpts/dmpnn_mtw_re_seed2.pt"
+      ],
+      "status": "OK"
+    }
+  },
+  "aggregate_5metal": {
+    "n_pairs": 15,
+    "test_auc_mean": 0.7243013627835182,
+    "test_auc_std": 0.04601325650759976,
+    "test_pearson_mean": 0.27054294002625145,
+    "test_pearson_std": 0.192926707784274,
+    "test_rmse_mean": 1.110970754404777,
+    "test_rmse_std": 0.522484682479097
+  },
+  "ru_auc_target": 0.86,
+  "ru_auc_baseline_wf124_p3_seed0": 0.7613,
+  "honest_framing_note": "Wf-278A path-mismatch fix: Wf-276C reported TODO-180 G4 14 pairs MEASURED COMPLETE but training_summary.json showed 0 pairs. Root cause: Wf-196 aggregator used flat glob {metal}/per_seed_metrics_seed*.json while the Wf-124 P3 trainer writes the nested layout {wave}/{Metal}/seed{N}/{metal}/per_seed_metrics_seed{N}.json. This aggregator walks the nested tree, keeps the most-specific (deepest) match per seed number, and de-dups the bare per_seed_metrics.json aggregator wrapper."
+}

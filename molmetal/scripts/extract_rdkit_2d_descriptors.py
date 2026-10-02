@@ -140,6 +140,20 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import numpy as np
 
+try:
+    from molmetal.scripts.wf386a3_atomic_write import (
+        atomic_write_file,
+        safe_overwrite_check,
+        detect_truncation,
+    )
+    _WF416_HAS_ATOMIC = True
+except ImportError:  # pragma: no cover — fallback when running as standalone
+    _WF416_HAS_ATOMIC = False
+    atomic_write_file = None  # type: ignore[assignment]
+    safe_overwrite_check = None  # type: ignore[assignment]
+    detect_truncation = None  # type: ignore[assignment]
+
+
 # RDKit is heavy and not always available; Wf-39 P1 vuln_a CRITICAL
 # already burned us once when RDKit was missing. Lazy-import with a
 # hard fail (this script's value proposition is RDKit 2D descriptors
@@ -240,6 +254,34 @@ RDKIT_2D_EXTENDED_DESCRIPTORS: Tuple[Tuple[str, "callable"], ...] = (
     ("fr_Al_COO", Descriptors.fr_Al_COO),
 )
 
+
+def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+    """Wf-416-A1 atomic-write-protocol wrapper around direct write_text.
+
+    Falls back to direct write_text if atomic_write_file is unavailable
+    (e.g. when the script is run standalone without the molmetal package
+    on PYTHONPATH).
+    """
+    if _WF416_HAS_ATOMIC and atomic_write_file is not None:
+        if safe_overwrite_check is not None:
+            _risk = safe_overwrite_check(path, content, min_lines=min_lines)
+            if _risk is not None:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "[Wf-416-A1] safe_overwrite_check diff_ratio=%.3f at %s",
+                    _risk, path,
+                )
+        atomic_write_file(path, content, encoding="utf-8")
+        if detect_truncation is not None:
+            _trunc = detect_truncation(content, expected_min_length=expected_min_length)
+            if _trunc is not None:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "[Wf-416-A1] detect_truncation reason=%r at %s",
+                    _trunc, path,
+                )
+    else:  # pragma: no cover — fallback when atomic primitive unavailable
+        Path(path).write_text(content, encoding="utf-8")
 
 def _require_rdkit() -> None:
     if not _HAS_RDKIT:
@@ -756,7 +798,7 @@ def write_feature_summary(
     }
     if n_samples_warning is not None:
         payload["n_samples_warning"] = n_samples_warning
-    out_path.write_text(json.dumps(payload, indent=2, sort_keys=True))
+    _wf416_atomic_write_text(out_path, json.dumps(payload, indent=2, sort_keys=True))
 
 
 # ---------------------------------------------------------------------------
@@ -982,7 +1024,7 @@ def run_platinai_4cell(
             "properties (MolLogP, TPSA, HBA, HBD, MW)."
         ),
     }
-    payload_path.write_text(json.dumps(payload, indent=2, sort_keys=True))
+    _wf416_atomic_write_text(payload_path, json.dumps(payload, indent=2, sort_keys=True))
 
     return {
         "dataset": "platinai_4cell",

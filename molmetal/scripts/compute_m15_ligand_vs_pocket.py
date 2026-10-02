@@ -71,6 +71,20 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
+try:
+    from molmetal.scripts.wf386a3_atomic_write import (
+        atomic_write_file,
+        safe_overwrite_check,
+        detect_truncation,
+    )
+    _WF424_HAS_ATOMIC = True
+except ImportError:  # pragma: no cover — fallback when running as standalone
+    _WF424_HAS_ATOMIC = False
+    atomic_write_file = None  # type: ignore[assignment]
+    safe_overwrite_check = None  # type: ignore[assignment]
+    detect_truncation = None  # type: ignore[assignment]
+
+
 REPO = Path(__file__).resolve().parent.parent.parent
 SRC_DOCKED_DIR = REPO / "molmetal" / "reports" / "wf179_bd9_m15_rmsd_p2"
 OUT_DIR = REPO / "molmetal" / "reports" / "wf247a_m15_redesign_lvp"
@@ -80,6 +94,34 @@ DEFAULT_POCKETS = ("1h36", "3eml", "3ny8", "4aaw", "4rlu")
 DEFAULT_SEEDS = (0, 1, 2)
 DEFAULT_N_POSES = 5
 
+
+def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+    """Wf-424-A4 atomic-write-protocol wrapper around direct write_text.
+
+    Falls back to direct write_text if atomic_write_file is unavailable
+    (e.g. when the script is run standalone without the molmetal package
+    on PYTHONPATH).
+    """
+    if _WF424_HAS_ATOMIC and atomic_write_file is not None:
+        if safe_overwrite_check is not None:
+            _risk = safe_overwrite_check(path, content, min_lines=min_lines)
+            if _risk is not None:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "[Wf-424-A4] safe_overwrite_check diff_ratio=%.3f at %s",
+                    _risk, path,
+                )
+        atomic_write_file(path, content, encoding="utf-8")
+        if detect_truncation is not None:
+            _trunc = detect_truncation(content, expected_min_length=expected_min_length)
+            if _trunc is not None:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "[Wf-424-A4] detect_truncation reason=%r at %s",
+                    _trunc, path,
+                )
+    else:  # pragma: no cover — fallback when atomic primitive unavailable
+        Path(path).write_text(content, encoding="utf-8")
 
 def _resolve_py() -> str:
     """Honor ``${PY}`` if set; else fall back to venv python."""

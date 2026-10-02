@@ -1,0 +1,21 @@
+{
+  "cross_check_via_metrics_v2_mean_helper": 0.26393246228179723,
+  "data_source": "metallo_drugs_500_train.csv",
+  "description": "Volume of distribution at steady state in L/kg (Lombardo 2006 / Obach 1997); higher = more tissue",
+  "honest_framing_note": "vdss computed via metrics_v2 pass-through on the 449 metallo-drug SMILES cohort. 449/449 parsed (0 parse failures, gracefully skipped). Mean = 0.26393246228179723, std = 0.36857243373182835, verdict = INFO. Descriptive physico-chemical proxy \u2014 NOT a learned metallodrug score. For paper \u00a73 cohort panel only.",
+  "metric": "vdss",
+  "n_failed": 0,
+  "n_parsed": 449,
+  "n_samples": 449,
+  "scope": "ADMET pass-through panel (Wf-303C T1 / Wf-312C R01 5-NEW extension)",
+  "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:vdss",
+  "status": "MEASURED",
+  "std": 0.36857243373182835,
+  "target_band": "0.5-10 L/kg (typical drug range)",
+  "timestamp": "2026-09-29",
+  "unit": "L/kg (volume of distribution at steady state)",
+  "value": 0.26393246228179723,
+  "verdict": "INFO",
+  "wf_design_ref": "molmetal/reports/wf312c_admet_extension/design.md \u00a7R01",
+  "wf_tag": "Wf-312C R01 ADMET 5-NEW extension"
+}

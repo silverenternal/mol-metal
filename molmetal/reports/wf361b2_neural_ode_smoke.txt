@@ -1,0 +1,38 @@
+[molmetal] applied gfx1101 env vars: TOKENIZERS_PARALLELISM=false, TRANSFORMERS_VERBOSITY=error
+[Wf-361-B2] Loading cohort from /home/hugo/codes/mol-metal/molmetal/data/metallo_drugs_500_train.csv (max 60) ...
+[Wf-361-B2] Loaded 60 SMILES in 0.00s
+[Wf-361-B2] Computing baseline m6_kappa on cohort ...
+[Wf-361-B2] baseline m6_kappa: mean=0.4511 (std=0.1821, n_parsed=60, n_failed=0, pass_rate@0.60=0.2167, pass_rate@0.55=0.3667, 0.12s)
+[Wf-361-B2] Computing RDKit 12-d descriptor features ...
+[Wf-361-B2] RDKit 12-d features: shape=(60, 12), min=-5.7795, max=1244.2460, mean=75.5752 (0.05s)
+[Wf-361-B2] Evolving features via Neural ODE (dopri5, hidden=16, t_end=1.0) ...
+[Wf-361-B2] Neural ODE evolved features: shape=(60, 12), min=-5.2355, max=1244.1333, mean=75.6624 (0.25s)
+[Wf-361-B2] Cross-validated Ridge recovery (alpha=1.0, cv_folds=5) ...
+
+================================================================================
+Wf-361-B2 SUMMARY
+  m6_kappa baseline mean : 0.4511 (Wf-325D MEASURED=0.4719, Wf-359-A1 platinai_4cell=0.3561)
+  pass_rate @0.60       : 0.2167
+  pass_rate @0.55 (ada) : 0.3667
+  candidates            : 4
+
+  candidate                       n_feat     cv_r2  aug_mean  pass_lift  lift_adapt verdict                       
+  rdkit_12d_baseline                  12   +0.5694    0.4493    -0.0167     -0.0167 HONEST_NEGATIVE_PERSISTENT    
+  neural_ode_dopri5                   12   +0.5410    0.4495    -0.0167     -0.0167 HONEST_NEGATIVE_PERSISTENT    
+  joint_rdkit_plus_neural_ode         24   +0.5628    0.4470    -0.0167     -0.0333 HONEST_NEGATIVE_PERSISTENT    
+  adaptive_threshold_relax_0_55       12   +0.5410    0.4495    -0.0167     -0.0167 HONEST_NEGATIVE_PERSISTENT    
+
+  best_cv_r2 candidate       : rdkit_12d_baseline (CV-R²=+0.5694)
+  best_adaptive_lift candidate: rdkit_12d_baseline (lift=-0.0167)
+  aggregate_status           : HONEST_NEGATIVE_PARTIAL_STRUCTURAL
+  ceiling_break              : False
+================================================================================
+[Wf-361-B2] Wrote molmetal/reports/wf361b2_m6_kappa_neural_ode/result.json
+[Wf-361-B2] Wrote molmetal/reports/wf361b2_m6_kappa_neural_ode/per_axis.csv
+
+Wf-361-B2 OUTPUT:
+  neural_ode_implementation: torchdiffeq.odeint dopri5 (12-d RDKit → ODE MLP 16-d hidden → 12-d evolved features → Ridge head); 4 candidates
+  augmented_mean_before     : 0.4511 (Wf-325D MEASURED=0.4719, Wf-359-A1 platinai_4cell=0.3561)
+  augmented_mean_after      : best_candidate=rdkit_12d_baseline (CV-R²=+0.5694, augmented_mean constrained ~baseline by unbiased CV)
+  gate_status               : HONEST_NEGATIVE_PARTIAL_STRUCTURAL (ceiling_break=False)
+  tests_status              : 3 NEW tests in test_wf361b2_m6_kappa_neural_ode.py (ode_function / ode_solver / backward_compat)

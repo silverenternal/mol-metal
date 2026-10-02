@@ -1,0 +1,71 @@
+{
+  "pass": 113,
+  "fail": 1,
+  "skip": 3,
+  "total": 117,
+  "total_wall_sec": 223.6347,
+  "expected_total": 117,
+  "gate_count_consistency": null,
+  "pipeline": "all",
+  "timestamp": "2026-09-30T17:45:32+0000",
+  "schema_version": "207.v1",
+  "host": "ZhaoLab",
+  "kernel": "7.2.6-hardened1-1-hardened",
+  "torch_version": "2.14.0+cu130",
+  "gpus": [
+    [
+      "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+      97887
+    ],
+    [
+      "NVIDIA GeForce RTX 5090",
+      32607
+    ]
+  ],
+  "fails": [
+    "p3_wf343c2_per_wave_runtime_check"
+  ],
+  "skips": [
+    "p3_wf343c4_wave_budget_remaining_nonneg",
+    "data_2_1_6_bindingdb_external_honest_negative",
+    "data_2_1_6_bindingdb_external_honest_negative"
+  ],
+  "configs": [
+    {
+      "config_path": "configs/cfm_full_retrain.yaml",
+      "sha": "9b12e6f574df",
+      "uncommitted": true
+    },
+    {
+      "config_path": "configs/cfm_per_innovation_ablation_p1.4.yaml",
+      "sha": "9b12e6f574df",
+      "uncommitted": true
+    },
+    {
+      "config_path": "configs/cfm_real_decode_lift_p1.3.yaml",
+      "sha": "9b12e6f574df",
+      "uncommitted": true
+    },
+    {
+      "config_path": "configs/default.yaml",
+      "sha": "9b12e6f574df",
+      "uncommitted": false
+    },
+    {
+      "config_path": "configs/wf124_p3_50epoch_full_sweep_g5.yaml",
+      "sha": "9b12e6f574df",
+      "uncommitted": true
+    },
+    {
+      "config_path": "configs/wf124_p3_per_innovation_ablation_g6.yaml",
+      "sha": "9b12e6f574df",
+      "uncommitted": true
+    },
+    {
+      "config_path": "configs/wf124_p3_remaining_metals_g4.yaml",
+      "sha": "9b12e6f574df",
+      "uncommitted": true
+    }
+  ],
+  "uncommitted_changes_present": true
+}

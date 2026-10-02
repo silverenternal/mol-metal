@@ -1,0 +1,223 @@
+{
+  "timestamp": "2026-09-29T12:06:27+0000",
+  "schema_version": "343c1.v1",
+  "pipeline": "all",
+  "summary": {
+    "pass": 21,
+    "fail": 0,
+    "skip": 5,
+    "total": 26,
+    "total_wall_sec": 29.5747
+  },
+  "gates": [
+    {
+      "name": "code_1_1_1_indices_aliasing_fix",
+      "priority": "P1",
+      "pipeline": "code",
+      "status": "PASS",
+      "evidence": "grep 'indices = train_idx.copy()' found in /home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py",
+      "wall_sec": 0.0003
+    },
+    {
+      "name": "code_1_1_2_kendall_log_sigma",
+      "priority": "P1",
+      "pipeline": "code",
+      "status": "PASS",
+      "evidence": "grep 'kendall.parameters()' found in /home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py",
+      "wall_sec": 0.0002
+    },
+    {
+      "name": "code_1_1_3_dann_per_metal",
+      "priority": "P1",
+      "pipeline": "code",
+      "status": "PASS",
+      "evidence": "grep 'per_metal' found in /home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py",
+      "wall_sec": 0.0002
+    },
+    {
+      "name": "code_1_1_4_nan_to_num_guard",
+      "priority": "P1",
+      "pipeline": "code",
+      "status": "PASS",
+      "evidence": "grep 'nan_to_num' found in /home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py",
+      "wall_sec": 0.0002
+    },
+    {
+      "name": "code_1_1_5_grad_clip_max_norm",
+      "priority": "P1",
+      "pipeline": "code",
+      "status": "PASS",
+      "evidence": "grep 'clip_grad_norm' found in /home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py",
+      "wall_sec": 0.0002
+    },
+    {
+      "name": "code_1_1_6_w2_epoch_avg_history",
+      "priority": "P1",
+      "pipeline": "code",
+      "status": "PASS",
+      "evidence": "grep 'w2_epoch_avg_history' found in /home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py",
+      "wall_sec": 0.0001
+    },
+    {
+      "name": "code_1_1_7_ablation_flags_present",
+      "priority": "P1",
+      "pipeline": "code",
+      "status": "PASS",
+      "evidence": "help exposes all 4 token(s) of '--no-multi-task --no-wass --no-kendall --no-dann' (rc=0)",
+      "wall_sec": 5.4
+    },
+    {
+      "name": "code_1_1_8_enhanced_metal_head",
+      "priority": "P1",
+      "pipeline": "code",
+      "status": "PASS",
+      "evidence": "help exposes all 2 token(s) of '--enhanced-head --metal-attention' (rc=0)",
+      "wall_sec": 4.7783
+    },
+    {
+      "name": "code_1_1_9_click_aug_flag",
+      "priority": "P1",
+      "pipeline": "code",
+      "status": "PASS",
+      "evidence": "grep '--use-click-aug' found in /home/hugo/codes/mol-metal/molmetal/scripts/train_chemprop_v2_v3.py",
+      "wall_sec": 0.0002
+    },
+    {
+      "name": "code_1_1_10_master_modules_flags",
+      "priority": "P1",
+      "pipeline": "code",
+      "status": "PASS",
+      "evidence": "help exposes all 2 token(s) of '--use-master-wass --use-master-cath' (rc=0)",
+      "wall_sec": 4.8339
+    },
+    {
+      "name": "ablation_1_3_1_flags_present",
+      "priority": "P1",
+      "pipeline": "ablation",
+      "status": "PASS",
+      "evidence": "help exposes all 4 token(s) of '--no-multi-task --no-wass --no-kendall --no-dann' (rc=0)",
+      "wall_sec": 5.3771
+    },
+    {
+      "name": "ablation_1_3_2_single_metal_flag",
+      "priority": "P1",
+      "pipeline": "ablation",
+      "status": "PASS",
+      "evidence": "help exposes all 1 token(s) of '--single-metal' (rc=0)",
+      "wall_sec": 4.4289
+    },
+    {
+      "name": "ablation_1_3_3_n_seeds_min_flag",
+      "priority": "P1",
+      "pipeline": "ablation",
+      "status": "PASS",
+      "evidence": "help exposes all 1 token(s) of '--n-seeds-min' (rc=0)",
+      "wall_sec": 4.7388
+    },
+    {
+      "name": "data_2_1_1_metalcytotox_5metal_csv",
+      "priority": "P1",
+      "pipeline": "data",
+      "status": "PASS",
+      "evidence": "wc -l /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask.csv = 26802 >= 26000",
+      "wall_sec": 0.0025
+    },
+    {
+      "name": "data_2_1_2_metalcytotox_raw_csv",
+      "priority": "P1",
+      "pipeline": "data",
+      "status": "PASS",
+      "evidence": "wc -l /home/hugo/codes/mol-metal/.data/molmetal/MetalCytoToxDB.csv = 26802 >= 1000",
+      "wall_sec": 0.0025
+    },
+    {
+      "name": "data_2_1_3_drugood_dir",
+      "priority": "P1",
+      "pipeline": "data",
+      "status": "PASS",
+      "evidence": "dir exists: /home/hugo/codes/mol-metal/.data/molmetal/drugood",
+      "wall_sec": 0.0
+    },
+    {
+      "name": "data_2_1_4_nci60_dir",
+      "priority": "P1",
+      "pipeline": "data",
+      "status": "PASS",
+      "evidence": "dir exists: /home/hugo/codes/mol-metal/.data/molmetal/NCI60_GI50",
+      "wall_sec": 0.0
+    },
+    {
+      "name": "data_2_1_5_platinai_4cell_dir",
+      "priority": "P1",
+      "pipeline": "data",
+      "status": "PASS",
+      "evidence": "file exists: /home/hugo/codes/mol-metal/.data/molmetal/platinai_4cell.csv",
+      "wall_sec": 0.0
+    },
+    {
+      "name": "data_2_1_6_bindingdb_external_honest_negative",
+      "priority": "P1",
+      "pipeline": "data",
+      "status": "SKIP",
+      "evidence": "BindingDB 1.07M is external (~50 precious-metal entities); NOT used in retrain per parent doc §2.1.6. Honest-negative: data fact, not blocker.",
+      "wall_sec": 0.0
+    },
+    {
+      "name": "data_2_1_7_click_yields_csv",
+      "priority": "P1",
+      "pipeline": "data",
+      "status": "PASS",
+      "evidence": "wc -l /home/hugo/codes/mol-metal/.data/molmetal/click_yields_literature.csv = 61 >= 50",
+      "wall_sec": 0.0111
+    },
+    {
+      "name": "test_3_1_5_nan_guard_test_present",
+      "priority": "P1",
+      "pipeline": "test",
+      "status": "PASS",
+      "evidence": "file exists: /home/hugo/codes/mol-metal/molmetal/tests/test_train_chemprop_v2_v3_nan_guard.py",
+      "wall_sec": 0.0
+    },
+    {
+      "name": "post_retrain_5_11_per_seed_std",
+      "priority": "P2",
+      "pipeline": "post_retrain",
+      "status": "SKIP",
+      "evidence": "post-retrain gate: per_seed std reported (NOT 0) across 5 seeds (filled in after retrain wave)",
+      "wall_sec": 0.0
+    },
+    {
+      "name": "post_retrain_5_12_os_auc_non_degenerate",
+      "priority": "P2",
+      "pipeline": "post_retrain",
+      "status": "SKIP",
+      "evidence": "post-retrain gate: Os AUC ≠ exactly 0.5 (LOMO collapse check) (filled in after retrain wave)",
+      "wall_sec": 0.0
+    },
+    {
+      "name": "post_retrain_5_13_ru_w2_epoch_avg",
+      "priority": "P2",
+      "pipeline": "post_retrain",
+      "status": "SKIP",
+      "evidence": "post-retrain gate: Ru w2_epoch_avg_history non-zero for ALL epochs (filled in after retrain wave)",
+      "wall_sec": 0.0
+    },
+    {
+      "name": "post_retrain_5_14_no_nan_auc",
+      "priority": "P2",
+      "pipeline": "post_retrain",
+      "status": "SKIP",
+      "evidence": "post-retrain gate: all 5 metals × 5 seeds non-NaN test_auc (filled in after retrain wave)",
+      "wall_sec": 0.0
+    },
+    {
+      "name": "honest_framing_8_15_catalog_entry_count",
+      "priority": "P1",
+      "pipeline": "honest_framing",
+      "status": "PASS",
+      "evidence": "/home/hugo/codes/mol-metal/科研进展_pre_retrain_checklist_2026-09-28.md has 15 §8 entries (>= 15)",
+      "wall_sec": 0.0002
+    }
+  ],
+  "parent_doc_reference": "科研进展_pre_retrain_checklist_2026-09-28.md (§1.1 code, §1.3 ablation, §2.1 data, §3.1 test, §5.11-5.14 post-retrain SKIP, §8.15 honest framing)"
+}

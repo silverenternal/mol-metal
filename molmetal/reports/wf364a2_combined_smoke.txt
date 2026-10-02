@@ -1,0 +1,43 @@
+[Wf-364-A2] Loading cohort from /home/hugo/codes/mol-metal/molmetal/data/metallo_drugs_500_train.csv (max 60) ...
+[Wf-364-A2] Loaded 60 SMILES in 0.00s
+[Wf-364-A2] Computing baseline m6_kappa on cohort ...
+[molmetal] applied gfx1101 env vars: TOKENIZERS_PARALLELISM=false, TRANSFORMERS_VERBOSITY=error
+[Wf-364-A2] baseline m6_kappa: mean=0.4511 (std=0.1821, n_parsed=60, n_failed=0, pass_rate@0.60=0.2167, 1.18s)
+[Wf-364-A2] Computing RDKit 12-d descriptor features ...
+[Wf-364-A2] RDKit 12-d features: shape=(60, 12), min=-5.7795, max=1244.2460, mean=75.5752 (0.05s)
+[Wf-364-A2] Evolving features via Neural ODE (dopri5, hidden=16, t_end=1.0) ...
+[Wf-364-A2] Neural ODE evolved features: shape=(60, 12), min=-5.2355, max=1244.1333, mean=75.6624 (0.27s)
+[Wf-364-A2] Running combined MAML + Neural ODE (K_shot=8, alpha_meta=1.0, alpha_inner=0.1, cv=5, epochs=5) ...
+[Wf-364-A2] Running control: ODE only (no MAML) ...
+[Wf-364-A2] Running control: RDKit baseline (no ODE, no MAML) ...
+[Wf-364-A2] Running joint: RDKit + ODE concat with MAML ...
+
+================================================================================
+Wf-364-A2 SUMMARY
+  m6_kappa baseline mean : 0.4511 (Wf-325D MEASURED=0.4719, Wf-359-A1 platinai_4cell=0.3561)
+  pass_rate @0.60        : 0.2167
+  pass_rate @0.55 (ada)  : 0.3667
+  candidates             : 4
+
+  candidate                                 n_feat     cv_r2  aug_mean  pass_lift  lift_adapt verdict                       
+  combined_maml_neural_ode                      12   +0.3733    0.4731    +0.0000     -0.0667 HONEST_NEGATIVE_PERSISTENT    
+  ode_only_no_maml_control                      12   +0.5410    0.4495    -0.0167     -0.0167 HONEST_NEGATIVE_PERSISTENT    
+  rdkit_12d_baseline_no_ode_no_maml             12   +0.5694    0.4493    -0.0167     -0.0167 HONEST_NEGATIVE_PERSISTENT    
+  joint_rdkit_ode_concat_with_maml              24   +0.3733    0.4737    +0.0167     -0.0667 HONEST_NEGATIVE_PERSISTENT    
+
+  best_cv_r2 candidate       : rdkit_12d_baseline_no_ode_no_maml (CV-R²=+0.5694)
+  best_aug_mean candidate    : joint_rdkit_ode_concat_with_maml (aug_mean=+0.4737)
+  aggregate_status           : HONEST_NEGATIVE_PARTIAL_STRUCTURAL
+  ceiling_break              : False
+================================================================================
+
+[Wf-364-A2] Wrote molmetal/reports/wf364a2_m6_kappa_combined/result.json
+[Wf-364-A2] Wrote molmetal/reports/wf364a2_m6_kappa_combined/per_axis.csv
+
+Wf-364-A2 OUTPUT (PLAIN TEXT):
+  combined_implementation : closed-form MAML K_shot inner-loop Ridge + Neural ODE continuous dynamics (Wf-361-B1 + Wf-361-B2 anchors); ODE evolves 12-d RDKit descriptor via dopri5 (16-d hidden, t_end=1.0); K_shot=8 inner-loop adaptation on top; 5 epoch averaging; CV=5.
+  augmented_mean_before    : 0.4511 (Wf-325D MEASURED=0.4719; Wf-359-A1 platinai_4cell=0.3561); Wf-361-B1 MAML individual aug_mean≈0.4495; Wf-361-B2 Neural ODE individual aug_mean=0.4495
+  augmented_mean_after     : combined aug_mean=0.4731; best aug_mean=0.4737 (joint_rdkit_ode_concat_with_maml) (threshold=0.6)
+  gate_status              : HONEST_NEGATIVE_PARTIAL_STRUCTURAL (PRESERVED — augmented_mean < 0.6, final state, no more paths to try)
+  tests_status             : 3 NEW tests in test_wf364a2_m6_kappa_combined.py (MAML_inner_with_neural_ode_forward / combined_loss_backward / backward_compat)
+  final_verdict            : HONEST_NEGATIVE_PARTIAL_STRUCTURAL (this is the LAST architectural path per Wf-364-A2 brief)

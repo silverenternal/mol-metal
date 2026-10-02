@@ -1,0 +1,10 @@
+SUMMARY: {
+  "pass": 112,
+  "fail": 1,
+  "skip": 4,
+  "total": 117,
+  "total_wall_sec": 201.9079
+}
+
+FAILS:
+  - p2_tests_pass

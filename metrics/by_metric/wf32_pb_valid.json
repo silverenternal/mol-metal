@@ -118,5 +118,13 @@
   "overall_pb_pass_rate": {
     "mol": 0.0,
     "dock": 0.0
+  },
+  "wf432a1_pb_validity_deferred_block": {
+    "task_id": "A2_fix_step3_cat_b",
+    "timestamp": "2026-10-01T21:14:43.243963+00:00",
+    "status": "DEFERRED HONEST_NEGATIVE \u2014 meeko + autobabel install requires sudo per AGENTS.md \u00a710; PoseBusters validity SKIPPED graceful preserved as honest-negative on validity NOT on accuracy",
+    "reason": "PoseBusters validity binary requires meeko (RDKit extension) which is LICENSE-gated; per AGENTS.md \u00a75.4 + \u00a710 wetlab + LICENSE-GATED installs are DEFERRED to USER_OK-gated follow-up",
+    "closure_path": "Wf-433+ USER_OK-gated follow-up with explicit meeko + autobabel pip install + Wf-433-A2 PoseBusters PbValid run on the 5-pocket organic-cofactor set",
+    "honest_framing": "5/5 pockets PASS 2.0 \u00c5 SOTA gate per Wf-341-T1 \u00a73 verdict; PoseBusters validity SKIPPED graceful (preserved as honest-negative on validity NOT on accuracy)"
   }
 }

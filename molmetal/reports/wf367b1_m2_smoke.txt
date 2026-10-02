@@ -1,0 +1,16 @@
+[molmetal] applied gfx1101 env vars: TOKENIZERS_PARALLELISM=false, TRANSFORMERS_VERBOSITY=error
+Wf-367-B1: n_cohorts = 2
+  CV config = n_splits=5 n_seeds=5 alpha=1.0
+
+  cohort=        platinai_4cell  n=  200  Wf-335-M2 best R²=-0.1251  n_features_recovery=54  stream_dims={'rdkit_12d': 12, 'chemprop_v3': 32, 'hilbert_astr': 8, 'cell_onehot': 4}  elapsed=1.3s
+                                12d_baseline  n_feat= 12  R²_mean=-0.1251 ± 0.1515  lift_vs_wf335m2=+0.0000  NO_LIFT_HONEST_NEGATIVE
+                       multi_stream_recovery  n_feat= 54  R²_mean=-0.5158 ± 0.4170  lift_vs_wf335m2=-0.3908  HONEST_NEGATIVE_R2_DEEP
+     multi_stream_recovery_plus_w2_best_axis  n_feat= 55  R²_mean=-0.5106 ± 0.3981  lift_vs_wf335m2=-0.3855  HONEST_NEGATIVE_R2_DEEP
+
+  cohort=               hilbert  n=  200  Wf-335-M2 best R²=-0.1268  n_features_recovery=50  stream_dims={'rdkit_12d': 12, 'chemprop_v3': 32, 'hilbert_astr': 8}  elapsed=1.2s
+                                12d_baseline  n_feat= 12  R²_mean=-0.1268 ± 0.1709  lift_vs_wf335m2=+0.0000  NO_LIFT_HONEST_NEGATIVE
+                       multi_stream_recovery  n_feat= 50  R²_mean=-0.4980 ± 0.3216  lift_vs_wf335m2=-0.3713  HONEST_NEGATIVE_R2_DEEP
+     multi_stream_recovery_plus_w2_best_axis  n_feat= 51  R²_mean=-0.4933 ± 0.3188  lift_vs_wf335m2=-0.3665  HONEST_NEGATIVE_R2_DEEP
+
+  aggregate_status = HONEST_NEGATIVE_R2_DEEP  (ceiling_break=0 above_zero=0)
+  elapsed_sec_total = 2.5s

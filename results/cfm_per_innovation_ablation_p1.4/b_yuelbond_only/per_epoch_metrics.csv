@@ -1,0 +1,4 @@
+epoch,wall_time_s,train_loss,bond_ce,wasserstein,catherine_pass,decode_ratio,decode_ratio_val,decode_ratio_n,decoding_attempted
+0,10.313,1.85377,1.85377,0.00000,1,1.0000,192,192,1
+1,2.011,1.63465,1.63465,0.00000,1,1.0000,192,192,1
+2,1.676,1.45628,1.45628,0.00000,1,1.0000,192,192,1

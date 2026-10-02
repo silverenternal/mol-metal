@@ -24,6 +24,20 @@ from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
+try:
+    from molmetal.scripts.wf386a3_atomic_write import (
+        atomic_write_file,
+        safe_overwrite_check,
+        detect_truncation,
+    )
+    _WF424_HAS_ATOMIC = True
+except ImportError:  # pragma: no cover — fallback when running as standalone
+    _WF424_HAS_ATOMIC = False
+    atomic_write_file = None  # type: ignore[assignment]
+    safe_overwrite_check = None  # type: ignore[assignment]
+    detect_truncation = None  # type: ignore[assignment]
+
+
 # Ensure PROJECT_ROOT is on sys.path so ``from molmetal_lam...`` works
 # when this file is invoked via ``python molmetal/scripts/r4_c_full_sweep.py``
 # (which otherwise puts the script's directory on sys.path[0] and
@@ -45,6 +59,34 @@ log = logging.getLogger("r4_c_full_sweep")
 # Result dataclass — one row per pocket
 # ---------------------------------------------------------------------------
 @dataclass
+def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+    """Wf-424-A4 atomic-write-protocol wrapper around direct write_text.
+
+    Falls back to direct write_text if atomic_write_file is unavailable
+    (e.g. when the script is run standalone without the molmetal package
+    on PYTHONPATH).
+    """
+    if _WF424_HAS_ATOMIC and atomic_write_file is not None:
+        if safe_overwrite_check is not None:
+            _risk = safe_overwrite_check(path, content, min_lines=min_lines)
+            if _risk is not None:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "[Wf-424-A4] safe_overwrite_check diff_ratio=%.3f at %s",
+                    _risk, path,
+                )
+        atomic_write_file(path, content, encoding="utf-8")
+        if detect_truncation is not None:
+            _trunc = detect_truncation(content, expected_min_length=expected_min_length)
+            if _trunc is not None:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "[Wf-424-A4] detect_truncation reason=%r at %s",
+                    _trunc, path,
+                )
+    else:  # pragma: no cover — fallback when atomic primitive unavailable
+        Path(path).write_text(content, encoding="utf-8")
+
 class PocketResult:
     pocket_id: str
     status: str = "ok"
@@ -431,7 +473,7 @@ def write_json(results, summary, path, metadata=None):
             payload["cite_only_sota_per_pocket"] = per_pocket_rows
         except Exception as exc:
             log.warning("Cite-only SOTA comparator integration failed: %s", exc)
-    temp.write_text(json.dumps(clean_json(payload), indent=2, allow_nan=False) + "\n")
+    _wf424_atomic_write_text(temp, json.dumps(clean_json(payload), indent=2, allow_nan=False) + "\n")
     temp.replace(path)
 
 
@@ -477,7 +519,7 @@ def write_markdown(results, summary, path, n_pockets_requested, n_simulations, m
     lines += ["", "Published baseline context is maintained in `lambda_vs_sbdd_protocol_aligned.md`.",
               "These proxy values are not compared numerically or statistically to cited docking energies."]
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    Path(path).write_text("\n".join(lines) + "\n")
+    _wf424_atomic_write_text(Path(path), "\n".join(lines) + "\n")
 
 
 
@@ -490,7 +532,7 @@ def execute_job(job, search, timeout, log_path):
     start = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="r4_job_") as tmp:
         input_path, output_path = Path(tmp) / "input.json", Path(tmp) / "output.json"
-        input_path.write_text(json.dumps(kwargs))
+        _wf424_atomic_write_text(input_path, json.dumps(kwargs))
         with open(log_path, "w") as log_file:
             proc = subprocess.Popen([sys.executable, str(Path(__file__).resolve()),
                                      "--worker-input", str(input_path), "--worker-output", str(output_path)],
@@ -533,7 +575,7 @@ def main() -> int:
         def checkpoint(result):
             output = Path(args.worker_output)
             temp = output.with_suffix(".tmp")
-            temp.write_text(json.dumps(clean_json(asdict(result)), allow_nan=False))
+            _wf424_atomic_write_text(temp, json.dumps(clean_json(asdict(result)), allow_nan=False))
             temp.replace(output)
         with rdBase.BlockLogs():
             result = run_one_pocket(**kwargs)

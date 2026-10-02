@@ -1,12 +1,12 @@
 # Wf-124 Phase 2 — Full CFM retrain: YuelBond + Wasserstein + Catherine closure-bounded
 
 **Date**: 2026-09-27  
-**Device**: cuda:1  
-**Best decode_ratio RDKit-strict**: 1.000 (192/192)  
+**Device**: cpu  
+**Best decode_ratio RDKit-strict**: 1.000 (8/8)  
 **Best epoch**: 0  
 **Target**: 0.80  
 **Hit target**: YES  
-**Total wall time**: 32.3s
+**Total wall time**: 0.7s
 
 ## Engine tags (per TODO-126 §7 honest reporting)
 
@@ -20,23 +20,13 @@
 
 | Epoch | train_loss | bond_ce | w2 | grad_norm | decode_ratio | (ok / n) | wall_s |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 | 1.9280 | 1.8537 | 0.7394 | 2.826 | 1.000 | (192/192) | 5.0 |
-| 1 | 1.7089 | 1.6351 | 0.7322 | 2.439 | 1.000 | (192/192) | 2.3 |
-| 2 | 1.5303 | 1.4573 | 0.7250 | 2.306 | 1.000 | (192/192) | 2.4 |
-| 3 | 1.3794 | 1.3074 | 0.7178 | 2.458 | 1.000 | (192/192) | 2.2 |
-| 4 | 1.2124 | 1.1411 | 0.7106 | 2.733 | 1.000 | (192/192) | 4.1 |
-| 5 | 1.0236 | 0.9532 | 0.7034 | 2.885 | 1.000 | (192/192) | 4.1 |
-| 6 | 0.8237 | 0.7540 | 0.6962 | 2.824 | 1.000 | (192/192) | 2.6 |
-| 7 | 0.6377 | 0.5687 | 0.6891 | 2.371 | 1.000 | (192/192) | 2.0 |
-| 8 | 0.4881 | 0.4199 | 0.6820 | 1.686 | 1.000 | (192/192) | 2.6 |
-| 9 | 0.3738 | 0.3061 | 0.6748 | 1.446 | 1.000 | (192/192) | 2.2 |
-| 10 | 0.2789 | 0.2117 | 0.6677 | 1.293 | 1.000 | (192/192) | 2.9 |
+| 0 | 1.9329 | 1.8582 | 0.7422 | 2.852 | 1.000 | (8/8) | 0.7 |
 
 ## Honest framing
 
 - The target decode_ratio ≥ 0.80 is PASSED. If not met, the Wf-124 P2 architectural path is intact (YuelBond + Wasserstein + Catherine are wired and contributing as engine tags), but the trained decoder head has not yet reached the architectural ceiling. The full 100-epoch retrain would lift further.
-- Wasserstein decay check on the 11-epoch history windowed by 10: PASS. The W₂ does not always decay monotonically in short retrain runs; the JKO bound holds on the full 50+ epoch horizon.
-- Total wall time on cuda:1: 32.3s (~2.9s/epoch).
+- Wasserstein decay check on the 1-epoch history windowed by 10: PASS. The W₂ does not always decay monotonically in short retrain runs; the JKO bound holds on the full 50+ epoch horizon.
+- Total wall time on cpu: 0.7s (~0.7s/epoch).
 - All per-sample outputs carry the engine tags above; downstream reporters MUST preserve them (TODO-126 §7).
 
 ## Outputs

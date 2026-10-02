@@ -1,0 +1,57 @@
+MODEL 1
+REMARK VINA RESULT:    -2.477      0.000      0.000
+REMARK INTER + INTRA:          -2.550
+REMARK INTER:                  -2.550
+REMARK INTRA:                   0.000
+REMARK UNBOUND:                 0.000
+REMARK SMILES CCO
+REMARK SMILES IDX 1 1 2 2 3 3
+REMARK H PARENT 3 4
+ROOT
+ATOM      1  C   UNL     1      31.234  58.472  46.762  1.00  0.00    +0.034 C 
+ATOM      2  C   UNL     1      31.581  59.765  46.053  1.00  0.00    +0.152 C 
+ENDROOT
+BRANCH   2   3
+ATOM      3  O   UNL     1      32.816  59.625  45.364  1.00  0.00    -0.397 OA
+ATOM      4  H   UNL     1      32.946  58.678  45.187  1.00  0.00    +0.210 HD
+ENDBRANCH   2   3
+TORSDOF 1
+ENDMDL
+MODEL 2
+REMARK VINA RESULT:    -2.432      2.219      2.490
+REMARK INTER + INTRA:          -2.503
+REMARK INTER:                  -2.503
+REMARK INTRA:                   0.000
+REMARK UNBOUND:                 0.000
+REMARK SMILES CCO
+REMARK SMILES IDX 1 1 2 2 3 3
+REMARK H PARENT 3 4
+ROOT
+ATOM      1  C   UNL     1      31.675  59.316  46.376  1.00  0.00    +0.034 C 
+ATOM      2  C   UNL     1      30.618  58.264  46.640  1.00  0.00    +0.152 C 
+ENDROOT
+BRANCH   2   3
+ATOM      3  O   UNL     1      30.906  57.580  47.853  1.00  0.00    -0.397 OA
+ATOM      4  H   UNL     1      30.275  56.845  47.931  1.00  0.00    +0.210 HD
+ENDBRANCH   2   3
+TORSDOF 1
+ENDMDL
+MODEL 3
+REMARK VINA RESULT:    -2.421      4.056      4.328
+REMARK INTER + INTRA:          -2.492
+REMARK INTER:                  -2.492
+REMARK INTRA:                   0.000
+REMARK UNBOUND:                 0.000
+REMARK SMILES CCO
+REMARK SMILES IDX 1 1 2 2 3 3
+REMARK H PARENT 3 4
+ROOT
+ATOM      1  C   UNL     1      29.362  58.064  46.068  1.00  0.00    +0.034 C 
+ATOM      2  C   UNL     1      29.167  56.986  47.114  1.00  0.00    +0.152 C 
+ENDROOT
+BRANCH   2   3
+ATOM      3  O   UNL     1      27.781  56.784  47.351  1.00  0.00    -0.397 OA
+ATOM      4  H   UNL     1      27.607  57.010  48.281  1.00  0.00    +0.210 HD
+ENDBRANCH   2   3
+TORSDOF 1
+ENDMDL

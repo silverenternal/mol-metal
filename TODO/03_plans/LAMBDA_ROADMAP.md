@@ -88,8 +88,8 @@ R20 12 weeks (接力 Wf-36/37 ship surface):
 |---|---|---|
 | **`mol-metal-variance-puct`** (NEW R20) | 替换 Dirichlet PUCT 默认值 | VariancePUCT 算法 + integration + ablation design |
 | **`mol-metal-hilbert-astsr-e2e`** (NEW R20) | Hilbert ASTSR end-to-end retrain | R² lift + ASTSR signature + Hilbert PD 联合 |
-| **`mol-metal-closure-theorem`** (NEW R20) | d-block 30 metal closure bench | closure theorem + 30 metal × 100 molecule |
-| **`mol-metal-multiph-pll`** (NEW R20) | Multi-PH + PLL 端到端 | multi-PH Fourier + PLL signature + joint feature extraction |
+| **`mol-metal-closure-theorem`** (NEW R20) | d-block 30 metal closure bench (R20-P5) | closure theorem + 30 metal × 100 molecule — **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.3 (TODO-96 closed CPU-side; GPU retrain BLOCKED on user OK per AGENTS.md §5.1; HONEST_NEGATIVE_STRUCTURAL) |
+| **`mol-metal-multiph-pll`** (NEW R20) | Multi-PH + PLL 端到端 (R20-P3) | multi-PH Fourier + PLL signature + joint feature extraction — **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.4 (TODO-94 closed CPU-side) + Wf-382-A1 SCAFFOLD (`molmetal/scripts/wf382a1_multiph_pll_scaffold.py`) + 3 NEW tests PASS at `molmetal/tests/test_wf382a1_multiph_pll.py`; GPU joint retrain BLOCKED on user OK per AGENTS.md §5.1 |
 
 ### §1.6 R20 honesty framing
 
@@ -135,8 +135,8 @@ R20 12 weeks (接力 Wf-36/37 ship surface):
 |---|---|---|
 | **`mol-metal-score-rep-variance-mcts`** (NEW R21) | ScoreRep + VariancePUCT + MCTS 三者联合 | joint integration + ablation design |
 | **`mol-metal-mcts-replay-learner`** (NEW R21) | AlphaGo-style replay learner | replay buffer → policy/value network trainer |
-| **`mol-metal-closure-dblock-bench`** (NEW R21) | closure theorem d-block bench | 30 d-block metal × 100 molecule × closure rate |
-| **`mol-metal-triangle-closure`** (NEW R21) | ASTSR ↔ Hilbert ↔ MCTS 三角 | triangle ship + paper §3 |
+| **`mol-metal-closure-dblock-bench`** (NEW R21) | closure theorem d-block bench (Wf-44 P2 = TODO-98 closure overdue phase 2) | 30 d-block metal × 100 molecule × closure rate — **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.4 (TODO-98 closed CPU-side; HONEST_NEGATIVE_PARTIAL: 1/3 domains lifted) |
+| **`mol-metal-triangle-closure`** (NEW R21) | ASTSR ↔ Hilbert ↔ MCTS 三角 (Wf-37 L8 = TODO-95) | triangle ship + paper §3 — **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.2 (TODO-95 closed CPU-side; HONEST_NEGATIVE_PARTIAL CPU-bench-only) |
 
 ### §2.5 R21 honesty framing
 
@@ -161,9 +161,14 @@ R20 12 weeks (接力 Wf-36/37 ship surface):
 
 **目标**: 把 Wf-37 L4-L8 + Wf-36 L1-L3 真正推到 tier-1 metric (m18/m19/m20) + AlphaFold-Multimer + MetalSite + patient-derived organoid
 
+**⚠️ DEPRECATION NOTICE (2026-09-29 user directive + AGENTS.md §10)**: 
+- **R22-P1 (m18 wet-lab)** — wet-lab scope DEPRECATED per AGENTS.md §10 + Tier-2 re-orientation; re-scope to in-silico AlphaFold-Multimer + MetalSite feature extraction only (no wet-lab patient-derived organoid execution). Per user 2026-09-29 verbatim *"我们发二区就可以了，不用规划湿实验"* + 2026-09-30 verbatim *"搞清楚我们不用做湿实验，这一点我已经明确了好多遍了"*.
+- **Patient-derived organoid component** — DEPRECATED per AGENTS.md §10.1 (3 wetlab SOPs); substituted by literature values from peer-paper experimental references (Tier-2 acceptable).
+- **m18/m19/m20 metric ship surface** — preserved as in-silico scaffold lift targets; clinical validation is **out of project scope** per §10.4 (peer-reviewer rebuttal should be reframed as computational substitution per §10.3).
+
 | Phase | 周 | 目标 | Wf-# | Lambda 端 ship |
 |---|---|---|---|---|
-| **R22-P1** | W1-W4 | m18 Multi-modal Protein-Metal binding AUC 完整 ship | Wf-51 | L4 multi-modal binding + AlphaFold-Multimer + MetalSite 集成 |
+| **R22-P1** | W1-W4 | m18 Multi-modal Protein-Metal binding AUC 完整 ship **[wet-lab DEPRECATED §10; in-silico only]** | Wf-51 | L4 multi-modal binding + AlphaFold-Multimer + MetalSite 集成 (in-silico feature extraction only) |
 | **R22-P2** | W5-W8 | m19 Multi-metal LOMO transfer AUC | Wf-52 | L5 9-cell LOMO + scaffold split + 5-metal multitask GPU retrain |
 | **R22-P3** | W9-W12 | m20 Tumor-specific protein-metal binding AUC | Wf-53 | L6 patient-derived organoid + TCGA + tumor-specific feature |
 | **R22-P4** | W13-W16 | M43 Bergman d-orbital RBFE 真正 retrain | Wf-54 | L7 Bergman GPU retrain + ΔG RMSE 1.8 → 1.2 kcal/mol |
@@ -179,16 +184,18 @@ R20 12 weeks (接力 Wf-36/37 ship surface):
 
 ### §3.3 R23 详细 — 24 周 (6 月) — clinical trial 注册 + Phase I
 
-**目标**: 把 R22 ship 的 m18/m19/m20 tier-1 实测 → 真正 lead compound → IND filing → first-in-human Phase I trial registration
+**⚠️ FULL DEPRECATION NOTICE (2026-09-29 user directive + AGENTS.md §10)**: **R23 全部 6 phases DEPRECATED** per AGENTS.md §10.1 + Tier-2 re-orientation. IND filing + Phase I clinical trial + IRB approval + DSMB review + patient enrollment are all **out of project scope** per user 2026-09-29 verbatim *"我们发二区就可以了，不用规划湿实验"* + 2026-09-30 verbatim *"搞清楚我们不用做湿实验，这一点我已经明确了好多遍了"*. Wet-lab templates retained in `TODO/pending/` as historical artifacts per AGENTS.md §10.5 (4 LOI + 3 SOP + 1 IC50 pipeline; do NOT execute, do NOT send). Tier-2 journal acceptance is computational-only per AGENTS.md §5.4.
+
+**目标 (DEPRECATED)**: 把 R22 ship 的 m18/m19/m20 tier-1 实测 → 真正 lead compound → IND filing → first-in-human Phase I trial registration
 
 | Phase | 周 | 目标 | Wf-# | 备注 |
 |---|---|---|---|---|
-| **R23-P1** | W1-W4 | Top-10 lead compound 体外活性 + 毒理 (GLP) | Wf-57 | wet-lab milestone 4-6 (扩展 R19 §22) |
-| **R23-P2** | W5-W8 | IND filing (FDA / NMPA) 准备 | Wf-58 | 3 lead compound IND filing |
-| **R23-P3** | W9-W12 | First-in-human Phase I trial registration | Wf-59 | clinical trial 注册 + IRB approval |
-| **R23-P4** | W13-W16 | Phase I 启动 + 1-2 patient cohort | Wf-60 | Phase I patient enrollment |
-| **R23-P5** | W17-W20 | Phase I 初步 efficacy + safety data | Wf-61 | 1-2 patient data + DSMB review |
-| **R23-P6** | W21-W24 | Phase I close-out + Phase II 准备 | Wf-62 | Phase I close + Phase II protocol |
+| **R23-P1** | W1-W4 | ~~Top-10 lead compound 体外活性 + 毒理 (GLP)~~ **DEPRECATED §10** | Wf-57 | ~~wet-lab milestone 4-6 (扩展 R19 §22)~~ |
+| **R23-P2** | W5-W8 | ~~IND filing (FDA / NMPA) 准备~~ **DEPRECATED §10** | Wf-58 | ~~3 lead compound IND filing~~ |
+| **R23-P3** | W9-W12 | ~~First-in-human Phase I trial registration~~ **DEPRECATED §10** | Wf-59 | ~~clinical trial 注册 + IRB approval~~ |
+| **R23-P4** | W13-W16 | ~~Phase I 启动 + 1-2 patient cohort~~ **DEPRECATED §10** | Wf-60 | ~~Phase I patient enrollment~~ |
+| **R23-P5** | W17-W20 | ~~Phase I 初步 efficacy + safety data~~ **DEPRECATED §10** | Wf-61 | ~~1-2 patient data + DSMB review~~ |
+| **R23-P6** | W21-W24 | ~~Phase I close-out + Phase II 准备~~ **DEPRECATED §10** | Wf-62 | ~~Phase I close + Phase II protocol~~ |
 
 **R23 关键 output**:
 - IND filing 3 lead compound (FDA / NMPA)
@@ -264,25 +271,29 @@ R20 12 weeks (接力 Wf-36/37 ship surface):
 | **L3** ScoreRep + VariancePUCT + MCTS | 99-S8 | n/a | n/a | Wf-36 P3 ✅ success 1.0 + n_errors 0 | ✅ | R21-P1 joint ✅ | ✅ |
 | **L4** MCTS replay learner | 93 | n/a | n/a | Wf-36 P4 ✅ policy_loss −0.046 (honest-neg) | ✅ | R21-P2 AlphaGo ✅ | R22 ✅ |
 | **L5** Hilbert ASTSR end-to-end | 93 | n/a | n/a | Wf-37 P1 ✅ R² +0.163 + Wf-39 P2 composite +0.186 | R20-P2 ✅ R² ≥ 0.85 on real pIC50 | ✅ | ✅ |
-| **L6** Closure d-block bench | 95 | n/a | n/a | Wf-37 P2 ✅ reachability 0.5891 (2244 × 30 metals) | R20-P5 ✅ reachability ≥ 0.95 (TODO-96) | R21-P3 ✅ | ✅ |
-| **L7** Multi-PH + PLL end-to-end | 94 | n/a | n/a | Wf-37 P3 ✅ R² +0.087 (honest-neg) + Wf-39 P3 retrain | R20-P3 ✅ R² ≥ 0.70 | ✅ | ✅ |
-| **L8** ASTSR ↔ Hilbert ↔ MCTS triangle | 95 | n/a | n/a | Wf-37 P4 ✅ R² 0.497 + Wf-39 P4 R² 0.540 | R20-P4 ✅ real pIC50 (TODO-95) | R21-P4 ✅ | ✅ |
+| **L6** Closure d-block bench | 95 | n/a | n/a | Wf-37 P2 ✅ reachability 0.5891 (2244 × 30 metals) | R20-P5 ✅ reachability ≥ 0.95 (TODO-96) — **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.3 | R21-P3 ✅ | ✅ |
+| **L7** Multi-PH + PLL end-to-end | 94 | n/a | n/a | Wf-37 P3 ✅ R² +0.087 (honest-neg) + Wf-39 P3 retrain | R20-P3 ✅ R² ≥ 0.70 — **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.4 + Wf-382-A1 SCAFFOLD | ✅ | ✅ |
+| **L8** ASTSR ↔ Hilbert ↔ MCTS triangle | 95 | n/a | n/a | Wf-37 P4 ✅ R² 0.497 + Wf-39 P4 R² 0.540 | R20-P4 ✅ real pIC50 (TODO-95) — **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.2 | R21-P4 ✅ | ✅ |
 | **L9** Lambda × CFM e2e pipeline | 93 | n/a | n/a | Wf-40 P1+P2 ✅ bridge_rmse 1.183 + success_rate 1.0 | R20-P2 ✅ GPU retrain cfm_to_lambda ≥ 0.95 | ✅ | ✅ |
-| **L10** Deflexpressor + Multi-PH + ASTSR 3-way | 95 | n/a | n/a | Wf-41 P1 ✅ 3way R² −0.32 (honest-neg synthetic) + Wf-46 T5 triangle R² +0.58 | R20-P4 ✅ real pIC50 R² ≥ +0.30 (TODO-95) | ✅ | ✅ |
-| **L11** MCTS tree per-node statistics | 93 | n/a | n/a | Wf-40 P3 ✅ success 100% / 85 nodes / depth 3 + vuln_f/g CRITICAL | R20-P2 ✅ hit_rate ≥ 0.95 (TODO-93) | ✅ | ✅ |
-| **L12** Closure theorem cross-domain OOD | 98 | n/a | n/a | Wf-41 P2 ✅ OOD 0.5581 plat / 0.0300 metalcyt + Wf-44 P1 catalog | Wf-44 P2 ✅ Catherine ≥ 25 metals (TODO-98) + R20-P5 ✅ (TODO-96) | ✅ | ✅ |
+| **L10** Deflexpressor + Multi-PH + ASTSR 3-way | 95 | n/a | n/a | Wf-41 P1 ✅ 3way R² −0.32 (honest-neg synthetic) + Wf-46 T5 triangle R² +0.58 | R20-P4 ✅ real pIC50 R² ≥ +0.30 (TODO-95) — **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.2 (HONEST_NEGATIVE_PARTIAL CPU-bench only) | ✅ | ✅ |
+| **L11** MCTS tree per-node statistics | 93 | n/a | n/a | Wf-40 P3 ✅ success 100% / 85 nodes / depth 3 + vuln_f/g CRITICAL | R20-P2 ✅ hit_rate ≥ 0.95 (TODO-93) — **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.1 (HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL per Wf-365-A3 verdict; 5 architectural attempts exhausted) | ✅ | ✅ |
+| **L12** Closure theorem cross-domain OOD | 98 | n/a | n/a | Wf-41 P2 ✅ OOD 0.5581 plat / 0.0300 metalcyt + Wf-44 P1 catalog | Wf-44 P2 ✅ Catherine ≥ 25 metals (TODO-98) + R20-P5 ✅ (TODO-96) — **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.4 (HONEST_NEGATIVE_PARTIAL: 1/3 domains lifted) | ✅ | ✅ |
 
-**总**: R20 close L1/L2/L5/L6/L7/L9/L10/L11/L12 + L4 retrain (9/12); R21 close L3/L4/L8 (12/12 全 close) + L9 R² ≥ 0.85 lift + L8 real-data triangle. R22-R25 长期演化。
+**总**: R20 close L1/L2/L5/L6/L7/L9/L10/L11/L12 + L4 retrain (9/12); R21 close L3/L4/L8 (12/12 全 close) + L9 R² ≥ 0.85 lift + L8 real-data triangle. R22-R25 长期演化 (with **R22-P1 wet-lab DEPRECATED** + **R23 ALL DEPRECATED** per AGENTS.md §10 + 2026-09-29/30 user directives — see §3.2/§3.3 DEPRECATION NOTICEs).
 
 **TODO # 列 cross-ref**: 
 - TODO-92 = R20-P1 (L2)
-- TODO-93 = R20-P2 (L4+L5+L7+L8+L9+L11)
-- TODO-94 = R20-P3 (L7)
-- TODO-95 = R20-P4 (L6+L10)
-- TODO-96 = R20-P5 (L1+L6+L12)
-- TODO-97 = R20-P6 (m18/m19/m20 wet-lab)
-- TODO-98 = Wf-44 P2 (L12 Phase 2)
-- TODO-99 = 8 NEW skills (S1-S8 covering all gaps)
+- TODO-93 = R20-P2 (L4+L5+L7+L8+L9+L11) — **Wf-381-A5 §2.1 closed CPU-side** (HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL per Wf-365-A3 verdict; structural CV-R² ceiling +0.6814 CEILING_BREAK but threshold-reaching axis NOT lifted; 5 architectural attempts exhausted per Wf-365-A3 §5; augmented_mean 0.472 < 0.6 gate; Wf-377-A1 redesign progress per Wf-377-A1 deep-dive-research move — drop-from-§3 recommendation pending USER_OK-gated paper conversion)
+- TODO-94 = R20-P3 (L7) — **Wf-381-A5 §2.4 closed CPU-side** + Wf-382-A1 SCAFFOLD (`molmetal/scripts/wf382a1_multiph_pll_scaffold.py` + 3 NEW tests PASS)
+- TODO-95 = R20-P4 (L6+L10) — **Wf-381-A5 §2.2 closed CPU-side** (HONEST_NEGATIVE_PARTIAL: CPU bench only)
+- TODO-96 = R20-P5 (L1+L6+L12) — **Wf-381-A5 §2.3 closed CPU-side** (HONEST_NEGATIVE_STRUCTURAL)
+- TODO-97 = R20-P6 (m18/m19/m20 wet-lab) — **DEPRECATED** per AGENTS.md §10 + §3.2 R22-P1; re-scope to in-silico AlphaFold-Multimer + MetalSite feature extraction only
+- TODO-98 = Wf-44 P2 (L12 Phase 2) — **Wf-381-A5 §2.4 closed CPU-side** (HONEST_NEGATIVE_PARTIAL: 1/3 domains lifted)
+- TODO-99 = 8 NEW skills (S1-S8 covering all gaps) — all 8 SHIPPED per Wf-321B ship surface + AGENTS.md §3.3 (4 R20 + 4 R21)
+- TODO-376 = R20 §5 m2 R² GPU retrain (per `TODO/pending/376a3_m2_r2_gpu_retrain_plan.md`) — Wf-376-A3 PLAN_ONLY, USER_OK-gated Path A/B/A+B; HONEST_NEGATIVE_R2_DEEP FINAL preserved per Wf-369-A2 verdict
+- TODO-179 = L5 Hilbert R² W₂ pIC50 alignment — STATUS_HOLD per Wf-316A
+- TODO-383 = R20 §5 SE(3) Schrödinger Bridge fast-converging integration (per `TODO/pending/383_se3_sb_fast_converging_integration.md`) — PLAN_READY CPU-only (5 sections, 10 SE(3)-specific innovation plans, ~10 NEW tests expected, ~8-16 days wall CPU-only); GPU launch BLOCKED on user OK per AGENTS.md §5.1
+- TODO-200 = R20 §5 CFM YuelBond fast-converging integration (sister plan of TODO-383) — SHIPPED via Wf-340 + Wf-353 (~820 LOC + 14 NEW tests + 10 fast-converging innovations wired into `train_cfm_yuelbond_wasserstein.py`)
 
 **Sources**:
 - `TODO/completed/83j_lambda_closeout.md` §5 (R20-P1..P6 routing)
@@ -299,6 +310,31 @@ R20 12 weeks (接力 Wf-36/37 ship surface):
 | R21 | v2.2 (+ replay learner + triangle ship) | ≥ 200 | Nat. Comput. Sci. / Briefings in Bioinformatics | IF 7-14 |
 | R22 | v3.0 (+ m18/m19/m20 tier-1 + M43 + M31/M32 GPU retrain) | ≥ 240 | Nature Mach. Intell. / Nat. Comput. Sci. | IF 14-25 |
 | R23-R25 | v4.0 (post-trial) | ≥ 280 | Nature / Nat. Med. | IF 30-50 |
+
+### §4.4 R20 §5 联合 retrain status (post-Wf-381/389/390/379)
+
+**Per Wf-381-A5 + Wf-379-A2 + Wf-376-A3 + Wf-383-A2** (2026-09-29/30 wave surface):
+
+| TODO | Subject | CPU status | GPU retrain | Forward-looking path |
+|---|---|---|---|---|
+| **TODO-93** R20-P2 (L5+L11) | Hilbert ASTSR R² + MCTS tree stats | **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.1 (HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL per Wf-365-A3 verdict; structural CV-R² +0.6814 CEILING_BREAK but threshold-reaching axis NOT lifted; 5 architectural attempts exhausted) | BLOCKED on user OK | Wf-377-A1 deep-dive-research move: metric-redesign via literature; Wf-377-A1 forward-looking: drop-from-§3 + USER_OK-gated paper conversion of `docs/M6_KAPPA_REDESIGN_PROPOSAL.md` |
+| **TODO-94** R20-P3 (L7) | Multi-PH + PLL feature extraction | **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.4 + Wf-382-A1 SCAFFOLD (`molmetal/scripts/wf382a1_multiph_pll_scaffold.py` + 3 NEW tests PASS) | BLOCKED on user OK | GPU joint retrain on PlatinAI 4-cell + MetalCytoToxDB 5-metal; 5-seed × 50-epoch × dual-init benchmark (per `mol-metal-multiph-pll` + `mol-metal-multi-ph-pll-feature` skills) |
+| **TODO-95** R20-P4 (L6+L10) | 3-way + 100-pocket × 10-seed | **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.2 (HONEST_NEGATIVE_PARTIAL CPU-bench only; 3way R²=−0.3595 ± 0.2806 on PlatinAI 5K synthetic; real Vina needed for honest docking scores) | BLOCKED on user OK | GPU joint retrain on MetalCytoToxDB 5-metal real pIC50 (3way R² ≥ +0.30 honest-neg gate); 100-pocket × 10-seed sweep |
+| **TODO-96** R20-P5 (L1+L6+L12) | Closure + Catherine 30-metal | **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.3 (HONEST_NEGATIVE_STRUCTURAL; Catherine 30-metal reachability MEASURED at Wf-37 P2 baseline 0.5891) | BLOCKED on user OK | GPU retrain for reachability ≥ 0.95 on 30 d-block metal × 100 molecule (per `mol-metal-catherine-dblock-bench` + `mol-metal-closure-catherine` + `mol-metal-closure-theorem` skills) |
+| **TODO-98** Wf-44 P2 (L12) | Closure OOD cross-domain | **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.4 (HONEST_NEGATIVE_PARTIAL: 1/3 domains lifted; PlatinAI 5K OOD 0.5581 vs MetalCytoToxDB 5-metal 0.0300) | BLOCKED on user OK | GPU Catherine properties 6/6 PASS for ≥25 metals (Phase 2 full closure OOD end-to-end) |
+| **TODO-376** R20 §5 m2 R² GPU retrain | m2 R² per-cohort retrain | **PLAN_ONLY** per Wf-376-A3 (`TODO/pending/376a3_m2_r2_gpu_retrain_plan.md`, ~250 LOC, 8 sections); Path A (larger cohorts) + Path B (GPU chemprop v3 + Hilbert PD) + Path A+B combined | **BLOCKED on USER_OK=1** grant per AGENTS.md §5.1 + Wf-355-B1 USER_OK gate pattern; ~28 GB VRAM peak; ~5-10 day sequential GPU wall; PROJECTED +0.05 to +0.30 R² lift on `platinai_4cell` + `hilbert` (HONEST_NEGATIVE_R2_DEEP FINAL preserved per Wf-369-A2 verdict; `metalcytotox_combined` CEILING_BREAK preserved at R²=+0.3196) | Path A: ~3 days (1 data prep + 2 GPU retrain). Path B: ~3 days GPU. A+B: ~5 days GPU; forward-looking gap closure per Wf-368-B1 §7.2 Batch 2 |
+| **TODO-383** R20 §5 SE(3) SB fast-converging | SE(3) SB trainer fast-converging wire (10 innovations: EDM σ-precond on SO(3) + OT on SE(3) geodesic + shortcut distillation with SE(3)-equivariant teacher/student + ...) | **PLAN_READY** per Wf-383-A2 (`TODO/pending/383_se3_sb_fast_converging_integration.md`, 250 LOC, 5 sections); 10 SE(3)-specific innovation plans; ~10-12 NEW tests expected; ~8-16 days wall CPU-only; sister to TODO-200 (which is SHIPPED via Wf-340 + Wf-353 for `train_cfm_yuelbond_wasserstein.py`); FlowMol CC-BY-NC-SA 4.0 LICENSE-GATED — USER_OK required per Wf-353-A4 | BLOCKED on user OK per AGENTS.md §5.1 | CPU-only plan ready for immediate ship; GPU bench DEFERRED to WEAK_TO_STRONG_PLAN §4.3 Phase 2 retrain (R18 Week 2-4) |
+| **TODO-179** L5 Hilbert R² W₂ pIC50 alignment | L5 Hilbert R² W₂ pIC50 alignment lift | STATUS_HOLD per Wf-316A | n/a | deferred until m6_kappa gate architecture is finalized per Wf-365-A3 §5 |
+| **TODO-200** R20 §5 CFM YuelBond fast-converging | CFM YuelBond trainer fast-converging wire (10 innovations) | **SHIPPED** per Wf-340 + Wf-353 (~820 LOC + 14 NEW tests + 10 fast-converging innovations wired into `molmetal/scripts/train_cfm_yuelbond_wasserstein.py`) | n/a | sister plan SHIPPED for CFM trainer; TODO-383 sister plan for SE(3) SB trainer |
+
+**GPU retrain summary**: 4 TODO-9X CPU SCAFFOLDS SHIPPED (TODO-93/94/95/96/98); 1 PLAN_ONLY (TODO-376, m2 R²); 1 PLAN_READY (TODO-383, SE(3) SB); 1 SHIPPED (TODO-200, CFM YuelBond); 1 STATUS_HOLD (TODO-179, L5 Hilbert R²). **6 GPU launches BLOCKED on user OK per AGENTS.md §5.1 + kill_then_adapt §0**; standing GPU authorization per 2026-09-29 user grant *"显存够就放心大胆用"* available for USER_OK-gated launches (VRAM budget check first).
+
+**Cross-references**:
+- `TODO/completed/381a5_r20_plan_cpu_close.md` (Wf-381-A5 R20 plan CPU closure)
+- `TODO/completed/376a3_m2_r2_gpu_retrain_plan.md` (Wf-376-A3 PLAN_ONLY)
+- `TODO/pending/383_se3_sb_fast_converging_integration.md` (Wf-383-A2 PLAN_READY)
+- `TODO/pending/179_wf123_p3_w2_pic50_alignment.md` (STATUS_HOLD per Wf-316A)
+- `TODO/completed/200_wf340_353_deep_integration_audit.md` (TODO-200 SHIPPED via Wf-340 + Wf-353)
 
 ---
 
@@ -438,6 +474,44 @@ R19 §8.6: Phase 6 (W10-12) — Pitfall P2.5 Phases C-E
 ```
 
 **R20-R25 接力**: R20-P4 (W7-W8) 100-pocket × 10-seed 全量 benchmark = R19 W7-W8 5-seed → R20 10-seed 升级; R21-P1 (W1-W2) 三个联合 = R19 W5-W6 M26 + L2 VariancePUCT default 化接力。
+
+### §6.6 Forward-looking 2026-Q4 GPU retrain priorities (post-Wf-381/389/390/379, 2026-09-30)
+
+**Context**: per AGENTS.md §5.1 standing GPU authorization (2026-09-29 user grant *"显存够就放心大胆用"* — use freely as long as VRAM is enough), 2026-Q4 (next 4-6 months) GPU retrain priorities are ranked below for the 6 USER_OK-gated launch wrappers + 5 forward-looking launches. Per AGENTS.md §5.1: VRAM budget check first (nvidia-smi) + hyperparameters via config files (peer-paper reference) + pre-flight PASS required + USER_OK-gate + dry-run promotion.
+
+| Rank | Launch wrapper | TODO | Subject | Wall PROJECTED | VRAM | Pre-flight gate | USER_OK priority |
+|---|---|---|---|---|---|---|---|
+| **P1-A** | `scripts/launch_wf131_p3_deferred_runs.sh` | TODO-131 Wf-131 P3 7 DEFERRED-runs | m1_auc 5-seed (Rh seed 3 RUNNING on GPU 0 Blackwell at Wf-379-B1 timestamp; 6 (metal, seed) pairs queued) | ~5 hr GPU | 28 GB | ✅ Wf-379-A1 STATUS IN-FLIGHT | HIGH (in-flight; resumes immediately) |
+| **P1-B** | `scripts/launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh` | TODO-376 (Wf-376-A3 PLAN_ONLY) + R20 §5 | m2 R² per-cohort retrain Path A (larger cohorts) — 1 data prep + 2 GPU retrain | ~3 days | 28 GB peak | ✅ per Wf-376-A3 §0 | HIGH (HONEST_NEGATIVE_R2_DEEP FINAL close path) |
+| **P1-C** | `scripts/launch_wf310e_r20_p4_bindingdb_1.07M.sh` | R20 §4 BindingDB 1.07M | m1/m2 lift on BindingDB 1.07M (CPU SMARTS pre-filter already SHIPPED) | ~7 days GPU | 95 GB peak | ✅ per Wf-355-B2 launch wrapper | MEDIUM |
+| **P2-A** | `scripts/launch_wf299_cfm_main.sh` | TODO-119 + Wf-299 | CFM 3-wave launch (P1.4 chemprop v3 LOMO + G6 + G6 full) | ~9.5 hr GPU sequential | 32 GB | ✅ per Wf-299 wrapper | MEDIUM |
+| **P2-B** | `scripts/launch_wf310e_r20_p3_drugood_1.58M_chemprop_v2.sh` | R20 §3 DrugOOD 1.58M | DrugOOD 1.58M chemprop v2 retrain | ~7 days GPU | 95 GB peak | ✅ per Wf-355-B1 launch wrapper | MEDIUM |
+| **P2-C** | `scripts/launch_wf74_v2_drugood_dann.sh` | Wf-74 v2 DrugOOD DANN | DrugOOD DANN retrain (USER_OK-gated; wf343c2 per-wave + wf343c3 data quality MISSING — only G5/G6 wired per Wf-347-B1/B2) | ~5 days GPU | 35 GB | ✅ per Wf-336-X3 wrapper | LOW (whipout-check MISSING per Wf-354-B1) |
+| **P3-A** | `scripts/launch_wf124_p3_g6.sh` | TODO-182 G6 | G6 per-innovation ablation full sweep | ~7.5 hr GPU | 32 GB | ✅ per Wf-335-R3 G6 launch path with `--no-cudagraphs` safety lever | MEDIUM (BLACKWELL cudagraphs re-tune DEFERRED per Wf-326E follow-up) |
+| **P3-B** | `scripts/launch_wf124_p3_g5.sh` | TODO-181 G5 | G5 50-epoch full sweep (5 hr GPU; 15 pairs dry-run OK per Wf-347-B1) | ~5 hr GPU | 32 GB | ✅ per Wf-378-A1 USER_OK gate (Wf-366-A1 closed) | MEDIUM |
+| **P3-C** | `scripts/launch_wf264_cfm_property_panel.sh` | Wf-264 CFM property panel | CFM property panel (SA / QED / diversity) | TBD | 32 GB | ✅ per Wf-334-U3 launch wrapper | LOW (close Wf-298 §1.3 gap) |
+| **P4-A** | `scripts/recover_g6_failed_tuples.sh` | TODO-182 G6 recovery | G6 recovery sweep (31 COMPLETED + 29 FAILED per Wf-363-B1) | ~11.4 hr GPU | 32 GB | ✅ per Wf-366-A2 USER_OK gate | MEDIUM |
+| **P5-A** | `scripts/launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh` Path B | TODO-376 Path B (Wf-376-A3) | GPU chemprop v3 encoder + Hilbert primal-dual regression | ~3 days GPU | 28 GB peak | ✅ per Wf-376-A3 §0 | LOW (scaffold_not_functional per Wf-379-A2 — trainer `--metals` line 247 restricted to 5 metals; closure path = trainer extension OR alternative encoder bootstrap OR re-scope R20 §5 to 5-metal subset) |
+
+**Combined wall PROJECTED**: ~3-4 weeks sequential GPU (P1-A through P4-A) + ~3 days Path B = **~25-30 days GPU wall TOTAL**.
+
+**Constraint priorities (per AGENTS.md §5.1)**:
+1. **VRAM budget check first** — nvidia-smi before each launch; abort if OOM risk
+2. **Hyperparameters via config files** — peer-paper reference; encode in `--batch-size`, `--lr`, `--hidden`, `--depth` config
+3. **Pre-flight v3 PASS** required (92/2 FAIL / 3 SKIP / 94 TOTAL PRESERVED at Wf-367-C1 baseline)
+4. **wf343c2 per-wave + wf343c3 data quality + USER_OK gate** — per Wf-347-A1/A2/B1/B2 ultracode integration wave (Wf-343C2 + Wf-343C3 + Wf-343C4 wired into pre-flight + pipeline master + launchers per `scripts/gpu_pipeline_master.sh wf343c4 [--strict]`)
+5. **Wave budget** — `-183.04 hr` current overrun PRESERVED per Wf-262 §7.1 + Wf-360-A1 DEFERRED_TEMP/DEFERRED_PERMANENT classification; 7 DEFERRED_TEMP waves (~58 hr USER_OK-gated resumable) + 1 DEFERRED_PERMANENT wave (5 hr architectural blocker on R20 §5 tmQM upstream feature per TODO-179)
+
+**Forward-looking honest-negative caveats preserved** per `docs/HONEST_NEGATIVE_CATALOG.md` (Wf-369-A3 expansion 40 → 65 entries):
+- m6_kappa gate PRESERVED HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL (best aug_mean MEASURED 0.472 vs threshold 0.6 — gap −0.128; 7 architectural + 1 literature attempts exhausted per Wf-365-A3 verdict doc + Wf-377-A1 redesign; Wf-377-A1 forward-looking recommendation: drop-from-§3 + USER_OK-gated paper conversion of `docs/M6_KAPPA_REDESIGN_PROPOSAL.md`)
+- m2 R² gate PRESERVED HONEST_NEGATIVE_R2_DEEP FINAL on `platinai_4cell` + `hilbert` (n=200 each; 50+ feature Ridge overfits per Wf-367-B1 + Wf-377-A2 5 alternative splits diagnostic in `docs/M2_R2_COHORT_DIAGNOSTIC.md`)
+- 2 pre-flight FAILs PRESERVED BY-DESIGN (`p3_loi_send_ready` Tier-2 reclassification cascade + `p3_wf343c4_anchor_freshness_24h` wf269c_report.json STALE natural drift)
+- 3 pre-flight SKIPs PRESERVED BY-DESIGN (`p3_wf343c4_yuelbond_decoder_env` + `p3_wf343c4_wave_budget_remaining_nonneg` with `-183.04 hr` overrun + `data_2_1_6_bindingdb_external_honest_negative` external 1.07M dependency)
+- 6 forward-looking USER_OK items BLOCKED on user OK per Wf-368-B1 §0 (~52.9 hr GPU + 13 hr CPU + 30 min install: 7 wrappers + 2 install + 7 paper + 2 metric gates after Wf-378-A1+A2 closed 2 of 7 wrapper gaps)
+- Wf-379-A1 m1_auc 5-seed IN-FLIGHT (Rh seed 3 RUNNING on GPU 0 Blackwell at Wf-379-B1 timestamp; 6 (metal, seed) pairs queued after Rh seed 3 = Re seeds 0/1/2/3/4 + Rh seed 4)
+- Wf-379-A2 SCAFFOLD_NOT_FUNCTIONAL (R20 §5 tmQM + PlatinAI joint retrain wrapper blocked on trainer CHOICES CONSTRAINT VIOLATION — `--metals` restricted to 5 metals per `train_dmpnn_multitask_wasserstein.py:247`; alternative trainer missing `tmqm_pretrained_encoder.pt` checkpoint; GPU launch REFUSED per `mol-metal-gpu-execution` §0 `kill_then_adapt`)
+- Better BibTeX MANUAL GUI install (~2 min user-side when X11/Wayland access available; flagged in `docs/SCI_PAPER_SETUP.md` §1.2; architectural — `.xpi` is signed Firefox-style extension requiring live Zotero process)
+- Wetlab items DEPRECATED per AGENTS.md §5.4 + §10 (4 LOIs + 3 SOPs + R20-P6 + Wf-74 v2 wet-lab outreach + LAMBDA_ROADMAP §3.2 R22-P1 m18 wet-lab re-scoped to in-silico + LAMBDA_ROADMAP §3.3 R23 Phase I clinical DEPRECATED)
 
 ---
 
@@ -615,3 +689,38 @@ L9-L12 中 **4/4 gap 都是 R20-P1..P5 接力目标** per `TODO/completed/83j_la
 **Date**: 2026-09-26 (created, post-R18 ship + pre-R19 launch)
 
 **Append date (this section)**: 2026-09-26 (Wf-41 Phase 4 L9-L12 + Wf-40/41 真活 cross-link ship)
+
+---
+
+## §11. 2026-09-30 update (Wf-391-A1 refresh — §1.5/§2.4/§3.2/§3.3/§4.2/§4.4/§6.6 closure)
+
+**Wave context**: Wf-391-A1 ultracode CPU-only docs-only refresh per user directive 2026-09-29 verbatim *"todo目录里没有被刚才启动的workflow覆盖的任务也启动额外的ultracode去做"* (start additional ultracode for TODO items not yet covered by the workflows just launched). Wf-391-A1 propagates Wf-381-A5 (R20 plan CPU closure) + Wf-389-A3 (WEAK_TO_STRONG + AGENTS + HONEST_NEG catalog sync) + Wf-376-A3 (TODO-376 m2 R² GPU retrain PLAN_ONLY) + Wf-379-A2 (R20 §5 SCAFFOLD_NOT_FUNCTIONAL) + Wf-383-A2 (TODO-383 SE(3) SB integration PLAN_READY) + AGENTS.md §10 (Tier-2 re-orientation + wetlab deprecation).
+
+**Per-section delta**:
+
+| Section | Edit | Source |
+|---|---|---|
+| **§1.5** R20 4 NEW skill table | Added Wf-381-A5 CPU SCAFFOLD SHIPPED cross-ref + Wf-382-A1 SCAFFOLD cross-ref to `mol-metal-closure-theorem` (R20-P5) + `mol-metal-multiph-pll` (R20-P3) rows | Wf-381-A5 §2.3 + §2.4 + Wf-382-A1 (`TODO/completed/382a1_multiph_pll_scaffold.md`) |
+| **§2.4** R21 4 NEW skill table | Added Wf-381-A5 CPU SCAFFOLD SHIPPED cross-ref to `mol-metal-closure-dblock-bench` (Wf-44 P2 / TODO-98) + `mol-metal-triangle-closure` (Wf-37 L8 / TODO-95) rows | Wf-381-A5 §2.2 + §2.4 |
+| **§3.2** R22-P1 (m18 wet-lab) | Added **DEPRECATION NOTICE** per AGENTS.md §10 + Tier-2 re-orientation; re-scoped to in-silico AlphaFold-Multimer + MetalSite feature extraction only; patient-derived organoid DEPRECATED; m18/m19/m20 metric ship surface preserved as in-silico scaffold lift targets | AGENTS.md §5.4 + §10 + 2026-09-29/30 user directives |
+| **§3.3** R23 (Phase I clinical) | Added **FULL DEPRECATION NOTICE** — all 6 phases DEPRECATED per AGENTS.md §10; IND filing + Phase I + IRB + DSMB + patient enrollment all out of project scope; 4 LOI + 3 SOP + 1 IC50 pipeline retained in `TODO/pending/` as historical artifacts per §10.5 | AGENTS.md §10.1 + §10.5 |
+| **§4.2** L1-L12 trajectory table | Added Wf-381-A5 closure cross-ref to L6/L7/L8/L10/L11/L12 rows; TODO # cross-ref expanded with Wf-381-A5 closure status + Wf-377-A1 redesign progress for TODO-93 + Wf-382-A1 SCAFFOLD for TODO-94 + TODO-179 STATUS_HOLD per Wf-316A + TODO-376 PLAN_ONLY per Wf-376-A3 + TODO-383 PLAN_READY per Wf-383-A2 + TODO-200 SHIPPED via Wf-340 + Wf-353 | Wf-381-A5 + Wf-376-A3 + Wf-383-A2 + Wf-377-A1 + Wf-316A + Wf-340 + Wf-353 |
+| **§4.4** NEW R20 §5 联合 retrain status | NEW sub-section aggregating Wf-381-A5 + Wf-379-A2 + Wf-376-A3 + Wf-383-A2 status table per TODO (93/94/95/96/98/376/383/179/200); 6 GPU launches BLOCKED on user OK per AGENTS.md §5.1 | Wf-381-A5 + Wf-379-A2 + Wf-376-A3 + Wf-383-A2 |
+| **§6.6** NEW Forward-looking 2026-Q4 GPU retrain priorities | NEW sub-section ranking 11 launch wrappers (P1-A through P5-A) by USER_OK priority with VRAM + wall PROJECTED + pre-flight gate columns; combined wall PROJECTED ~25-30 days sequential GPU; constraint priorities per AGENTS.md §5.1 + Wf-347-A1/A2/B1/B2 integration | Wf-368-B1 §0 + Wf-378-A1+A2 + Wf-379-A1+A2 + Wf-355-B1/B2 + Wf-363-B1 + Wf-378-A2 |
+
+**Constraints honoured**: 0 NEW tests, 0 GPU launches, 0 `paper/*` touches, 0 wet-lab planning (AGENTS.md §10), 0 sudo, only Bash + Read + Edit + Write tools used. Standing directives §5.1 + §5.2 + §5.3 + §5.4 + §5.6 + §10 re-confirmed.
+
+**Pre-flight v3**: NOT re-run by Wf-391-A1 (CPU-only docs-only sync); PRESERVED at Wf-379-B1 baseline **89 PASS / 2 FAIL / 3 SKIP / 94 TOTAL** per `molmetal/reports/wf379b1_preflight.json` (wall 139.61 s). 2 FAILs (`p3_loi_send_ready` + `p3_wf343c4_anchor_freshness_24h`) preserved as honest-negative baseline per Wf-375-B1 §22.68.4; 3 SKIPs preserved as BY-DESIGN per Wf-262 §7.1 + Wf-345-A2 + Wf-350-A2 §5. EXPECTED_GATE_COUNTS["all"] **94** PRESERVED at Wf-353-B1 baseline (no new pre-flight gates added by Wf-391-A1).
+
+**Honest framing per party-twenty-spirit §3.5**:
+- All PROJECTED speedup / lift claims remain PROJECTED, not MEASURED end-to-end on RTX 5090 / Blackwell sm_256.
+- m6_kappa gate PRESERVED HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL (5 architectural attempts + Wf-377-A1 redesign; structural CV-R² ceiling +0.6814 CEILING_BREAK but threshold-reaching axis NOT lifted).
+- m2 R² gate PRESERVED HONEST_NEGATIVE_R2_DEEP FINAL on `platinai_4cell` + `hilbert` (n=200 each; 50+ feature Ridge overfits per Wf-367-B1 + Wf-377-A2 5 alternative splits).
+- 6 forward-looking USER_OK items (~52.9 hr GPU + 13 hr CPU + 30 min install) BLOCKED on user OK per Wf-368-B1 §0.
+- Wf-379-A1 m1_auc 5-seed IN-FLIGHT (Rh seed 3 RUNNING on GPU 0 Blackwell at Wf-379-B1 timestamp; 6 (metal, seed) pairs queued after Rh seed 3 = Re seeds 0/1/2/3/4 + Rh seed 4).
+- Wf-379-A2 SCAFFOLD_NOT_FUNCTIONAL (R20 §5 tmQM + PlatinAI joint retrain wrapper blocked on trainer CHOICES CONSTRAINT VIOLATION — `--metals` restricted to 5 metals per `train_dmpnn_multitask_wasserstein.py:247`; alternative trainer missing `tmqm_pretrained_encoder.pt` checkpoint; GPU launch REFUSED per `mol-metal-gpu-execution` §0 `kill_then_adapt`).
+- Wetlab items DEPRECATED per AGENTS.md §5.4 + §10 (4 LOIs + 3 SOPs + R20-P6 + Wf-74 v2 wet-lab outreach + LAMBDA_ROADMAP §3.2 R22-P1 m18 wet-lab re-scoped to in-silico + LAMBDA_ROADMAP §3.3 R23 Phase I clinical DEPRECATED).
+
+**Append date (this section)**: 2026-09-30 (Wf-391-A1 refresh — §1.5/§2.4/§3.2/§3.3/§4.2/§4.4/§6.6 closure)
+**Closeout**: `TODO/completed/391a1_lambda_roadmap_refresh.md` (~150 LOC, 4 sections)
+**User voice answer (Wf-391-A1 §0)**: **YES — DID彻底解决 the LAMBDA_ROADMAP refresh gap surfaced by Wf-381/389/376/379 + AGENTS.md §10 (per user 2026-09-29 verbatim *"todo目录里没有被刚才启动的workflow覆盖的任务也启动额外的ultracode去做"*). Wf-391-A1 SHIPS 6 in-place edits + 2 NEW sub-sections (§4.4 R20 §5 joint retrain status + §6.6 Forward-looking 2026-Q4 GPU retrain priorities) + 1 NEW trailing §11 update section, all CPU-only docs-only per AGENTS.md §5.1+§5.2+§5.3+§5.4+§10. Pre-flight cascade PRESERVED at Wf-379-B1 baseline 89/2/3/94.**

@@ -1,0 +1,1041 @@
+# HONEST_NEGATIVE_CATALOG.md — Mol-Metal Honest-Negative Findings Index
+
+**Owner:** Hugo Lee + ultracode agents (Wf-359-B1 + Wf-369-A3 + Wf-383-A1 + Wf-426-A4)
+**Date:** 2026-10-01 (Wf-426-A4 expansion; pre-flight v3 fresh-run 89/2/3/94 PRESERVED at Wf-426-A4 timestamp; Wf-424-A1 `p2_tests_pass` cascade parent FIX preserves 113/1/3/117 baseline per `molmetal/reports/wf424a1_preflight.txt`)
+**Status:** ✅ **SHIPPED** — expansion 9 → **86 entries** (Wf-369-A3 §6 expansion 40 → 65; 15 NEW Wf-340..368 consolidated entries; Wf-367-A2 pre-flight cascade FULLY CLOSED; Wf-375-A2 §7 expansion 65 → 71; Wf-383-A1 §6.16 expansion 71 → 72; Wf-386-A3+B1 §6.17 expansion 72 → 73; Wf-395-A2 §6.18-§6.25 expansion 73 → 81 — 8 NEW entries from Wf-388/390/392 per Wf-395 wave CPU-only docs aggregation; 6 NEW WETLAB_DEPRECATED entries per AGENTS.md §5.4; **Wf-399-A2 §6.26 expansion 81 → 82** — 1 NEW regression-documented entry for decode_ratio 1→0 per user 2026-09-30 directive verbatim *"之前decode_ratio是1的现在我去哪退化的这个要重点解决"* + Wf-396 trainer-flag-incompatibility root cause + Wf-397 fix + Wf-385-A3 pre-flight gate prevention; **Wf-426-A4 §6.27-§6.30 expansion 82 → 86** — 4 NEW §6 entries documenting the Wf-425 cumulative false-claim cascade audit (8 cascades identified per AGENTS.md §5.5 filesystem-truth rule) + Wf-426 retro-author verification (0 of 5 SHIPPED on disk) + Wf-426-A3 retrain readiness infrastructure (0 of 1 SHIPPED on disk) + Wf-425-B1 docs sync (0 of 1 SHIPPED on disk))
+**Skill alignment:** `party-twenty-spirit` §3.5 (MEASURED-vs-PROJECTED tag discipline) + `mol-metal-mechanism-mapping` (mechanism attribution) + AGENTS.md §5.2 (honest framing mandate)
+**Source of truth:** `TODO/completed/207_unified_pre_flight_checklist_v2.md` §9 (the 9-entry legacy catalog from Wf-263B) + Wf-296..383 closeouts (`TODO/completed/{296,297,...,383*}_*.md`)
+
+---
+
+## §0 TL;DR
+
+This document catalogs **86 honest-negative findings** discovered across Wf-296..426 work, expanding the legacy 9-entry catalog (per Wf-263B) into 7 sections for reviewer rebuttal + paper §6 Limitations:
+
+- **§1 Per-metric honest-negatives (m1-m21)** — 12 entries — metric-level findings (m6_kappa + m3 Vina + m17 DrugOOD + m19 LOMO etc.)
+- **§2 Per-workflow honest-negatives (Wf-1..358)** — 15 entries — workflow-level findings (Wf-253d m17 BELOW_RANDOM + Wf-330-B4 cudagraphs RuntimeError + Wf-304B Selenium CF BLOCK etc.)
+- **§3 Per-launcher honest-negatives (G5/G6/R20 §3/§4/§5)** — 6 entries — GPU launch-blocker findings (TODO-181/182 + TODO-119 P1.3/P1.4 + R20 §3 DrugOOD SCOPE MISMATCH + R20 §4 BindingDB DATA-HOLD + R20 §5 tmQM STATUS_HOLD)
+- **§4 Resolved entries (Wf-344..358)** — 7 entries — CLOSED honest-negatives (Wf-246-C kcal sign-fix + Wf-330-B4 cudagraphs + 4 stale anchors + CLI help-text bug + OT-CFM silent bug + DATA_CSV undefined error + pre_flight EXPECTED_GATE_COUNTS drift)
+- **§5 Open entries (USER_OK-gated + structural)** — 10 entries — currently BLOCKED (TODO-21 Lambda CFM decode_ratio=0 + Triangle GPU R² ≥ 0.6 gate + 4 m1 Ru AUC seeds + 5 CFM DEFERRED waves + Wf-339-D3 16 deprecation items + Wave budget -183.04h etc.)
+- **§6 NEW Wf-340..368 + Wf-388/390/392 + Wf-396/397 + Wf-425/426 consolidated entries** — 30 entries — Wf-369-A3 expansion 16 + Wf-383-A1 §6.16 + Wf-386-A3+B1 §6.17 + Wf-395-A2 §6.18-§6.25 (8 NEW: m2 R² real cohort lift + m7 Diversity wire-in + m4 SA penalty wire-in + TODO-376 5-metal Path A + TODO-179 SCAFFOLD_NOT_FUNCTIONAL + TODO-383 SE(3) SB wire-in + TODO-94 Multi-PH PLL wire-in + TODO-155 chemprop v3 cache wire-in) + **Wf-399-A2 §6.26** (1 NEW regression-documented: decode_ratio 1→0 root-cause + Wf-397 fix + Wf-385-A3 prevention gate) + **Wf-426-A4 §6.27-§6.30** (4 NEW: Wf-425 cumulative false-claim cascade audit 8 cascades + Wf-426 retro-author verification filesystem-truth-gap + Wf-426-A3 retrain readiness infrastructure + Wf-425-B1 docs sync filesystem-truth-gap)
+- **§7 WETLAB_DEPRECATED entries (per-file + per-launcher + per-workflow)** — 6 entries — NEW Wf-375-A2 expansion (4 LOI drafts DO NOT SEND + 3 wetlab SOPs DO NOT EXECUTE + 1 IC50 analysis pipeline DO NOT RUN + R20-P6 wet-lab IC50 DEPRECATED + Wf-74 v2 outreach DEPRECATED + LAMBDA_ROADMAP R22-P1/R23 DEPRECATED)
+
+**Honest framing (party-twenty-spirit §3.5)**: every entry below cites its MEASURED source path on disk + WORKFLOW attribution. PROJECTED vs MEASURED tag discipline preserved; no aspirational / fabricated numbers. Per AGENTS.md §5.2, this catalog is the canonical reviewer-rebuttal surface — every finding is a citation point for paper §6 Limitations.
+
+**Pre-flight cascade FULLY CLOSED at Wf-367-A2 timestamp** (91/1/2/94 → 92/0/2/94). The remaining 2 SKIPs are BY-DESIGN (Wf-350-A2 §5 baseline). Per AGENTS.md §5.1 standing GPU grant, zero new GPU launches performed in Wf-395-A2 (CPU-only docs+test surface; 8 NEW §6 entries are aggregation-only with no code changes).
+
+---
+
+---
+
+## §1 Per-metric honest-negatives (m1-m21) — 12 entries
+
+Each entry pairs a metric with its MEASURED finding + the WORKFLOW that surfaced it + the remediation hook (or HONEST_NEG marker if no remediation). Cross-ref `TODO/02_metrics/METRICS_TARGETS.md` for canonical metric definitions + `metrics/by_metric/*.json` for raw measurements.
+
+### §1.1 m6_kappa augmented_mean BELOW 0.6 threshold (HONEST_NEGATIVE_PARTIAL_STRUCTURAL)
+
+| Field | Value |
+|---|---|
+| **Metric** | m6_kappa (Krasnov validation correlation; `metrics/by_metric/m6_kappa.json`) |
+| **MEASURED** | augmented_mean **0.4386**; chemprop+PLL CV-R² **+0.6814** (best of 5 candidates); Wf-325D baseline 0.4719 |
+| **Threshold** | augmented_mean ≥ 0.6 (paper §4 m6_kappa gate) |
+| **Gap** | **-0.1614** BELOW threshold |
+| **Workflow** | Wf-335-M1 + Wf-333-V4 + Wf-325D + Wf-359-A1 |
+| **Verdict** | **HONEST_NEGATIVE_PARTIAL_STRUCTURAL** — chemprop+PLL is the BEST axis (CEILING_BREAK on the chemprop+PLL joint design matrix), but the 5-candidate unbiased-CV identity constrains the augmented_mean to ~0.45 |
+| **Source** | `molmetal/reports/wf335m1_chemprop_pll/result.json` + `TODO/completed/335m1_chemprop_pll_full.md` + `TODO/completed/333v4_m6_kappa_5cand.md` + `TODO/completed/359a1_m6_kappa_w2_r20p3_verify.md` |
+| **Remediation** | `Wf-336+ m6_kappa mean augmented_mean lift to ≥ 0.6 — requires W₂+PLL on metalcytotox_combined full cohort (current 60-SMILES smoke too small)` (per Wf-335-SYN §8.2) |
+
+### §1.2 m2 platinai_4cell R² NEGATIVE (HONEST_NEGATIVE_R2_DEEP)
+
+| Field | Value |
+|---|---|
+| **Metric** | m2 (real pIC50 regression; `metrics/by_metric/m2.json`) |
+| **MEASURED** | platinai_4cell R² = **-0.1172** (12d_baseline; W₂+chemprop v2 graph integration multi-seed CV); Wf-325A baseline -0.094 |
+| **Workflow** | Wf-335-M2 + Wf-316A + Wf-129 P3 |
+| **Verdict** | **HONEST_NEGATIVE_R2_DEEP** — 12-d signal floor on PlatinAI 4-cell caps linear R² at ~0.004; full_static_combined_plus_w2_best_axis R² -1.83 to -2.10 even with W₂ + chemprop v2 graph |
+| **Source** | `molmetal/reports/wf335m2_w2_chemprop/result.json` + `TODO/completed/335m2_r2_w2_chemprop_full.md` |
+| **Remediation** | architectural change (e.g. multi-task PL with separate head per cell/metal); deferred to Wf-336+ |
+
+### §1.3 m2 hilbert R² NEGATIVE (HONEST_NEGATIVE_R2_DEEP)
+
+| Field | Value |
+|---|---|
+| **Metric** | m2 hilbert cohort (Hilbert primal-dual regression; `metrics/by_metric/m2_hilbert.json`) |
+| **MEASURED** | hilbert R² = **-0.1348** (12d_baseline); Wf-325A baseline -0.017 |
+| **Workflow** | Wf-335-M2 + Wf-316A |
+| **Verdict** | **HONEST_NEGATIVE_R2_DEEP** — Hilbert primal-dual does NOT lift the architectural floor |
+| **Source** | `molmetal/reports/wf335m2_w2_chemprop/result.json` |
+| **Remediation** | Hilbert ASTSR with full chemprop_v2 graph (not 12-d RDKit only) |
+
+### §1.4 m3 Vina ceiling PARTIAL recovery (HONEST_NEGATIVE_PARTIAL)
+
+| Field | Value |
+|---|---|
+| **Metric** | m3 (Vina docking kcal/mol; `metrics/by_metric/vina_min.json`) |
+| **MEASURED** | largest-fragment subset (n=20 × 5 pockets = 100 cells) **96/100 docked ok**; per-pocket mean: 1h36 -8.584 (best), 3ny8 -7.833, 3eml -7.594, 4aaw -6.444, 4rlu -3.978; mean overall = **-6.904 kcal/mol**; best single score = **-12.073 kcal/mol** (1h36) |
+| **Multi-fragment full set** | n=100 × 5 pockets = 500 cells: **0/500 docked** (meeko 0.8.0 salt-form limitation — all MetalCytoToxDB SMILES contain `.[Cl-]`, `.[Br-]`, etc.) |
+| **PROJECTED** | Vina cohort median **-7.782 kcal/mol** (post Wf-333-V3 wire-in; PROJECTED PASSES industry -7.0 by 0.782 margin) |
+| **Workflow** | Wf-333-V1+V2+V3 + Wf-267-Panel + Wf-264 + Wf-301B + Wf-325B + Wf-325F |
+| **Verdict** | **HONEST_NEGATIVE_PARTIAL** — Vina PARTIAL recovery preserved; PARTIAL on 1 of 3 axes (largest-fragment subset ok; multi-fragment full set BLOCKED on meeko salt-form limitation; cohort median PROJECTED PASSES industry) |
+| **Source** | `molmetal/reports/wf267_panel/` + `molmetal/reports/wf333_v3_vina/cohort_summary.json` + `TODO/completed/267_panel_summary.md` + `TODO/completed/{333v1,333v2,333v3}_*.md` |
+
+### §1.5 m4 Vina covalent mechanism architectural ceiling (HONEST_NEGATIVE_ARCHITECTURAL)
+
+| Field | Value |
+|---|---|
+| **Metric** | m4 (Vina covalent binding; `metrics/by_metric/vina_covalent.json`) |
+| **MEASURED** | **0/10 pockets** reach industry ≥ -7 kcal/mol on covalent mechanism |
+| **Workflow** | Wf-143 + Wf-301B + Wf-325B |
+| **Verdict** | **HONEST_NEGATIVE_ARCHITECTURAL** — Vina's empirical scoring function does NOT model covalent bond formation; 0/10 pocket cohort reaches industry binding threshold |
+| **Source** | `molmetal/reports/wf143_vina_covalent/` + `molmetal/reports/wf301b_vina_covalent/` + `TODO/completed/143_vina_covalent_ceiling.md` |
+
+### §1.6 m7 Tanimoto diversity BELOW TargetDiff (HONEST_NEGATIVE_DIVERSITY)
+
+| Field | Value |
+|---|---|
+| **Metric** | m7 (Tanimoto diversity on generated molecules; `metrics/by_metric/m7.json`) |
+| **MEASURED** | CFM Tanimoto diversity **0.1065** (no Tanimoto reward in CFM training); post Tanimoto reward (+22.5% lift): **0.0397** (still NEGATIVE direction) |
+| **Field-avg** | TargetDiff 0.86 (Diffeo/Trippe 2023 paper Tab. 4) |
+| **Gap** | **+0.82** (TargetDiff leads by 0.86 − 0.1065 = 0.7535) |
+| **Workflow** | Wf-181 §7.2.6 + TODO-180 §3.3 |
+| **Verdict** | **HONEST_NEGATIVE_DIVERSITY** — CFM is collapsing toward a narrow chemistry neighborhood; disqualifies CFM from being cited as a "diverse generator" in paper §4 m14 LEAD claim |
+| **Source** | `molmetal/reports/wf181_m7_tanimoto/` + `TODO/completed/181_m7_tanimoto_diversity.md` |
+
+### §1.7 m14 CFM decode_ratio synthetic 1.000 vs real 0.9958 (HONEST_NEGATIVE_EXPECTED)
+
+| Field | Value |
+|---|---|
+| **Metric** | m14 (CFM RDKit-strict decode_ratio; `metrics/by_metric/cfm_decode_real.json`) |
+| **MEASURED** | real MetalCytoToxDB **0.9958** (n=26,801 Wf-188); synthetic upper bound **1.000** (synthetic toy molecules with no complexity constraints) |
+| **Gap** | -0.0042 (expected per party-twenty-spirit §3.5) |
+| **Gate** | decode_ratio ≥ 0.05 (PASS by 20× margin) |
+| **Workflow** | Wf-188 + Wf-299B + Wf-301B + Wf-303C |
+| **Verdict** | **HONEST_NEGATIVE_EXPECTED** — 0.42pp gap is EXPECTED structural distance between real MetalCytoToxDB metal-coordination chemistry and synthetic toy distribution (Wasserstein 2 close, sparse metals, exotic ligands); NOT a CFM defect |
+| **Source** | `molmetal/reports/wf188_m14_full_metalcytotox/result.json` + `TODO/completed/188_m14_decode_ratio.md` |
+
+### §1.8 m17 DrugOOD v3 BELOW_RANDOM (HONEST_NEGATIVE_LEAD_DISQUALIFICATION)
+
+| Field | Value |
+|---|---|
+| **Metric** | m17 (DrugOOD scaffold OOD AUC; `metrics/by_metric/drugood_v3_scaffold.json`) |
+| **MEASURED** | DrugOOD v3 scaffold ood_test = **0.4544 ± 0.0327** BELOW_RANDOM; smoke test 0.8024 (Wf-301A; different split) |
+| **Baseline** | Wf-185 v2 baseline 0.6707 (scaffold split) |
+| **Workflow** | Wf-253d m17 + Wf-300A + Wf-301A |
+| **Verdict** | **HONEST_NEGATIVE_LEAD_DISQUALIFICATION** — BELOW_RANDOM on OOD scaffold split disqualifies LEAD promotion regardless of in-domain Ru 0.7613 1-seed |
+| **Source** | `molmetal/reports/wf253d_m17_drugood_reeval/` + `molmetal/reports/wf300a_drugood_v3/` + `TODO/completed/253d_m17_drugood_reeval.md` + `TODO/completed/300a_drugood_v3.md` |
+| **Remediation** | Wf-263A v3 fallback to v2 BinaryClassificationFFN (PROJECTED ≥ v2 baseline 0.6707; NOT yet MEASURED per §2.5 below) |
+
+### §1.9 m19 LOMO Rh fold 0.136 regression NOT RECOVERED (HONEST_NEGATIVE_REGRESSION)
+
+| Field | Value |
+|---|---|
+| **Metric** | m19 (Leave-One-Metal-Out AUC; `metrics/by_metric/m19.json`) |
+| **MEASURED** | Rh fold AUC = **0.136** (Wf-121) |
+| **Workflow** | Wf-121 + Wf-176 Phase 2 (USER_OK-BLOCKED) + Wf-308B cascade delta (50-ep) |
+| **Verdict** | **HONEST_NEGATIVE_REGRESSION** — Rh LOMO AUC < 0.50 (BELOW random) indicates the model is anti-correlated with the held-out metal; Rh n=60 structural ceiling per TODO-121 |
+| **Source** | `molmetal/reports/wf121_lomo_rh/` + `TODO/completed/121_lomo_rh_ceiling.md` |
+
+### §1.10 m22 SE(3) Schrödinger Bridge 10000-step GPU retrain DEFERRED (HONEST_NEGATIVE_DEFERRED)
+
+| Field | Value |
+|---|---|
+| **Metric** | m22 (SE(3) SB transport fidelity; `metrics/by_metric/m22.json`) |
+| **Status** | 10000-step GPU retrain DEFERRED per Wf-339-B2 |
+| **Workflow** | Wf-339-B2 |
+| **Verdict** | **HONEST_NEGATIVE_DEFERRED** — requires standing GPU auth + pre-flight PASS + 10h wall budget |
+| **Source** | `TODO/completed/339b2_m22_se3_sb_deferred.md` |
+
+### §1.11 m25 attribution PROJECTED (HONEST_NEGATIVE_PROJECTED)
+
+| Field | Value |
+|---|---|
+| **Metric** | m25 (engine attribution score; `metrics/by_metric/m25.json`) |
+| **Status** | PROJECTED; MEASURED attribution NOT yet on per-cohort basis |
+| **Workflow** | Wf-339-C4 |
+| **Verdict** | **HONEST_NEGATIVE_PROJECTED** — engine-tag attribution is single-cohort (m1 only); multi-cohort attribution requires Wf-339-D2 GPU retrain (USER_OK-DEFERRED) |
+| **Source** | `TODO/completed/339c4_m25_attribution_projected.md` |
+
+### §1.12 ADMET 4 below field-avg (HONEST_NEGATIVE_ADMET)
+
+| Field | Value |
+|---|---|
+| **Metric** | ADMET panel (T1 aqueous_solubility_logS + T2 hepatotox_index + T2 logp7_4 + T1 hepatotox_index) on metallo-drug 449-mol subset |
+| **MEASURED** | T1 aqueous_solubility_logS = **-7.612** (FAIL; logS threshold typically ≥ -6); T2 hepatotox_index = **0.548** (slightly above 0.5 random); T2 logp7_4 = **6.413** (out of typical 0-5 range); T1 hepatotox_index NOT MEASURED |
+| **Workflow** | Wf-308B + Wf-303C + Wf-325E |
+| **Verdict** | **HONEST_NEGATIVE_ADMET** — metallo-drug subset shows expected structural distance from organic ADMET training distribution; 4 of 8 ADMET sub-metrics below field-avg |
+| **Source** | `molmetal/reports/wf308b_admet/` + `molmetal/reports/wf303c_admet_t2/` + `TODO/completed/{303c_t2_hepatotox,303c_t2_logp,308b_admet_aqueous_solubility,325e_admet_4_below}_*.md` |
+
+---
+
+## §2 Per-workflow honest-negatives (Wf-1..358) — 15 entries
+
+Each entry pairs a WORKFLOW with its MEASURED honest-negative finding + the metric / launcher / dataset it impacts + the remediation hook. Cross-ref `docs/WF296_TO_WF359_RETROSPECTIVE.md` for full wave-by-wave catalog.
+
+### §2.1 Wf-131 P3 7 DEFERRED runs (HONEST_NEGATIVE_DEFERRED_RUNS)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-131 P3 (5-metal × 3-seed × 30-epoch D-MPNN multitask) |
+| **DEFERRED** | 7 (metal, seed) pairs: Rh (3, 4) + Re (0, 1, 2, 3, 4) — see Wf-355-B1 |
+| **Verdict** | **HONEST_NEGATIVE_DEFERRED_RUNS** — DEFERRED for Wf-339+ GPU retrain; Rh fold 0.136 regression NOT RECOVERED |
+| **Source** | `TODO/completed/355b1_wf131_p3_deferred.md` + `molmetal/reports/wf131_p3/` |
+
+### §2.2 Wf-146 Re fold 5/5 + Os seed 4 DEFERRED (HONEST_NEGATIVE_DEFERRED_RUNS)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-146 (per-metal cross-validation 50-epoch) |
+| **DEFERRED** | Re fold 5/5 + Os seed 4 |
+| **Verdict** | **HONEST_NEGATIVE_DEFERRED_RUNS** — DEFERRED for Wf-339+ GPU retrain |
+| **Source** | `TODO/completed/355b2_wf146_deferred.md` + `molmetal/reports/wf146_50ep/` |
+
+### §2.3 Wf-176 Phase 2 GPU launch USER_OK-BLOCKED (HONEST_NEGATIVE_USER_OK_BLOCKED)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-176 Phase 2 (R19 Lambda MCTS Phase 2 GPU retrain) |
+| **Status** | USER_OK-BLOCKED; Rh fold 0.136 regression NOT RECOVERED |
+| **Verdict** | **HONEST_NEGATIVE_USER_OK_BLOCKED** — LAMBDA_ROADMAP §3.2 R22-P1 (m18 wet-lab) re-scoped as computational-only per AGENTS.md §5.4 |
+| **Source** | `TODO/03_plans/LAMBDA_ROADMAP.md` §3.2 + §3.3 R23 DEPRECATED |
+
+### §2.4 Wf-219 Ru seed all-timeout (HONEST_NEGATIVE_TIMEOUT)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-219 (Ru 5-seed × 50-epoch full sweep on GPU) |
+| **MEASURED** | 43/50 epochs completed; 7 epochs timed out per Wf-304C Task 1 |
+| **Verdict** | **HONEST_NEGATIVE_TIMEOUT** — Ru LOMO bottleneck; structural wall budget exhaustion on RTX 5090 |
+| **Source** | `molmetal/reports/wf219_ru/` + `TODO/completed/219_wf219_krasnov_aligned.md` + `TODO/completed/304c_wf219_task1_43of50.md` |
+
+### §2.5 Wf-246-C kcal_adjustment sign-fix CLOSED (HONEST_NEGATIVE_RESOLVED — moved to §4)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-246-C (Vina metal_coord_term kcal adjustment) |
+| **Status** | **CLOSED** by Wf-333-V1 — `metal_coord_term.py:629 → :654` corrected `(1 − 2*c) × kcal_per_unit` for Vina convention "lower (more negative) = better binding" |
+| **Verdict** | **HONEST_NEGATIVE_RESOLVED** — moved to §4.1 |
+| **Source** | `TODO/completed/333v1_wf246c_kcal_signfix.md` + `molmetal/molmetal_lam/reward/metal_coord_term.py:654` |
+
+### §2.6 Wf-253d m6_kappa NEGATIVE_WEAK (HONEST_NEGATIVE_WEAK)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-253d m6 validation (Krasnov Pearson correlation on MetalCytoToxDB) |
+| **MEASURED** | Pearson r = **0.081** (NEGATIVE_WEAK; threshold for paper §4 LEAD ≥ 0.30) |
+| **Verdict** | **HONEST_NEGATIVE_WEAK** — structural floor; addressed in §1.1 via chemprop+PLL axis |
+| **Source** | `molmetal/reports/wf253d_m6_kappa_validation/` + `TODO/completed/253d_m6_kappa_validation.md` |
+
+### §2.7 Wf-253d m17 BELOW_RANDOM (HONEST_NEGATIVE_LEAD_DISQUALIFICATION — moved to §1.8)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-253d m17 forward-pass reeval |
+| **MEASURED** | DrugOOD v3 scaffold ood_test = **0.4544 ± 0.0327** BELOW_RANDOM |
+| **Verdict** | **HONEST_NEGATIVE_LEAD_DISQUALIFICATION** — moved to §1.8 |
+| **Source** | `molmetal/reports/wf253d_m17_drugood_reeval/` |
+
+### §2.8 Wf-264 CFM SA/QED/Vina panel (HONEST_NEGATIVE_VINA_MEEKO)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-264 + Wf-267-Panel (CFM SA/QED/Vina multi-pocket) |
+| **MEASURED** | SA global 3.289 ± 0.851 (n=26,801); QED global 0.280 ± 0.185; Vina multi-fragment full set **0/500 docked** (meeko 0.8.0 salt-form limitation) |
+| **Verdict** | **HONEST_NEGATIVE_VINA_MEEKO** — Vina 0/500 docked on full multi-fragment set due to meeko 0.8.0 salt-form limitation; addressed in §1.4 via largest-fragment subset protocol |
+| **Source** | `molmetal/reports/wf264_panel/aggregate.json` + `molmetal/reports/wf267_panel/sa_qed.json` + `TODO/completed/264_cfm_property_panel.md` + `TODO/completed/267_cfm_panel_multi_pocket.md` |
+
+### §2.9 Wf-299B + Wf-301B Vina 0/100 docked on Pt+2 (HONEST_NEGATIVE_VINA_PT2)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-299B + Wf-301B (Vina docking on Pt+2 metal-coordinating ligands) |
+| **MEASURED** | vina_min = **0/100 docked ok** (meeko cannot prepare Pt+2 in salt form) |
+| **Verdict** | **HONEST_NEGATIVE_VINA_PT2** — Pt+2 parameterisation gap; Wf-336-X4 meeko alt integration (CPU-only diagnostic) PARTIAL fix |
+| **Source** | `molmetal/reports/wf299b_vina_pt2/` + `molmetal/reports/wf301b_vina_pt2/` + `TODO/completed/336x4_vina_meeko_alt.md` |
+
+### §2.10 Wf-304B PlatinAI per-cell-line IC50 NUMERIC = 0/0/0/0 (HONEST_NEGATIVE_SELENIUM_BLOCK)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-304B (PlatinAI Selenium CF loader) |
+| **MEASURED** | per-cell-line IC50 NUMERIC = **0/0/0/0** (Selenium CF BLOCK — headless Chromium fails on RTX 5090 host) |
+| **Verdict** | **HONEST_NEGATIVE_SELENIUM_BLOCK** — external dependency BLOCK (Selenium CF load requires user OK for headless Chromium fix) |
+| **Source** | `molmetal/reports/wf304b_platinai_selenium/` + `TODO/completed/304b_platinai_selenium_block.md` |
+
+### §2.11 Wf-308B ADMET 4 below (HONEST_NEGATIVE_ADMET — moved to §1.12)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-308B (ADMET panel on metallo-drug 449-mol subset) |
+| **MEASURED** | 4 ADMET sub-metrics below field-avg (T1 aqueous_solubility_logS -7.612; T2 hepatotox_index 0.548; T2 logp7_4 6.413) |
+| **Verdict** | **HONEST_NEGATIVE_ADMET** — moved to §1.12 |
+
+### §2.12 Wf-308C Re temporal-split degenerate + NCI-60 PC3 BELOW_RANDOM (HONEST_NEGATIVE_DEGENERATE_SPLIT)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-308C (temporal split + NCI-60 driver analysis) |
+| **MEASURED** | Re temporal-split n_test=1 → random-chance AUC **0.5175**; NCI-60 PC3 (n_test=55) AUC = **0.2153** BELOW_RANDOM |
+| **Verdict** | **HONEST_NEGATIVE_DEGENERATE_SPLIT** — temporal split insufficient for Re (n=4); NCI-60 PC3 n_test=55 too small for stable AUC estimate |
+| **Source** | `molmetal/reports/wf308c_temporal_split/` + `molmetal/reports/wf308c_nci60/` + `TODO/completed/308c_re_temporal_degenerate.md` + `TODO/completed/308c_nci60_pc3_below_random.md` |
+
+### §2.13 Wf-314E OOD 8/30 metals 0.0 reachability (HONEST_NEGATIVE_OOD_DIAGNOSIS)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-314E (OOD reachability per-metal diagnosis on 30-metal closure bench) |
+| **MEASURED** | **8/30 metals** show 0.0 reachability (RDKit missing + data availability) |
+| **Verdict** | **HONEST_NEGATIVE_OOD_DIAGNOSIS** — 8 metals cannot be evaluated due to data-side gap (not model-side); Wf-314E per-metal diagnosis documented |
+| **Source** | `molmetal/reports/wf314e_ood_reachability/per_metal_diagnosis.json` + `TODO/completed/314e_ood_per_metal_diagnosis.md` |
+
+### §2.14 Wf-330-B4 CUDAGraphs RuntimeError CLOSED (HONEST_NEGATIVE_RESOLVED — moved to §4.2)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-330-B4 (Blackwell cudagraphs correctness gap) |
+| **Status** | **CLOSED** by Wf-335-R1+R3 — default mode flip + safety lever |
+| **Verdict** | **HONEST_NEGATIVE_RESOLVED** — moved to §4.2 |
+| **Source** | `TODO/completed/335r1_no_cudagraphs_fix.md` + `TODO/completed/335r3_g6_no_cudagraphs.md` |
+
+### §2.15 Wf-339 IMPROVEMENT_ENUM §0 3 PENDING + §2.5.1 16 deprecation (HONEST_NEGATIVE_PENDING)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-339-D3 (IMPROVEMENT_ENUM §0 + §2.5.1 follow-up) |
+| **Status** | §0 **3 PENDING** items NOT started; §2.5.1 **16 deprecation items** HONEST_NEGATIVE_BLOCKED |
+| **Verdict** | **HONEST_NEGATIVE_PENDING** — IMPROVEMENT_ENUM 3 PENDING require user OK before starting; 16 deprecation items blocked on external dependencies |
+| **Source** | `TODO/completed/339d3_improvement_enum_pending.md` + `TODO/03_plans/IMPROVEMENT_ENUM_2026_09_27.md` §0 + §2.5.1 |
+
+---
+
+## §3 Per-launcher honest-negatives (G5/G6/R20 §3/§4/§5) — 6 entries
+
+Each entry pairs a LAUNCHER with its honest-negative finding. Cross-ref `TODO/pending/{181,182}_*.md` for canonical launcher status.
+
+### §3.1 TODO-181 G5 (50-epoch full sweep) — partial MEASURED
+
+| Field | Value |
+|---|---|
+| **Launcher** | `scripts/launch_wf124_p3_g5.sh` |
+| **Status** | Ru seed 2 + Ir seed 0 running on GPU 0 (in flight at Wf-328-SYN baseline); 13/15 (metal, seed) pairs MEASURED via Wf-310A G5 |
+| **Verdict** | **HONEST_NEGATIVE_PARTIAL_LAUNCH** — 2/15 pairs (Os fold 5/5 + Re fold 5/5) DEFERRED per Wf-310A §3 |
+| **Source** | `TODO/completed/310a_g5_50epoch_full_sweep.md` + `molmetal/reports/wf310a_g5_50ep/` |
+
+### §3.2 TODO-182 G6 (per-innovation ablation) — DEFERRED
+
+| Field | Value |
+|---|---|
+| **Launcher** | `scripts/launch_wf124_p3_g6.sh` |
+| **Status** | 60 runs / 7.5 hr DEFERRED per Wf-263A + Wf-266 G5 50-ep BLOCK + Wf-335-R3 CUDAGraphs safety lever |
+| **Verdict** | **HONEST_NEGATIVE_DEFERRED_LAUNCH** — `--no-cuda-graphs` safety lever added; 60-run ablation launch gated on user OK + RTX 5090 VRAM ≥ 16 GB |
+| **Source** | `scripts/launch_wf124_p3_g6.sh` + `TODO/completed/266_wf266_g5_50ep_block.md` + `TODO/completed/335r3_g6_no_cudagraphs.md` |
+
+### §3.3 TODO-119 P1.3 + P1.4 (CFM real decode + ablation) — PENDING
+
+| Field | Value |
+|---|---|
+| **Launcher** | `scripts/launch_wf299_cfm_main.sh` (TODO-119 P1.3 + P1.4) |
+| **Status** | P1.3 (real-CFM decode_ratio lift on PlatinAI/DrugOOD/MetalCytoToxDB) ~16 hr GPU-0 PENDING; P1.4 (per-innovation CFM ablation) ~7.5 hr GPU-0 PENDING |
+| **Verdict** | **HONEST_NEGATIVE_PENDING_LAUNCH** — pre-flight 25/25 PASS; launch gated on user OK + kill_then_adapt §0 |
+| **Source** | `scripts/launch_wf299_cfm_main.sh` + `TODO/pending/119_cfm_p1.3_decode_ratio_lift.md` + `TODO/pending/119_cfm_p1.4_ablation.md` |
+
+### §3.4 R20 §3 DrugOOD 1.58M wrapper — SCOPE MISMATCH (FIXED Wf-355-A1)
+
+| Field | Value |
+|---|---|
+| **Launcher** | R20 §3 DrugOOD 1.58M wrapper (`TODO/pending/95_r20_p4_3way_100pocket.md`) |
+| **Status** | SCOPE MISMATCH: wrapper targets DANN on 95K subset (1.58M NOT available); FIXED in Wf-355-A1 via scope re-route |
+| **Verdict** | **HONEST_NEGATIVE_SCOPE_MISMATCH** — fixed at Wf-355-A1; preserved as historical honest-negative |
+| **Source** | `TODO/completed/355a1_r20_p3_drugood_wrapper.md` + `TODO/pending/95_r20_p4_3way_100pocket.md` |
+
+### §3.5 R20 §4 BindingDB 1.07M wrapper — DATA-HOLD
+
+| Field | Value |
+|---|---|
+| **Launcher** | R20 §4 BindingDB 1.07M wrapper (`TODO/pending/95_r20_p4_3way_100pocket.md`) |
+| **Status** | DATA-HOLD: only **5,257 subset** on disk (1.07M NOT available); pre-flight gate `data_2_1_6_bindingdb_external_honest_negative` SKIP |
+| **Verdict** | **HONEST_NEGATIVE_DATA_HOLD** — external dependency on BindingDB 1.07M full corpus; structural constraint |
+| **Source** | `TODO/completed/355a2_r20_p4_bindingdb_wrapper.md` + `TODO/completed/355c1_wrapper_verify.md` |
+
+### §3.6 R20 §5 tmQM + PlatinAI wrapper — STATUS_HOLD
+
+| Field | Value |
+|---|---|
+| **Launcher** | R20 §5 tmQM + PlatinAI wrapper (`TODO/pending/96_r20_p5_closure_catherine.md`) |
+| **Status** | STATUS_HOLD on R² architectural floor (12-d signal floor per Wf-316A); both cohorts preserved as HONEST_NEGATIVE_R2_DEEP per §1.2 + §1.3 |
+| **Verdict** | **HONEST_NEGATIVE_STATUS_HOLD** — requires Hilbert ASTSR with full chemprop_v2 graph (not 12-d RDKit only) |
+| **Source** | `TODO/completed/355a3_r20_p5_tmqm_wrapper.md` + `TODO/completed/355c1_wrapper_verify.md` |
+
+---
+
+## §4 Resolved entries (Wf-344..358 closed) — 7 entries
+
+Each entry pairs a HISTORICAL honest-negative with its RESOLVED status + the WORKFLOW that closed it.
+
+### §4.1 Wf-246-C kcal_adjustment sign-fix CLOSED by Wf-333-V1 (HONEST_NEGATIVE_RESOLVED)
+
+| Field | Value |
+|---|---|
+| **Original** | HONEST_NEGATIVE_WF246_C_KCAL_SIGN_INVERTED — Vina kcal_adjustment sign was inverted in `metal_coord_term.py:629` |
+| **Fix** | Wf-333-V1 — `metal_coord_term.py:629 → :654` corrected `(1 − 2*c) × kcal_per_unit` for Vina convention "lower (more negative) = better binding" |
+| **MEASURED** | Vina cohort lift -2.3 kcal/mol on 5-pocket cohort smoke (post-fix) |
+| **Verdict** | **HONEST_NEGATIVE_RESOLVED** — CLOSED at Wf-333-V1 timestamp 2026-09-29 |
+| **Source** | `TODO/completed/333v1_wf246c_kcal_signfix.md` + `molmetal/molmetal_lam/reward/metal_coord_term.py:654` |
+
+### §4.2 Wf-330-B4 CUDAGraphs RuntimeError CLOSED by Wf-335-R1+R3 (HONEST_NEGATIVE_RESOLVED)
+
+| Field | Value |
+|---|---|
+| **Original** | HONEST_NEGATIVE_WF330_B4_CUDAGRAPHS_RUNTIME_ERROR — `torch.compile(mode="reduce-overhead")` triggered `"accessing tensor output of CUDAGraphs that has been overwritten"` on RTX PRO 6000 Blackwell sm_120 GPU |
+| **Fix** | Wf-335-R1 — default mode flip `default` → `max-autotune-no-cudagraphs`; Wf-335-R3 — `--no-cuda-graphs` safety lever (3-layer precedence chain verified) |
+| **MEASURED** | 9/9 NEW tests + 14/14 existing tests PASS; 6 launch scripts wired with `--no-cuda-graphs` |
+| **Verdict** | **HONEST_NEGATIVE_RESOLVED** — CLOSED at Wf-335-SYN timestamp 2026-09-29 15:35 UTC |
+| **Source** | `TODO/completed/335r1_no_cudagraphs_fix.md` + `TODO/completed/335r3_g6_no_cudagraphs.md` |
+
+### §4.3 4 stale anchors (Wf-67 + Wf-121 + Wf-143 + Wf-170) RESOLVED at Wf-356-A2 (HONEST_NEGATIVE_RESOLVED)
+
+| Field | Value |
+|---|---|
+| **Original** | 4 stale anchor JSONs flagged by `pre_flight_check.py` STALE rule (24-hr auto-mark) |
+| **Fix** | Wf-356-A2 anchor refresh — all 4 anchors re-emitted with current timestamps |
+| **MEASURED** | Pre-flight v3 fresh-run **90 PASS / 2 FAIL / 2 SKIP / 94 TOTAL** post-refresh (vs Wf-346 baseline 65/2/1/68) |
+| **Verdict** | **HONEST_NEGATIVE_RESOLVED** — CLOSED at Wf-356-A2 timestamp 2026-09-29 |
+| **Source** | `TODO/completed/356a2_anchor_refresh.md` |
+
+### §4.4 CLI help-text bug at `train_dmpnn_multitask_wasserstein.py:2595` FIXED in Wf-358-A1 (HONEST_NEGATIVE_RESOLVED)
+
+| Field | Value |
+|---|---|
+| **Original** | `%(...)s` format spec in `--no-kendall` / `--no-dann` argparse `help=` string broke `pytest` collection; pre-flight v3 `p2_tests_pass` gate FAIL |
+| **Fix** | Wf-358-A1 — replaced with plain `%s` in argparse help-text |
+| **MEASURED** | `pytest` 714/714 PASS (vs 712/714 pre-fix) |
+| **Verdict** | **HONEST_NEGATIVE_RESOLVED** — CLOSED at Wf-358-A1 timestamp 2026-09-29 |
+| **Source** | `TODO/completed/358a1_cli_help_fix.md` + `molmetal/scripts/train_dmpnn_multitask_wasserstein.py:2595` |
+
+### §4.5 OT-CFM silent bug at `exact_minibatch_ot_coupling` FIXED in Wf-349-A2 (HONEST_NEGATIVE_RESOLVED)
+
+| Field | Value |
+|---|---|
+| **Original** | `exact_minibatch_ot_coupling` had a silent bug — `OT_plan` was assigned but never used in the loss path; pre-flight `p3_cfm_ot_coupling_silent_bug` gate FAIL |
+| **Fix** | Wf-349-A2 — wired `OT_plan` into the loss path explicitly + added unit test |
+| **MEASURED** | OT-CFM loss now uses OT plan correctly; 2 NEW tests PASS |
+| **Verdict** | **HONEST_NEGATIVE_RESOLVED** — CLOSED at Wf-349-A2 timestamp 2026-09-29 |
+| **Source** | `TODO/completed/349a2_ot_cfm_silent_bug.md` + `molmetal/molmetal_lam/reward/exact_minibatch_ot_coupling.py` |
+
+### §4.6 Wf-347-B3 DATA_CSV undefined error FIXED in Wf-356-A1 (HONEST_NEGATIVE_RESOLVED)
+
+| Field | Value |
+|---|---|
+| **Original** | `DATA_CSV` undefined error in Wf-347-B3 launch script — `molmetal/reports/wf347_b3/` could not locate the data CSV path |
+| **Fix** | Wf-356-A1 — added `DATA_CSV` env var + default fallback to `molmetal/data/metallo_drugs_500_train.csv` |
+| **MEASURED** | Wf-347-B3 launch script now runs end-to-end; 0 regressions |
+| **Verdict** | **HONEST_NEGATIVE_RESOLVED** — CLOSED at Wf-356-A1 timestamp 2026-09-29 |
+| **Source** | `TODO/completed/356a1_data_quality_all_launchers.md` + `molmetal/scripts/wf347_b3_launcher.sh` |
+
+### §4.7 pre_flight_check.py dynamic vs hardcoded EXPECTED_GATE_COUNTS drift PARTIAL fix Wf-346-B2 (HONEST_NEGATIVE_PARTIAL_RESOLVED)
+
+| Field | Value |
+|---|---|
+| **Original** | `EXPECTED_GATE_COUNTS["all"]` was hardcoded in `pre_flight_check.py` while new gates were dynamically registered via `--gate` flag; drift surfaced as pre-flight FAILs |
+| **Fix** | Wf-346-B2 — switched to dynamic gate count from `--gate all` invocation; PARTIAL fix (3 of 4 Wf-343C4 LOGIC-fix gates applied per Wf-345) |
+| **MEASURED** | Pre-flight v3 fresh-run **65 PASS / 2 FAIL / 1 SKIP / 68 TOTAL** post-fix (vs Wf-343D1 61/1/0/62) |
+| **Verdict** | **HONEST_NEGATIVE_PARTIAL_RESOLVED** — partial fix at Wf-346-B2; remaining 2 FAILs preserved at §5.9 + §5.10 (USER_OK-gated / external-dependency) |
+| **Source** | `TODO/completed/346b2_expected_gate_counts_drift.md` + `molmetal/scripts/pre_flight_check.py` |
+
+---
+
+## §5 Open entries (USER_OK-gated + structural) — 10 entries
+
+Each entry is currently BLOCKED on either user OK (per AGENTS.md §5.1 standing GPU grant has user OK for general launches, but per-launch USER_OK is still required for >1hr launches), external dependency, or structural constraint.
+
+### §5.1 TODO-21 Lambda CFM GPU BLOCKED on `decode_ratio=0` (HONEST_NEGATIVE_BLOCKED)
+
+| Field | Value |
+|---|---|
+| **Workflow** | TODO-21 (Lambda CFM coupling → CLI+dataclass) |
+| **Status** | GPU launch BLOCKED on upstream `decode_ratio=0` (per Wf-291D + Wf-299) |
+| **Verdict** | **HONEST_NEGATIVE_BLOCKED** — CPU-only wrapper SHIPPED via Wf-333-G1; GPU launch requires upstream CFM fix |
+| **Source** | `TODO/completed/333g1_lambda_cfm_wrapper.md` + `TODO/pending/21_lambda_cfm_coupling.md` |
+
+### §5.2 Triangle GPU BLOCKED on `R² ≥ 0.6` honesty gate (HONEST_NEGATIVE_BLOCKED)
+
+| Field | Value |
+|---|---|
+| **Workflow** | TODO-95 + TODO-98 (Triangle closure ASTSR↔Hilbert↔MCTS) |
+| **Status** | GPU launch BLOCKED on `mean_hilbert_r2 ≥ 0.6` honesty gate per `mol-metal-triangle-closure` skill §4; PROJECTED platinai_4cell R² 0.594 + metalcytotox_5metal R² 0.622 (both BELOW target) |
+| **Verdict** | **HONEST_NEGATIVE_BLOCKED** — CPU-only wrapper SHIPPED via Wf-333-G2 + Wf-335-M3; GPU launch requires Hilbert ASTSR R² ≥ 0.6 |
+| **Source** | `TODO/completed/333g2_triangle_wrapper.md` + `TODO/completed/335m3_triangle_gpu_extend.md` |
+
+### §5.3 4 m1 Ru AUC seeds (Rh 3,4 + Re 0-4) DEFERRED (HONEST_NEGATIVE_DEFERRED_RUNS)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-131 P3 + Wf-146 (5-metal × 3-seed × 30-epoch) |
+| **Status** | 4 m1 Ru AUC seeds DEFERRED per Wf-355-B1+B2: Rh (3, 4) + Re (0, 1, 2, 3, 4) |
+| **Verdict** | **HONEST_NEGATIVE_DEFERRED_RUNS** — DEFERRED for Wf-339+ GPU retrain |
+| **Source** | `TODO/completed/355b1_wf131_p3_deferred.md` + `TODO/completed/355b2_wf146_deferred.md` |
+
+### §5.4 5 CFM/TODO-119 DEFERRED waves exhaust 10h budget (HONEST_NEGATIVE_WAVE_BUDGET)
+
+| Field | Value |
+|---|---|
+| **Workflow** | TODO-119 P1.3 + P1.4 + TODO-180 G4 + TODO-181 G5 + TODO-182 G6 |
+| **Status** | 5 waves × ~9-15 hr each = **37.8 hr total** GPU wall budget; exhausts 10h per-session cap by **27.8 hr** |
+| **Verdict** | **HONEST_NEGATIVE_WAVE_BUDGET** — per Wf-258 §2.1; wave budget tracker `--no-enforce-budget` opt-out preserves PLANNED status; USER_OK-gated for sequential launch |
+| **Source** | `molmetal/reports/wf258_audit/cfm_todo_gap_audit.md` §2.1 + `molmetal/scripts/wave_budget_tracker.py` |
+
+### §5.5 Wave budget -183.04h (5 DEFERRED waves) (HONEST_NEGATIVE_WAVE_BUDGET_CUMULATIVE)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-339 + Wf-340 + Wf-341 + Wf-342 + Wf-343 (5 DEFERRED waves) |
+| **Status** | Cumulative wave budget overrun = **-183.04 hr** (i.e., 193.04 hr of work scheduled into 10 hr per-session cap) |
+| **Verdict** | **HONEST_NEGATIVE_WAVE_BUDGET_CUMULATIVE** — `p3_wf343c4_wave_budget_remaining_nonneg` gate FAIL (preserved per Wf-357-A1 §3.2) |
+| **Source** | `molmetal/scripts/pre_flight_check.py` + `TODO/completed/357a1_preflight_audit.md` §3.2 |
+
+### §5.6 BindingDB 1.07M NOT on disk (5,257 subset only) (HONEST_NEGATIVE_EXTERNAL_DATA_HOLD)
+
+| Field | Value |
+|---|---|
+| **Workflow** | R20 §4 BindingDB 1.07M wrapper |
+| **Status** | 1.07M NOT on disk; only 5,257 subset on disk |
+| **Verdict** | **HONEST_NEGATIVE_EXTERNAL_DATA_HOLD** — external dependency on BindingDB 1.07M full corpus; pre-flight gate `data_2_1_6_bindingdb_external_honest_negative` SKIP preserved |
+| **Source** | `TODO/completed/355a2_r20_p4_bindingdb_wrapper.md` |
+
+### §5.7 Wf-339-D3 IMPROVEMENT_ENUM §0 3 PENDING + §2.5.1 16 deprecation (HONEST_NEGATIVE_PENDING)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-339-D3 IMPROVEMENT_ENUM follow-up |
+| **Status** | §0 **3 PENDING** items NOT started; §2.5.1 **16 deprecation items** HONEST_NEGATIVE_BLOCKED on external dependencies |
+| **Verdict** | **HONEST_NEGATIVE_PENDING** — moved to §2.15 above |
+| **Source** | `TODO/completed/339d3_improvement_enum_pending.md` |
+
+### §5.8 Wf-339-D2 L4/L7/L8/L10/L5 GPU retrain USER_OK-DEFERRED (HONEST_NEGATIVE_USER_OK_DEFERRED)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-339-D2 (5 GPU retrain waves: L4/L7/L8/L10/L5) |
+| **Status** | USER_OK-DEFERRED per AGENTS.md §5.1; >1 hr per-wave threshold |
+| **Verdict** | **HONEST_NEGATIVE_USER_OK_DEFERRED** — 5 GPU retrain waves preserved for future Wf-340+ cadence |
+| **Source** | `TODO/completed/339d2_l4_l7_l8_l10_l5_gpu_deferred.md` |
+
+### §5.9 `p3_wf343c2_per_wave_runtime_check` requires live wave context (HONEST_NEGATIVE_RUNTIME_CONTEXT)
+
+| Field | Value |
+|---|---|
+| **Pre-flight gate** | `p3_wf343c2_per_wave_runtime_check` |
+| **Status** | Gate requires live wave context (not auto-pass); pre-flight v3 FAIL preserved at Wf-357-A1 + Wf-358-A2 |
+| **Verdict** | **HONEST_NEGATIVE_RUNTIME_CONTEXT** — gate requires actual wave in-flight; not a code fix candidate |
+| **Source** | `molmetal/scripts/pre_flight_check.py:4529` + `TODO/completed/357a1_preflight_audit.md` §2.2 |
+
+### §5.10 Triton mini-batch OT GPU correctness deferred to Wf-326E-A sm_120 (HONEST_NEGATIVE_DEFERRED_GPU_RETUNE)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-326E-A (Blackwell sm_120 Triton fused_relu_linear retune) |
+| **Status** | GPU correctness <1e-3 matmul / <5e-2 sort validation DEFERRED per Wf-335-P2 + Wf-335-P3; CPU-only scaffold READY |
+| **Verdict** | **HONEST_NEGATIVE_DEFERRED_GPU_RETUNE** — Triton fused_relu_linear HONEST_NEGATIVE on Blackwell until Wf-326E-A retune |
+| **Source** | `TODO/completed/335p2_sm120_gpu_wrapper.md` + `TODO/completed/335p3_triton_kernels_wired.md` + Wf-328-SYN §3.2 |
+
+---
+
+## §6 NEW Wf-340..368 + Wf-383 + Wf-388/390/392 + Wf-396/397 + Wf-425/426 consolidated entries (Wf-369-A3 + Wf-383-A1 + Wf-395-A2 + Wf-399-A2 + Wf-426-A4 expansion) — 30 entries
+
+Each entry was surfaced by a Wf-340..368 / Wf-388 / Wf-390 / Wf-392 / Wf-396 / Wf-397 / Wf-425 / Wf-426 closeout that was NOT yet in §1..§5. Wf-369-A3 promotes these from per-closeout-cited findings to catalog-level citations for reviewer rebuttal + paper §6 Limitations. Wf-395-A2 expansion 17 → 25 via 8 NEW entries from Wf-388 + Wf-390 + Wf-392 (CPU-only docs aggregation per Wf-395 wave). **Wf-399-A2 expansion 25 → 26 via §6.26 NEW regression-documented entry** for the decode_ratio 1→0 regression (per user 2026-09-30 directive verbatim *"之前decode_ratio是1的现在我去哪退化的这个要重点解决"* + Wf-396 trainer flag incompatibility root cause + Wf-397 fix + Wf-385-A3 pre-flight prevention gate). **Wf-426-A4 expansion 26 → 30 via §6.27-§6.30 NEW 4 entries** documenting the Wf-425 cumulative false-claim cascade audit (8 cascades per AGENTS.md §5.5 filesystem-truth rule) + Wf-426 retro-author verification filesystem-truth-gap + Wf-426-A3 retrain readiness infrastructure filesystem-truth-gap + Wf-425-B1 docs sync filesystem-truth-gap.
+
+### §6.1 m6_kappa FINAL 5-attempts exhausted HONEST_NEGATIVE_PARTIAL_STRUCTURAL (Wf-365-A3)
+
+| Field | Value |
+|---|---|
+| **Metric** | m6_kappa (Krasnov validation correlation; `metrics/by_metric/m6_kappa.json`) |
+| **MEASURED** | best augmented_mean = **0.4737** (Wf-364-A2 joint RDKit + ODE + MAML LAST path) vs threshold ≥ 0.6 (gap **-0.1263**); CV-R² +0.5410 → +0.6814 (CEILING_BREAK per `WEAK_TO_STRONG_PLAN.md §3.5`); 5 architectural attempts exhausted |
+| **Workflow** | Wf-365-A3 verdict doc + Wf-365-B1 cross-poll + Wf-364-A2 combined LAST path + Wf-361-B1 MAML + Wf-361-B2 Neural ODE + Wf-359-A1 W₂ |
+| **Verdict** | **HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL** — structural ceiling LIFTED but threshold-reaching axis NOT lifted; 4 forward-looking paths ranked (cross-cohort / drop / re-define / degenerate chain) per Wf-365-A3 §5 — none cheap |
+| **Source** | `TODO/completed/365a3_m6_kappa_final.md` + `TODO/completed/364a2_m6_kappa_combined.md` + `TODO/completed/361b1_m6_kappa_maml.md` + `TODO/completed/361b2_m6_kappa_neural_ode.md` + `TODO/completed/359a1_m6_kappa_w2_r20p3_verify.md` |
+
+### §6.2 m2 R² recovery scaffold preserves HONEST_NEGATIVE_R2_DEEP (Wf-367-B1)
+
+| Field | Value |
+|---|---|
+| **Metric** | m2 (real pIC50 regression; `metrics/by_metric/m2.json`) |
+| **MEASURED** | multi-stream feature ensemble (RDKit 12d + chemprop-v3 32d + Hilbert ASTSR 8d + per-cell 4d + W₂) on `platinai_4cell` = **-0.5158 ± 0.4170** (vs 12-d baseline -0.1251); on `hilbert` = **-0.4980 ± 0.3216** (vs 12-d baseline -0.1268) — multi-stream WORSE due to bias-variance tradeoff at n=200 |
+| **Workflow** | Wf-367-B1 multi-stream ensemble scaffold |
+| **Verdict** | **HONEST_NEGATIVE_R2_DEEP** preserved on both cohorts; metalcytotox_combined (n=2000) CEILING_BREAK at Wf-335-M2 stands; requires EITHER n ≥ 1000 cohorts OR GPU chemprop v3 encoder + Hilbert primal-dual (per AGENTS.md §5.1 GPU grant) |
+| **Source** | `TODO/completed/367b1_m2_r2_recovery.md` + `molmetal/reports/wf367b1_m2_r2/result.json` |
+
+### §6.3 CFM acceleration 5 methods CPU scaffold SHIPPED, GPU A/B matrix DEFERRED (Wf-340)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-340-I1..I3 + Wf-340-P3..P4 (CFM acceleration: torch.compile + Triton fused_relu_linear + minibatch OT + EDM precond + shortcut EMA) |
+| **Status** | CPU scaffold SHIPPED with projected speedup ratios; **MEASURED speedup requires GPU A/B matrix** (DEFERRED per AGENTS.md §5.1) |
+| **Verdict** | **HONEST_NEGATIVE_DEFERRED_GPU_BENCH** — 6 NEW CFM methods (EDM + OT-CFM + StableVM + SO(3) + Triton + shortcut + consistency + FlowMol) CPU scaffold SHIPPED; GPU A/B matrix requires RTX 5090 + pre-flight + per-method wall budget |
+| **Source** | `TODO/completed/340i1_cfm_acceleration_implementation.md` + `TODO/completed/340i2_speedup_estimate.md` + `TODO/completed/340i3_integration_plan.md` + `TODO/completed/340p3_concrete_code_changes.md` + `TODO/completed/340p4_final_report.md` |
+
+### §6.4 CFM new methods CPU scaffold SHIPPED, GPU verification DEFERRED (Wf-341)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-341-C1..C4 (minibatch OT + EDM precond + shortcut EMA + minibatch OT Triton) |
+| **Status** | 4 NEW CFM methods CPU scaffold SHIPPED; integration tests PASS; GPU correctness + speedup DEFERRED |
+| **Verdict** | **HONEST_NEGATIVE_DEFERRED_GPU_VERIFY** — structural ceiling LIFTED at CPU scale; GPU validation requires user OK per AGENTS.md §5.1 |
+| **Source** | `TODO/completed/341c1_minibatch_ot.md` + `TODO/completed/341c2_edm_precond.md` + `TODO/completed/341c3_shortcut_ema.md` + `TODO/completed/341c4_minibatch_ot_triton.md` + `TODO/completed/341_final_closeout.md` |
+
+### §6.5 Wasserstein W₁ CPU scaffold SHIPPED, GPU A/B DEFERRED (Wf-358-B1)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-358-B1 Wasserstein W₁ loss module (`molmetal/molmetal_lam/reward/wasserstein_w1.py`) |
+| **Status** | CPU-only scaffold SHIPPED with unit tests PASS; GPU A/B matrix vs W₂ DEFERRED |
+| **Verdict** | **HONEST_NEGATIVE_DEFERRED_GPU_BENCH** — W₁ is a fundamentally different metric (L1 dual vs W₂ entropic); no MEASURED comparison vs W₂ yet |
+| **Source** | `TODO/completed/358b1_wasserstein_w1.md` + `molmetal/molmetal_lam/reward/wasserstein_w1.py` |
+
+### §6.6 Equivariant message passing CPU scaffold SHIPPED, GPU verification DEFERRED (Wf-358-B2)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-358-B2 equivariant MP layer (`molmetal/molmetal_lam/reward/equivariant_message_passing.py`) |
+| **Status** | CPU-only scaffold SHIPPED with E(3)-invariance unit tests PASS; GPU kernel correctness DEFERRED |
+| **Verdict** | **HONEST_NEGATIVE_DEFERRED_GPU_VERIFY** — requires Blackwell sm_120 kernel correctness check via Wf-326E-A retune |
+| **Source** | `TODO/completed/358b2_equivariant_mp.md` + `molmetal/molmetal_lam/reward/equivariant_message_passing.py` |
+
+### §6.7 Hilbert ASTSR Fourier 8-bin truncation CPU scaffold SHIPPED, GPU retrain DEFERRED (Wf-348)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-348-B1 Hilbert ASTSR with 8-bin Fourier truncation (`molmetal/molmetal_lam/reward/hilbert_primal_dual.py` + `lambda_astsr.py`) |
+| **Status** | CPU-only scaffold SHIPPED; 5-seed × 50-epoch × dual-init GPU retrain DEFERRED per AGENTS.md §5.1 |
+| **Verdict** | **HONEST_NEGATIVE_DEFERRED_GPU_RETRAIN** — R² ≥ 0.85 honesty gate requires Hilbert primal-dual rate convergence on full chemprop_v2 graph (not 12-d RDKit only) |
+| **Source** | `TODO/completed/348_final_synthesis.md` + `molmetal/molmetal_lam/reward/hilbert_primal_dual.py` |
+
+### §6.8 R20 §3 DrugOOD 1.58M scope mismatch FIXED via Wf-355-A1 (HONEST_NEGATIVE_RESOLVED_LATE)
+
+| Field | Value |
+|---|---|
+| **Launcher** | R20 §3 DrugOOD 1.58M wrapper (`TODO/pending/95_r20_p4_3way_100pocket.md`) |
+| **Status** | SCOPE MISMATCH: wrapper targets DANN on 95K subset (1.58M NOT available); FIXED in Wf-355-A1 via scope re-route |
+| **Verdict** | **HONEST_NEGATIVE_RESOLVED_LATE** — fixed at Wf-355-A1; preserved as historical honest-negative |
+| **Source** | `TODO/completed/355a1_r20_p3_drugood_wrapper.md` + `TODO/pending/95_r20_p4_3way_100pocket.md` |
+
+### §6.9 m6_kappa MAML CPU scaffold SHIPPED, not lifting threshold (Wf-361-B1)
+
+| Field | Value |
+|---|---|
+| **Metric** | m6_kappa augmented_mean |
+| **MEASURED** | MAML meta-learning candidate CV-R² +0.05 to +0.10 (5-seed × 50-epoch); augmented_mean 0.4719 (vs 0.4737 Wf-364-A2 LAST path combined) — NOT lifting threshold |
+| **Workflow** | Wf-361-B1 m6_kappa MAML scaffold |
+| **Verdict** | **HONEST_NEGATIVE_PARTIAL_STRUCTURAL** — MAML on small m6_kappa cohort does not break structural ceiling |
+| **Source** | `TODO/completed/361b1_m6_kappa_maml.md` + `TODO/completed/361c1_top_m6_kappa_improvement.md` |
+
+### §6.10 m6_kappa Neural ODE CPU scaffold SHIPPED, not lifting threshold (Wf-361-B2)
+
+| Field | Value |
+|---|---|
+| **Metric** | m6_kappa augmented_mean |
+| **MEASURED** | Neural ODE kinetic feature extraction CV-R² +0.03 to +0.08 (5-seed × 50-epoch); augmented_mean 0.4695 — NOT lifting threshold |
+| **Workflow** | Wf-361-B2 m6_kappa Neural ODE scaffold |
+| **Verdict** | **HONEST_NEGATIVE_PARTIAL_STRUCTURAL** — Neural ODE on small m6_kappa cohort does not break structural ceiling |
+| **Source** | `TODO/completed/361b2_m6_kappa_neural_ode.md` + `TODO/completed/365a1_neural_ode_verify.md` |
+
+### §6.11 7-ship wrapper stack legacy G5 USER_OK parity gap (Wf-365-B2)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-365-B2 7-ship wrapper stack verification (5 Wf-355 wrappers + 2 legacy G5/G6) |
+| **MEASURED** | 1 SKIP HONEST-NEGATIVE on legacy `launch_wf124_p3_g5.sh` USER_OK parity (predates Wf-300C USER_OK gate pattern) |
+| **Verdict** | **HONEST_NEGATIVE_LEGACY_PARITY** — closure path: 5 LOC gate addition to G5 wrapper, USER_OK-gated like other Wf-355 wrappers — deferred to NEW ultracode follow-up per Wf-365-B1 §0 |
+| **Source** | `TODO/completed/365b2_7_wrappers_final.md` + `TODO/completed/365b1_wf363_364_xverify.md` |
+
+### §6.12 8 MISSING Wf-363/Wf-364 closeouts surfaced for NEW ultracode follow-up (Wf-365-A2)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-365-A2 cross-poll discovers 8 MISSING Wf-363/Wf-364 closeouts |
+| **Status** | 8 closeout files MISSING from `TODO/completed/`; 2 of 8 (Wf-366-A1 G5 USER_OK + Wf-366-A2 recover_g6 block-order) CLOSED by Wf-366; 6 remaining preserved as honest-negative follow-up |
+| **Verdict** | **HONEST_NEGATIVE_FOLLOW_UP_PENDING** — 6 of 8 MISSING closeouts still require NEW ultracode follow-up wave |
+| **Source** | `TODO/completed/365a3_m6_kappa_final.md` §6 + `TODO/completed/365b1_wf363_364_xverify.md` |
+
+### §6.13 Wf-367-A2 pre-flight No-Fail-Gates cascade FULLY CLOSED (HONEST_NEGATIVE_RESOLVED_LATE)
+
+| Field | Value |
+|---|---|
+| **Original** | `gate_wf343c2_per_wave_runtime_check` invoked Wf-343C2 per-wave companion script with BOTH `--skip-live` AND `--strict`; semantic conflict caused pre-flight FAIL |
+| **Fix** | Wf-367-A2 — drop `--strict` from gate invocation in `pre_flight_check.py:4590-4598` + 6-line explanatory comment block |
+| **MEASURED** | Pre-flight v3 fresh-run **92 PASS / 0 FAIL / 2 SKIP / 94 TOTAL** (vs Wf-366-B2 baseline 91/1/2/94); 2 SKIPs preserved BY-DESIGN per Wf-350-A2 §5 |
+| **Verdict** | **HONEST_NEGATIVE_RESOLVED_LATE** — CLOSED at Wf-367-A2 timestamp 2026-09-29 |
+| **Source** | `TODO/completed/367a2_preflight_no_fail_gates_fix.md` + `molmetal/scripts/pre_flight_check.py:4590-4598` |
+
+### §6.14 Wf-368-A1 pre-flight p3_wf343c2 skip semantic fix CLOSED (HONEST_NEGATIVE_RESOLVED_LATE)
+
+| Field | Value |
+|---|---|
+| **Original** | Wf-368-A1 discovers `--skip-live` semantic conflict in `gate_wf343c2_per_wave_runtime_check` (complementary fix to Wf-367-A2 `--strict` removal); surfaced as M0/M1/M2 partial finding from Wf-368-A2 |
+| **Fix** | Wf-368-A1 — 5-LOC argparse `--skip-live` flag semantic fix on `train_dmpnn_multitask_wasserstein.py` |
+| **MEASURED** | Pre-flight v3 fresh-run **92 PASS / 0 FAIL / 2 SKIP / 94 TOTAL** PRESERVED at Wf-368-A1 timestamp |
+| **Verdict** | **HONEST_NEGATIVE_RESOLVED_LATE** — CLOSED at Wf-368-A1 timestamp 2026-09-29 |
+| **Source** | `TODO/completed/368a1_wf343c2_skip_semantic_fix.md` + `molmetal/scripts/pre_flight_check.py` |
+
+### §6.15 Wf-368-B1 USER_OK FINAL consolidated checklist (HONEST_NEGATIVE_USER_OK_CONSOLIDATED)
+
+| Field | Value |
+|---|---|
+| **Workflow** | Wf-368-B1 FINAL consolidated USER_OK checklist (supersedes Wf-366-C2) |
+| **MEASURED** | 7 USER_OK-gated launch wrappers (~52.9 hr GPU total) + 2 install binaries (~30 min CPU) + 7 paper artefacts (~12-15 hr CPU) + 2 metric gates (m1 + m6_kappa) |
+| **Verdict** | **HONEST_NEGATIVE_USER_OK_CONSOLIDATED** — single source of truth for outstanding USER_OK-gated items; no auto-trigger without per-item USER_OK per AGENTS.md §5.1 + `mol-metal-gpu-execution` §0 + `kill_then_adapt` standing directive |
+| **Source** | `TODO/completed/368b1_user_ok_final.md` + `docs/USER_OK_FINAL_CHECKLIST.md` (Wf-366-C2 ~430 LOC carried forward) |
+
+### §6.16 SE(3) SB 10000-step baseline REVISED step count PROJECTED_PENDING_DEEP_INTEGRATION (Wf-383-A1)
+
+| Field | Value |
+|---|---|
+| **Metric** | SE3_SB_TRAIN_STEPS (M22 SE(3) Schrödinger Bridge trainer step count; `molmetal/adapters/se3_sb_integration.py` + `molmetal/math_skills/se3_schrodinger_bridge.py`) |
+| **Baseline (MEASURED on disk)** | **10000 steps** — `WEAK_TO_STRONG_PLAN.md` §4.3 original R18 Phase 2 spec; CPU scaffold `TODO/completed/339b2_m22_se3_sb_scaffold.md` §1.1 — `test_m22_se3_sb_cpu_scaffold_10000_steps` PASS in ~10s on 16-core CPU; midpoint solver second-order convergence + SE(3) equivariance + M22/M30 integration VERIFIED |
+| **Revised PROJECTED (conservative, EDM + OT-CFM + log-normal + EMA + lr-warmup wired)** | **[1500, 2500] steps** — multiplicative composition per `TODO/completed/340i2_speedup_estimate.md` §2-§4 (EDM 2-3×, OT-CFM 1.5-2×, log-normal 30%, lr-warmup 5-10%, EMA late-stage); cited in Wf-383-A1 §3 |
+| **Revised PROJECTED (aggressive, + shortcut distillation 4-step student per Frans 2024)** | **[500, 1000] steps** — `TODO/completed/353a2_shortcut_distillation.md` §6 (Frans et al. 2024 §3.2: 64-step teacher → 4-step student = 16× step reduction); Wf-353-A2 `train_step` integration DEFERRED |
+| **Revised PROJECTED (ceiling, full shortcut distillation only)** | **~625 steps** — Frans 2024 conservative 64→4 ratio applied to 10000 baseline; ultimate bound on distillation alone, not yet wired |
+| **Prerequisite** | **TODO-200** (Wf-340 + Wf-353 Deep Integration Audit) — extend the 10 fast-converging innovations (EDM σ-precond, OT-CFM, log-normal t-sampling, lr-warmup, EMA, exact-OT, Triton mini-batch OT, shortcut distillation, consistency regularization, FlowMol unified atom-bond flow) from CFM YuelBond trainer `molmetal/adapters/flow_matching_lipman/` to ALL trainers including M22 SE(3) SB trainer |
+| **Caveat** | All revised step counts are **PROJECTED until Wf-340 + Wf-353 wires are extended to SE(3) SB trainer via TODO-200**. The 10000-step baseline is MEASURED on a CPU scaffold (dummy EGNN); the PROJECTED bands cite upstream paper benchmarks + Wf-340-SYN §7 multiplicative composition — NO Mol-Metal GPU A/B matrix has been launched for these wires on the SE(3) SB trainer. GPU retrain on real 100-pocket × 3-seed CrossDocked100 cohort remains BLOCKED on user OK per AGENTS.md §5.1 + `kill_then_adapt` §0. |
+| **Verdict** | **HONEST_NEGATIVE_PROJECTED_PENDING_DEEP_INTEGRATION** — step count is structurally revisable from 10000 → ~625 (16× reduction) once TODO-200 ships + GPU retrain validates; closure path = `TODO/completed/340p3_concrete_code_changes.md` §3 SE(3) SB trainer integration target #4 (~480 LOC trainer-agnostic refactor per `molmetal/adapters/flow_matching_lipman/acceleration.py`); MEASURED-vs-PROJECTED delta requires GPU retrain launch (USER_OK-gated) |
+| **Source** | `TODO/completed/383a1_weak_to_strong_se3sb_audit.md` (Wf-383-A1 audit, 280 LOC) + `TODO/03_plans/WEAK_TO_STRONG_PLAN.md` §4.3.1 (revised step count table) + `TODO/completed/339b2_m22_se3_sb_scaffold.md` (baseline MEASURED) + `TODO/completed/340_final_synthesis.md` §7 (joint PROJECTED 10-20×) + `TODO/completed/353_final_synthesis.md` §5.2 (per-technique PROJECTED) |
+| **Cross-ref** | Wf-339-B2 (CPU scaffold) + Wf-340-SYN (CFM fast-converging ship surface) + Wf-353 (4 NEW modules) + TODO-200 (Deep Integration Audit) + Wf-379-A2 (R20 §5 SCAFFOLD_NOT_FUNCTIONAL for tmQM + PlatinAI joint retrain — separate scaffold) |
+
+### §6.17 Atomic write protocol SHIPPED — defensive layer for verification reliability + write overwriting (Wf-386-A3 + Wf-386-B1)
+
+| Field | Value |
+|---|---|
+| **Category** | process-improvement / infrastructure / documentation |
+| **Problem** | recurring "verification reliability + write overwriting" pattern observed across Wf-371 / Wf-373 / Wf-377 / Wf-378 / Wf-384 — agents verify on-disk state and later waves invalidate the verdict; agents re-author closeouts that were already on disk with substantial content loss; agent output is truncated mid-sentence but accepted as complete |
+| **Solution (3 primitives)** | **1.** `atomic_write_file` (atomic temp-file + rename with per-path process-local lock; POSIX `os.replace` guaranteed on Linux; concurrent writers serialise). **2.** `safe_overwrite_check` (line-set Jaccard distance heuristic, default threshold 0.5; flags substantial content loss when re-authoring). **3.** `detect_truncation` (closing-token heuristic + length check; catches mid-sentence agent output before calling workflow accepts it as complete). |
+| **Files** | `molmetal/scripts/wf386a3_atomic_write.py` (NEW ~366 LOC) + `molmetal/tests/test_wf386a3_atomic_write.py` (NEW 27-case test suite) + `docs/ATOMIC_WRITE_PROTOCOL.md` (NEW ~290 LOC canonical reference doc) + `TODO/completed/386a1_wf384_a3_overwrite_audit.md` + `TODO/completed/386a2_wf378_a3_wrong_verdict_root_cause.md` + `TODO/completed/386a3_atomic_write_protocol.md` + `TODO/completed/386b1_index_sync.md` |
+| **Tests** | **27/27 NEW tests PASS** in <1 s wall (CPU-only): atomic_write_file creates/concurrent + safe_overwrite_check warn/silent + detect_truncation flag/pass + write_closeout integration |
+| **Adoption** | **MANDATORY** for all future closeout writes per AGENTS.md §5.6 (NEW 2026-09-30 per Wf-386-B1). Three rules: (1) all closeout writes MUST use `atomic_write_file` (NOT direct `Write`); (2) all overwrite-write tasks MUST run `safe_overwrite_check` first; (3) all agent verification tasks MUST run `detect_truncation` on agent output. Existing scripts continue to work as before — opt-in migration per Wf-386-A3 §6.2 (auto-migrating all existing scripts in a single sweep is too risky). |
+| **Complementarity with §5.5** | §5.5 (Wf-384-B1) governs the **agent-prompt layer** (`ls -la` evidence rule); §5.6 (Wf-386-B1) governs the **I/O substrate layer** (atomic_write + overwrite check + truncation detection). Combined, the two layers prevent both (a) report SHIPPED without file existence (§5.5) AND (b) file overwrite without report (§5.6). |
+| **Verdict** | **HONEST_NEGATIVE_RESOLVED** for the recurring verification-reliability + write-overwriting pattern. Per user directive 2026-09-30 verbatim *"如果是同一个问题一直没修好的话得做调研+review尝试更深层的修复"* — Wf-386 adopted the deeper-level fix (I/O substrate) rather than a 2nd-layer agent prompt rule. |
+| **Source** | `TODO/completed/386a1_wf384_a3_overwrite_audit.md` (Wf-384-A3 audit: 3 independent lines of evidence: filesystem mtime + byte/SHA256 match + Wf-384-A3 agent's own journal — all confirm Wf-384-A3 was verify-and-do-NOT-modify agent, NOT re-author) + `TODO/completed/386a2_wf378_a3_wrong_verdict_root_cause.md` (Wf-378-A3 root cause: Hypothesis A truncation REJECTED, B timing race CONFIRMED, C wrong glob REJECTED, D filesystem cache REJECTED, E wrong CWD REJECTED → workflow orchestration issue) + `TODO/completed/386a3_atomic_write_protocol.md` (atomic write + overwrite check + truncation detection) + `TODO/completed/386b1_index_sync.md` (AGENTS.md §5.6 + INDEX §22.78 sync) |
+
+### §6.18 m2 R² real cohort lift PROJECTED_PENDING_GPU_RETRAIN (Wf-388)
+
+| Field | Value |
+|---|---|
+| **ID** | `wf388_m2_real_cohort_r2_lift` |
+| **Type** | `PROJECTED_PENDING_GPU_RETRAIN` |
+| **metric_id** | `m2_r2` |
+| **Workflow** | Wf-388 (m2 real cohort lift via chemprop-v2 + Hilbert joint retrain) |
+| **MEASURED (current)** | platinai_4cell R² **-0.1251 ± 0.1515** + hilbert R² **-0.1268 ± 0.1709** (12-d baseline per Wf-335-M2 + Wf-367-B1) |
+| **PROJECTED (post-GPU retrain)** | platinai_4cell R² **+0.30 to +0.60** if Wf-388 chemprop-v2 + Hilbert joint retrain passes Wf-343C4 gates + per-wave USER_OK per AGENTS.md §5.1 |
+| **Verdict** | **HONEST_NEGATIVE_PROJECTED_PENDING_GPU_RETRAIN** — CPU scaffold SHIPPED via Wf-367-B1 multi-stream ensemble; MEASURED-vs-PROJECTED delta requires chemprop-v2 + Hilbert joint GPU retrain (USER_OK-gated per AGENTS.md §5.1 + `mol-metal-gpu-execution` §0 `kill_then_adapt`) |
+| **Source** | `TODO/completed/388_m2_real_cohort_r2_lift.md` + `molmetal/reports/wf335m2_w2_chemprop/result.json` + `molmetal/reports/wf367b1_m2_r2/result.json` |
+
+### §6.19 m7 Diversity wire-in SCAFFOLD_TO_WIRED (Wf-388)
+
+| Field | Value |
+|---|---|
+| **ID** | `wf388_m7_diversity_wire_in` |
+| **Type** | `SCAFFOLD_TO_WIRED` |
+| **metric_id** | `m7_diversity` |
+| **Workflow** | Wf-388 (m7 Tanimoto diversity reward wire-in to D-MPNN multitask trainer) |
+| **MEASURED (current)** | CFM Tanimoto diversity **0.1065** (post Tanimoto reward +22.5% lift = **0.0397** NEGATIVE; per §1.6) — D-MPNN multitask trainer does NOT yet consume m7 reward signal |
+| **Status** | SCAFFOLD SHIPPED (per Wf-388 wire-in); full D-MPNN WIRING + multi-seed × 5-fold CV R² lift DEFERRED pending USER_OK |
+| **Verdict** | **HONEST_NEGATIVE_SCAFFOLD_TO_WIRED** — reward scaffold on disk; wire-up to `train_dmpnn_multitask_wasserstein.py` MEASURED-correctness DEFERRED to Wf-388-GPU retrain phase |
+| **Source** | `TODO/completed/388_m7_diversity_wire_in.md` + `molmetal/molmetal_lam/reward/tanimoto_diversity.py` (scaffold) |
+
+### §6.20 m4 SA penalty wire-in SCAFFOLD_TO_WIRED (Wf-388)
+
+| Field | Value |
+|---|---|
+| **ID** | `wf388_m4_sa_penalty_wire_in` |
+| **Type** | `SCAFFOLD_TO_WIRED` |
+| **metric_id** | `m4_sa` |
+| **Workflow** | Wf-388 (m4 SA penalty wire-in to chemprop_v2_v3 + D-MPNN multitask trainers) |
+| **MEASURED (current)** | SA global 3.289 ± 0.851 (n=26,801 Wf-264 panel; per §2.8); no SA penalty in trainer loss yet |
+| **Status** | SCAFFOLD SHIPPED (per Wf-388 wire-in); chemprop_v2_v3 trainer integration + D-MPNN multitask integration DEFERRED to Wf-388-GPU retrain phase |
+| **Verdict** | **HONEST_NEGATIVE_SCAFFOLD_TO_WIRED** — penalty scaffold on disk; trainer integration MEASURED-correctness DEFERRED |
+| **Source** | `TODO/completed/388_m4_sa_penalty_wire_in.md` + `molmetal/molmetal_lam/reward/sa_penalty.py` (scaffold) |
+
+### §6.21 TODO-376 5-metal subset Path A PROJECTED_USER_OK_GATED (Wf-390)
+
+| Field | Value |
+|---|---|
+| **ID** | `wf390_todo376_5metal_subset_path_a` |
+| **Type** | `PROJECTED_USER_OK_GATED` |
+| **metric_id** | `m2_r2` |
+| **Workflow** | Wf-390 + TODO-376 (5-metal subset Path A re-scope to avoid SCAFFOLD_NOT_FUNCTIONAL trainer constraint per Wf-379-A2) |
+| **MEASURED (current)** | Wf-379-A2 SCAFFOLD_NOT_FUNCTIONAL on `train_dmpnn_multitask_wasserstein.py` `--metals` restricted to 5 metals (line 247 `FIVE_METALS = ("Ru", "Ir", "Rh", "Os", "Re")`); 11-metal wrapper wants (Cr/Mn/Cu/Zn/Ru/Rh/Pd/Ag/Pt/Ir/Au) — VIOLATION |
+| **PROJECTED (post Path A)** | 5-metal subset (Ru/Ir/Rh/Os/Re) R² CEILING_BREAK sustained at Wf-335-M2 levels; LIFT to ≥ +0.30 on metalcytotox_combined subset PROJECTED if Wf-390-A USER_OK granted |
+| **Verdict** | **HONEST_NEGATIVE_PROJECTED_USER_OK_GATED** — Path A re-scope preserves Wf-335-M2 CEILING_BREAK on 5-metal subset; closure path = USER_OK=1 + VRAM budget check per §5.1; deferred to Wf-390 launch phase |
+| **Source** | `TODO/completed/390_todo376_5metal_path_a.md` + `molmetal/scripts/train_dmpnn_multitask_wasserstein.py:247` + Wf-379-A2 honest-negative |
+
+### §6.22 TODO-179 SCAFFOLD_NOT_FUNCTIONAL HONEST_NEGATIVE_TRAINER_EXTENSION (Wf-390)
+
+| Field | Value |
+|---|---|
+| **ID** | `wf390_todo179_scaffold_not_functional` |
+| **Type** | `HONEST_NEGATIVE_TRAINER_EXTENSION` |
+| **metric_id** | `m1_auc` |
+| **Workflow** | Wf-390 + TODO-179 (W₂ pIC50 alignment + m1_auc 5-metal × 5-seed extension) |
+| **MEASURED (current)** | TODO-179 W₂ pIC50 alignment SCAFFOLD_NOT_FUNCTIONAL per `TODO/pending/179_wf123_p3_w2_pic50_alignment.md` §2 (STATUS_HOLD); m1_auc Krasnov 0.86 gate target NOT YET HIT (Ru 0.7613 1-seed) |
+| **Verdict** | **HONEST_NEGATIVE_TRAINER_EXTENSION** — closure requires trainer extension OR alternative encoder bootstrap; current scaffold does NOT produce MEASURED m1_auc lift; deferred to Wf-390 trainer-extension wave |
+| **Source** | `TODO/completed/390_todo179_scaffold_not_functional.md` + `TODO/pending/179_wf123_p3_w2_pic50_alignment.md` |
+
+### §6.23 TODO-383 SE(3) SB wire-in SCAFFOLD_TO_WIRED (Wf-390)
+
+| Field | Value |
+|---|---|
+| **ID** | `wf390_todo383_se3_sb_wire_in` |
+| **Type** | `SCAFFOLD_TO_WIRED` |
+| **metric_id** | `m15_rmsd` |
+| **Workflow** | Wf-390 + TODO-383 (SE(3) Schrödinger Bridge wire-in to docking panel trainer) |
+| **MEASURED (current)** | SE(3) SB 10000-step baseline per Wf-383-A1 §6.16 (REVISED PROJECTED [1500, 2500] steps post-EDM+OT-CFM+log-normal+EMA+lr-warmup); docking panel `molmetal/scripts/cfm_vina_dock_panel.py` does NOT yet consume SE(3) SB pose prediction |
+| **Status** | SCAFFOLD SHIPPED (per Wf-390 wire-in); full DOCKING panel integration MEASURED-correctness DEFERRED to Wf-390-GPU retrain phase |
+| **Verdict** | **HONEST_NEGATIVE_SCAFFOLD_TO_WIRED** — SE(3) SB trainer scaffold on disk; docking panel integration DEFERRED; cross-ref §6.16 SE(3) SB 10000-step REVISED |
+| **Source** | `TODO/completed/390_todo383_se3_sb_wire_in.md` + `molmetal/math_skills/se3_schrodinger_bridge.py` (scaffold) + Wf-383-A1 audit |
+
+### §6.24 TODO-94 Multi-PH + PLL wire-in SCAFFOLD_TO_WIRED (Wf-392)
+
+| Field | Value |
+|---|---|
+| **ID** | `wf392_todo94_multiph_pll_wire_in` |
+| **Type** | `SCAFFOLD_TO_WIRED` |
+| **metric_id** | `m22_se3sb` |
+| **Workflow** | Wf-392 + TODO-94 (Multi-PH 32-bin Fourier + PLL 128-d signature joint feature extraction wire-in to SE(3) SB trainer) |
+| **MEASURED (current)** | m22 SE(3) SB 10000-step GPU retrain DEFERRED per §1.10 + Wf-339-B2; Multi-PH + PLL scaffold SHIPPED per `molmetal/molmetal_lam/lam_chem/multi_ph_pll_integration.py` + `pll_signature.py` |
+| **Status** | SCAFFOLD SHIPPED (per Wf-392 wire-in); full SE(3) SB trainer integration + R² ≥ 0.70 honest-neg gate MEASUREMENT DEFERRED to Wf-392-GPU retrain phase |
+| **Verdict** | **HONEST_NEGATIVE_SCAFFOLD_TO_WIRED** — feature scaffold on disk; trainer integration MEASURED-correctness DEFERRED; cross-ref `mol-metal-multiph-pll` skill + Wf-37 P3 honest-negative +0.087 lift baseline |
+| **Source** | `TODO/completed/392_todo94_multiph_pll_wire_in.md` + `molmetal/molmetal_lam/lam_chem/multi_ph_pll_integration.py` (scaffold) |
+
+### §6.25 TODO-155 chemprop v3 cache wire-in SCAFFOLD_TO_WIRED (Wf-392)
+
+| Field | Value |
+|---|---|
+| **ID** | `wf392_todo155_chemprop_v3_cache_wire_in` |
+| **Type** | `SCAFFOLD_TO_WIRED` |
+| **metric_id** | `chemprop_v3` |
+| **Workflow** | Wf-392 + TODO-155 (chemprop_v3 featurization cache wire-in to chemprop_v2_v3 trainer + D-MPNN multitask trainer) |
+| **MEASURED (current)** | chemprop_v3 featurization CPU scaffold SHIPPED per `molmetal/molmetal_lam/chemprop_v3.py` (new module per Wf-340 + Wf-341); Wf-326-W10 16.83× featurization speedup MEASURED on D-MPNN path; chemprop_v2_v3 trainer does NOT yet consume cache |
+| **Status** | SCAFFOLD SHIPPED (per Wf-392 wire-in); full chemprop_v2_v3 trainer integration MEASURED-correctness DEFERRED to Wf-392-GPU retrain phase |
+| **Verdict** | **HONEST_NEGATIVE_SCAFFOLD_TO_WIRED** — cache scaffold on disk; trainer integration DEFERRED; PROJECTED 16.83× featurization speedup + chemprop_v3 graph lift if Wf-392-GPU retrain validates wire |
+| **Source** | `TODO/completed/392_todo155_chemprop_v3_cache_wire_in.md` + `molmetal/molmetal_lam/chemprop_v3.py` (scaffold) + Wf-328-W10 16.83× speedup MEASURED |
+
+### §6.26 decode_ratio 1→0 REGRESSION_DOCUMENTED + Wf-397 fix + Wf-385-A3 prevention gate (Wf-396 + Wf-397 + Wf-399-A2)
+
+| Field | Value |
+|---|---|
+| **ID** | `wf396_decode_ratio_regression_1_to_0` |
+| **Type** | `HONEST_NEGATIVE_REGRESSION_DOCUMENTED` |
+| **metric_id** | `decode_ratio` (m14 CFM RDKit-strict decode_ratio on synthetic + real MetalCytoToxDB; `metrics/by_metric/cfm_decode_real.json`) |
+| **Workflow** | Wf-396 (regression root-cause analysis) + Wf-397 (fix) + Wf-385-A3 (pre-flight prevention gate) + Wf-399-A2 (this catalog entry) |
+| **MEASURED (pre-regression baseline)** | decode_ratio = **1.000** on synthetic Pt-click upper-bound (synthetic toy distribution per §1.7 row 109) — WORKING state prior to regression |
+| **MEASURED (regression state)** | decode_ratio = **0** on synthetic + real MetalCytoToxDB — BROKEN state surfaced by Wf-396 |
+| **Root cause** | Per Wf-396 audit: trainer flag incompatibility — `molmetal/scripts/train_cfm_yuelbond_wasserstein.py` `argparse` `--target-decode-ratio` (default 0.8) interacts with the new `--bond-head-version v2` flag added in `acceleration.py` integration wave (Wf-353); when `--bond-head-version v2` is passed without `--no-decode-strict` companion flag, the `evaluate_decode_ratio` call at line 1310 short-circuits to n_ok=0/n_total=N → decode_ratio=0 — flag combination was NOT validated in Wf-353 + Wf-326 trainer integration test matrix |
+| **Fix (Wf-397)** | Wf-397-A1 — added `--no-decode-strict` default OFF (preserve Wf-119 P1.3 default ON) + added `evaluate_decode_ratio(..., strict=True)` explicit kwargs in `acceleration.py` + added trainer integration test `molmetal/tests/test_wf397a1_decode_ratio_fix.py` (4/4 NEW tests PASS) verifying decode_ratio=1 restored on synthetic Pt-click with `--bond-head-version v2 --no-decode-strict` |
+| **Prevention (Wf-385-A3)** | Wf-385-A3 scaffold wire-in gate — `molmetal/scripts/pre_flight_check.py` NEW gate `gate_wf385a3_decode_ratio_non_regression` invokes `molmetal/scripts/wf385a3_decode_ratio_regression_check.py` (NEW ~80 LOC) — parses trainer help output for `--target-decode-ratio` + `--bond-head-version` combinations + asserts no silent-short-circuit combo exists; FAIL if any combo surfaces decode_ratio=0 regression path |
+| **Regression-prevention rule (AGENTS.md §5.7 NEW)** | All future trainer flag combinations MUST be validated end-to-end via the Wf-385-A3 pre-flight gate BEFORE merge; any new trainer flag introduced without a companion regression-guard test counts as a process violation per Wf-399-A2 §0 user directive *"之前decode_ratio是1的现在我去哪退化的这个要重点解决"* |
+| **MEASURED (post-fix)** | decode_ratio = **1.000** restored on synthetic Pt-click per Wf-397-A1 §4 + `molmetal/reports/wf397a1_decode_ratio_fix/result.json`; 4/4 NEW tests PASS + 12/12 backward-compat tests PASS |
+| **Verdict** | **HONEST_NEGATIVE_RESOLVED_LATE** — regression surfaced by Wf-396 + fixed by Wf-397 + prevented by Wf-385-A3; preserved as historical honest-negative per §4.x-style RESOLVED_LATE pattern (cf. §4.2 Wf-330-B4 cudagraphs RuntimeError CLOSED by Wf-335-R1+R3 + §6.13 Wf-367-A2 pre-flight No-Fail-Gates cascade FULLY CLOSED + §6.14 Wf-368-A1 skip semantic fix CLOSED); no MEASURED GPU launch required (CPU-only regression analysis + fix + prevention gate) |
+| **Source** | `TODO/completed/396_decode_ratio_regression_rootcause.md` (Wf-396 audit, ~220 LOC) + `TODO/completed/397a1_decode_ratio_fix.md` (Wf-397-A1 fix + tests) + `TODO/completed/385a3_scaffold_wire_in_gate.md` (Wf-385-A3 prevention gate) + `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:1310` (regression site) + `molmetal/scripts/wf385a3_decode_ratio_regression_check.py` (NEW pre-flight helper) + `molmetal/reports/wf397a1_decode_ratio_fix/result.json` (post-fix decode_ratio=1.000 verification) |
+| **Cross-ref** | Wf-188 (m14 decode_ratio baseline measurement) + Wf-291D + Wf-299 (upstream decode_ratio=0 surfaces) + Wf-353 (acceleration.py integration wave where regression was introduced) + Wf-119 P1.3 (decode_ratio lift on real cohorts — same trainer, now regression-free) + Wf-326 + Wf-328 + Wf-335 (trainer integration test matrix that missed the combo) + Wf-385-A3 (pre-flight prevention) + Wf-396 (regression root-cause) + Wf-397 (fix) + Wf-399-A2 (this catalog entry) |
+| **User voice anchor** | 2026-09-30 verbatim *"之前decode_ratio是1的现在我去哪退化的这个要重点解决。全部启动ultracode去做，我给你授权"* — regression-of-focus; ultracode authorization granted |
+
+### §6.27 Wf-425 cumulative false-claim cascade audit (Wf-425 + Wf-425-A1 + Wf-425-B2 + Wf-425-B5)
+
+| Field | Value |
+|---|---|
+| **ID** | `wf425_cumulative_false_claim_cascade_audit` |
+| **Type** | `HONEST_NEGATIVE_FALSE_CLAIM_CASCADE_AUDIT` |
+| **Workflow** | Wf-425 (Phase 1 review + B1..B6 fix surfaces) + Wf-426-A4 (this catalog entry) |
+| **Disk-truth (per AGENTS.md §5.5 filesystem-truth rule)** | **3 of 6 SHIPPED closeouts** on disk: `TODO/completed/425a1_p3_wf343c2_phantom_fail_investigation.md` (24,322 B mtime 2026-10-01 04:22) + `TODO/completed/425b2_per_wave_checklist_json_fix_investigation.md` (37,180 B mtime 2026-10-01 04:20) + `TODO/completed/425b5_wf125_controlled_pair_investigator.md` (37,371 B mtime 2026-10-01 04:20); **3 MISSING on disk per §5.5 rule #1** (425-a2 + 425-b1 + 425-b3 + 425-b6 — task brief listed 6 closeouts but only 3 are on disk) |
+| **Cascade-1** (`p3_wf343c2_per_wave_runtime_check` PHANTOM FAIL) | Per Wf-425-A1 §2 conclusion: wf343c2 internally PASS state preserved; cascade child FAIL root cause = stale-cache artifact (`molmetal/reports/wf259_run/pre_flight.json` mtime 25.21h > 24h STALE per AGENTS.md §1.4 STALE flag rule); `VENV_PY` hardcoding at `pre_flight_check.py:123` is NOT the root cause (proper venv detection works); HONEST_CASCADE_FALSE_CLAIM — predecessor Wf-417-A2 / Wf-418-A3..A6 / Wf-419-A5 §0.1.4 BLOCKER #4 `ModuleNotFoundError: No module named 'torch'` is a STALE-SNAPSHOT FALSE-NEGATIVE per Wf-421-A1 §0 filesystem-truth rule (torch 2.14.0+cu130 IS installed at `/home/hugo/codes/mol-metal/.venv/`) |
+| **Cascade-2** (`--json` argparse bug in `per_wave_checklist.py`) | Per Wf-425-B2: `molmetal/scripts/per_wave_checklist.py:82` `wf161105.parser` argparse SUBPARSER does NOT accept `--json` flag; `nargs="?"` fallback consumes `--json` as positional argument → `wave_a` literal missing → exit 2; cascade root cause = `wf161105.parser` SUBPARSER design (per `Wf-425-B2 §1.2` caller file `molmetal/scripts/launch_wf299_cfm_main.sh:262`); predecessor Wf-413-A3 + Wf-407-A3 §0 misattributed to wrapper rather than the SCRIPT itself; HONEST_CASCADE_FALSE_CLAIM — fix path = Wf-425-B2 §4.1 RECOMMENDED Option C Hybrid fix (~15 LOC patch) |
+| **Cascade-3** (Wf-388 Wf-125 P1 CONTROLD PAIR phantom target) | Per Wf-425-B5: `molmetal/scripts/wf125_p1_controlled_pair.py` DOES NOT EXIST on disk per `ls -la molmetal/scripts/wf125*.py` → NO MATCHES; canonical entry is `scripts/launch_wf125_p1_controlled_pair.sh` (19,892 B mtime 2026-09-30 22:22) per Wf-416 Wf-125 CONTROLD PAIR design + Wf-387-A2 §5.1; predecessor Wf-418-A6 + Wf-419-A5 §0.1.4 BLOCKER 3 misattributed the literal Python target as canonical; HONEST_CASCADE_FALSE_CLAIM — fix path = Wf-425-B5 §4 Fix 3 (TERTIARY documentation-only fix ~0 LOC source patch) |
+| **Cascade-4** (Wf-388 Wf-125 wrapper flag-surface mismatch) | Per Wf-425-B5 §1.1: wrapper hardcodes EPOCHS=50 + --metals Rh + --seeds 0 + accepts only `--run-mode {synthetic,real,none}` + `--epochs` + `--out-dir`; DOES NOT accept task brief's literal `--epochs 30 --seeds 0,1,2 --balanced-cohort --user-ok` flag set; cascade root cause = wrapper COMMON_ARGS (Wf-363-A1 schema); predecessor Wf-424-A10 + Wf-418-A6 §0.1.4 BLOCKER 3 misattributed to trainer rather than wrapper; HONEST_CASCADE_FALSE_CLAIM — fix path = Wf-425-B5 §4 Fix 2 (SECONDARY ~10 LOC wrapper COMMON_ARGS extension) |
+| **Cascade-5** (Wf-387-A2 cohort JSON schema mismatch) | Per Wf-425-B5 §1.5: trainer `molmetal/scripts/train_metal_lomo_wasserstein.py:211` calls `entry.get("catherine_6of6_pass", False)` but Wf-387-A2 cohort JSON `per_compound[]` schema uses `is_active` (bioactivity label from Wf-139 P7) NOT `catherine_6of6_pass` (structural validity); cascade root cause = schema gap between Wf-387-A2 design (bioactivity-label-driven) and Wf-139 P7 cross-script convention (Catherine-6/6-pass-driven); predecessor Wf-424-A10 + Wf-418-A6 + Wf-420-A8 misattributed as `No Catherine-6/6 PASS Rh compounds found` RuntimeError without naming schema mismatch as root cause; HONEST_CASCADE_FALSE_CLAIM — fix path = Wf-425-B5 §4 Fix 1 (PRIMARY ~1 LOC trainer `entry.get("is_active", False)` filter) |
+| **Cascade-6** (Wf-246-C metal-coordination kcal sign fix — B3 surface) | Per task brief B3: predecessor Wf-333-V1 §3.2 + Wf-406-A4 §1.5 + Wf-409-A3 §5 + Wf-410-A1 §3.1.6 closeouts reported `(1 − 2*c) × kcal_per_unit` sign-inversion per Wf-246-C audit; the actual fix surface = `molmetal/molmetal_lam/sbdd_env/metal_coord_term.py:635` `post_fix_kcal_mol` formula (verified by Wf-424-A7 §5 per kcal sign audit `kcal_sign_audit_pass=true`); cascade root cause = sign-convention drift across Wf-246 + Wf-333 + Wf-406 + Wf-409 + Wf-410 wave boundary |
+| **Cascade-7** (Wf-394 Lambda × CFM coupling — B4 surface) | Per task brief B4: predecessor Wf-394-A1 + Wf-329-W6 + Wf-406-A2 closeouts reported `lambda_samples_to_reward_targets` adapter missing; the actual fix surface = audit shape divergence between OLD Wf-329-W6 / Wf-394-A1 (lambda_reward_dataset.mean_weight) and NEW Wf-406-A2 (lambda_cfm_coupling_weight + lambda_cfm_mean_weight kwargs); HONEST_CASCADE_FALSE_CLAIM — fix path = Wf-425-B6 audit expansion (`molmetal/scripts/wf394a1_lambda_cfm_wire.py` extended with line-based regex grep + lambda_cfm_multiplier pattern per Wf-410-A2 §0) |
+| **Cascade-8** (Wf-405-A2 SCAFFOLD-loss wire-in INCOMPLETE — B6 surface) | Per Wf-424-A11 §0: predecessor Wf-405-A2 + Wf-419-A5 + Wf-420-A8 closeouts reported SCAFFOLD-loss wire-in COMPLETE; the actual fix surface = `molmetal/scripts/train_dmpnn_multitask_wasserstein.py:800` `train_one_metal_one_seed(... use_ot_cfm=bool(getattr(args, "use_ot_cfm", False)) ...)` raises `NameError: name 'args' is not defined` because the Wf-405-A2 wire-in added `use_ot_cfm` + `per_cohort_features` as function parameters to `train_one_epoch_joint(...)` line 446-447 but the call site at line 800-803 references `args` (a `main()`-scoped variable) instead of accepting these as direct kwargs and threading them through; HONEST_CASCADE_FALSE_CLAIM — fix path = Wf-425-A1 ~10 LOC trainer patch threading `use_ot_cfm` + `per_cohort_features` as direct kwargs |
+| **HONEST_NEGATIVE_REMEDIATION_HOOKS** | 8 cascades identified → 8 patches proposed per task brief B1..B6 mapping: B1 phantom FAIL removal (no fix needed; ~5 min CPU natural-drift fix per Wf-347-A1 / Wf-348-A1 precedent) + B2 wrapper fix ~10 LOC + B3 kcal sign fix closure removes 4 cascades (Wf-333-V1 + Wf-406-A4 + Wf-409-A3 + Wf-410-A1) + B4 lambda_samples_to_reward_targets fix closure removes 3 cascades (Wf-394 + Wf-329-W6 + Wf-406-A2) + B5 schema adapter fix ~1 LOC closure removes 2 cascades (Wf-387-A2 + Wf-424-A10) + B6 wire-in fix ~10 LOC closure removes 2 cascades (Wf-405-A2 + Wf-424-A11); cumulative CPU work ~50 LOC + 8 NEW regression-guard tests |
+| **Source** | `TODO/completed/425a1_p3_wf343c2_phantom_fail_investigation.md` + `TODO/completed/425b2_per_wave_checklist_json_fix_investigation.md` + `TODO/completed/425b5_wf125_controlled_pair_investigator.md` + `molmetal/scripts/per_wave_checklist.py:82` + `molmetal/scripts/launch_wf299_cfm_main.sh:262` + `molmetal/scripts/train_metal_lomo_wasserstein.py:211` + `molmetal/scripts/train_dmpnn_multitask_wasserstein.py:800` + `molmetal/molmetal_lam/sbdd_env/metal_coord_term.py:635` |
+| **Verdict** | **HONEST_NEGATIVE_FALSE_CLAIM_CASCADE_AUDIT** — 8 cascades identified with primary fix paths + LOC estimates per Wf-425-A1 + Wf-425-B2 + Wf-425-B5 SHIPPED closeouts; 3 MISSING closeouts per §5.5 filesystem-truth rule; closure requires 8 patches (~50 LOC total CPU-only) per B1..B6 batch mapping |
+| **User voice anchor** | 2026-09-30 verbatim *"好，现在启动ultracode（可以并行多个），分基于review的结果做对应的fix"* (Wf-425 phase 1 review + fix ultracode authorization) |
+
+### §6.28 Wf-426 retro-author verification (Wf-426-A4 disk-truth check)
+
+| Field | Value |
+|---|---|
+| **ID** | `wf426_retro_author_verification` |
+| **Type** | `HONEST_NEGATIVE_FALSE_CLAIM_VERIFICATION` |
+| **Workflow** | Wf-426 (retro-author wave for Wf-377-A1 + Wf-378-A3 + Wf-413-A2 + Wf-415-A4 + Wf-418-A3 closeouts that were MISSING per AGENTS.md §5.5 filesystem-truth rule); Wf-426-A4 (this catalog entry) |
+| **Disk-truth (per AGENTS.md §5.5 filesystem-truth rule)** | **0 of 5 SHIPPED closeouts** on disk despite harness task brief claim of "5 closeouts re-authored" — verified via `ls -la TODO/completed/426*.md` → NO MATCHES at Wf-426-A4 timestamp 2026-10-01 ~04:30 CST; per AGENTS.md §5.5 rule #1 "report SHIPPED ≠ file exists"; per rule #6 "filesystem is the source of truth" |
+| **Reported re-authored closeouts (claimed by harness task brief)** | 426a1_Wf377_*.md + 426a2_Wf378_*.md + 426a3_*.md + 426a4_*.md + 426a5_Wf418_*.md — **NONE ON DISK** per §5.5 filesystem-truth rule |
+| **Verdict** | **HONEST_NEGATIVE_FALSE_CLAIM_VERIFICATION** — Wf-426 retro-author wave CLOSE IS NOT ON DISK; per AGENTS.md §5.5 rule #1 + rule #6 the file SHIPPED-status IS the source of truth; the harness task brief's "5 closeouts re-authored" claim is FALSE per filesystem-truth rule; retroactive re-author workflow per §5.5 rule #5 is the canonical recovery pattern |
+| **Source** | `ls -la TODO/completed/426*.md` returns NO MATCHES at Wf-426-A4 timestamp; per `party-twenty-spirit §3.5` honest-framing mandate + AGENTS.md §5.2; the Wf-426 wave is a pending-wave — closure path = Wf-427+ follow-up with explicit on-disk authoring for each of the 5 claimed re-author closeouts |
+| **Cross-ref** | Wf-378-A3 §0.1.4 + Wf-413-A2 §0 + Wf-415-A4 §0 + Wf-418-A3 §0 + Wf-426 final synthesis v54 §0 + Wf-368-A1 + Wf-384-A1 §0 (post-wave on-disk verification rule origin) + Wf-385-A3 §6 + Wf-386-A3 §6.1 (atomic write protocol adoption rule origin) |
+
+### §6.29 Wf-426-A3 retrain readiness infrastructure (Wf-426-A3 post-fix launcher + aggregator)
+
+| Field | Value |
+|---|---|
+| **ID** | `wf426a3_retrain_readiness_infrastructure` |
+| **Type** | `HONEST_NEGATIVE_REQUIRES_GPU_RETRAIN` |
+| **Workflow** | Wf-426-A3 (post-fix launcher + aggregator for the 6 fix waves' GPU retrain infrastructure) |
+| **Disk-truth (per AGENTS.md §5.5 filesystem-truth rule)** | **0 of 1 SHIPPED closeouts** on disk — `TODO/completed/426a3_retrain_readiness.md` does NOT exist on disk per `ls -la TODO/completed/426*.md` → NO MATCHES at Wf-426-A4 timestamp 2026-10-01 ~04:30 CST |
+| **Required post-fix infrastructure (per task brief + Wf-426-A3 design contract)** | (i) post-fix launcher that threads all 6 fix wave patches (Wf-425-A1 `args` NameError fix + Wf-425-B2 `--json` argparse fix + Wf-425-B5 schema adapter + Wf-410-A1 kcal sign fix + Wf-410-A2 lambda_cfm audit fix + Wf-405-A2 wire-in completion) into a single canonical CFM retrain path; (ii) aggregator that surfaces the per-cascade fix impact via `metrics/by_metric/decode_ratio.json` + `m2_r2_per_cohort.json` + `m7_diversity.json` + `m4_sa.json` + `m3_vina.json` + `metal_lomo_auc_wasserstein.json`; (iii) §5.7 NEW trainer flag wire-in smoke-required rule integration (per Wf-399-A1) |
+| **Disk truth (per §5.5)** | **0 SHIPPED closeouts** + **0 NEW source patches**; post-fix infrastructure NOT yet on disk; closure path = Wf-427-A1 + Wf-427-A2 + Wf-427-A3 + Wf-427-A4 follow-up wave with atomic_write_file discipline |
+| **Verdict** | **HONEST_NEGATIVE_REQUIRES_GPU_RETRAIN** — closure deferred to Wf-427+ USER_OK-gated wave; 0 GPU launches performed in Wf-426-A3; pre-flight v3 fresh-run 89/2/3/94 (or 113/1/3/117 per Wf-424-A1 fix) PRESERVED at baseline |
+| **Source** | `TODO/completed/425a1_p3_wf343c2_phantom_fail_investigation.md` + `TODO/completed/425b2_per_wave_checklist_json_fix_investigation.md` + `TODO/completed/425b5_wf125_controlled_pair_investigator.md` + `molmetal/scripts/launch_wf299_cfm_main.sh` + `molmetal/scripts/per_wave_checklist.py:82` + `molmetal/scripts/train_metal_lomo_wasserstein.py:211` + `molmetal/scripts/train_dmpnn_multitask_wasserstein.py:800` |
+| **Cross-ref** | Wf-424-A11 §0 (Honest-negative root cause analysis) + Wf-418-A5 + Wf-419-A5 + Wf-420-A8 (prior SCAFFOLD_NOT_FUNCTIONAL verdicts MATCHED per Wf-424-A10 §0.1.4 BLOCKER 3 pattern) + Wf-355-B1 USER_OK-gate pattern (post-fix USER_OK=1 grant authority) + Wf-386-A3 §6.1 atomic write protocol (canonical primitive for the post-fix closeout authoring) |
+
+### §6.30 Wf-425-B1 docs sync (12 fix closeouts documented — filesystem-truth gap)
+
+| Field | Value |
+|---|---|
+| **ID** | `wf425b1_docs_sync` |
+| **Type** | `HONEST_NEGATIVE_DOCS_SYNC` |
+| **Workflow** | Wf-425-B1 (docs-only INDEX + AGENTS + comprehensive final synthesis sync; documented 12 fix closeouts from B1..B6 batches) |
+| **Disk-truth (per AGENTS.md §5.5 filesystem-truth rule)** | **0 of 1 SHIPPED closeouts** on disk despite harness task brief claim of "12 fix closeouts documented" — `TODO/completed/425b1_*.md` does NOT exist on disk per `ls -la TODO/completed/425b*.md` → ONLY `425b2_*.md` + `425b5_*.md` SHIPPED per `ls -la` evidence (b2 = 37,180 B + b5 = 37,371 B; **b1 + b3 + b4 + b6 MISSING**) |
+| **Documented 12 fix closeouts (claimed by harness task brief)** | (1) B1 phantom FAIL removal doc + (2) B2 wrapper fix doc + (3) B3 kcal sign fix doc × 4 cascades + (4) B4 lambda_samples_to_reward_targets fix doc × 3 cascades + (5) B5 schema adapter fix doc × 2 cascades + (6) B6 wire-in fix doc × 2 cascades — **NOT ON DISK** per §5.5 filesystem-truth rule |
+| **Verdict** | **HONEST_NEGATIVE_DOCS_SYNC** — Wf-425-B1 docs sync CLOSE IS NOT ON DISK; per AGENTS.md §5.5 rule #1 + rule #6 the file SHIPPED-status IS the source of truth; the harness task brief's "12 fix closeouts documented" claim is FALSE per filesystem-truth rule; retroactive docs authoring per §5.5 rule #5 is the canonical recovery pattern |
+| **Source** | `ls -la TODO/completed/425b*.md` returns ONLY 425b2 + 425b5 SHIPPED at Wf-426-A4 timestamp; per `party-twenty-spirit §3.5` honest-framing mandate + AGENTS.md §5.2; the Wf-425-B1 docs sync wave is a pending-wave — closure path = Wf-427+ follow-up with explicit on-disk authoring for the 12 fix closeouts |
+| **Cross-ref** | Wf-424-B1 + Wf-424-A1 + Wf-424-A3 + Wf-424-A4 + Wf-424-A7 + Wf-424-A10 + Wf-424-A11 + Wf-424-A12 + Wf-424-A13 + Wf-424-A14 + Wf-424-A15 (the 11 SHIPPED Wf-424 closeouts that DO land on disk per §5.5 filesystem-truth rule; Wf-425-B1 should mirror this 11/12 cadence) + Wf-368-B1 (prior docs sync wave with 6 forward-looking USER_OK items consolidation) + Wf-416-B1 (USER_OK consolidation reference) |
+
+---
+
+## §7 WETLAB_DEPRECATED entries (per-file + per-launcher + per-workflow) — 6 entries
+
+Each entry captures the per-file/per-workflow wetlab DEPRECATION per AGENTS.md §5.4 (Tier-2
+journal target + NO wet-lab planning per user directive 2026-09-29 verbatim *"我们发二区
+就可以了，不用规划湿实验"*). Files retained as historical artifact only — DO NOT SEND /
+DO NOT EXECUTE / DO NOT RUN. Per-file DELETION NOT recommended (preserve as Tier-2
+historical record per §10.5 retention policy).
+
+### §7.1 4 LOI drafts — DO NOT SEND (per-file DEPRECATED) (HONEST_NEGATIVE_NO_WET_LAB_LOI)
+
+| Field | Value |
+|---|---|
+| **ID** | `HONEST_NEGATIVE_NO_WET_LAB_LOI` |
+| **Category** | per-file DEPRECATED (no outreach execution) |
+| **Files** | `TODO/pending/wetlab_loi_ornl_protein_metal.md` + `TODO/pending/wetlab_loi_pku_cisplatin_ic50.md` + `TODO/pending/wetlab_loi_xiehe_nci60.md` + `TODO/pending/wetlab_loi_rusanov_2025_platinai.md` |
+| **Status** | **DO NOT SEND** — templates retained as historical artifact only |
+| **Reason** | Tier-2 journal target (J. Cheminform. / Digit. Discov., IF 5-8) does NOT require wet-lab LOI outreach for computational acceptance; per user directive 2026-09-29 verbatim *"我们发二区就可以了，不用规划湿实验"* — no wet-lab outreach |
+| **Substitution mechanism** | **NO substitution** — LOI outreach is external wetlab collaboration not applicable to Tier-2 pure computational submission; templates retained as historical reference ONLY |
+| **Cross-refs** | AGENTS.md §5.4 (Tier-2 + NO wet-lab) + `TODO/pending/wetlab_loi_consolidation_review.md` (Wf-119 close-out consolidation) + `TODO/03_plans/IMPROVEMENT_ENUM_2026_09_27.md` §0 row 12 (R20-P6 DEPRECATED) + `TODO/INDEX.md` §0.21 (Wf-337-W3 wetlab re-scope) |
+| **Workflow** | Wf-337-W3 (wetlab re-scope marker pass) + Wf-341-T3 (Tier-2 re-scope) + Wf-375-A2 (this entry) |
+
+### §7.2 3 wetlab SOPs — DO NOT EXECUTE (per-file DEPRECATED) (HONEST_NEGATIVE_NO_WET_LAB_SOP)
+
+| Field | Value |
+|---|---|
+| **ID** | `HONEST_NEGATIVE_NO_WET_LAB_SOP` |
+| **Category** | per-file DEPRECATED (no protocol execution) |
+| **Files** | `TODO/pending/wetlab_sop_cytotoxicity_assay.md` (MTT / SRB / CellTiter-Glo) + `TODO/pending/wetlab_sop_cellular_uptake_assay.md` (ICP-MS) + `TODO/pending/wetlab_sop_binding_affinity_assay.md` (ITC / SPR) |
+| **Status** | **DO NOT EXECUTE** — templates retained as historical artifact only |
+| **Reason** | Tier-2 computational acceptance bar does NOT require wet-lab validation per AGENTS.md §5.4; SOPs are 6-12 month external-dependency work that does not gate Tier-2 acceptance |
+| **Substitution mechanism** | **Re-scope to in-silico alternatives**: ADMET panel (`molmetal/reports/wf308b_admet/`) for cytotoxicity surrogate + Vina docking for binding affinity surrogate + SA/QED for cellular uptake surrogate |
+| **Cross-refs** | AGENTS.md §5.4 (Tier-2 + NO wet-lab) + `TODO/completed/325e_admet_4_below_*.md` §1.12 (ADMET 4 below field-avg) + `mol-metal-wetlab-protocol` skill (READ-only reference) + Wf-313B wetlab SOP matrix closeouts (`TODO/completed/313b_wetlab_*.md`) |
+| **Workflow** | Wf-313B (wetlab matrix) + Wf-325E (ADMET 4 below) + Wf-341-T3 (Tier-2 re-scope) + Wf-375-A2 (this entry) |
+
+### §7.3 IC50 analysis pipeline — DO NOT RUN (per-file DEPRECATED) (HONEST_NEGATIVE_NO_WET_LAB_IC50_ANALYSIS)
+
+| Field | Value |
+|---|---|
+| **ID** | `HONEST_NEGATIVE_NO_WET_LAB_IC50_ANALYSIS` |
+| **Category** | per-file DEPRECATED (no analysis execution) |
+| **File** | `TODO/pending/wetlab_ic50_analysis_pipeline.md` (17,603 bytes; IC50 fitting pipeline spec) |
+| **Status** | **DO NOT RUN** — analysis spec retained as historical artifact only |
+| **Reason** | Pipeline depends on wet-lab IC50 measurements that are not in project scope per AGENTS.md §5.4; pure computational m1/m2 metrics already cover pIC50 prediction via Krasnov 2026 + PlatinAI 4-cell cohorts |
+| **Substitution mechanism** | **Re-scope to m1 + m2**: `metrics/by_metric/m1.json` (Ru 5-metal × 3-seed × 30-epoch) + `metrics/by_metric/m2.json` (real pIC50 regression on PlatinAI 4-cell + metalcytotox_combined) — no wet-lab IC50 fitting required |
+| **Cross-refs** | AGENTS.md §5.4 (Tier-2 + NO wet-lab) + `TODO/completed/313b_wetlab_ic50_matrix.md` (Wf-313B IC50 matrix) + `metrics/by_metric/m1.json` + `metrics/by_metric/m2.json` + Wf-341-T3 (Tier-2 re-scope) |
+| **Workflow** | Wf-313B (IC50 matrix) + Wf-335-M2 (W₂+chemprop v2 R² integration) + Wf-341-T3 (Tier-2 re-scope) + Wf-375-A2 (this entry) |
+
+### §7.4 R20-P6 wet-lab IC50 validation (TODO-97) — DEPRECATED scope (HONEST_NEGATIVE_NO_WET_LAB_R20_P6)
+
+| Field | Value |
+|---|---|
+| **ID** | `HONEST_NEGATIVE_NO_WET_LAB_R20_P6` |
+| **Category** | per-launcher / per-plan DEPRECATED (no wet-lab IC50 validation) |
+| **File** | `TODO/pending/97_r20_p6_wetlab_ic50.md` (per Wf-318 LOI integration wave reference) — TODO-97 |
+| **Plan ref** | `TODO/03_plans/IMPROVEMENT_ENUM_2026_09_27.md` §0 row 12 + `TODO/03_plans/LAMBDA_ROADMAP.md` (R20-P6 wet-lab IC50 validation milestone) |
+| **Status** | **DEPRECATED** — TODO-97 re-scope from wet-lab IC50 validation to in-silico metric lift |
+| **Reason** | Tier-2 computational acceptance bar does NOT require wet-lab IC50 validation; 6-12 month external-dependency work that does not gate Tier-2 acceptance per AGENTS.md §5.4 |
+| **Substitution mechanism** | **Re-scope to in-silico metric lift**: m6_kappa (Krasnov validation) + m2 (real pIC50 regression) + m3 (Vina docking kcal/mol) — no wet-lab IC50 panel required |
+| **Cross-refs** | AGENTS.md §5.4 (Tier-2 + NO wet-lab) + TODO-97 + `TODO/03_plans/IMPROVEMENT_ENUM_2026_09_27.md` §0 row 12 + `TODO/03_plans/LAMBDA_ROADMAP.md` §3.2 R22-P1 + `TODO/INDEX.md` §0.21 (Wf-337-W3 wetlab re-scope) + Wf-341-T3 (Tier-2 re-scope) |
+| **Workflow** | Wf-318 LOI integration wave + Wf-337-W3 wetlab re-scope marker pass + Wf-341-T3 Tier-2 re-scope + Wf-375-A2 (this entry) |
+
+### §7.5 Wf-74 v2 wet-lab outreach — DEPRECATED scope (HONEST_NEGATIVE_NO_WET_LAB_WF74_V2)
+
+| Field | Value |
+|---|---|
+| **ID** | `HONEST_NEGATIVE_NO_WET_LAB_WF74_V2` |
+| **Category** | per-workflow / per-launcher DEPRECATED (no wet-lab outreach) |
+| **File** | `TODO/pending/116_wf74_wetlab_outreach_partial.md` (Wf-74 v2 close-out rewrite; per Wf-119 close-out wave) |
+| **Plan ref** | `TODO/03_plans/IMPROVEMENT_ENUM_2026_09_27.md` §2.5.1 (Wf-74 v2 not auto-shippable per §5.4 + TODO-84) |
+| **Status** | **DEPRECATED** — Wf-74 v2 close-out rewrite NO LONGER REQUIRED per AGENTS.md §5.4 + Wf-341-T3 reclassification as `TEMPLATE_NOT_NEEDED_FOR_TIER2` |
+| **Reason** | Tier-2 computational acceptance bar does NOT require wet-lab outreach; prior party-twenty-spirit §3.5 violation (silent overstatement — claim 3 LOI + 3 SOP, only 1 doc on disk) is CLOSED by deprecation per `TODO/INDEX.md` audit3 §1 row 8 |
+| **Substitution mechanism** | **Re-scope to DrugOOD DANN computational**: Wf-336-X3 `scripts/launch_wf74_v2_drugood_dann.sh` (320 LOC; USER_OK-gated; 27/27 NEW tests PASS per Wf-341-P3) — the computational axis (NOT the wet-lab outreach axis) is preserved |
+| **Cross-refs** | AGENTS.md §5.4 (Tier-2 + NO wet-lab) + `TODO/03_plans/IMPROVEMENT_ENUM_2026_09_27.md` §2.5.1 + `TODO/INDEX.md` audit3 §1 row 8 + Wf-336-X3 closeout + Wf-341-P3 USER_OK readiness verify + Wf-341-T3 Tier-2 re-scope |
+| **Workflow** | Wf-119 close-out wave (single P0 not yet shipped) + Wf-336-X3 DrugOOD DANN wrapper + Wf-341-P3 USER_OK verify + Wf-341-T3 Tier-2 re-scope + Wf-375-A2 (this entry) |
+
+### §7.6 LAMBDA_ROADMAP §3.2 R22-P1 (m18 wet-lab) + §3.3 R23 (Phase I clinical) — DEPRECATED / re-scoped computational-only (HONEST_NEGATIVE_NO_WET_LAB_LAMBDA_ROADMAP)
+
+| Field | Value |
+|---|---|
+| **ID** | `HONEST_NEGATIVE_NO_WET_LAB_LAMBDA_ROADMAP` |
+| **Category** | per-plan DEPRECATED (m18 wet-lab + R23 Phase I clinical trial) |
+| **File** | `TODO/03_plans/LAMBDA_ROADMAP.md` (R22-P1 m18 wet-lab validation per §3.2; R23 Phase I clinical trial + IND filing + GLP tox per §3.3) |
+| **Plan ref** | `TODO/03_plans/LAMBDA_ROADMAP.md` §1 line 100 (R20-R25 scope = computational-only) + §3.2 R22-P1 line 195 (m18 wet-lab DEPRECATED) + §3.3 R23 line 211 (Phase I clinical DEPRECATED) |
+| **Status** | **DEPRECATED** — R22-P1 m18 wet-lab portion re-scoped to computational-only (AlphaFold-Multimer + MetalSite in-silico); R23 Phase I clinical + R24 Phase II + R25 Phase III + IND filing + GLP tox + DSMB + patient cohort + FDA/NMPA approval all DEPRECATED (no further planning) |
+| **Reason** | Tier-2 computational acceptance bar does NOT require wet-lab validation or clinical-trial planning per AGENTS.md §5.4; user directive 2026-09-29 verbatim *"我们发二区就可以了，不用规划湿实验"*; Wf-57..Wf-62 allocations NOT permitted |
+| **Substitution mechanism** | **R22-P1 m18 re-scope to computational-only**: AlphaFold-Multimer predicted structures + MetalSite computational binding-site prediction + in-silico docking + virtual screening cohort (per `TODO/03_plans/LAMBDA_ROADMAP.md` §3.2 line 165). **R23 / R24 / R25**: NO substitution — clinical-trial planning OUT OF SCOPE going forward |
+| **Cross-refs** | AGENTS.md §5.4 (Tier-2 + NO wet-lab) + `TODO/03_plans/LAMBDA_ROADMAP.md` §3.2 + §3.3 + `TODO/03_plans/WEAK_TO_STRONG_PLAN.md` line 484 (R22-P4 wet-lab validation TODO-97 future-work reference) + `TODO/INDEX.md` §17 (Wf-74 v2 deprecation) + `TODO/INDEX.md` §0.21 (Wf-337-W3 wetlab re-scope) |
+| **Workflow** | Wf-341-T3 Tier-2 re-scope + Wf-337-W3 wetlab re-scope marker pass + Wf-375-A2 (this entry) |
+
+---
+
+## §8 Closing (Honest framing per `party-twenty-spirit` §3.5)
+
+* **Total entries**: **86 honest-negative findings** (12 metric-level + 15 workflow-level + 6 launcher-level + 7 resolved + 10 open + 30 NEW Wf-340..368 + Wf-388/390/392 + Wf-396/397 + Wf-425/426 + 6 NEW WETLAB_DEPRECATED Wf-375-A2 = **86 unique entries**).
+* **Wf-369-A3 expansion ratio**: 40 → 65 = **+25 entries** (62.5% expansion in Wf-369-A3; cumulative 9 → 65 = **7.2× expansion** vs legacy 9-entry Wf-263B catalog).
+* **Wf-375-A2 expansion ratio**: 65 → 71 = **+6 entries** (+9.2% expansion in Wf-375-A2; cumulative 9 → 71 = **7.9× expansion** vs legacy 9-entry Wf-263B catalog).
+* **Wf-383-A1 expansion ratio**: 71 → 72 = **+1 entry** (+1.4% expansion in Wf-383-A1).
+* **Wf-386-A3+B1 expansion ratio**: 72 → 73 = **+1 entry** (§6.17 Atomic write protocol; +1.4% expansion).
+* **Wf-395-A2 expansion ratio**: 73 → 81 = **+8 entries** (§6.18-§6.25 from Wf-388 + Wf-390 + Wf-392 wave CPU-only docs aggregation; +11.0% expansion; cumulative 9 → 81 = **9.0× expansion** vs legacy 9-entry Wf-263B catalog).
+* **Wf-399-A2 expansion ratio**: 81 → 82 = **+1 entry** (§6.26 decode_ratio 1→0 REGRESSION_DOCUMENTED + Wf-397 fix + Wf-385-A3 prevention gate; +1.2% expansion; cumulative 9 → 82 = **9.1× expansion** vs legacy 9-entry Wf-263B catalog; per user 2026-09-30 directive verbatim *"之前decode_ratio是1的现在我去哪退化的这个要重点解决"*).
+* **Wf-426-A4 expansion ratio**: 82 → 86 = **+4 entries** (§6.27 Wf-425 cumulative false-claim cascade audit 8 cascades + §6.28 Wf-426 retro-author verification filesystem-truth-gap + §6.29 Wf-426-A3 retrain readiness infrastructure filesystem-truth-gap + §6.30 Wf-425-B1 docs sync filesystem-truth-gap; +4.9% expansion; cumulative 9 → 86 = **9.6× expansion** vs legacy 9-entry Wf-263B catalog; per user 2026-09-30 directive verbatim *"好，现在启动ultracode（可以并行多个），分基于review的结果做对应的fix"* — Wf-425 phase 1 review + fix ultracode authorization; per AGENTS.md §5.5 filesystem-truth rule strictly observed: 3 of 6 SHIPPED Wf-425 closeouts + 0 of 5 SHIPPED Wf-426 closeouts + 0 of 1 SHIPPED Wf-425-B1 closeouts; the 4 NEW catalog entries honestly record on-disk SHIPPED vs MISSING per §5.5 rule #1 + rule #6 "filesystem is the source of truth").
+* **Resolved ratio**: 7/82 = **8.5%** (Wf-246-C + Wf-330-B4 + 4 stale anchors + CLI help-text + OT-CFM silent + DATA_CSV + pre_flight drift PARTIAL) — plus 2 NEW RESOLVED in Wf-369-A3 §6.13 + §6.14 + 1 NEW RESOLVED_LATE in Wf-399-A2 §6.26 = 10 total RESOLVED = 12.2%.
+* **Open ratio**: 10/82 = **12.2%** (USER_OK-gated + external-data-hold + structural).
+* **WETLAB_DEPRECATED ratio**: 6/82 = **7.3%** (§7.1 LOI DO NOT SEND + §7.2 SOP DO NOT EXECUTE + §7.3 IC50 pipeline DO NOT RUN + §7.4 R20-P6 DEPRECATED + §7.5 Wf-74 v2 DEPRECATED + §7.6 LAMBDA_ROADMAP §3.2/§3.3 DEPRECATED).
+* **Per-metric ratio**: 12/82 = **14.6%** (§1.1-§1.12 + §6.2 m2 R² recovery + §6.9 m6_kappa MAML + §6.10 m6_kappa Neural ODE + §6.18 m2 R² real cohort lift PROJECTED = 15 metric-level entries; recalibrated count).
+* **Per-workflow ratio**: 15/82 = **18.3%** (Wf-131 + Wf-146 + Wf-176 + Wf-219 + Wf-253d m6/m17 + Wf-264 + Wf-299B + Wf-304B + Wf-308B + Wf-308C + Wf-314E + Wf-330-B4 + Wf-339-D3).
+* **Per-launcher ratio**: 6/82 = **7.3%** (G5/G6/P1.3/P1.4/R20 §3/§4/§5).
+* **Wf-340..426 NEW entries ratio**: 30/86 = **34.9%** (§6.1 m6_kappa FINAL + §6.2 m2 R² recovery + §6.3-§6.4 CFM accel + §6.5 W₁ + §6.6 equivariant MP + §6.7 Hilbert ASTSR Fourier + §6.8 R20 §3 SCOPE MISMATCH + §6.9-§6.10 m6_kappa MAML/ODE + §6.11 7-wrapper legacy parity + §6.12 8 MISSING + §6.13-§6.14 RESOLVED + §6.15 USER_OK FINAL + §6.16 SE(3) SB REVISED + §6.17 Atomic write protocol + §6.18 m2 R² real cohort + §6.19 m7 Diversity + §6.20 m4 SA penalty + §6.21 TODO-376 5-metal Path A + §6.22 TODO-179 SCAFFOLD_NOT_FUNCTIONAL + §6.23 TODO-383 SE(3) SB wire-in + §6.24 TODO-94 Multi-PH PLL wire-in + §6.25 TODO-155 chemprop v3 cache wire-in + **§6.26 decode_ratio 1→0 REGRESSION_DOCUMENTED** + **§6.27 Wf-425 cumulative false-claim cascade audit 8 cascades** + **§6.28 Wf-426 retro-author verification filesystem-truth-gap** + **§6.29 Wf-426-A3 retrain readiness infrastructure filesystem-truth-gap** + **§6.30 Wf-425-B1 docs sync filesystem-truth-gap**).
+* **Cross-walk coverage**: every Wf-296..426 honest-negative finding catalogued at least once (per §1 + §2 + §3 + §4 + §5 + §6 + §7); Wf-426 retro-author verification gap is explicitly recorded in §6.28 per AGENTS.md §5.5 filesystem-truth rule #1 + #6 (file SHIPPED-status IS source of truth).
+* **Source-citation discipline**: every entry cites its MEASURED source path on disk + WORKFLOW attribution; PROJECTED vs MEASURED tag discipline preserved (per AGENTS.md §5.2).
+* **0 GPU launches performed** in Wf-395-A2 (CPU-only docs aggregation; per AGENTS.md §5.1 standing GPU grant preserved).
+* **0 `paper/*` touches** in Wf-395-A2 (per AGENTS.md §5.3 TODO-84 active).
+* **Pre-flight v3 92 PASS / 0 FAIL / 2 SKIP / 94 TOTAL** preserved at Wf-367-A2 baseline; Wf-395-A2 adds zero NEW pre-flight gates (only docs+test surface).
+* **Wf-375-A2 expansion**: 65 → 71 entries via 6 NEW WETLAB_DEPRECATED entries per AGENTS.md §5.4 (Tier-2 + NO wet-lab planning per user directive 2026-09-29 verbatim *"我们发二区就可以了，不用规划湿实验"*); zero NEW pre-flight gates added by Wf-375-A2; zero GPU launches performed; zero `paper/*` touches per TODO-84.
+* **Wf-383-A1 expansion**: 71 → 72 entries via §6.16 NEW SE(3) SB 10000-step REVISED step count PROJECTED_PENDING_DEEP_INTEGRATION; CPU-only docs+plan audit (0 NEW tests; 0 GPU launches; 0 paper/* touches per TODO-84); cross-ref `WEAK_TO_STRONG_PLAN.md` §4.3.1 (NEW revised step count table) + `TODO/completed/383a1_weak_to_strong_se3sb_audit.md` (280 LOC audit closeout).
+* **Wf-386-A3+B1 expansion**: 72 → 73 entries via §6.17 NEW Atomic write protocol SHIPPED (per Wf-386-A3 + Wf-386-B1); CPU-only docs+code+test surface (3 NEW primitives: `atomic_write_file` + `safe_overwrite_check` + `detect_truncation`); 27/27 NEW tests PASS in <1 s wall; cross-ref `docs/ATOMIC_WRITE_PROTOCOL.md` (NEW ~290 LOC canonical reference) + `molmetal/scripts/wf386a3_atomic_write.py` (NEW ~366 LOC).
+* **Wf-395-A2 expansion**: 73 → 81 entries via §6.18-§6.25 NEW 8 entries (Wf-388 m2 R² real + m7 Diversity + m4 SA + Wf-390 TODO-376 5-metal Path A + TODO-179 SCAFFOLD_NOT_FUNCTIONAL + TODO-383 SE(3) SB wire-in + Wf-392 TODO-94 Multi-PH PLL + TODO-155 chemprop v3 cache); CPU-only docs aggregation (0 NEW tests beyond entry-count regression-guard; 0 GPU launches; 0 paper/* touches per TODO-84); cross-ref Wf-388 + Wf-390 + Wf-392 prior closeouts.
+* **Wf-399-A2 expansion**: 81 → 82 entries via §6.26 NEW 1 entry (`wf396_decode_ratio_regression_1_to_0` REGRESSION_DOCUMENTED + Wf-397 fix + Wf-385-A3 prevention gate); CPU-only docs aggregation (0 NEW tests beyond entry-count regression-guard; 0 GPU launches; 0 paper/* touches per TODO-84; 0 wet-lab planning per AGENTS.md §5.4 + §10); cross-ref Wf-396 (regression root-cause) + Wf-397-A1 (decode_ratio fix + tests) + Wf-385-A3 (pre-flight prevention gate) + user 2026-09-30 directive verbatim *"之前decode_ratio是1的现在我去哪退化的这个要重点解决"* — regression-of-focus; ultracode authorization granted for full fix + prevention surface.
+* **Wf-426-A4 expansion**: 82 → 86 entries via §6.27-§6.30 NEW 4 entries (`wf425_cumulative_false_claim_cascade_audit` + `wf426_retro_author_verification` + `wf426a3_retrain_readiness_infrastructure` + `wf425b1_docs_sync`); CPU-only docs aggregation (0 NEW tests beyond entry-count regression-guard; 0 GPU launches; 0 paper/* touches per TODO-84; 0 wet-lab planning per AGENTS.md §5.4 + §10); cross-ref Wf-425-A1 + Wf-425-B2 + Wf-425-B5 SHIPPED closeouts (3 of 6 cascade investigation deliverables on disk; 3 MISSING per §5.5 filesystem-truth rule #1) + Wf-426 (0 of 5 SHIPPED on disk; retro-author wave pending closure per §5.5 rule #5) + Wf-426-A3 (0 of 1 SHIPPED; retrain readiness infrastructure pending USER_OK-gated wave per §5.1 standing GPU grant) + Wf-425-B1 (0 of 1 SHIPPED; docs sync pending Wf-427+ follow-up) + user 2026-09-30 directive verbatim *"好，现在启动ultracode（可以并行多个），分基于review的结果做对应的fix"* — Wf-425 phase 1 review + fix ultracode authorization; per AGENTS.md §5.5 filesystem-truth rule strictly observed: the 4 NEW catalog entries honestly record on-disk SHIPPED vs MISSING state per §5.5 rule #1 + #6 + retroactive re-author workflow per §5.5 rule #5 is the canonical recovery pattern for the pending-wave surface.
+
+---
+
+## §9 Cross-references
+
+* **AGENTS.md** — §5.2 honest framing mandate + §5.4 Tier-2 journal target + §1.5 honest-negative framing
+* **TODO/completed/207_unified_pre_flight_checklist_v2.md** §9 — the 9-entry legacy catalog (this doc expands it)
+* **TODO/completed/335_final_synthesis.md** §7 — Wf-335-SYN honest framing catalog
+* **TODO/completed/{207,330,335,357c3,359b1,369a3}_*.md` — source closeouts referenced in §0 + §1 + §2 + §3 + §6
+* **TODO/completed/{356a1,356a2,358a1,367a1,367a2,368a1,385a3,396_*,397a1}_*.md** — recent resolved entries (§4 + §6.13 + §6.14 + §6.26)
+* **docs/WF296_TO_WF359_RETROSPECTIVE.md** — full Wf-296..358 retrospective
+* **party-twenty-spirit** skill §3.5 — honest framing MEASURED-vs-PROJECTED tag discipline
+* **molmetal/tests/test_wf359b1_honest_neg_catalog.py** — 1 NEW test verifying this catalog has ≥36 entries + 5 sections
+* **molmetal/tests/test_wf369a3_catalog_size.py** — 1 NEW test (Wf-369-A3) verifying this catalog has ≥50 entries + 6 sections
+* **molmetal/tests/test_wf375a2_catalog_wetlab.py** — 1 NEW test (Wf-375-A2) verifying the §7 WETLAB_DEPRECATED section has exactly 6 entries (4 LOI + 3 SOP + 1 IC50 pipeline + R20-P6 + Wf-74 v2 + LAMBDA_ROADMAP)
+* **molmetal/tests/test_wf426a4_catalog_size.py** — 1 NEW test (Wf-426-A4 this wave) verifying §6 has ≥30 entries + 4 NEW §6.27-§6.30 entries + §6.27 contains the 8 cascade ID strings + each NEW entry cites a MEASURED source path on disk + the catalog total entry count is ≥86
+* **(prior filesystem-truth gap)** `molmetal/tests/test_wf399a2_catalog_regression_entry.py` — 1 NEW test (Wf-399-A2) for §6.26 decode_ratio regression entry existence + counts catalog total = 82 entries. **NOTE**: per AGENTS.md §5.5 filesystem-truth rule this test file does NOT exist on disk at Wf-426-A4 timestamp (verified via `ls -la molmetal/tests/test_wf399a2*` → NO MATCHES); the §9 cross-reference to this test is itself a stale claim that future Wf-427+ should resolve by authoring the actual test file.
+
+---
+
+**END OF HONEST_NEGATIVE_CATALOG.md** — Owner Hugo Lee; cross-ref `party-twenty-spirit` §3.5; Wf-369-A3 expansion 40 → 65 entries + Wf-375-A2 expansion 65 → 71 entries (cumulative 9 → 71 = 7.9×) + Wf-395-A2 expansion 73 → 81 entries + **Wf-399-A2 expansion 81 → 82 entries** (cumulative 9 → 82 = **9.1×**) + **Wf-426-A4 expansion 82 → 86 entries** (cumulative 9 → 86 = **9.6×**); pre-flight v3 92/0/2/94 PRESERVED at Wf-367-A2 baseline (113/1/3/117 at Wf-424-A1 cascade parent FIX); 0 GPU launches; 0 `paper/*` touches; standing directives §5.1 + §5.2 + §5.3 + §5.4 + §5.5 filesystem-truth rule + §5.6 atomic write protocol re-confirmed; Wf-426-A4 NEW §6.27-§6.30 added per user 2026-09-30 directive verbatim *"好，现在启动ultracode（可以并行多个），分基于review的结果做对应的fix"* — Wf-425 phase 1 review + fix ultracode authorization; per AGENTS.md §5.5 filesystem-truth rule strictly observed: 3 of 6 SHIPPED Wf-425 closeouts + 0 of 5 SHIPPED Wf-426 closeouts + 0 of 1 SHIPPED Wf-425-B1 closeouts honestly recorded; retroactive re-author workflow per §5.5 rule #5 is the canonical recovery pattern for the pending-wave surface.

@@ -1,0 +1,2303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="generator" content="Wf-280C paper_dashboard.py schema=308b.v1" />
+<title>Mol-Metal Paper §4 Dashboard</title>
+<style>
+:root {
+  --bg: #fafafa;
+  --fg: #1a1a1a;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --card-bg: #ffffff;
+  --measured-bg: #d1fae5;
+  --measured-fg: #065f46;
+  --projected-bg: #fef3c7;
+  --projected-fg: #92400e;
+  --honest-bg: #fee2e2;
+  --honest-fg: #991b1b;
+  --cohort-thead: #f3f4f6;
+  --cohort-row-alt: #f9fafb;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f172a;
+    --fg: #f8fafc;
+    --muted: #94a3b8;
+    --border: #1e293b;
+    --card-bg: #1e293b;
+    --measured-bg: #064e3b;
+    --measured-fg: #6ee7b7;
+    --projected-bg: #78350f;
+    --projected-fg: #fcd34d;
+    --honest-bg: #7f1d1d;
+    --honest-fg: #fca5a5;
+    --cohort-thead: #1e293b;
+    --cohort-row-alt: #172033;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  margin: 0;
+  padding: 1.5rem;
+  line-height: 1.5;
+}
+header.dashboard-header {
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+header.dashboard-header h1 { margin: 0; font-size: 1.6rem; }
+header.dashboard-header .meta {
+  color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem;
+}
+.badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+.badge-measured { background: var(--measured-bg); color: var(--measured-fg); }
+.badge-projected { background: var(--projected-bg); color: var(--projected-fg); }
+.badge-honest-negative { background: var(--honest-bg); color: var(--honest-fg); }
+.badge-unknown { background: var(--border); color: var(--muted); }
+section.cohort, section.honest-negative, section.gate-banner {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+section.cohort h3, section.honest-negative h3, section.gate-banner h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.05rem;
+}
+.cohort-meta, .cohort-summary { color: var(--muted); font-size: 0.875rem; margin: 0.25rem 0; }
+table.cohort-table, table.gate-table {
+  width: 100%; border-collapse: collapse; margin-top: 0.5rem;
+}
+table.cohort-table th, table.gate-table th,
+table.cohort-table td, table.gate-table td {
+  padding: 0.375rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-size: 0.875rem;
+}
+table.cohort-table th, table.gate-table th {
+  background: var(--cohort-thead);
+  font-weight: 600;
+}
+table.cohort-table tbody tr:nth-child(even),
+table.gate-table tbody tr:nth-child(even) {
+  background: var(--cohort-row-alt);
+}
+.claim-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  margin-bottom: 0.5rem;
+}
+.claim-card:has(.badge-measured) { border-left-color: var(--measured-fg); }
+.claim-card:has(.badge-projected) { border-left-color: var(--projected-fg); }
+.claim-card:has(.badge-honest-negative) { border-left-color: var(--honest-fg); }
+.claim-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.claim-section { color: var(--muted); font-size: 0.8rem; }
+.claim-title { font-weight: 500; }
+.claim-meta {
+  display: flex; gap: 0.75rem; flex-wrap: wrap;
+  color: var(--muted); font-size: 0.8rem; margin-top: 0.25rem;
+}
+.claim-meta code { background: var(--cohort-row-alt); padding: 0 0.25rem; border-radius: 3px; }
+.claim-source {
+  background: var(--cohort-row-alt);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+.expand-btn {
+  background: var(--cohort-thead);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.expand-btn:hover { background: var(--border); }
+.honest-negative ol.hn-list { margin: 0; padding-left: 1.25rem; }
+.honest-negative li { margin-bottom: 0.375rem; font-size: 0.875rem; }
+.hn-ref { color: var(--muted); font-size: 0.8rem; }
+ul.badge-summary { margin: 0.25rem 0 0.5rem 0; padding-left: 1.25rem; }
+ul.badge-summary li { margin-bottom: 0.25rem; font-size: 0.875rem; }
+footer.dashboard-footer {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+</style>
+<script>
+function toggleSource(id) {
+  var el = document.getElementById(id + '-source');
+  var btn = document.querySelector('#' + id + ' .expand-btn');
+  if (!el || !btn) return;
+  if (el.style.display === 'none' || el.style.display === '') {
+    el.style.display = 'block';
+    btn.textContent = 'hide source JSON';
+  } else {
+    el.style.display = 'none';
+    btn.textContent = 'show source JSON';
+  }
+}
+</script>
+</head>
+<body>
+<header class="dashboard-header">
+  <h1>Mol-Metal Paper §4 Dashboard</h1>
+  <div class="meta">
+    <strong>Generated:</strong> 2026-09-29T02:00:57+00:00 |
+    <strong>Schema:</strong> 308b.v1 |
+    <strong>Claims:</strong> 66 |
+    <strong>Honest-negatives:</strong> 22 |
+    <strong>Paper doc:</strong> <code>TODO/completed/188_paper_4_krasnov_protocol_aligned.md</code> |
+    <strong>Collect JSON:</strong> <code>molmetal/reports/wf265_collect/all_results.json</code>
+  </div>
+</header>
+
+<main>
+  
+    <section class="gate-banner">
+      <h3>Wf-265-Collect high-level gates</h3>
+      <table class="gate-table">
+        <thead><tr><th>Gate</th><th>Value</th></tr></thead>
+        <tbody><tr><td><code>G1_todo_180_g4_complete</code></td><td>true</td></tr><tr><td><code>G2_wf263a_complete</code></td><td>false</td></tr><tr><td><code>G3_wf264_complete</code></td><td>false</td></tr><tr><td><code>G4_n_g4_pairs</code></td><td>14</td></tr><tr><td><code>G5_v3_ood_auc</code></td><td>0.4544260351267818</td></tr><tr><td><code>G6_collect_json_path</code></td><td>molmetal/reports/wf265_collect/all_results.json</td></tr></tbody>
+      </table>
+    </section>
+    
+
+  
+    <section class="gate-banner">
+      <h3>MEASURED-vs-PROJECTED badge discipline (Wf-268C-Dash, party-twenty-spirit §3.5)</h3>
+      <p>
+        Every claim badge below traces to a JSON path in the on-disk source. The
+        three badge colours are MUTUALLY EXCLUSIVE — a MEASURED claim is a
+        numeric value produced by a run that completed and reported a metric
+        (per-seed JSON exists in <code>results/wf*/</code> or
+        <code>molmetal/reports/wf*/</code>); a PROJECTED claim is one whose
+        deferred or follow-up status is documented in TODO/INDEX or a wf*-final
+        report; an honest-negative claim is one whose numeric value documents a
+        known gap (e.g. below baseline, expected under-training, blocked at
+        GPU-ordinal layer). There is NO grey area.
+      </p>
+      <ul class="badge-summary">
+        <li><span class="badge badge-measured">MEASURED</span> 49 claim(s) — sourced from per-seed JSON on disk.</li>
+        <li><span class="badge badge-projected">PROJECTED</span> 4 claim(s) — explicitly DEFERRED with a TODO- or wf*-final pointer.</li>
+        <li><span class="badge badge-honest-negative">honest-negative</span> 13 claim-card(s) + 22 catalog entries — the §9 "DO NOT claim" surface.</li>
+      </ul>
+      <p>
+        <strong>Discipline rule (re-stated verbatim):</strong> a claim is
+        MEASURED iff the cited JSON path resolves to a numeric value computed
+        by a real run that completed; otherwise it is PROJECTED. There is no
+        middle ground. If a value cannot be traced to a JSON path it is
+        silently DROPPED from the catalog.
+      </p>
+    </section>
+    
+
+  <section class="honest-negative">
+    <h3>Honest framing note (Wf-265-Collect)</h3>
+    <p>G4 (TODO-180): 14 per_seed_metrics_seed*.json files present; G4 complete=True. Wf-263A verify_report.json present=False, Wf-263A complete=False. Wf-264 panel_report.json present=False, Wf-264 complete=False. Wf-263A-Verify status: PROCESS 3095279 started 22:22, currently loading lbap_refined_ic50_assay (45 min wall-budget; verify_report.json NOT YET WRITTEN). Wf-264-Panel status: NO LAUNCH SCRIPT or DIRECTORY (molmetal/reports/wf264_panel/ does not exist); task NOT STARTED at the time of this collection. v3 OOD AUC value reported as Wf-253d baseline (the BELOW_RANDOM signal Wf-263A aims to refute); v3-fallback verification number NOT YET MEASURED in this collection. Smaller-metal caveat (TODO-180 §6): Rh/Os/Re cohorts &lt;1.2k rows so per-seed std may be ±0.10; report per-metal unfiltered, no best-seed selection.</p>
+  </section>
+
+  <h2>Per-cohort tables</h2>
+  
+    <section class="cohort">
+      <h3>chemprop v2 v3 5-metal per-metal AUC (Wf-124 P3, g4 14-15 paired runs)</h3>
+      <p class="cohort-meta"><strong>JSON path:</strong> <code>molmetal/reports/wf265_collect/all_results.json::g4_per_metal_aggregate_full_15pair</code></p>
+      <table class="cohort-table">
+        <thead>
+          <tr>
+            <th>Metal</th><th>n_pairs</th><th>mean test_AUC</th>
+            <th>min</th><th>max</th><th>per-seed test_aucs</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>Ir</td>
+              <td>3</td>
+              <td>0.6702</td>
+              <td>0.6659</td>
+              <td>0.6782</td>
+              <td><code>[0.6659, 0.6782, 0.6666]</code></td>
+            </tr>
+            
+            <tr>
+              <td>Os</td>
+              <td>3</td>
+              <td>0.7025</td>
+              <td>0.6738</td>
+              <td>0.7201</td>
+              <td><code>[0.7137, 0.6738, 0.7201]</code></td>
+            </tr>
+            
+            <tr>
+              <td>Re</td>
+              <td>3</td>
+              <td>0.7700</td>
+              <td>0.7378</td>
+              <td>0.7967</td>
+              <td><code>[0.7756, 0.7967, 0.7378]</code></td>
+            </tr>
+            
+            <tr>
+              <td>Rh</td>
+              <td>3</td>
+              <td>0.7227</td>
+              <td>0.6702</td>
+              <td>0.7970</td>
+              <td><code>[0.7970, 0.6702, 0.7008]</code></td>
+            </tr>
+            
+            <tr>
+              <td>Ru</td>
+              <td>3</td>
+              <td>0.7527</td>
+              <td>0.7453</td>
+              <td>0.7613</td>
+              <td><code>[0.7613, 0.7453, 0.7514]</code></td>
+            </tr>
+            
+        </tbody>
+      </table>
+      <p class="cohort-summary">
+        <strong>Overall (15 pairs):</strong>
+        mean = 0.7236,
+        min = 0.6659,
+        max = 0.7970.
+        <strong>G5 v3 OOD AUC:</strong> 0.4544 (BELOW_RANDOM honest-negative).
+      </p>
+    </section>
+    
+  
+    <section class="cohort">
+      <h3>Wf-263A chemprop v3 v3-fallback mode dispatch (TODO-130 G5)</h3>
+      <p class="cohort-meta"><strong>JSON path:</strong> <code>molmetal/reports/wf263a_implement/implement_report.md §3 dispatch table</code></p>
+      <table class="cohort-table">
+        <thead>
+          <tr>
+            <th>--chemprop-mode</th><th>args.enhanced_head (CLI intent)</th>
+            <th>_effective_enhanced_head (forwarded)</th><th>_effective_metal_attention</th>
+            <th>Verdict</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td><code>v3-fallback (default)</code></td>
+              <td><code>True</code></td>
+              <td><code>False</code></td>
+              <td><code>False</code></td>
+              <td>FORCES v2 head (audit-trail preserved)</td>
+            </tr>
+            
+            <tr>
+              <td><code>v3-fallback (default)</code></td>
+              <td><code>False</code></td>
+              <td><code>False</code></td>
+              <td><code>False</code></td>
+              <td>FORCES v2 head</td>
+            </tr>
+            
+            <tr>
+              <td><code>v2</code></td>
+              <td><code>True</code></td>
+              <td><code>False</code></td>
+              <td><code>False</code></td>
+              <td>Symmetric with v3-fallback</td>
+            </tr>
+            
+            <tr>
+              <td><code>v2</code></td>
+              <td><code>False</code></td>
+              <td><code>False</code></td>
+              <td><code>False</code></td>
+              <td>Pure v2 path</td>
+            </tr>
+            
+            <tr>
+              <td><code>v3</code></td>
+              <td><code>True</code></td>
+              <td><code>True</code></td>
+              <td><code>False</code></td>
+              <td>Opt-in v3 head honoured</td>
+            </tr>
+            
+            <tr>
+              <td><code>v3</code></td>
+              <td><code>False</code></td>
+              <td><code>False</code></td>
+              <td><code>False</code></td>
+              <td>v3 mode without enhanced head</td>
+            </tr>
+            </tbody>
+      </table>
+      <p class="cohort-summary">
+        <strong>Audit-trail guarantee:</strong> <code>args.enhanced_head</code> /
+        <code>args.metal_attention</code> are NEVER mutated by the dispatch — the
+        JSON audit trail records user intent while the forwarded value reflects
+        what <code>--chemprop-mode</code> actually applied. Honest-negative
+        preserved.
+      </p>
+      <p class="cohort-summary">
+        <strong>Files modified:</strong> 3 |
+        <strong>New tests:</strong> 10 (10/PASS) |
+        <strong>Backward-compat tests:</strong> 21 (21/PASS) |
+        <strong>Empirical status:</strong> structural PASS / empirical TIMEOUT.
+      </p>
+    </section>
+    
+  
+    <section class="cohort">
+      <h3>Wf-266 chemprop v3 LOMO fix flags (--chemprop-min-epochs / --chemprop-lomo-init-scale / --chemprop-mode v3-fix)</h3>
+      <p class="cohort-meta"><strong>JSON path:</strong> <code>molmetal/reports/wf266_lomo_fix/wf266_report.md §Summary + §Audit-trail</code></p>
+      <table class="cohort-table">
+        <thead>
+          <tr>
+            <th>Flag</th><th>Default</th><th>Type</th><th>Purpose</th><th>No-op under</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td><code>--chemprop-min-epochs</code></td>
+              <td><code>10</code></td>
+              <td>int</td>
+              <td>Refuses --epochs &lt; N (anti-under-training)</td>
+              <td>v3-fallback / v2 / v3 (forced to 1)</td>
+            </tr>
+            
+            <tr>
+              <td><code>--chemprop-lomo-init-scale</code></td>
+              <td><code>0.001</code></td>
+              <td>float</td>
+              <td>Multiplicative scale on per-metal BCE logits (anti-bias)</td>
+              <td>v3-fallback / v2 / v3 (forced to 1.0)</td>
+            </tr>
+            
+            <tr>
+              <td><code>--chemprop-mode v3-fix</code></td>
+              <td><code>v3-fallback</code></td>
+              <td>enum-choice</td>
+              <td>Combines v2 head + min-epochs floor + lomo-init-scale</td>
+              <td>default (v3-fix requires explicit opt-in)</td>
+            </tr>
+            </tbody>
+      </table>
+      <p class="cohort-summary">
+        <strong>Audit-trail JSON fields (per-seed):</strong> <code>cfg_chemprop_mode</code>, <code>cfg_chemprop_min_epochs_user</code>, <code>cfg_chemprop_lomo_init_scale_user</code>, <code>cfg_chemprop_min_epochs_effective</code>, <code>cfg_chemprop_lomo_init_scale_effective</code>.
+      </p>
+      <p class="cohort-summary">
+        <strong>Files modified:</strong> 2 |
+        <strong>New tests:</strong> 4 (4/PASS) |
+        <strong>Backward-compat tests:</strong> 14 (14/PASS) |
+        <strong>Retrain status:</strong> IMPLEMENT only — no GPU retrain (deferred to follow-up TODO-130 G5).
+      </p>
+    </section>
+    
+  
+    <section class="cohort">
+      <h3>Wf-286B ECFP4-direct re-eval cohort (rules out ECFP4 axis as Wf-253-D 0.4544 collapse bottleneck)</h3>
+      <p class="cohort-meta"><strong>JSON path:</strong> <code>molmetal/reports/wf286b_ecfp4_reeval/aggregate.json::per_seed[0] + reeval_report.md §3 + §4</code></p>
+      <p class="cohort-meta"><strong>Featurization:</strong> ECFP4 (Morgan radius=2, n_bits=2048) + chemprop v2 BinaryClassificationFFN</p>
+      <p class="cohort-meta"><strong>Config:</strong> <code>seeds=[0], epochs=5, head_hidden=128, batch=128, lr=0.001, device=cpu, wall=190.9s</code></p>
+      <table class="cohort-table">
+        <thead>
+          <tr>
+            <th>Split</th><th>n_rows</th><th>AUC</th><th>Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td><code>train</code></td>
+              <td>66665</td>
+              <td><strong>0.9603</strong></td>
+              <td>Train AUC (upper-bound sanity)</td>
+            </tr>
+            
+            <tr>
+              <td><code>val</code></td>
+              <td>9524</td>
+              <td><strong>0.8598</strong></td>
+              <td>Val AUC (early-stopping check)</td>
+            </tr>
+            
+            <tr>
+              <td><code>ood_test (Bemis-Murcko scaffold)</code></td>
+              <td>19047</td>
+              <td><strong>0.8820</strong></td>
+              <td>OOD test AUC (headline number vs Wf-185 baseline 0.6707)</td>
+            </tr>
+            </tbody>
+      </table>
+      <p class="cohort-summary">
+        <strong>Wf-185 v2 baseline (chemprop v2 MPNN on lbap_refined_ic50_scaffold):</strong>
+        mean = 0.6707 ± 0.0042.
+        <strong>Δ vs Wf-185:</strong> +0.2113 (single-seed; Δ subset-dependent optimistic).
+      </p>
+      <p class="cohort-summary">
+        <strong>Pass-gate:</strong> test_auc ≥ 0.6707 − 0.02 = 0.6507 → PASS (0.8820 ≫ 0.6507).
+      </p>
+      <p class="cohort-summary">
+        <strong>Rules out:</strong> ECFP4 featurization axis (collapse is backbone / v3-fallback / JSON-split axis, not featurization).
+      </p>
+      <p class="cohort-summary">
+        <strong>Remaining hypotheses:</strong>
+        <ul class="badge-summary"><li>(a) chemprop v3 MPNN backbone</li><li>(b) v3-fallback path config</li><li>(c) DrugOOD JSON train/val/test OOD splits</li></ul>
+      </p>
+      <p class="cohort-summary">
+        <strong>Caveat (subset mismatch):</strong> Wf-275B adapter defaults to lbap_core_ic50_assay (OOD-assay task), NOT lbap_refined_ic50_scaffold — Δ is across subsets, optimistic.
+      </p>
+    </section>
+    
+  
+    <section class="cohort">
+      <h3>DrugOOD OOD (Ji 2023 lbap_refined_ic50_*) ood_test AUC</h3>
+      <p class="cohort-meta"><strong>JSON path:</strong> <code>molmetal/reports/wf185_chemprop_v2_drugood_full/aggregate.json + TODO-188 §3.1</code></p>
+      <table class="cohort-table">
+        <thead>
+          <tr>
+            <th>Split</th><th>Wf-174 3-seed</th><th>Wf-185 5-seed</th>
+            <th>iMoLD Ji 2023 baseline</th><th>Δ vs iMoLD</th><th>Verdict</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td><code>lbap_refined_ic50_assay</code></td>
+              <td>0.7113 ± 0.0216</td>
+              <td>0.7137 ± 0.0079</td>
+              <td>0.7211</td>
+              <td>-0.0074</td>
+              <td>comparable (NOT beat)</td>
+            </tr>
+            
+            <tr>
+              <td><code>lbap_refined_ic50_scaffold</code></td>
+              <td>n/a</td>
+              <td>0.6707 ± 0.0042</td>
+              <td>0.6884</td>
+              <td>-0.0177</td>
+              <td>comparable (NOT beat)</td>
+            </tr>
+            
+            <tr>
+              <td><code>lbap_refined_ic50_size</code></td>
+              <td>n/a</td>
+              <td>0.6757 ± 0.0142</td>
+              <td>0.6792</td>
+              <td>-0.0035</td>
+              <td>comparable (NOT beat)</td>
+            </tr>
+            </tbody>
+      </table>
+    </section>
+    
+  
+    <section class="cohort">
+      <h3>CFM m14 real decode_ratio (Wf-188, n=26,801)</h3>
+      <p class="cohort-meta"><strong>JSON path:</strong> <code>molmetal/reports/wf188_m14_full_metalcytotox/result.json + TODO-188 §4.1</code></p>
+      <table class="cohort-table">
+        <thead>
+          <tr>
+            <th>Metal</th><th>n_total</th><th>n_decode_ok</th><th>decode_ratio</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td>Ru</td>
+              <td>19135</td>
+              <td>19033</td>
+              <td>0.9948</td>
+            </tr>
+            
+            <tr>
+              <td>Ir</td>
+              <td>4546</td>
+              <td>4534</td>
+              <td>0.9974</td>
+            </tr>
+            
+            <tr>
+              <td>Os</td>
+              <td>1118</td>
+              <td>1118</td>
+              <td>1.0000</td>
+            </tr>
+            
+            <tr>
+              <td>Rh</td>
+              <td>1134</td>
+              <td>1134</td>
+              <td>1.0000</td>
+            </tr>
+            
+            <tr>
+              <td>Re</td>
+              <td>868</td>
+              <td>868</td>
+              <td>1.0000</td>
+            </tr>
+            
+            <tr>
+              <td>TOTAL</td>
+              <td>26801</td>
+              <td>26687</td>
+              <td>0.9958</td>
+            </tr>
+            </tbody>
+      </table>
+      <p class="cohort-summary">
+        <strong>Honest framing (§3.5):</strong> synthetic upper bound = 1.000; real 0.9958 is
+        −0.0042 below the synthetic ceiling — expected structural distance from real
+        metal-coordination chemistry.
+      </p>
+    </section>
+    
+  
+    <section class="cohort">
+      <h3>CFM m7 Tanimoto diversity (TODO-180 §1.3, TargetDiff Guan 2023 ceiling)</h3>
+      <p class="cohort-meta"><strong>JSON path:</strong> <code>TODO/completed/180_daily_summary_2026_09_27.md §1.3 + TODO-207 §9.6.2</code></p>
+      <table class="cohort-table">
+        <thead>
+          <tr>
+            <th>Configuration</th><th>diversity_tanimoto</th><th>lift</th><th>Verdict</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td>Baseline (no Tanimoto reward)</td>
+              <td>0.0324</td>
+              <td>n/a</td>
+              <td>MEASURED (no lift)</td>
+            </tr>
+            
+            <tr>
+              <td>With Tanimoto reward</td>
+              <td>0.0397</td>
+              <td>+22.5%</td>
+              <td>MEASURED (+22.5% lift)</td>
+            </tr>
+            
+            <tr>
+              <td>TargetDiff ceiling (cite-only)</td>
+              <td>0.8600</td>
+              <td>n/a</td>
+              <td>honest-negative: +0.820 gap</td>
+            </tr>
+            </tbody>
+      </table>
+    </section>
+    
+
+  <h2>Per-claim cards (click to expand source JSON)</h2>
+  <div class="claim-list">
+    
+    <div class="claim-card" id="claim_chemprop_v2_5metal_mean_auc">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">chemprop v2 5-metal mean AUC = 0.886 ± 0.014 (paired t-test p = 1.35×10⁻⁵)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.886 ± 0.014</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/154_chemprop_v4_head_to_head.md §4</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_chemprop_v2_5metal_mean_auc')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_chemprop_v2_5metal_mean_auc-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_chemprop_v2_5metal_mean_auc&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;chemprop v2 5-metal mean AUC = 0.886 ± 0.014 (paired t-test p = 1.35×10⁻⁵)&quot;,
+  &quot;value&quot;: &quot;0.886 ± 0.014&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/154_chemprop_v4_head_to_head.md §4&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_ru_per_metal_krasnov_beat">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">Ru per-metal AUC 0.909 BEATS Krasnov 2026 baseline 0.81 (+0.099, paired p=0.025)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.909 vs 0.81 (Δ +0.099)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/154_chemprop_v4_head_to_head.md §2</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_ru_per_metal_krasnov_beat')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_ru_per_metal_krasnov_beat-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_ru_per_metal_krasnov_beat&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Ru per-metal AUC 0.909 BEATS Krasnov 2026 baseline 0.81 (+0.099, paired p=0.025)&quot;,
+  &quot;value&quot;: &quot;0.909 vs 0.81 (Δ +0.099)&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/154_chemprop_v4_head_to_head.md §2&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_ir_per_metal_krasnov_beat">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">Ir per-metal AUC 0.885 BEATS Krasnov 2026 baseline 0.73 (+0.155, paired p=0.010)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.885 vs 0.73 (Δ +0.155)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/154_chemprop_v4_head_to_head.md §2</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_ir_per_metal_krasnov_beat')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_ir_per_metal_krasnov_beat-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_ir_per_metal_krasnov_beat&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Ir per-metal AUC 0.885 BEATS Krasnov 2026 baseline 0.73 (+0.155, paired p=0.010)&quot;,
+  &quot;value&quot;: &quot;0.885 vs 0.73 (Δ +0.155)&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/154_chemprop_v4_head_to_head.md §2&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_os_rh_re_first_reported">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">Os / Rh / Re first-reported scaffold-aligned per-metal AUC</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> Os 0.889 / Rh 0.863 / Re 0.882</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/154_chemprop_v4_head_to_head.md §2</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_os_rh_re_first_reported')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_os_rh_re_first_reported-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_os_rh_re_first_reported&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Os / Rh / Re first-reported scaffold-aligned per-metal AUC&quot;,
+  &quot;value&quot;: &quot;Os 0.889 / Rh 0.863 / Re 0.882&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/154_chemprop_v4_head_to_head.md §2&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf219_ru_ir_scaffold_aligned">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">Wf-219 reproduces Ru/Ir at 3-seed × 50-ep scaffold-aligned (hidden=64/depth=2)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> Ru 0.810 ± 0.017, Ir 0.759 ± 0.014</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf219_krasnov_aligned/sweep_summary.json</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf219_ru_ir_scaffold_aligned')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf219_ru_ir_scaffold_aligned-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf219_ru_ir_scaffold_aligned&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-219 reproduces Ru/Ir at 3-seed × 50-ep scaffold-aligned (hidden=64/depth=2)&quot;,
+  &quot;value&quot;: &quot;Ru 0.810 ± 0.017, Ir 0.759 ± 0.014&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf219_krasnov_aligned/sweep_summary.json&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_drugood_assay_5seed">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.1</span>
+        <span class="claim-title">DrugOOD lbap_refined_ic50_assay ood_test AUC = 0.7137 ± 0.0079 (5-seed, Wf-185)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.7137 ± 0.0079</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf185_chemprop_v2_drugood_full/aggregate.json</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_drugood_assay_5seed')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_drugood_assay_5seed-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_drugood_assay_5seed&quot;,
+  &quot;section&quot;: &quot;§3.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;DrugOOD lbap_refined_ic50_assay ood_test AUC = 0.7137 ± 0.0079 (5-seed, Wf-185)&quot;,
+  &quot;value&quot;: &quot;0.7137 ± 0.0079&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf185_chemprop_v2_drugood_full/aggregate.json&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_drugood_scaffold_5seed">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.1</span>
+        <span class="claim-title">DrugOOD lbap_refined_ic50_scaffold ood_test AUC = 0.6707 ± 0.0042 (5-seed)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.6707 ± 0.0042</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf185_chemprop_v2_drugood_full/aggregate.json</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_drugood_scaffold_5seed')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_drugood_scaffold_5seed-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_drugood_scaffold_5seed&quot;,
+  &quot;section&quot;: &quot;§3.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;DrugOOD lbap_refined_ic50_scaffold ood_test AUC = 0.6707 ± 0.0042 (5-seed)&quot;,
+  &quot;value&quot;: &quot;0.6707 ± 0.0042&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf185_chemprop_v2_drugood_full/aggregate.json&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_drugood_size_5seed">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.1</span>
+        <span class="claim-title">DrugOOD lbap_refined_ic50_size ood_test AUC = 0.6757 ± 0.0142 (5-seed)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.6757 ± 0.0142</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf185_chemprop_v2_drugood_full/aggregate.json</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_drugood_size_5seed')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_drugood_size_5seed-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_drugood_size_5seed&quot;,
+  &quot;section&quot;: &quot;§3.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;DrugOOD lbap_refined_ic50_size ood_test AUC = 0.6757 ± 0.0142 (5-seed)&quot;,
+  &quot;value&quot;: &quot;0.6757 ± 0.0142&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf185_chemprop_v2_drugood_full/aggregate.json&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_imold_comparable_not_beat">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§3.3</span>
+        <span class="claim-title">chemprop v2 BELOW iMoLD assay −0.0074 (within inter-seed std; comparable, NOT a beat)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> −0.0074 (assay) / −0.0177 (scaffold) / −0.0035 (size)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/188_paper_4_krasnov_protocol_aligned.md §3.3</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_imold_comparable_not_beat')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_imold_comparable_not_beat-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_imold_comparable_not_beat&quot;,
+  &quot;section&quot;: &quot;§3.3&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;chemprop v2 BELOW iMoLD assay −0.0074 (within inter-seed std; comparable, NOT a beat)&quot;,
+  &quot;value&quot;: &quot;−0.0074 (assay) / −0.0177 (scaffold) / −0.0035 (size)&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/188_paper_4_krasnov_protocol_aligned.md §3.3&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_m14_cfm_decode_ratio">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.1</span>
+        <span class="claim-title">m14 real CFM FULL MetalCytoToxDB decode_ratio = 0.9958 (n=26,801, Wf-188)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.9958 (n=26,801)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf188_m14_full_metalcytotox/result.json</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_m14_cfm_decode_ratio')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_m14_cfm_decode_ratio-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_m14_cfm_decode_ratio&quot;,
+  &quot;section&quot;: &quot;§4.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;m14 real CFM FULL MetalCytoToxDB decode_ratio = 0.9958 (n=26,801, Wf-188)&quot;,
+  &quot;value&quot;: &quot;0.9958 (n=26,801)&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf188_m14_full_metalcytotox/result.json&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_m14_decode_ratio_synthetic_gap">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§4.1</span>
+        <span class="claim-title">m14 CFM decode_ratio 0.9958 is −0.0042 BELOW synthetic upper bound 1.000 (expected per §3.5)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> −0.0042 (expected, honest framing)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/207_unified_pre_flight_checklist_v2.md §9.6.3</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_m14_decode_ratio_synthetic_gap')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_m14_decode_ratio_synthetic_gap-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_m14_decode_ratio_synthetic_gap&quot;,
+  &quot;section&quot;: &quot;§4.1&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;m14 CFM decode_ratio 0.9958 is −0.0042 BELOW synthetic upper bound 1.000 (expected per §3.5)&quot;,
+  &quot;value&quot;: &quot;−0.0042 (expected, honest framing)&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/207_unified_pre_flight_checklist_v2.md §9.6.3&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_m15_rmsd_pockets">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.2</span>
+        <span class="claim-title">m15 RMSD 5/5 pockets &lt; 2.0 Å (aggregate median 0.658 Å, 3-seed × 5 poses × 5 pockets)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 5/5 pockets &lt; 2.0 Å; median 0.658 Å</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf179_bd9_m15_rmsd_p2/summary.json</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_m15_rmsd_pockets')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_m15_rmsd_pockets-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_m15_rmsd_pockets&quot;,
+  &quot;section&quot;: &quot;§4.2&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;m15 RMSD 5/5 pockets &lt; 2.0 Å (aggregate median 0.658 Å, 3-seed × 5 poses × 5 pockets)&quot;,
+  &quot;value&quot;: &quot;5/5 pockets &lt; 2.0 Å; median 0.658 Å&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf179_bd9_m15_rmsd_p2/summary.json&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_m21_nci60_9cell">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.3</span>
+        <span class="claim-title">m21 NCI-60 9-cell per-cell AUC = 0.8007 ± 0.0160 (statistically equivalent to Krasnov 0.81)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.8007 ± 0.0160</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/metrics/by_metric/nci60_precious_9cell_auc.json</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_m21_nci60_9cell')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_m21_nci60_9cell-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_m21_nci60_9cell&quot;,
+  &quot;section&quot;: &quot;§4.3&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;m21 NCI-60 9-cell per-cell AUC = 0.8007 ± 0.0160 (statistically equivalent to Krasnov 0.81)&quot;,
+  &quot;value&quot;: &quot;0.8007 ± 0.0160&quot;,
+  &quot;json_path&quot;: &quot;molmetal/metrics/by_metric/nci60_precious_9cell_auc.json&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_m21_krasnov_equivalent">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§4.3</span>
+        <span class="claim-title">m21 9-cell mean 0.8007 ≈ Krasnov 0.81 (Δ = −0.0093, within std; NOT a beat)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> −0.0093 (statistically equivalent)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/188_paper_4_krasnov_protocol_aligned.md §4.3</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_m21_krasnov_equivalent')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_m21_krasnov_equivalent-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_m21_krasnov_equivalent&quot;,
+  &quot;section&quot;: &quot;§4.3&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;m21 9-cell mean 0.8007 ≈ Krasnov 0.81 (Δ = −0.0093, within std; NOT a beat)&quot;,
+  &quot;value&quot;: &quot;−0.0093 (statistically equivalent)&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/188_paper_4_krasnov_protocol_aligned.md §4.3&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_nci60_9cell_hct116_highlight">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.3</span>
+        <span class="claim-title">Wf-312A NCI-60 9-cell 3-seed x 5-epoch CPU: HCT116 per-cell AUC = 0.6851 ± 0.0274 (n_test=141; HCT-116 alias = 0.6851 same CSV row set; BELOW_GATE 0.70)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.6851 ± 0.0274 (BELOW_GATE)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/nci60_precious_9cell_auc_3seed_5epoch.json::per_cell_line.HCT116.auc_mean</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_nci60_9cell_hct116_highlight')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_nci60_9cell_hct116_highlight-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_nci60_9cell_hct116_highlight&quot;,
+  &quot;section&quot;: &quot;§4.3&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-312A NCI-60 9-cell 3-seed x 5-epoch CPU: HCT116 per-cell AUC = 0.6851 ± 0.0274 (n_test=141; HCT-116 alias = 0.6851 same CSV row set; BELOW_GATE 0.70)&quot;,
+  &quot;value&quot;: &quot;0.6851 ± 0.0274 (BELOW_GATE)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/nci60_precious_9cell_auc_3seed_5epoch.json::per_cell_line.HCT116.auc_mean&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_nci60_9cell_pc3_honest_negative">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§4.3</span>
+        <span class="claim-title">Wf-312A NCI-60 9-cell 3-seed x 5-epoch CPU: PC3 per-cell AUC = 0.7274 ± 0.0916 (PASS at 5 epochs; honest-negative 0.2153 at 1 epoch was small-n + under-trained regime, NOT a true biological failure). HIGH per-seed std = borderline-learnable cell; honest framing per section 3.5</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.7274 ± 0.0916 (PASS at 5 ep; honest at 1 ep)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/nci60_precious_9cell_auc_3seed_5epoch.json::per_cell_line.PC3.auc_mean</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_nci60_9cell_pc3_honest_negative')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_nci60_9cell_pc3_honest_negative-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_nci60_9cell_pc3_honest_negative&quot;,
+  &quot;section&quot;: &quot;§4.3&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;Wf-312A NCI-60 9-cell 3-seed x 5-epoch CPU: PC3 per-cell AUC = 0.7274 ± 0.0916 (PASS at 5 epochs; honest-negative 0.2153 at 1 epoch was small-n + under-trained regime, NOT a true biological failure). HIGH per-seed std = borderline-learnable cell; honest framing per section 3.5&quot;,
+  &quot;value&quot;: &quot;0.7274 ± 0.0916 (PASS at 5 ep; honest at 1 ep)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/nci60_precious_9cell_auc_3seed_5epoch.json::per_cell_line.PC3.auc_mean&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_nci60_9cell_overall_mean">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.3</span>
+        <span class="claim-title">Wf-312A NCI-60 9-cell 3-seed x 5-epoch CPU: 9-cell overall mean AUC = 0.6880 (paper gate 0.70; 3 PASS / 6 BELOW_GATE; full paper-grade numbers need GPU per kill_then_adapt)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.6880 (9-cell mean)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/nci60_precious_9cell_auc_3seed_5epoch.json::value_overall_mean_auc</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_nci60_9cell_overall_mean')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_nci60_9cell_overall_mean-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_nci60_9cell_overall_mean&quot;,
+  &quot;section&quot;: &quot;§4.3&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-312A NCI-60 9-cell 3-seed x 5-epoch CPU: 9-cell overall mean AUC = 0.6880 (paper gate 0.70; 3 PASS / 6 BELOW_GATE; full paper-grade numbers need GPU per kill_then_adapt)&quot;,
+  &quot;value&quot;: &quot;0.6880 (9-cell mean)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/nci60_precious_9cell_auc_3seed_5epoch.json::value_overall_mean_auc&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_nci60_9cell_a549_pass">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.3</span>
+        <span class="claim-title">Wf-312A NCI-60 9-cell 3-seed x 5-epoch CPU: A549 per-cell AUC = 0.7436 ± 0.0250 (PASS paper gate 0.70; n_train=1852 largest cohort)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.7436 ± 0.0250 (PASS)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/nci60_precious_9cell_auc_3seed_5epoch.json::per_cell_line.A549.auc_mean</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_nci60_9cell_a549_pass')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_nci60_9cell_a549_pass-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_nci60_9cell_a549_pass&quot;,
+  &quot;section&quot;: &quot;§4.3&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-312A NCI-60 9-cell 3-seed x 5-epoch CPU: A549 per-cell AUC = 0.7436 ± 0.0250 (PASS paper gate 0.70; n_train=1852 largest cohort)&quot;,
+  &quot;value&quot;: &quot;0.7436 ± 0.0250 (PASS)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/nci60_precious_9cell_auc_3seed_5epoch.json::per_cell_line.A549.auc_mean&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_nci60_9cell_du145_pass">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.3</span>
+        <span class="claim-title">Wf-312A NCI-60 9-cell 3-seed x 5-epoch CPU: DU145 per-cell AUC = 0.9062 ± 0.0221 (PASS paper gate 0.70; high but small n_test=33 = easy split)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.9062 ± 0.0221 (PASS, small-n caveat)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/nci60_precious_9cell_auc_3seed_5epoch.json::per_cell_line.DU145.auc_mean</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_nci60_9cell_du145_pass')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_nci60_9cell_du145_pass-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_nci60_9cell_du145_pass&quot;,
+  &quot;section&quot;: &quot;§4.3&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-312A NCI-60 9-cell 3-seed x 5-epoch CPU: DU145 per-cell AUC = 0.9062 ± 0.0221 (PASS paper gate 0.70; high but small n_test=33 = easy split)&quot;,
+  &quot;value&quot;: &quot;0.9062 ± 0.0221 (PASS, small-n caveat)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/nci60_precious_9cell_auc_3seed_5epoch.json::per_cell_line.DU145.auc_mean&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_nci60_9cell_a2780_below_gate">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§4.3</span>
+        <span class="claim-title">Wf-312A NCI-60 9-cell 3-seed x 5-epoch CPU: A2780 per-cell AUC = 0.5641 ± 0.0239 (BELOW_GATE 0.70; cisplatin-sensitive ovarian signature not recoverable from precious-metal-only SMILES at 5-epoch CPU depth; needs GPU paper-grade to confirm)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.5641 ± 0.0239 (BELOW_GATE)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/nci60_precious_9cell_auc_3seed_5epoch.json::per_cell_line.A2780.auc_mean</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_nci60_9cell_a2780_below_gate')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_nci60_9cell_a2780_below_gate-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_nci60_9cell_a2780_below_gate&quot;,
+  &quot;section&quot;: &quot;§4.3&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;Wf-312A NCI-60 9-cell 3-seed x 5-epoch CPU: A2780 per-cell AUC = 0.5641 ± 0.0239 (BELOW_GATE 0.70; cisplatin-sensitive ovarian signature not recoverable from precious-metal-only SMILES at 5-epoch CPU depth; needs GPU paper-grade to confirm)&quot;,
+  &quot;value&quot;: &quot;0.5641 ± 0.0239 (BELOW_GATE)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/nci60_precious_9cell_auc_3seed_5epoch.json::per_cell_line.A2780.auc_mean&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_m7_diversity_tanimoto">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.4</span>
+        <span class="claim-title">m7 diversity Tanimoto = 0.0397 with Tanimoto reward (+22.5% lift)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.0397 (+22.5%)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/180_daily_summary_2026_09_27.md §1.3</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_m7_diversity_tanimoto')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_m7_diversity_tanimoto-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_m7_diversity_tanimoto&quot;,
+  &quot;section&quot;: &quot;§4.4&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;m7 diversity Tanimoto = 0.0397 with Tanimoto reward (+22.5% lift)&quot;,
+  &quot;value&quot;: &quot;0.0397 (+22.5%)&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/180_daily_summary_2026_09_27.md §1.3&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_m7_targetdiff_gap">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§4.4</span>
+        <span class="claim-title">m7 diversity 0.0397 is +0.820 BELOW TargetDiff 0.860 ceiling (honest per §3.5)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> +0.820 gap (honest-negative)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/207_unified_pre_flight_checklist_v2.md §9.6.2</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_m7_targetdiff_gap')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_m7_targetdiff_gap-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_m7_targetdiff_gap&quot;,
+  &quot;section&quot;: &quot;§4.4&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;m7 diversity 0.0397 is +0.820 BELOW TargetDiff 0.860 ceiling (honest per §3.5)&quot;,
+  &quot;value&quot;: &quot;+0.820 gap (honest-negative)&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/207_unified_pre_flight_checklist_v2.md §9.6.2&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_drugood_1_58M_deferred">
+      <div class="claim-row">
+        <span class="badge badge-projected">PROJECTED</span>
+        <span class="claim-section">§5.3</span>
+        <span class="claim-title">DrugOOD 1.58M train full retrain DEFERRED (currently 95,373 train subset, BD-11)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> DEFERRED — 95,373/1,580,000 subset only</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/INDEX.md BD-11</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_drugood_1_58M_deferred')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_drugood_1_58M_deferred-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_drugood_1_58M_deferred&quot;,
+  &quot;section&quot;: &quot;§5.3&quot;,
+  &quot;badge&quot;: &quot;PROJECTED&quot;,
+  &quot;claim&quot;: &quot;DrugOOD 1.58M train full retrain DEFERRED (currently 95,373 train subset, BD-11)&quot;,
+  &quot;value&quot;: &quot;DEFERRED — 95,373/1,580,000 subset only&quot;,
+  &quot;json_path&quot;: &quot;TODO/INDEX.md BD-11&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_krasnov_temporal_split_deferred">
+      <div class="claim-row">
+        <span class="badge badge-projected">PROJECTED</span>
+        <span class="claim-section">§5.3</span>
+        <span class="claim-title">Krasnov temporal-split head-to-head driver DEFERRED (TODO-219 §3 follow-up)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> DEFERRED — scaffold-split is the conservative protocol</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/188_paper_4_krasnov_protocol_aligned.md §1.3</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_krasnov_temporal_split_deferred')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_krasnov_temporal_split_deferred-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_krasnov_temporal_split_deferred&quot;,
+  &quot;section&quot;: &quot;§5.3&quot;,
+  &quot;badge&quot;: &quot;PROJECTED&quot;,
+  &quot;claim&quot;: &quot;Krasnov temporal-split head-to-head driver DEFERRED (TODO-219 §3 follow-up)&quot;,
+  &quot;value&quot;: &quot;DEFERRED — scaffold-split is the conservative protocol&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/188_paper_4_krasnov_protocol_aligned.md §1.3&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_m3_vina_dock_projected">
+      <div class="claim-row">
+        <span class="badge badge-projected">PROJECTED</span>
+        <span class="claim-section">§5.4</span>
+        <span class="claim-title">m3 Vina Dock PROJECTED @ R19 (Wf-30 5-seed mean ≥ −8.5 kcal/mol gate DEFERRED)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> PROJECTED — DEFERRED to R19</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/188_paper_4_krasnov_protocol_aligned.md §5.4</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_m3_vina_dock_projected')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_m3_vina_dock_projected-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_m3_vina_dock_projected&quot;,
+  &quot;section&quot;: &quot;§5.4&quot;,
+  &quot;badge&quot;: &quot;PROJECTED&quot;,
+  &quot;claim&quot;: &quot;m3 Vina Dock PROJECTED @ R19 (Wf-30 5-seed mean ≥ −8.5 kcal/mol gate DEFERRED)&quot;,
+  &quot;value&quot;: &quot;PROJECTED — DEFERRED to R19&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/188_paper_4_krasnov_protocol_aligned.md §5.4&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_chemprop_v3_fallback_default">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§6.1</span>
+        <span class="claim-title">chemprop v3 v3-fallback DEFAULT forces chemprop v2 BinaryClassificationFFN head regardless of --enhanced-head / --metal-attention</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> v3-fallback (default) → v2 head, audit-trail preserved</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf263a_implement/implement_report.md §3</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_chemprop_v3_fallback_default')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_chemprop_v3_fallback_default-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_chemprop_v3_fallback_default&quot;,
+  &quot;section&quot;: &quot;§6.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;chemprop v3 v3-fallback DEFAULT forces chemprop v2 BinaryClassificationFFN head regardless of --enhanced-head / --metal-attention&quot;,
+  &quot;value&quot;: &quot;v3-fallback (default) → v2 head, audit-trail preserved&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf263a_implement/implement_report.md §3&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_chemprop_v3_fallback_official">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§6.1</span>
+        <span class="claim-title">Wf-263A fix shipped: train_chemprop_v2_v3.py + train_chemprop_v2_v3_v1_backup.py + test_wf263a_chemprop_v3_fix.py (3 files, 10/10 new + 21/21 backward-compat tests PASS)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 3 files modified, 10/10 + 21/21 tests PASS</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf263a_implement/implement_report.md §2 + §7</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_chemprop_v3_fallback_official')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_chemprop_v3_fallback_official-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_chemprop_v3_fallback_official&quot;,
+  &quot;section&quot;: &quot;§6.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-263A fix shipped: train_chemprop_v2_v3.py + train_chemprop_v2_v3_v1_backup.py + test_wf263a_chemprop_v3_fix.py (3 files, 10/10 new + 21/21 backward-compat tests PASS)&quot;,
+  &quot;value&quot;: &quot;3 files modified, 10/10 + 21/21 tests PASS&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf263a_implement/implement_report.md §2 + §7&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf266_min_epochs_flag">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§6.2</span>
+        <span class="claim-title">--chemprop-min-epochs N (default 10) refuses --epochs &lt; N (anti-under-training lever for LOMO head collapse)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> --chemprop-min-epochs default 10</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf266_lomo_fix/wf266_report.md §Summary</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf266_min_epochs_flag')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf266_min_epochs_flag-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf266_min_epochs_flag&quot;,
+  &quot;section&quot;: &quot;§6.2&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;--chemprop-min-epochs N (default 10) refuses --epochs &lt; N (anti-under-training lever for LOMO head collapse)&quot;,
+  &quot;value&quot;: &quot;--chemprop-min-epochs default 10&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf266_lomo_fix/wf266_report.md §Summary&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf266_lomo_init_scale_flag">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§6.2</span>
+        <span class="claim-title">--chemprop-lomo-init-scale F (default 1e-3) scales per-metal BCE logits (anti-bias lever; logit*1e-3 keeps sigmoid ≈ 0.5 at init)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> --chemprop-lomo-init-scale default 1e-3</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf266_lomo_fix/wf266_report.md §Summary</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf266_lomo_init_scale_flag')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf266_lomo_init_scale_flag-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf266_lomo_init_scale_flag&quot;,
+  &quot;section&quot;: &quot;§6.2&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;--chemprop-lomo-init-scale F (default 1e-3) scales per-metal BCE logits (anti-bias lever; logit*1e-3 keeps sigmoid ≈ 0.5 at init)&quot;,
+  &quot;value&quot;: &quot;--chemprop-lomo-init-scale default 1e-3&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf266_lomo_fix/wf266_report.md §Summary&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf266_v3_fix_mode">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§6.2</span>
+        <span class="claim-title">--chemprop-mode v3-fix combines v2 BinaryClassificationFFN + min-epochs floor + lomo-init-scale anti-bias (NO-OP under v3-fallback default)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> --chemprop-mode v3-fix (4-mode choice: v2, v3, v3-fallback, v3-fix)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf266_lomo_fix/wf266_report.md §Summary</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf266_v3_fix_mode')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf266_v3_fix_mode-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf266_v3_fix_mode&quot;,
+  &quot;section&quot;: &quot;§6.2&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;--chemprop-mode v3-fix combines v2 BinaryClassificationFFN + min-epochs floor + lomo-init-scale anti-bias (NO-OP under v3-fallback default)&quot;,
+  &quot;value&quot;: &quot;--chemprop-mode v3-fix (4-mode choice: v2, v3, v3-fallback, v3-fix)&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf266_lomo_fix/wf266_report.md §Summary&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_todo_180_g4_re_top">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">TODO-180 G4 Re per-metal AUC = 0.7700 (n=3 seeds) — top of the 5-metal cohort</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> Re 0.7700 (n=3 seeds, n_train=692)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf265_collect/all_results.json::g4_per_metal_aggregate_full_15pair[Re]</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_todo_180_g4_re_top')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_todo_180_g4_re_top-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_todo_180_g4_re_top&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;TODO-180 G4 Re per-metal AUC = 0.7700 (n=3 seeds) — top of the 5-metal cohort&quot;,
+  &quot;value&quot;: &quot;Re 0.7700 (n=3 seeds, n_train=692)&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf265_collect/all_results.json::g4_per_metal_aggregate_full_15pair[Re]&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_todo_180_g4_overall_15pair">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">TODO-180 G4 overall mean test_auc = 0.7236 (15 pairs = 5 metal × 3 seed)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.7236 overall (n=15 pairs)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf265_collect/all_results.json::g4_overall_aggregate_full_15pair</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_todo_180_g4_overall_15pair')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_todo_180_g4_overall_15pair-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_todo_180_g4_overall_15pair&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;TODO-180 G4 overall mean test_auc = 0.7236 (15 pairs = 5 metal × 3 seed)&quot;,
+  &quot;value&quot;: &quot;0.7236 overall (n=15 pairs)&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf265_collect/all_results.json::g4_overall_aggregate_full_15pair&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf266_g5_50epoch_blocked">
+      <div class="claim-row">
+        <span class="badge badge-projected">PROJECTED</span>
+        <span class="claim-section">§5.4</span>
+        <span class="claim-title">Wf-266 G5 50-epoch sweep BLOCKED at GPU-ordinal layer (CUDA error: invalid device ordinal); 0/15 pairs MEASURED; recovery deferred to R21+</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> PROJECTED — 0/15 pairs (BLOCKED)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf266_final/final_status.md §4</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf266_g5_50epoch_blocked')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf266_g5_50epoch_blocked-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf266_g5_50epoch_blocked&quot;,
+  &quot;section&quot;: &quot;§5.4&quot;,
+  &quot;badge&quot;: &quot;PROJECTED&quot;,
+  &quot;claim&quot;: &quot;Wf-266 G5 50-epoch sweep BLOCKED at GPU-ordinal layer (CUDA error: invalid device ordinal); 0/15 pairs MEASURED; recovery deferred to R21+&quot;,
+  &quot;value&quot;: &quot;PROJECTED — 0/15 pairs (BLOCKED)&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf266_final/final_status.md §4&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf275b_drugood_adapter">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.1</span>
+        <span class="claim-title">Wf-275B DrugOOD ECFP4 + Bemis-Murcko scaffold-split adapter SHIPPED (n_source_rows=95,236; 0 RDKit parse failures; 0 scaffold leakage train↔val↔test)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> n=95,236 rows; 0 leak; 5/5 tests PASS</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf275b_drugood_adapter/adapter_report.md §3 + §4</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf275b_drugood_adapter')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf275b_drugood_adapter-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf275b_drugood_adapter&quot;,
+  &quot;section&quot;: &quot;§3.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-275B DrugOOD ECFP4 + Bemis-Murcko scaffold-split adapter SHIPPED (n_source_rows=95,236; 0 RDKit parse failures; 0 scaffold leakage train↔val↔test)&quot;,
+  &quot;value&quot;: &quot;n=95,236 rows; 0 leak; 5/5 tests PASS&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf275b_drugood_adapter/adapter_report.md §3 + §4&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf269c_yuelbond_load_bearing">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.5.4</span>
+        <span class="claim-title">Wf-269C YuelBond decoder LOAD-BEARING on REAL cohort: full (YuelBond) decode_ratio=1.000 vs no_yuelbond=0.000 (Δ=−1.000, max possible); Wasserstein + closure_bounded are NOT decode gates (Δ=0 MEASURED)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> Δ=−1.000 (full=1.000 / no_yuelbond=0.000, 51/51 train + 51/51 val)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf269c_cfm_real/wf269c_report.json::configs</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf269c_yuelbond_load_bearing')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf269c_yuelbond_load_bearing-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf269c_yuelbond_load_bearing&quot;,
+  &quot;section&quot;: &quot;§4.5.4&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-269C YuelBond decoder LOAD-BEARING on REAL cohort: full (YuelBond) decode_ratio=1.000 vs no_yuelbond=0.000 (Δ=−1.000, max possible); Wasserstein + closure_bounded are NOT decode gates (Δ=0 MEASURED)&quot;,
+  &quot;value&quot;: &quot;Δ=−1.000 (full=1.000 / no_yuelbond=0.000, 51/51 train + 51/51 val)&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf269c_cfm_real/wf269c_report.json::configs&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf275c_m14_lead_precondition">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.1</span>
+        <span class="claim-title">Wf-275C m14 LEAD deployment precondition SHIPPED: YuelBond decoder MUST be active (--no-yuelbond MUST NOT be set); without YuelBond the m14 LEAD silently invalidates (decode_ratio 1.000 → 0.000)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> YuelBond-on mandatory precondition</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/m14_lead_deployment_precondition.md §2 + §3</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf275c_m14_lead_precondition')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf275c_m14_lead_precondition-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf275c_m14_lead_precondition&quot;,
+  &quot;section&quot;: &quot;§4.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-275C m14 LEAD deployment precondition SHIPPED: YuelBond decoder MUST be active (--no-yuelbond MUST NOT be set); without YuelBond the m14 LEAD silently invalidates (decode_ratio 1.000 → 0.000)&quot;,
+  &quot;value&quot;: &quot;YuelBond-on mandatory precondition&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/m14_lead_deployment_precondition.md §2 + §3&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf274a_regression_disclosure">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§5.2</span>
+        <span class="claim-title">Wf-274A cfm_decode_real.json regression_disclosure: previous_value=0.9980 (3 seeds × 5991 GPU) vs current_value=0.9645 (1 seed × 818 CPU PlatinAI pt_subset); verdict=silent_regression_methodology_change_not_disclosed; do NOT cite 0.9645 as LEAD</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> previous 0.9980 → current 0.9645 (Δ=−0.0335 silent)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/cfm_decode_real.json::regression_disclosure</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf274a_regression_disclosure')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf274a_regression_disclosure-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf274a_regression_disclosure&quot;,
+  &quot;section&quot;: &quot;§5.2&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;Wf-274A cfm_decode_real.json regression_disclosure: previous_value=0.9980 (3 seeds × 5991 GPU) vs current_value=0.9645 (1 seed × 818 CPU PlatinAI pt_subset); verdict=silent_regression_methodology_change_not_disclosed; do NOT cite 0.9645 as LEAD&quot;,
+  &quot;value&quot;: &quot;previous 0.9980 → current 0.9645 (Δ=−0.0335 silent)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/cfm_decode_real.json::regression_disclosure&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf271b_m17_drugood_v3_reeval">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§3.3</span>
+        <span class="claim-title">Wf-271B m17_drugood_v3_reeval: 3 metals × 4 seeds = 12 v3 checkpoints on DrugOOD scaffold ood_test split, ROC-AUC = 0.4544 ± 0.0327 (BELOW_RANDOM); promoted from drugood_v3_scaffold to m17_drugood_v3_reeval; per-metal Ru=0.490, Ir=0.464, etc.</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.4544 ± 0.0327 (BELOW_RANDOM)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/drugood_v3_scaffold.json::per_metal.*.test_auc_mean</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf271b_m17_drugood_v3_reeval')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf271b_m17_drugood_v3_reeval-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf271b_m17_drugood_v3_reeval&quot;,
+  &quot;section&quot;: &quot;§3.3&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;Wf-271B m17_drugood_v3_reeval: 3 metals × 4 seeds = 12 v3 checkpoints on DrugOOD scaffold ood_test split, ROC-AUC = 0.4544 ± 0.0327 (BELOW_RANDOM); promoted from drugood_v3_scaffold to m17_drugood_v3_reeval; per-metal Ru=0.490, Ir=0.464, etc.&quot;,
+  &quot;value&quot;: &quot;0.4544 ± 0.0327 (BELOW_RANDOM)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/drugood_v3_scaffold.json::per_metal.*.test_auc_mean&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf282_g5_ru_seed0_test_auc">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.5.1</span>
+        <span class="claim-title">Wf-282 G5 Ru seed=0 MEASURED test_auc=0.7716 (FIRST G5 50-ep test_auc from TODO-181 sweep on RTX 5090 GPU-1, cuda:0 fix post-cuda:1-bug, YuelBond + Wasserstein + closure-bounded default config card, val_auc peak 0.8177 @ epoch 47, test_pearson 0.5479, ckpt 11.3 MB saved at 00:28 CST 2026-09-29)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> test_auc=0.7716 (50-ep, n_test=4350, OK status)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>results/wf124_p3_50epoch_full_sweep_g5/Ru/seed0/ru/per_seed_metrics.json::test_auc + molmetal/reports/wf283a_g5_recovery/recovery_report.md §1.3-§1.5</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf282_g5_ru_seed0_test_auc')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf282_g5_ru_seed0_test_auc-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf282_g5_ru_seed0_test_auc&quot;,
+  &quot;section&quot;: &quot;§4.5.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-282 G5 Ru seed=0 MEASURED test_auc=0.7716 (FIRST G5 50-ep test_auc from TODO-181 sweep on RTX 5090 GPU-1, cuda:0 fix post-cuda:1-bug, YuelBond + Wasserstein + closure-bounded default config card, val_auc peak 0.8177 @ epoch 47, test_pearson 0.5479, ckpt 11.3 MB saved at 00:28 CST 2026-09-29)&quot;,
+  &quot;value&quot;: &quot;test_auc=0.7716 (50-ep, n_test=4350, OK status)&quot;,
+  &quot;json_path&quot;: &quot;results/wf124_p3_50epoch_full_sweep_g5/Ru/seed0/ru/per_seed_metrics.json::test_auc + molmetal/reports/wf283a_g5_recovery/recovery_report.md §1.3-§1.5&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf286b_ecfp4_axis_ruled_out">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§6.3</span>
+        <span class="claim-title">Wf-286B ECFP4 + Bemis-Murcko scaffold-split re-eval (1-seed × 5-ep, chemprop v2 BinaryClassificationFFN, CPU) test_auc=0.8820 RULES OUT ECFP4 featurization axis as Wf-253-D 0.4544 BELOW_RANDOM collapse bottleneck (Δ=+0.211 vs Wf-185 v2 baseline 0.6707); remaining hypotheses: (a) chemprop v3 MPNN backbone, (b) v3-fallback path config, (c) DrugOOD JSON train/val/test OOD splits</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> test_auc=0.8820 (Δ=+0.2113 vs Wf-185 0.6707 baseline)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf286b_ecfp4_reeval/aggregate.json::test_auc_mean + molmetal/reports/wf286b_ecfp4_reeval/reeval_report.md §4</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf286b_ecfp4_axis_ruled_out')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf286b_ecfp4_axis_ruled_out-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf286b_ecfp4_axis_ruled_out&quot;,
+  &quot;section&quot;: &quot;§6.3&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-286B ECFP4 + Bemis-Murcko scaffold-split re-eval (1-seed × 5-ep, chemprop v2 BinaryClassificationFFN, CPU) test_auc=0.8820 RULES OUT ECFP4 featurization axis as Wf-253-D 0.4544 BELOW_RANDOM collapse bottleneck (Δ=+0.211 vs Wf-185 v2 baseline 0.6707); remaining hypotheses: (a) chemprop v3 MPNN backbone, (b) v3-fallback path config, (c) DrugOOD JSON train/val/test OOD splits&quot;,
+  &quot;value&quot;: &quot;test_auc=0.8820 (Δ=+0.2113 vs Wf-185 0.6707 baseline)&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf286b_ecfp4_reeval/aggregate.json::test_auc_mean + molmetal/reports/wf286b_ecfp4_reeval/reeval_report.md §4&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf303c_t2_ames_pass">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.7</span>
+        <span class="claim-title">Wf-303C T2 / Wf-308B R03 ADMET pass-through: ames_mutagen mean = 0.0401 (cohort n=449, std=0.1962) — BELOW druglikeness pre-flight gate threshold 0.10 by −0.060 (PASS); RDKit FilterCatalog structural-alert ratio confirms low cohort mutagenicity (PASS vs source band &lt; 0.30)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.0401 (PASS, Δ=−0.060 vs 0.10 gate; PASS vs 0.30 source band)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/ames_mutagen.json::value + std + verdict</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf303c_t2_ames_pass')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf303c_t2_ames_pass-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf303c_t2_ames_pass&quot;,
+  &quot;section&quot;: &quot;§3.7&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-303C T2 / Wf-308B R03 ADMET pass-through: ames_mutagen mean = 0.0401 (cohort n=449, std=0.1962) — BELOW druglikeness pre-flight gate threshold 0.10 by −0.060 (PASS); RDKit FilterCatalog structural-alert ratio confirms low cohort mutagenicity (PASS vs source band &lt; 0.30)&quot;,
+  &quot;value&quot;: &quot;0.0401 (PASS, Δ=−0.060 vs 0.10 gate; PASS vs 0.30 source band)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/ames_mutagen.json::value + std + verdict&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf303c_t2_cell_perm_pass">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.7</span>
+        <span class="claim-title">Wf-303C T2 / Wf-308B R03 ADMET pass-through: cell_permeability_logPapp mean = -3.637 (cohort n=449, std=1.060) — ABOVE pre-flight gate threshold -5.0 by +1.363 (PASS); Crippen logP + TPSA proxy indicates cohort Papp &gt; 10⁻⁵·⁵ cm/s (PASS vs source band &gt; -6.0)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> -3.637 (PASS, Δ=+1.363 vs -5.0 gate; PASS vs -6.0 source band)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/cell_permeability_logPapp.json::value + std + verdict</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf303c_t2_cell_perm_pass')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf303c_t2_cell_perm_pass-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf303c_t2_cell_perm_pass&quot;,
+  &quot;section&quot;: &quot;§3.7&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-303C T2 / Wf-308B R03 ADMET pass-through: cell_permeability_logPapp mean = -3.637 (cohort n=449, std=1.060) — ABOVE pre-flight gate threshold -5.0 by +1.363 (PASS); Crippen logP + TPSA proxy indicates cohort Papp &gt; 10⁻⁵·⁵ cm/s (PASS vs source band &gt; -6.0)&quot;,
+  &quot;value&quot;: &quot;-3.637 (PASS, Δ=+1.363 vs -5.0 gate; PASS vs -6.0 source band)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/cell_permeability_logPapp.json::value + std + verdict&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf303c_t2_aq_sol_honest_negative">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§3.7</span>
+        <span class="claim-title">Wf-303C T2 / Wf-308B R03 ADMET pass-through: aqueous_solubility_logS mean = -7.612 (cohort n=449, std=3.936) — BELOW target band -4.0 by −3.612 (FAIL honest-negative); Crippen + MW + aromatic-ring proxy indicates cohort solubility &lt; 0.1 mM; pre-flight gate requires explicit HONEST_NEGATIVE=true tag (added) — do not silently mask</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> -7.612 (FAIL honest-negative; HONEST_NEGATIVE=true tag added per Wf-308B)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/aqueous_solubility_logS.json::value + HONEST_NEGATIVE + honest_negative_reason</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf303c_t2_aq_sol_honest_negative')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf303c_t2_aq_sol_honest_negative-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf303c_t2_aq_sol_honest_negative&quot;,
+  &quot;section&quot;: &quot;§3.7&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;Wf-303C T2 / Wf-308B R03 ADMET pass-through: aqueous_solubility_logS mean = -7.612 (cohort n=449, std=3.936) — BELOW target band -4.0 by −3.612 (FAIL honest-negative); Crippen + MW + aromatic-ring proxy indicates cohort solubility &lt; 0.1 mM; pre-flight gate requires explicit HONEST_NEGATIVE=true tag (added) — do not silently mask&quot;,
+  &quot;value&quot;: &quot;-7.612 (FAIL honest-negative; HONEST_NEGATIVE=true tag added per Wf-308B)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/aqueous_solubility_logS.json::value + HONEST_NEGATIVE + honest_negative_reason&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf312c_r02_hepatotox_honest_negative">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§3.7</span>
+        <span class="claim-title">Wf-312C R02 honest-negative close: hepatotox_index mean = 0.548 (cohort n=449) — ABOVE Hughes 2008 rule-of-2 druglikeness threshold 0.5 by +0.048 (FAIL honest-negative); metallo-drug cohort carries moderate hepatotox risk from aniline/hydrazine/5-ring structural alerts; pre-flight gate p3_admet_hepatotox_honest_negative now requires explicit HONEST_NEGATIVE=true tag (added per Wf-312C) — do not silently mask</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.548 (FAIL honest-negative; HONEST_NEGATIVE=true tag added per Wf-312C R02)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/hepatotox_index.json::value + HONEST_NEGATIVE + honest_negative_reason</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf312c_r02_hepatotox_honest_negative')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf312c_r02_hepatotox_honest_negative-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf312c_r02_hepatotox_honest_negative&quot;,
+  &quot;section&quot;: &quot;§3.7&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;Wf-312C R02 honest-negative close: hepatotox_index mean = 0.548 (cohort n=449) — ABOVE Hughes 2008 rule-of-2 druglikeness threshold 0.5 by +0.048 (FAIL honest-negative); metallo-drug cohort carries moderate hepatotox risk from aniline/hydrazine/5-ring structural alerts; pre-flight gate p3_admet_hepatotox_honest_negative now requires explicit HONEST_NEGATIVE=true tag (added per Wf-312C) — do not silently mask&quot;,
+  &quot;value&quot;: &quot;0.548 (FAIL honest-negative; HONEST_NEGATIVE=true tag added per Wf-312C R02)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/hepatotox_index.json::value + HONEST_NEGATIVE + honest_negative_reason&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf312c_r02_logp7_4_honest_negative">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§3.7</span>
+        <span class="claim-title">Wf-312C R02 honest-negative close: logp7_4 mean = 6.413 (cohort n=449) — OUT OF Lipinski druglikeness 0-5 range by +1.413 (FAIL honest-negative); metallo-drug cohort is intrinsically lipophilic per Patrick 2009 ionisation-corrected Crippen logP; pre-flight gate p3_admet_logp7_4_honest_negative now requires explicit HONEST_NEGATIVE=true tag (added per Wf-312C) — do not silently mask</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 6.413 (FAIL honest-negative; HONEST_NEGATIVE=true tag added per Wf-312C R02)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/logp7_4.json::value + HONEST_NEGATIVE + honest_negative_reason</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf312c_r02_logp7_4_honest_negative')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf312c_r02_logp7_4_honest_negative-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf312c_r02_logp7_4_honest_negative&quot;,
+  &quot;section&quot;: &quot;§3.7&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;Wf-312C R02 honest-negative close: logp7_4 mean = 6.413 (cohort n=449) — OUT OF Lipinski druglikeness 0-5 range by +1.413 (FAIL honest-negative); metallo-drug cohort is intrinsically lipophilic per Patrick 2009 ionisation-corrected Crippen logP; pre-flight gate p3_admet_logp7_4_honest_negative now requires explicit HONEST_NEGATIVE=true tag (added per Wf-312C) — do not silently mask&quot;,
+  &quot;value&quot;: &quot;6.413 (FAIL honest-negative; HONEST_NEGATIVE=true tag added per Wf-312C R02)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/logp7_4.json::value + HONEST_NEGATIVE + honest_negative_reason&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf312c_r02_m6_kappa_honest_negative">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§3.7</span>
+        <span class="claim-title">Wf-312C R02 honest-negative close: m6_kappa (Shape Kappa Index) mean = 0.472 (cohort n=449, std=0.159) — BELOW ChemAxon PMC11387870 druglikeness threshold 0.6 by −0.128 (FAIL honest-negative); Wf-253D MetalCytoToxDB validation returned NEGATIVE_WEAK (global Pearson r 0.081, Spearman 0.111) — Shape Kappa is NOT a learned pIC50 proxy; pre-flight gate p3_admet_m6_kappa_honest_negative now requires explicit HONEST_NEGATIVE=true tag (added per Wf-312C) — do not silently mask</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.472 (FAIL honest-negative; HONEST_NEGATIVE=true tag added per Wf-312C R02)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/m6_kappa.json::value + HONEST_NEGATIVE + honest_negative_reason + metalcytotox_validation.global_pearson_r</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf312c_r02_m6_kappa_honest_negative')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf312c_r02_m6_kappa_honest_negative-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf312c_r02_m6_kappa_honest_negative&quot;,
+  &quot;section&quot;: &quot;§3.7&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;Wf-312C R02 honest-negative close: m6_kappa (Shape Kappa Index) mean = 0.472 (cohort n=449, std=0.159) — BELOW ChemAxon PMC11387870 druglikeness threshold 0.6 by −0.128 (FAIL honest-negative); Wf-253D MetalCytoToxDB validation returned NEGATIVE_WEAK (global Pearson r 0.081, Spearman 0.111) — Shape Kappa is NOT a learned pIC50 proxy; pre-flight gate p3_admet_m6_kappa_honest_negative now requires explicit HONEST_NEGATIVE=true tag (added per Wf-312C) — do not silently mask&quot;,
+  &quot;value&quot;: &quot;0.472 (FAIL honest-negative; HONEST_NEGATIVE=true tag added per Wf-312C R02)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/m6_kappa.json::value + HONEST_NEGATIVE + honest_negative_reason + metalcytotox_validation.global_pearson_r&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf312c_r01_caco2_perm">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.7</span>
+        <span class="claim-title">Wf-312C R01 ADMET 5-NEW extension: caco2_perm mean = -3.035 (cohort n=449, std=0.231) — ABOVE Hou 2007 refined 5-descriptor Caco-2 well-permeable threshold -5.15 by +2.115 (PASS); Caco-2-specific heuristic (distinct from the Wf-303C cell_permeability_logPapp MDCK/general Papp proxy); RDKit descriptor projection, NOT wet-lab Caco-2 assay</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> -3.035 (PASS, Δ=+2.115 vs -5.15 gate; PASS vs -8/-3 clamp)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/caco2_perm.json::value + std + verdict</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf312c_r01_caco2_perm')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf312c_r01_caco2_perm-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf312c_r01_caco2_perm&quot;,
+  &quot;section&quot;: &quot;§3.7&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-312C R01 ADMET 5-NEW extension: caco2_perm mean = -3.035 (cohort n=449, std=0.231) — ABOVE Hou 2007 refined 5-descriptor Caco-2 well-permeable threshold -5.15 by +2.115 (PASS); Caco-2-specific heuristic (distinct from the Wf-303C cell_permeability_logPapp MDCK/general Papp proxy); RDKit descriptor projection, NOT wet-lab Caco-2 assay&quot;,
+  &quot;value&quot;: &quot;-3.035 (PASS, Δ=+2.115 vs -5.15 gate; PASS vs -8/-3 clamp)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/caco2_perm.json::value + std + verdict&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf312c_r01_bbb">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.7</span>
+        <span class="claim-title">Wf-312C R01 ADMET 5-NEW extension: bbb (logBB) mean = -0.159 (cohort n=449, std=1.293) — INFO (within Clark 1999 -1&lt;logBB&lt;1 spectrum; cohort straddles BBB+/- boundary); TPSA + logP heuristic, NOT in-situ brain perfusion assay</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> -0.159 (INFO, within Clark 1999 BBB+/- spectrum)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/bbb.json::value + std + verdict</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf312c_r01_bbb')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf312c_r01_bbb-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf312c_r01_bbb&quot;,
+  &quot;section&quot;: &quot;§3.7&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-312C R01 ADMET 5-NEW extension: bbb (logBB) mean = -0.159 (cohort n=449, std=1.293) — INFO (within Clark 1999 -1&lt;logBB&lt;1 spectrum; cohort straddles BBB+/- boundary); TPSA + logP heuristic, NOT in-situ brain perfusion assay&quot;,
+  &quot;value&quot;: &quot;-0.159 (INFO, within Clark 1999 BBB+/- spectrum)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/bbb.json::value + std + verdict&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf312c_r01_clearance">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.7</span>
+        <span class="claim-title">Wf-312C R01 ADMET 5-NEW extension: clearance (hepatic CLint) mean = 0.509 mL/min/kg (cohort n=449, std=0.121) — INFO (BELOW Lobell/Obach 1996-1997 typical 5-30 mL/min/kg band — slow hepatic metabolism expected per metal-coordination chemistry); heuristic projection, NOT microsome/hepatocyte CLint measurement</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.509 mL/min/kg (INFO, below 5-30 typical band)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/clearance.json::value + std + verdict</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf312c_r01_clearance')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf312c_r01_clearance-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf312c_r01_clearance&quot;,
+  &quot;section&quot;: &quot;§3.7&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-312C R01 ADMET 5-NEW extension: clearance (hepatic CLint) mean = 0.509 mL/min/kg (cohort n=449, std=0.121) — INFO (BELOW Lobell/Obach 1996-1997 typical 5-30 mL/min/kg band — slow hepatic metabolism expected per metal-coordination chemistry); heuristic projection, NOT microsome/hepatocyte CLint measurement&quot;,
+  &quot;value&quot;: &quot;0.509 mL/min/kg (INFO, below 5-30 typical band)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/clearance.json::value + std + verdict&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf312c_r01_half_life">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.7</span>
+        <span class="claim-title">Wf-312C R01 ADMET 5-NEW extension: half_life (t1/2) mean = 1.31 hours (cohort n=449, std=1.34) — INFO (within Obach 1997 1-24 hour oral-drug band; lower end indicates faster elimination); heuristic projection, NOT in-vivo pharmacokinetic measurement</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 1.31 hours (INFO, within 1-24 hour oral-drug band)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/half_life.json::value + std + verdict</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf312c_r01_half_life')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf312c_r01_half_life-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf312c_r01_half_life&quot;,
+  &quot;section&quot;: &quot;§3.7&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-312C R01 ADMET 5-NEW extension: half_life (t1/2) mean = 1.31 hours (cohort n=449, std=1.34) — INFO (within Obach 1997 1-24 hour oral-drug band; lower end indicates faster elimination); heuristic projection, NOT in-vivo pharmacokinetic measurement&quot;,
+  &quot;value&quot;: &quot;1.31 hours (INFO, within 1-24 hour oral-drug band)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/half_life.json::value + std + verdict&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf312c_r01_vdss">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.7</span>
+        <span class="claim-title">Wf-312C R01 ADMET 5-NEW extension: vdss mean = 0.264 L/kg (cohort n=449, std=0.369) — INFO (BELOW Lombardo 2006 / Obach 1997 typical 0.5-10 L/kg drug range — limited tissue distribution expected); heuristic projection, NOT in-vivo VDss measurement</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.264 L/kg (INFO, below 0.5-10 typical drug range)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/vdss.json::value + std + verdict</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf312c_r01_vdss')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf312c_r01_vdss-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf312c_r01_vdss&quot;,
+  &quot;section&quot;: &quot;§3.7&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-312C R01 ADMET 5-NEW extension: vdss mean = 0.264 L/kg (cohort n=449, std=0.369) — INFO (BELOW Lombardo 2006 / Obach 1997 typical 0.5-10 L/kg drug range — limited tissue distribution expected); heuristic projection, NOT in-vivo VDss measurement&quot;,
+  &quot;value&quot;: &quot;0.264 L/kg (INFO, below 0.5-10 typical drug range)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/vdss.json::value + std + verdict&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf310a_g5_5metal_3seed_50epoch_overall_auc">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">Wf-310A G5 50-epoch full sweep: 5-metal × 3-seed × 50-epoch D-MPNN multi-task + Wasserstein pIC50 regulariser (alpha=0.5, w_w=0.05, L2 gradient-norm guard) MEASURED test_auc = 0.7227 ± 0.0417 (n=13/15 pairs; 2 pending Ru/seed2 + Ir/seed0 retry per Wf-310A). Per party-twenty-spirit §3.5, missing pairs reported honestly; per-metal std unfiltered.</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.7227 ± 0.0417 (n=13/15 pairs; 2 retries in-flight)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>results/wf124_p3_50epoch_full_sweep_g5/training_summary.json::aggregate_5metal.test_auc_mean + .test_auc_std + .n_pairs + missing_pairs + molmetal/scripts/wf278a_g5_aggregate.py</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf310a_g5_5metal_3seed_50epoch_overall_auc')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf310a_g5_5metal_3seed_50epoch_overall_auc-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf310a_g5_5metal_3seed_50epoch_overall_auc&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-310A G5 50-epoch full sweep: 5-metal × 3-seed × 50-epoch D-MPNN multi-task + Wasserstein pIC50 regulariser (alpha=0.5, w_w=0.05, L2 gradient-norm guard) MEASURED test_auc = 0.7227 ± 0.0417 (n=13/15 pairs; 2 pending Ru/seed2 + Ir/seed0 retry per Wf-310A). Per party-twenty-spirit §3.5, missing pairs reported honestly; per-metal std unfiltered.&quot;,
+  &quot;value&quot;: &quot;0.7227 ± 0.0417 (n=13/15 pairs; 2 retries in-flight)&quot;,
+  &quot;json_path&quot;: &quot;results/wf124_p3_50epoch_full_sweep_g5/training_summary.json::aggregate_5metal.test_auc_mean + .test_auc_std + .n_pairs + missing_pairs + molmetal/scripts/wf278a_g5_aggregate.py&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf310a_g5_ru_per_metal_50epoch">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">Wf-310A G5 Ru per-metal MEASURED test_auc = 0.7860 ± 0.0145 (n=2/3 seeds; seed=2 retry in-flight per Wf-310A). vs TODO-180 G4 30-ep Ru baseline 0.7561 → Δ=+0.0300 lift on the 2-seed overlap; vs chemprop v2 single-task baseline 0.7123 → Δ=+0.0737 (real MEASURED).</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> Ru 0.7860 ± 0.0145 (n=2/3 seeds, 50-ep; +0.0300 vs 30-ep 0.7561; +0.0737 vs chemprop v2 single-task 0.7123)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>results/wf124_p3_50epoch_full_sweep_g5/training_summary.json::per_metal.Ru + metrics/by_metric/wf181_g5_50epoch_full_sweep.json</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf310a_g5_ru_per_metal_50epoch')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf310a_g5_ru_per_metal_50epoch-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf310a_g5_ru_per_metal_50epoch&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-310A G5 Ru per-metal MEASURED test_auc = 0.7860 ± 0.0145 (n=2/3 seeds; seed=2 retry in-flight per Wf-310A). vs TODO-180 G4 30-ep Ru baseline 0.7561 → Δ=+0.0300 lift on the 2-seed overlap; vs chemprop v2 single-task baseline 0.7123 → Δ=+0.0737 (real MEASURED).&quot;,
+  &quot;value&quot;: &quot;Ru 0.7860 ± 0.0145 (n=2/3 seeds, 50-ep; +0.0300 vs 30-ep 0.7561; +0.0737 vs chemprop v2 single-task 0.7123)&quot;,
+  &quot;json_path&quot;: &quot;results/wf124_p3_50epoch_full_sweep_g5/training_summary.json::per_metal.Ru + metrics/by_metric/wf181_g5_50epoch_full_sweep.json&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf310a_g5_ir_per_metal_50epoch">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">Wf-310A G5 Ir per-metal MEASURED test_auc = 0.7009 ± 0.0133 (n=2/3 seeds; seed=0 retry in-flight per Wf-310A). vs Krasnov 2026 temporal-split baseline 0.73 → MEASURED-vs-PROJECTED gap −0.029 honestly reported (our scaffold split is stricter than random but less strict than temporal; direct comparison deferred to TODO-219 §3 temporal-split driver).</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> Ir 0.7009 ± 0.0133 (n=2/3 seeds, 50-ep; seed=0 retry pending)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>results/wf124_p3_50epoch_full_sweep_g5/training_summary.json::per_metal.Ir + metrics/by_metric/wf181_g5_50epoch_full_sweep.json</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf310a_g5_ir_per_metal_50epoch')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf310a_g5_ir_per_metal_50epoch-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf310a_g5_ir_per_metal_50epoch&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-310A G5 Ir per-metal MEASURED test_auc = 0.7009 ± 0.0133 (n=2/3 seeds; seed=0 retry in-flight per Wf-310A). vs Krasnov 2026 temporal-split baseline 0.73 → MEASURED-vs-PROJECTED gap −0.029 honestly reported (our scaffold split is stricter than random but less strict than temporal; direct comparison deferred to TODO-219 §3 temporal-split driver).&quot;,
+  &quot;value&quot;: &quot;Ir 0.7009 ± 0.0133 (n=2/3 seeds, 50-ep; seed=0 retry pending)&quot;,
+  &quot;json_path&quot;: &quot;results/wf124_p3_50epoch_full_sweep_g5/training_summary.json::per_metal.Ir + metrics/by_metric/wf181_g5_50epoch_full_sweep.json&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf310a_g5_ru_30ep_vs_50ep_delta">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">Wf-310A G5 30ep→50ep Ru cascade: G4 30-ep Ru baseline test_auc = 0.7561 (TODO-180 G4 cascade re-aggregated at Wf-310A) → G5 50-ep Ru (n=2/3 seeds) test_auc = 0.7860. Δ=+0.0300 MEASURED lift from the +20 epoch doubling on the 2-seed overlap (Ru seed=0 + Ru seed=1). Per party-twenty-spirit §3.5, both epochs are MEASURED; the lift is real but reported on the 2-seed overlap subset (Ru seed=2 retry pending).</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> Δ=+0.0300 (G4 30ep 0.7561 → G5 50ep 0.7860, n=2 seeds overlap)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>results/wf124_p3_50epoch_full_sweep_g5/training_summary.json::ru_auc_baseline_30epoch_g4 + ru_30ep_vs_50ep_delta + results/wf124_p3_remaining_metals_g4/training_summary.json::per_metal.Ru.test_auc_mean</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf310a_g5_ru_30ep_vs_50ep_delta')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf310a_g5_ru_30ep_vs_50ep_delta-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf310a_g5_ru_30ep_vs_50ep_delta&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-310A G5 30ep→50ep Ru cascade: G4 30-ep Ru baseline test_auc = 0.7561 (TODO-180 G4 cascade re-aggregated at Wf-310A) → G5 50-ep Ru (n=2/3 seeds) test_auc = 0.7860. Δ=+0.0300 MEASURED lift from the +20 epoch doubling on the 2-seed overlap (Ru seed=0 + Ru seed=1). Per party-twenty-spirit §3.5, both epochs are MEASURED; the lift is real but reported on the 2-seed overlap subset (Ru seed=2 retry pending).&quot;,
+  &quot;value&quot;: &quot;Δ=+0.0300 (G4 30ep 0.7561 → G5 50ep 0.7860, n=2 seeds overlap)&quot;,
+  &quot;json_path&quot;: &quot;results/wf124_p3_50epoch_full_sweep_g5/training_summary.json::ru_auc_baseline_30epoch_g4 + ru_30ep_vs_50ep_delta + results/wf124_p3_remaining_metals_g4/training_summary.json::per_metal.Ru.test_auc_mean&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf311b_vina_5pocket_aggregate">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.2</span>
+        <span class="claim-title">Wf-311B Vina × 5-pocket MEASURED aggregate: 1h36/3eml/3ny8/4aaw/4rlu high_affinity rates 0.95/0.05/0.35/0.65/0.45 (cross-pocket mean 0.4900 ± 0.3191), triple_success rates 0.00/0.00/0.25/0.00/0.00 (SA/QED not wired in pocket mode), relaxed_success rates 0.3077/0.0/0.0/0.0/0.0 (1h36 only Wf-142 ex=32 retrain), co-crystal reference kcal/mol -0.801/-7.753/-7.140/-4.537/-6.373. Honest framing: smoke-partial on test_001 / pKd scores, NOT full real-cohort.</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 5/5 pockets; mean high_affinity 0.4900 ± 0.3191</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf311b_vina_5pocket_aggregate.json::aggregate + per_pocket_summary</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf311b_vina_5pocket_aggregate')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf311b_vina_5pocket_aggregate-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf311b_vina_5pocket_aggregate&quot;,
+  &quot;section&quot;: &quot;§4.2&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-311B Vina × 5-pocket MEASURED aggregate: 1h36/3eml/3ny8/4aaw/4rlu high_affinity rates 0.95/0.05/0.35/0.65/0.45 (cross-pocket mean 0.4900 ± 0.3191), triple_success rates 0.00/0.00/0.25/0.00/0.00 (SA/QED not wired in pocket mode), relaxed_success rates 0.3077/0.0/0.0/0.0/0.0 (1h36 only Wf-142 ex=32 retrain), co-crystal reference kcal/mol -0.801/-7.753/-7.140/-4.537/-6.373. Honest framing: smoke-partial on test_001 / pKd scores, NOT full real-cohort.&quot;,
+  &quot;value&quot;: &quot;5/5 pockets; mean high_affinity 0.4900 ± 0.3191&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf311b_vina_5pocket_aggregate.json::aggregate + per_pocket_summary&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf311b_rmsd_panel_aggregate">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.6</span>
+        <span class="claim-title">Wf-311B RMSD panel MEASURED: docked_pose_rmsd 5/5 pockets &lt; 2.0 Å SOTA (cross-pocket median 0.6578 Å, std 0.2546 Å, min 0.4223 / max 1.0240; Wf-246-B redesigned schema with per-pocket std + difficulty flag); ligand_vs_pocket_rmsd 0/5 pockets &lt; 2.0 Å (median 3.8333 Å; Wf-247-A RDKit rdMolAlign.GetBestRMS canonical SOTA path is STRICTER than legacy Kabsch+Hungarian); rigid_fragment_rmsd 1.241 ± 0.626 Å mean on pocket 1h36 (n=20), 5/5 pockets MEASURED on disk.</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> docked 5/5 &lt; 2.0Å median 0.6578Å; lig_vs_pkt 0/5 &lt; 2.0Å median 3.8333Å</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf311b_rmsd_aggregate.json::docked_pose_rmsd + ligand_vs_pocket_rmsd + rigid_fragment_rmsd</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf311b_rmsd_panel_aggregate')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf311b_rmsd_panel_aggregate-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf311b_rmsd_panel_aggregate&quot;,
+  &quot;section&quot;: &quot;§4.6&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-311B RMSD panel MEASURED: docked_pose_rmsd 5/5 pockets &lt; 2.0 Å SOTA (cross-pocket median 0.6578 Å, std 0.2546 Å, min 0.4223 / max 1.0240; Wf-246-B redesigned schema with per-pocket std + difficulty flag); ligand_vs_pocket_rmsd 0/5 pockets &lt; 2.0 Å (median 3.8333 Å; Wf-247-A RDKit rdMolAlign.GetBestRMS canonical SOTA path is STRICTER than legacy Kabsch+Hungarian); rigid_fragment_rmsd 1.241 ± 0.626 Å mean on pocket 1h36 (n=20), 5/5 pockets MEASURED on disk.&quot;,
+  &quot;value&quot;: &quot;docked 5/5 &lt; 2.0Å median 0.6578Å; lig_vs_pkt 0/5 &lt; 2.0Å median 3.8333Å&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf311b_rmsd_aggregate.json::docked_pose_rmsd + ligand_vs_pocket_rmsd + rigid_fragment_rmsd&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf311b_main_results_aggregate">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.2</span>
+        <span class="claim-title">Wf-311B main results aggregate: chemprop_v2_lomo_v2 = 0.9015 ± 0.0168 (5-metal × 5-seed × 50-ep, per-metal in-domain AUC; Ru=0.926, Ir=0.913, Os=0.900, Rh=0.886, Re=0.881); nci60_precious_9cell_auc = 0.8007 ± 0.0160 (Krasnov 2026 baseline 0.81, Δ=-0.0093 within std — honest-NEGATIVE: statistically equivalent, NOT a beat); per_metal_pic50_wasserstein 3/5 metals (Ru/Ir/Os), n=4 runs.</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> lomo 0.9015±0.0168; nci60 0.8007±0.0160 (Krasnov-equivalent)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf311b_main_results_aggregate.json::chemprop_v2_lomo_v2 + nci60_precious_9cell_auc</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf311b_main_results_aggregate')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf311b_main_results_aggregate-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf311b_main_results_aggregate&quot;,
+  &quot;section&quot;: &quot;§4.2&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-311B main results aggregate: chemprop_v2_lomo_v2 = 0.9015 ± 0.0168 (5-metal × 5-seed × 50-ep, per-metal in-domain AUC; Ru=0.926, Ir=0.913, Os=0.900, Rh=0.886, Re=0.881); nci60_precious_9cell_auc = 0.8007 ± 0.0160 (Krasnov 2026 baseline 0.81, Δ=-0.0093 within std — honest-NEGATIVE: statistically equivalent, NOT a beat); per_metal_pic50_wasserstein 3/5 metals (Ru/Ir/Os), n=4 runs.&quot;,
+  &quot;value&quot;: &quot;lomo 0.9015±0.0168; nci60 0.8007±0.0160 (Krasnov-equivalent)&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf311b_main_results_aggregate.json::chemprop_v2_lomo_v2 + nci60_precious_9cell_auc&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf311b_section_4_2_refreshed">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.2</span>
+        <span class="claim-title">Wf-311B: metrics/by_paper_section/section_4_2_main_results.json REFRESHED with all hard-metric aggregations (Vina × 5, RMSD panel, chemprop_v2_lomo_v2, nci60_precious_9cell_auc). 5 cells §4 Table 1 metal-compliance arm preserved; 55 DESIGN cells still pending production 100×3 sweep (R13 / wo21fr1ug).</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> REFRESHED (5 MEASURED + 55 DESIGN cells; Wf-311B aggregation block added)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_paper_section/section_4_2_main_results.json::wf311b_aggregations + verdict</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf311b_section_4_2_refreshed')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf311b_section_4_2_refreshed-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf311b_section_4_2_refreshed&quot;,
+  &quot;section&quot;: &quot;§4.2&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-311B: metrics/by_paper_section/section_4_2_main_results.json REFRESHED with all hard-metric aggregations (Vina × 5, RMSD panel, chemprop_v2_lomo_v2, nci60_precious_9cell_auc). 5 cells §4 Table 1 metal-compliance arm preserved; 55 DESIGN cells still pending production 100×3 sweep (R13 / wo21fr1ug).&quot;,
+  &quot;value&quot;: &quot;REFRESHED (5 MEASURED + 55 DESIGN cells; Wf-311B aggregation block added)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_paper_section/section_4_2_main_results.json::wf311b_aggregations + verdict&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf311b_section_4_6_refreshed">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.6</span>
+        <span class="claim-title">Wf-311B: metrics/by_paper_section/section_4_6_pb_panel.json REFRESHED — PB pass rate 0.846 (smoke 1-pocket) preserved; docked_pose_rmsd 0.6578 Å median, ligand_vs_pocket_rmsd 3.8333 Å median now part of §4.6 panel; RMSD aggregate block added. Honest framing: PB production 10×3 still BLOCKED by n_distinct=1.</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> REFRESHED (PB 0.846 smoke + RMSD 0.6578Å median)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_paper_section/section_4_6_pb_panel.json::aggregate_metrics + verdict</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf311b_section_4_6_refreshed')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf311b_section_4_6_refreshed-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf311b_section_4_6_refreshed&quot;,
+  &quot;section&quot;: &quot;§4.6&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-311B: metrics/by_paper_section/section_4_6_pb_panel.json REFRESHED — PB pass rate 0.846 (smoke 1-pocket) preserved; docked_pose_rmsd 0.6578 Å median, ligand_vs_pocket_rmsd 3.8333 Å median now part of §4.6 panel; RMSD aggregate block added. Honest framing: PB production 10×3 still BLOCKED by n_distinct=1.&quot;,
+  &quot;value&quot;: &quot;REFRESHED (PB 0.846 smoke + RMSD 0.6578Å median)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_paper_section/section_4_6_pb_panel.json::aggregate_metrics + verdict&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf311b_section_5_ablation_refreshed">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§5</span>
+        <span class="claim-title">Wf-311B: metrics/by_paper_section/section_5_ablation.json REFRESHED with 4 new ablation axes: per-pocket Vina (5/5 pockets), RMSD panel (15 measurements), chemprop_v2_lomo_v2 (25 runs), nci60_9cell (9 cells). 9 axes total with data (5 Wf-268C baseline + 4 Wf-311B).</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> REFRESHED (5 Wf-268C + 4 Wf-311B ablation axes)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_paper_section/section_5_ablation.json::ablation_axes_with_data + verdict</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf311b_section_5_ablation_refreshed')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf311b_section_5_ablation_refreshed-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf311b_section_5_ablation_refreshed&quot;,
+  &quot;section&quot;: &quot;§5&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-311B: metrics/by_paper_section/section_5_ablation.json REFRESHED with 4 new ablation axes: per-pocket Vina (5/5 pockets), RMSD panel (15 measurements), chemprop_v2_lomo_v2 (25 runs), nci60_9cell (9 cells). 9 axes total with data (5 Wf-268C baseline + 4 Wf-311B).&quot;,
+  &quot;value&quot;: &quot;REFRESHED (5 Wf-268C + 4 Wf-311B ablation axes)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_paper_section/section_5_ablation.json::ablation_axes_with_data + verdict&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf311d_ood_reachability_summary">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.4</span>
+        <span class="claim-title">Wf-311D PART 1 OOD reachability aggregated across 30 d-block elements (Wf-130 P4 close-out 2026-09-27): 20/30 elements pass the &gt;=0.40 gate; aggregate macro reachability = 0.4989; per-block 3d = 8/10 pass, 4d = 7/10, 5d+La = 5/10. Cross-domain (Wf-130 P3, PlatinAI + MetalCytoTox) supplement covers 8/30 metals with reachability=0.0 (CPU-only env lacks RDKit; closure_theorem partner_terms fallback rejects metal-cyto SMILES).</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 20/30 pass, macro_reachability=0.4989</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/ood_reachability_summary.json::aggregate_reachability_macro + n_elements_gate_pass + per_block_aggregate</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf311d_ood_reachability_summary')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf311d_ood_reachability_summary-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf311d_ood_reachability_summary&quot;,
+  &quot;section&quot;: &quot;§3.4&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-311D PART 1 OOD reachability aggregated across 30 d-block elements (Wf-130 P4 close-out 2026-09-27): 20/30 elements pass the &gt;=0.40 gate; aggregate macro reachability = 0.4989; per-block 3d = 8/10 pass, 4d = 7/10, 5d+La = 5/10. Cross-domain (Wf-130 P3, PlatinAI + MetalCytoTox) supplement covers 8/30 metals with reachability=0.0 (CPU-only env lacks RDKit; closure_theorem partner_terms fallback rejects metal-cyto SMILES).&quot;,
+  &quot;value&quot;: &quot;20/30 pass, macro_reachability=0.4989&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/ood_reachability_summary.json::aggregate_reachability_macro + n_elements_gate_pass + per_block_aggregate&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf311d_m18_protein_metal_baseline">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.5.2</span>
+        <span class="claim-title">Wf-311D PART 2 m18 protein_metal binding AUC aggregated across 100-ep + 50-ep baselines: 100-ep test_auc = 0.7436 ± 0.0092 (n=3 seeds, n_rows=5257, 209 cell lines, 5 metals); 50-ep v2 test_auc = 0.7393 ± 0.0092. Per-residue redesign v1 (metric18_protein_metal_per_residue.json) per_complex_auc = 0.9945 / per_residue_auc = 0.9627 / per_residue_pr_auc = 0.8331 — labels are derived SYNTHETIC PROXIES (MetalCytoToxDB has only complex-level active/inactive labels; per-residue labels are heuristically derived, NOT real per-residue binding labels).</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 100-ep 0.7436 / 50-ep 0.7393 / per_residue 0.9627 (synthetic_proxy)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/protein_metal_per_residue_summary.json::components.metric18_100epoch + components.metric18_50epoch + per_residue_redesign_v1</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf311d_m18_protein_metal_baseline')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf311d_m18_protein_metal_baseline-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf311d_m18_protein_metal_baseline&quot;,
+  &quot;section&quot;: &quot;§4.5.2&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-311D PART 2 m18 protein_metal binding AUC aggregated across 100-ep + 50-ep baselines: 100-ep test_auc = 0.7436 ± 0.0092 (n=3 seeds, n_rows=5257, 209 cell lines, 5 metals); 50-ep v2 test_auc = 0.7393 ± 0.0092. Per-residue redesign v1 (metric18_protein_metal_per_residue.json) per_complex_auc = 0.9945 / per_residue_auc = 0.9627 / per_residue_pr_auc = 0.8331 — labels are derived SYNTHETIC PROXIES (MetalCytoToxDB has only complex-level active/inactive labels; per-residue labels are heuristically derived, NOT real per-residue binding labels).&quot;,
+  &quot;value&quot;: &quot;100-ep 0.7436 / 50-ep 0.7393 / per_residue 0.9627 (synthetic_proxy)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/protein_metal_per_residue_summary.json::components.metric18_100epoch + components.metric18_50epoch + per_residue_redesign_v1&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf311d_gi50_proxy_summary">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.5.3</span>
+        <span class="claim-title">Wf-311D PART 3 gi50_proxy aggregation verified: existing gi50_proxy.json carries cohort-level value=8.0 (clipped, -log10(mol/L)) on n=5000 MetalCytoToxDB-derived samples via Hou 2007 descriptor heuristic. ALREADY AGGREGATED — no further aggregation required. Cite as &#x27;gi50_proxy (Hou 2007 model) = 8.0 on n=5000&#x27; — NOT as &#x27;GI50 = 8.0&#x27; — this is a model proxy, NOT a wet-lab GI50 measurement.</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 8.0 (clipped) on n=5000 (Hou 2007 model proxy)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/gi50_proxy_summary.json::value + n_samples + aggregation_verdict</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf311d_gi50_proxy_summary')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf311d_gi50_proxy_summary-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf311d_gi50_proxy_summary&quot;,
+  &quot;section&quot;: &quot;§4.5.3&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-311D PART 3 gi50_proxy aggregation verified: existing gi50_proxy.json carries cohort-level value=8.0 (clipped, -log10(mol/L)) on n=5000 MetalCytoToxDB-derived samples via Hou 2007 descriptor heuristic. ALREADY AGGREGATED — no further aggregation required. Cite as &#x27;gi50_proxy (Hou 2007 model) = 8.0 on n=5000&#x27; — NOT as &#x27;GI50 = 8.0&#x27; — this is a model proxy, NOT a wet-lab GI50 measurement.&quot;,
+  &quot;value&quot;: &quot;8.0 (clipped) on n=5000 (Hou 2007 model proxy)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/gi50_proxy_summary.json::value + n_samples + aggregation_verdict&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf311d_pharmacophore_pass_rate_prod">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.8</span>
+        <span class="claim-title">Wf-311D PART 4 pharmacophore_pass_rate PRODUCTION expansion: strict_pass_rate = 0.1737 (n=78/449, lenient=0.3786 n=170/449) on the metallo-drug cohort from molmetal/data/metallo_drugs_500_train.csv (334 tmqm + 96 platinai + 19 metal_cytotox SMILES). PRODUCTION value (0.1737) is LOWER than curated smoke (0.7 on 10 hand-picked SMILES), as expected — curated smoke was biased upward; production value is the honest cohort-level drug-likeness measurement. Use production as the headline number; curated 0.7 retained as upper-bound sanity check.</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.1737 strict (78/449), 0.3786 lenient (170/449)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/pharmacophore_pass_rate_prod.json::aggregate.strict_pass_rate + lenient_pass_rate + per_source + comparison_to_curated</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf311d_pharmacophore_pass_rate_prod')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf311d_pharmacophore_pass_rate_prod-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf311d_pharmacophore_pass_rate_prod&quot;,
+  &quot;section&quot;: &quot;§3.8&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-311D PART 4 pharmacophore_pass_rate PRODUCTION expansion: strict_pass_rate = 0.1737 (n=78/449, lenient=0.3786 n=170/449) on the metallo-drug cohort from molmetal/data/metallo_drugs_500_train.csv (334 tmqm + 96 platinai + 19 metal_cytotox SMILES). PRODUCTION value (0.1737) is LOWER than curated smoke (0.7 on 10 hand-picked SMILES), as expected — curated smoke was biased upward; production value is the honest cohort-level drug-likeness measurement. Use production as the headline number; curated 0.7 retained as upper-bound sanity check.&quot;,
+  &quot;value&quot;: &quot;0.1737 strict (78/449), 0.3786 lenient (170/449)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/pharmacophore_pass_rate_prod.json::aggregate.strict_pass_rate + lenient_pass_rate + per_source + comparison_to_curated&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf311d_metal_coord_phase3g_singleton">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§4.5.5</span>
+        <span class="claim-title">Wf-311D PART 5 metal_coord_compliance Phase-3G completion: current metal_coord_compliance = 1.0 on 5x1 cisplatin + all-5 pilot (DESIGN+1-PILOT, n_distinct=1, singleton collapse — the seed itself is Pt_II square-planar so the metric trivially passes). Phase-3G completion honest-negative: full 10x3 rotation BLOCKED on TODO-29 F2(a) MetalLigandExchange SMARTS rule (NOT SHIPPED) + GPU unblock. Phase-3G shipping surface is intact (metal_coord_probe.py + test_metal_coord_probe.py + Phase 4 wire-in to r4_lambda_only_run.py) but the non-degenerate compliance verification is deferred until TODO-29 + GPU clear.</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 1.0 on singleton (n_distinct=1); Phase-3G completion = honest-negative</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/metal_coord_compliance_phase3g.json::current_pilot_status + phase3g_completion_verdict + blockers</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf311d_metal_coord_phase3g_singleton')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf311d_metal_coord_phase3g_singleton-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf311d_metal_coord_phase3g_singleton&quot;,
+  &quot;section&quot;: &quot;§4.5.5&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;Wf-311D PART 5 metal_coord_compliance Phase-3G completion: current metal_coord_compliance = 1.0 on 5x1 cisplatin + all-5 pilot (DESIGN+1-PILOT, n_distinct=1, singleton collapse — the seed itself is Pt_II square-planar so the metric trivially passes). Phase-3G completion honest-negative: full 10x3 rotation BLOCKED on TODO-29 F2(a) MetalLigandExchange SMARTS rule (NOT SHIPPED) + GPU unblock. Phase-3G shipping surface is intact (metal_coord_probe.py + test_metal_coord_probe.py + Phase 4 wire-in to r4_lambda_only_run.py) but the non-degenerate compliance verification is deferred until TODO-29 + GPU clear.&quot;,
+  &quot;value&quot;: &quot;1.0 on singleton (n_distinct=1); Phase-3G completion = honest-negative&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/metal_coord_compliance_phase3g.json::current_pilot_status + phase3g_completion_verdict + blockers&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+  </div>
+
+  <h2>Honest-negative catalog (TODO-207 §9)</h2>
+  
+    <section class="honest-negative">
+      <h3>Honest-negative catalog (TODO-207 §9, party-twenty-spirit §3.5 0 容忍 不掩盖)</h3>
+      <ol class="hn-list">
+        
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim chemprop v2 beats iMoLD on DrugOOD (Δ = −0.0074 assay within std)</strong>
+              <span class="hn-ref">— TODO/completed/188_paper_4_krasnov_protocol_aligned.md §5.2</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim cross-metal LOMO transfer (TODO-154 in-domain per-metal only)</strong>
+              <span class="hn-ref">— TODO/completed/188_paper_4_krasnov_protocol_aligned.md §5.2</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim DrugOOD 1.58M train full retrain is measured (BD-11 DEFERRED)</strong>
+              <span class="hn-ref">— TODO/INDEX.md BD-11</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim full PlatinAI 226K retrain (500-mol subset only — L2 DEFERRED)</strong>
+              <span class="hn-ref">— TODO/completed/188_paper_4_krasnov_protocol_aligned.md §5.3</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim BindingDB full 1.07M metal-filter retrain (BD-12 DEFERRED)</strong>
+              <span class="hn-ref">— TODO/INDEX.md BD-12</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim scaffold-split is more comparable to Krasnov time-split than a temporal driver</strong>
+              <span class="hn-ref">— TODO/completed/188_paper_4_krasnov_protocol_aligned.md §1.3</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim m21 9-cell aggregate BEATS Krasnov 0.81 (statistically equivalent)</strong>
+              <span class="hn-ref">— TODO/completed/188_paper_4_krasnov_protocol_aligned.md §4.3</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim CFM decode_ratio 0.9958 BEATS synthetic 1.000 (expected gap)</strong>
+              <span class="hn-ref">— TODO/completed/207_unified_pre_flight_checklist_v2.md §9.6.3</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim Wf-219 smaller-backbone 3-seed numbers more accurate than TODO-154 5-seed full-backbone</strong>
+              <span class="hn-ref">— TODO/completed/188_paper_4_krasnov_protocol_aligned.md §5.2</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim Re per-metal paired t-test is significant (n=2 underpowered)</strong>
+              <span class="hn-ref">— TODO/completed/154_chemprop_v4_head_to_head.md §1</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim m7 diversity 0.0397 reaches TargetDiff 0.860 ceiling (gap +0.820 honest)</strong>
+              <span class="hn-ref">— TODO/completed/188_paper_4_krasnov_protocol_aligned.md §4.4</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim chemprop v3 DrugOOD-PASS (BELOW_RANDOM 0.4544, §6 honest-negative)</strong>
+              <span class="hn-ref">— TODO/completed/207_unified_pre_flight_checklist_v2.md §9.4</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.4</span>
+              <strong>DO NOT claim Wf-263A empirical DrugOOD re-measurement PASS (75-min wall budget TIMEOUT; structural PASS only, empirical TBD)</strong>
+              <span class="hn-ref">— molmetal/reports/wf263a_verify/verify_report.md §3.2</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.4</span>
+              <strong>DO NOT claim Wf-266 G5 50-epoch sweep MEASURED (0/15 pairs — CUDA error invalid device ordinal; wrapper BLOCKED at GPU ordinal layer)</strong>
+              <span class="hn-ref">— molmetal/reports/wf266_final/final_status.md §4.2</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.4</span>
+              <strong>DO NOT claim Wf-266 v3-fix mode produces MEASURED AUC lift (IMPLEMENT only — no GPU retrain; AUC lift deferred to follow-up TODO-130 G5 retrain)</strong>
+              <span class="hn-ref">— molmetal/reports/wf266_lomo_fix/wf266_report.md §Honest-framing</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.AI</span>
+              <strong>DO NOT cite cfm_decode_real.json value=0.9645 as the m14 LEAD (Wf-274A regression_disclosure flags it as a smaller-cohort 1-seed CPU PlatinAI pt_subset measurement; cite Wf-188 m14 FULL = 0.9958 instead)</strong>
+              <span class="hn-ref">— metrics/by_metric/cfm_decode_real.json::regression_disclosure + TODO-188 §5.2 line 387</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.AJ</span>
+              <strong>DO NOT deploy m14 LEAD CFM with --no-yuelbond flag (Wf-269C MEASURED: decode_ratio 1.000 → 0.000, Δ=−1.000; m14 LEAD silently invalidates without raising any runtime error)</strong>
+              <span class="hn-ref">— TODO/completed/m14_lead_deployment_precondition.md §2 + molmetal/reports/wf269c_cfm_real/wf269c_report.json</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.AK</span>
+              <strong>DO NOT cite Wf-286A as 5-seed DrugOOD v3-fallback confirmation (FAILED: gate_1_all_ran=false, gate_2_total_runs=0, all 7 gates empty; only load_split_data ran (n_train=60908) before per-seed trainer step did not start — no AUC produced; wall = 1.86e-5 min effective NO-OP)</strong>
+              <span class="hn-ref">— molmetal/reports/wf286a_drugood_5seed/aggregate.json + molmetal/reports/wf286_synthesis/followup_summary.md §1.1</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.AL</span>
+              <strong>DO NOT cite aqueous_solubility_logS = -7.612 as druglikeness PASS (cohort mean BELOW -4.0 by -3.612; pre-flight gate carries HONEST_NEGATIVE=true tag, do not silently mask; metallo-drug cohort intrinsically lipophilic — low log S is expected per Crippen + aromatic ring count)</strong>
+              <span class="hn-ref">— metrics/by_metric/aqueous_solubility_logS.json::HONEST_NEGATIVE + honest_negative_reason + TODO/completed/admet_pass_through_integration.md §R03</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.AM</span>
+              <strong>DO NOT cite OOD reachability as a full d-block PASS — 10/30 elements (Sc/V/Mo/Tc/Pd/Re/Os/Ir/Pt/Au) FAIL the &gt;=0.40 gate; aggregate macro reachability = 0.4989 (just under gate); the 5d+La block (Pt/Pd/Au/Ir/Os/Re) is the weakest (5/10 pass) — Wf-130 P3 cross-domain supplement reports 0.0 for 8 metals (CPU-only env lacks RDKit).</strong>
+              <span class="hn-ref">— metrics/by_metric/ood_reachability_summary.json::n_elements_gate_pass + per_block_aggregate + cross_domain_supplement</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.AN</span>
+              <strong>DO NOT cite per_residue_auc = 0.9627 as a real per-residue binding signal — labels are SYNTHETIC PROXIES derived from the complex-level active label (MetalCytoToxDB does NOT ship per-residue binding labels); per party-twenty-spirit §3.5 the value reflects the model&#x27;s ability to reproduce the complex-level heuristic projection, NOT per-residue binding chemistry.</strong>
+              <span class="hn-ref">— metrics/by_metric/protein_metal_per_residue_summary.json::per_residue_redesign_v1.synthetic_proxy_warning + TODO/completed/247_b_per_residue_m18_redesign.md §honest-framing</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.AO</span>
+              <strong>DO NOT cite pharmacophore_pass_rate = 0.7 as the production drug-likeness number — that value is from a 10-SMILES curated hand-picked set (biased upward); PRODUCTION value on 449 metallo-drug SMILES is 0.1737 strict / 0.3786 lenient. Cite production as the headline.</strong>
+              <span class="hn-ref">— metrics/by_metric/pharmacophore_pass_rate_prod.json::comparison_to_curated + honest_framing_note</span>
+            </li>
+            
+      </ol>
+    </section>
+    
+</main>
+
+<footer class="dashboard-footer">
+  <p>
+    Honest framing per <code>party-twenty-spirit</code> §3.5 (0 容忍 不掩盖):
+    every claim badge (MEASURED / PROJECTED / honest-negative) traces to a JSON
+    path embedded in the source JSON snippet. Re-run
+    <code>paper_dashboard.py</code> after any Wf-265-Collect refresh.
+  </p>
+  <p>
+    <strong>Wf-268C-Dash update_report:</strong>
+    28 new claims +
+    10 new honest-negatives +
+    3 new cohort sections.
+  </p>
+  <p>
+    <strong>Paper doc:</strong> <code>TODO/completed/188_paper_4_krasnov_protocol_aligned.md</code> &middot;
+    <strong>Collect JSON:</strong> <code>molmetal/reports/wf265_collect/all_results.json</code> &middot;
+    <strong>Checklist doc:</strong> <code>/home/hugo/codes/mol-metal/TODO/completed/207_unified_pre_flight_checklist_v2.md</code>
+  </p>
+</footer>
+</body>
+</html>

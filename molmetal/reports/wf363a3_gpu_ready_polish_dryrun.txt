@@ -1,0 +1,59 @@
+[2026-09-29T14:24:09+0000] Wf-350-B1 pre_flight_gpu_ready.sh — run 20260929T142409Z
+[2026-09-29T14:24:09+0000]   REPO_ROOT=/home/hugo/codes/mol-metal
+[2026-09-29T14:24:09+0000]   DRY_RUN=1 MIN_VRAM_MB=16000 REQUIRE_GPUS=1
+[2026-09-29T14:24:09+0000]   MANIFEST_PATH=/home/hugo/codes/mol-metal/molmetal/reports/wf350a2_compute_manifest.json
+[2026-09-29T14:24:09+0000]   STRICT=0
+
+=================================================================
+ Wf-363-A3 dry-run summary — pre_flight_gpu_ready.sh
+   run=20260929T142409Z DRY_RUN=1 STRICT=0
+   min_vram_mb=16000 require_gpus=1
+   manifest=/home/hugo/codes/mol-metal/molmetal/reports/wf350a2_compute_manifest.json
+=================================================================
+ Per-gate verdicts (PASS/FAIL/SKIP) + evidence paths below:
+   1. pre_flight_all         (informative; pre-existing FAILs are
+                              honest-negatives per AGENTS.md §5.2)
+   2. compute_manifest       (Wf-350-B1 NEW BLOCKER; gates 1-3 of
+                              Wf-343a-R1 #1 schema + GPU + VRAM)
+   3. wf343c2_per_wave       (per-wave runtime; Wf-343c2 + Wf-347A1)
+   4. wf343c3_data_quality   (data quality; Wf-343c3 + Wf-347A1)
+   5. USER_OK_gate           (kill_then_adapt; SKIP on --dry-run,
+                              REQUIRED for real launch with
+                              USER_OK=1 per Wf-355 wrapper convention)
+=================================================================
+
+[2026-09-29T14:24:09+0000] 
+[2026-09-29T14:24:09+0000] ===== Gate 1/5: pre_flight_check.py --pipeline all (informative) =====
+[14:26:47] pre_flight_all                 PASS    preflight v3 n_gates=94 PASS=90 FAIL=2 SKIP=2 — pre-existing FAILs (informative; not a Wf-350-B1 blocker; see Wf-350-A2 §5)
+[2026-09-29T14:26:47+0000] 
+[2026-09-29T14:26:47+0000] ===== Gate 2/5: compute-manifest schema + GPU count + VRAM (Wf-350-B1 BLOCKER) =====
+[14:26:47] compute_manifest               PASS    PASS: manifest=/home/hugo/codes/mol-metal/molmetal/reports/wf350a2_compute_manifest.json schema-valid | 2 GPU(s); smallest VRAM=32607 MB; torch=2.14.0+cu130 cuda=13.0; host=ZhaoLab kernel=7.2.6-hardened1-1-hardened
+[2026-09-29T14:26:47+0000] 
+[2026-09-29T14:26:47+0000] ===== Gate 3/5: wf343c2_per_wave_check.py --skip-live --strict =====
+[14:26:47] wf343c2_per_wave               FAIL    wf343c2 rc=1 tail=  (cascading from pre-flight pre-existing FAILs per Wf-350-A2 §5)
+[2026-09-29T14:26:47+0000] 
+[2026-09-29T14:26:47+0000] ===== Gate 4/5: wf343c3_data_quality_check.py --strict =====
+[14:26:50] wf343c3_data_quality           PASS    wf343c3 25-verdict surface all PASS (5 loaders × 5 checks)
+[2026-09-29T14:26:50+0000] 
+[2026-09-29T14:26:50+0000] ===== Gate 5/5: USER_OK (kill_then_adapt standing directive) =====
+[14:26:50] USER_OK_gate                   SKIP    --dry-run; USER_OK not required for CPU verification; real launch requires USER_OK=1
+[2026-09-29T14:26:50+0000] 
+[2026-09-29T14:26:50+0000] ===== Wf-350-B1 verdict =====
+[2026-09-29T14:26:50+0000]   PASS=3  FAIL=1  SKIP=1  BLOCKING_FAIL=0
+[2026-09-29T14:26:50+0000]   STRICT=0  DRY_RUN=1
+
+=================================================================
+ Wf-363-A3 dry-run summary footer
+=================================================================
+ per-gate verdict + evidence path:
+   [PASS] pre_flight_all             preflight v3 n_gates=94 PASS=90 FAIL=2 SKIP=2 — pre-existing FAILs (informative; not a Wf-350-B1 blocker; see Wf-350-A2 §5)
+   [PASS] compute_manifest           PASS: manifest=/home/hugo/codes/mol-metal/molmetal/reports/wf350a2_compute_manifest.json schema-valid | 2 GPU(s); smallest VRAM=32607 MB; torch=2.14.0+cu130 cuda=13.0; host=ZhaoLab kernel=7.2.6-hardened1-1-hardened
+   [FAIL] wf343c2_per_wave           wf343c2 rc=1 tail=  (cascading from pre-flight pre-existing FAILs per Wf-350-A2 §5)
+   [PASS] wf343c3_data_quality       wf343c3 25-verdict surface all PASS (5 loaders × 5 checks)
+   [SKIP] USER_OK_gate               --dry-run; USER_OK not required for CPU verification; real launch requires USER_OK=1
+
+ totals: PASS=3  FAIL=1  SKIP=1  BLOCKING_FAIL=0
+ USER_OK gate status: SKIP (--dry-run; required for real launch)
+ log file: /home/hugo/codes/mol-metal/molmetal/reports/pre_flight_gpu_ready/run_20260929T142409Z.log
+=================================================================
+[2026-09-29T14:26:50+0000] VERDICT: PASS (dry-run; all hard gates green; USER_OK SKIP expected on --dry-run)

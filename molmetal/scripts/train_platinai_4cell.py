@@ -94,6 +94,20 @@ from molmetal.baselines.dmpnn import (
 from molmetal.baselines.eval_utils import compute_metrics, per_cell_line_auc
 from molmetal.data.splits import ScaffoldSplitter
 
+try:
+    from molmetal.scripts.wf386a3_atomic_write import (
+        atomic_write_file,
+        safe_overwrite_check,
+        detect_truncation,
+    )
+    _WF416_HAS_ATOMIC = True
+except ImportError:  # pragma: no cover — fallback when running as standalone
+    _WF416_HAS_ATOMIC = False
+    atomic_write_file = None  # type: ignore[assignment]
+    safe_overwrite_check = None  # type: ignore[assignment]
+    detect_truncation = None  # type: ignore[assignment]
+
+
 RDLogger = None
 try:
     from rdkit import RDLogger as _RD
@@ -126,6 +140,34 @@ REPORTS_DIR = PROJECT_ROOT / "molmetal" / "reports"
 # ---------------------------------------------------------------------------
 # Four-cell-line multi-task model
 # ---------------------------------------------------------------------------
+def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
+    """Wf-416-A1 atomic-write-protocol wrapper around direct write_text.
+
+    Falls back to direct write_text if atomic_write_file is unavailable
+    (e.g. when the script is run standalone without the molmetal package
+    on PYTHONPATH).
+    """
+    if _WF416_HAS_ATOMIC and atomic_write_file is not None:
+        if safe_overwrite_check is not None:
+            _risk = safe_overwrite_check(path, content, min_lines=min_lines)
+            if _risk is not None:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "[Wf-416-A1] safe_overwrite_check diff_ratio=%.3f at %s",
+                    _risk, path,
+                )
+        atomic_write_file(path, content, encoding="utf-8")
+        if detect_truncation is not None:
+            _trunc = detect_truncation(content, expected_min_length=expected_min_length)
+            if _trunc is not None:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "[Wf-416-A1] detect_truncation reason=%r at %s",
+                    _trunc, path,
+                )
+    else:  # pragma: no cover — fallback when atomic primitive unavailable
+        Path(path).write_text(content, encoding="utf-8")
+
 class FourCellReadout(nn.Module):
     """Shared trunk + 4 (regression + classification) head pairs.
 
@@ -886,7 +928,7 @@ def _write_report(
         lines.append("| " + " | ".join(row) + " |")
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text("\n".join(lines))
+    _wf416_atomic_write_text(out_path, "\n".join(lines))
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -905,7 +947,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             d = {"seed": seed, "error": repr(exc)}
         per_seed.append(d)
         seed_path = out_dir / f"seed{seed}.json"
-        seed_path.write_text(json.dumps(d, indent=2, default=str))
+        _wf416_atomic_write_text(seed_path, json.dumps(d, indent=2, default=str))
         print(f"[metric2] wrote {seed_path}", flush=True)
 
     aggregate = _aggregate([d for d in per_seed if "error" not in d])
@@ -933,7 +975,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
     aggregate_path = out_dir / "aggregate.json"
-    aggregate_path.write_text(json.dumps(full_payload, indent=2, default=str))
+    _wf416_atomic_write_text(aggregate_path, json.dumps(full_payload, indent=2, default=str))
     print(
         f"\n[metric2] === AGGREGATE ===",
         f"\n[metric2] AUC mean = {aggregate['auc_mean_avg']:.4f} ± {aggregate['auc_mean_std']:.4f}",
@@ -987,7 +1029,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "model": "dmpnn_4cell_multitask",
     }
     metric_path.parent.mkdir(parents=True, exist_ok=True)
-    metric_path.write_text(json.dumps(metric_payload, indent=2))
+    _wf416_atomic_write_text(metric_path, json.dumps(metric_payload, indent=2))
     print(f"[metric2] wrote {metric_path}", flush=True)
 
     # Markdown report

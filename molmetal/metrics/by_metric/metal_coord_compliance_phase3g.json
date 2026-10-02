@@ -1,0 +1,76 @@
+{
+  "hook": "metal_coord_compliance_phase3g",
+  "wf_owner": "Wf-325F",
+  "wf_origin": "Wf-311D PART 5 (claim_wf311d_metal_coord_phase3g_singleton)",
+  "date": "2026-09-29",
+  "phase": "3G",
+  "status": "PARTIAL_UNBLOCK",
+  "blockers_resolved": [
+    "BLOCK-on-runtime portion of TODO-29 F2(a) MetalLigandExchange SMARTS rule CLOSED via Wf-318F (F2MetalLigandExchangeRuntime loads 170 deduped patterns from 5 curated F2(a) + 84 L-R17-B2 matrix + 17 NEW SMARTS + 64 82-metal-filtered). 16/16 tests PASS per test_wf318f_f2a_metal_ligand_runtime.py.",
+    "84-rule MLE matrix SHIPPED via Wf-290F4 (12 metals x 7 ligands = 84 patterns; 659/659 tests PASS per test_metal_ligand_exchange_matrix.py)."
+  ],
+  "blockers_remaining": [
+    "GPU portion (Wf-310E Wf-135 Phase 2) BLOCKED on user OK per mol-metal-gpu-execution §0 kill_then_adapt directive.",
+    "r13_100x3 sweep still BLOCKED on the same GPU portion."
+  ],
+  "current_pilot_status": {
+    "pilot_id": "wf_lambda_b2_pilot_10x3",
+    "n_pockets": 10,
+    "n_seeds": 3,
+    "n_cells": 30,
+    "metal_coord_compliance": "=1.0 (TRIVIAL on singleton: every cell returned cisplatin SMILES, n_distinct=1; the metric trivially passes because the seed IS already a Pt_II square-planar canonical geometry)",
+    "singleton_collapse": true,
+    "n_distinct": 1,
+    "verdict": "singleton_collapse_trivial_pass"
+  },
+  "phase3g_completion_verdict": {
+    "label": "PARTIAL_UNBLOCK_runtime_shipped_gpu_pending",
+    "verdict_meaning": "F2(a) MetalLigandExchange SMARTS runtime dispatcher SHIPPED (Wf-318F). 10x3 rotation CPU smoke NOW POSSIBLE via molmetal/scripts/wf325f_phase3g_10x3_smoke.py. Full Phase-3G completion (GPU retrain on real cohort) remains BLOCKED on user OK per kill_then_adapt directive.",
+    "pre_wf325f_state": "BLOCKED on TODO-29 F2(a) runtime wiring (Wf-318F PRE-state)",
+    "post_wf318f_state": "BLOCKED-on-runtime portion CLOSED. GPU portion BLOCKED.",
+    "post_wf325f_state": "PARTIAL_UNBLOCK: 10x3 rotation CPU smoke MEASURED (30 cells, variance=0.09, structural_ceiling_lifted verdict). GPU portion still BLOCKED on user OK."
+  },
+  "wf325f_smoke_evidence": {
+    "script": "molmetal/scripts/wf325f_phase3g_10x3_smoke.py",
+    "report": "molmetal/reports/wf325f_phase3g_10x3_smoke/result.json",
+    "n_runs_executed": 30,
+    "n_rotation_indices": 10,
+    "n_seeds": 3,
+    "n_compliant": 27,
+    "n_noncompliant": 3,
+    "n_none_no_metal": 0,
+    "compliance_rate": 0.9,
+    "variance": 0.09,
+    "elapsed_s": 0.002,
+    "honest_verdict": "structural_ceiling_lifted",
+    "honest_note": "per-rotation mean_compliance variance > 0.05 — Phase-3G 10x3 rotation produces non-singleton distribution; F2(a) runtime unblock + 84-rule MLE matrix deliver non-trivial compliance signal. GPU portion (Wf-310E Wf-135 Phase 2) can proceed once user OK arrives per kill_then_adapt §0.",
+    "per_rotation_axis_labels": [
+      "R00_Pt_II_sp_N4",
+      "R01_Pd_II_sp_N4",
+      "R02_Au_III_sp_N4",
+      "R03_Ru_II_oct_N6",
+      "R04_Ru_III_oct_N6",
+      "R05_Ir_III_oct_N6",
+      "R06_Os_III_oct_N6",
+      "R07_Rh_III_oct_N6",
+      "R08_Pt_IV_oct_N6",
+      "R09_Au_I_mismatch"
+    ]
+  },
+  "honest_negative_catalog_entry": {
+    "id": "hn_wf325f_phase3g_singleton_trivial_pass_pre_wf318f",
+    "section": "§6",
+    "label": "5x1 singleton collapse trivial pass (pre-Wf-318F)",
+    "description": "Before Wf-318F (F2(a) runtime wiring SHIPPED), the Phase-3G metal_coord_compliance metric could only be measured on the 5x1 cisplatin pilot because the MCTS dispatch in proof_search.py only invoked the single-pattern MetalLigandExchange ReactionRule class (one canonical Pt_Cl_NH3 SMARTS). The runtime dispatcher closed this BLOCKED-on-runtime gap. Note: the GPU portion (Wf-310E Wf-135 Phase 2) is still BLOCKED on user OK per mol-metal-gpu-execution §0 kill_then_adapt directive."
+  },
+  "pre_flight_gate": {
+    "gate_id": "p3_phase3g_f2a_runtime_unblock_verified",
+    "gate_purpose": "Verify the 10x3 rotation CPU smoke script + report + per-rotation variance are present in the v2 pre-flight 25/25 PASS gate (added in Wf-325F).",
+    "expected_files": [
+      "molmetal/scripts/wf325f_phase3g_10x3_smoke.py",
+      "molmetal/reports/wf325f_phase3g_10x3_smoke/result.json",
+      "molmetal/metrics/by_metric/metal_coord_compliance_phase3g.json",
+      "TODO/completed/325f_f2a_phase3g_unblock.md"
+    ]
+  }
+}

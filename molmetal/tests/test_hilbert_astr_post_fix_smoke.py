@@ -133,7 +133,7 @@ def post_fix_dir() -> Path:
 def test_post_fix_per_seed_metrics_keys(post_fix_dir: Path) -> None:
     """Each cell-line per_seed JSON has all post-fix required keys."""
     if not post_fix_dir.exists():
-        pytest.skip(f"post-fix dir missing: {post_fix_dir}")
+        pytest.fail(f"post-fix dir missing: {post_fix_dir}")
     required = {
         "cell_line", "n_samples", "n_seeds", "epochs", "hilbert_dim",
         "astr_population", "astr_depth", "device", "split",
@@ -144,7 +144,7 @@ def test_post_fix_per_seed_metrics_keys(post_fix_dir: Path) -> None:
     for cl in ("mcf7", "a549", "a2780", "a2780cis"):
         path = post_fix_dir / cl / "per_seed_metrics.json"
         if not path.exists():
-            pytest.skip(f"missing per-seed metrics for {cl}")
+            pytest.fail(f"missing per-seed metrics for {cl}")
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         missing = required - set(data.keys())
@@ -161,7 +161,7 @@ def test_post_fix_per_seed_metrics_keys(post_fix_dir: Path) -> None:
 def test_post_fix_combined_r2_present(post_fix_dir: Path) -> None:
     """At least one cell-line has a finite combined_r2_test_mean."""
     if not post_fix_dir.exists():
-        pytest.skip(f"post-fix dir missing: {post_fix_dir}")
+        pytest.fail(f"post-fix dir missing: {post_fix_dir}")
     found_finite = False
     for cl in ("mcf7", "a549", "a2780", "a2780cis"):
         path = post_fix_dir / cl / "per_seed_metrics.json"
@@ -182,7 +182,7 @@ def test_post_fix_combined_r2_present(post_fix_dir: Path) -> None:
 def test_post_fix_no_collapse_in_per_seed(post_fix_dir: Path) -> None:
     """Scale guard should prevent collapse_detected=yes (the constant-collapse trick)."""
     if not post_fix_dir.exists():
-        pytest.skip(f"post-fix dir missing: {post_fix_dir}")
+        pytest.fail(f"post-fix dir missing: {post_fix_dir}")
     n_collapse = 0
     n_total = 0
     for cl in ("mcf7", "a549", "a2780", "a2780cis"):
@@ -196,7 +196,7 @@ def test_post_fix_no_collapse_in_per_seed(post_fix_dir: Path) -> None:
             if bool(s["collapse_detected"]):
                 n_collapse += 1
     if n_total == 0:
-        pytest.skip("no per-seed data")
+        pytest.fail("no per-seed data")
     # The scale guard should keep collapse at or near zero.
     # Pre-fix had 17/20 collapse=yes; post-fix should have 0/20 ideally,
     # but we allow a few in case the test set has truly tiny std.
@@ -212,7 +212,7 @@ def test_post_fix_no_collapse_in_per_seed(post_fix_dir: Path) -> None:
 def test_post_fix_hilbert_r2_finite(post_fix_dir: Path) -> None:
     """All per-seed Hilbert R² must be finite (L2 prevents divergence)."""
     if not post_fix_dir.exists():
-        pytest.skip(f"post-fix dir missing: {post_fix_dir}")
+        pytest.fail(f"post-fix dir missing: {post_fix_dir}")
     for cl in ("mcf7", "a549", "a2780", "a2780cis"):
         path = post_fix_dir / cl / "per_seed_metrics.json"
         if not path.exists():
@@ -234,7 +234,7 @@ def test_post_fix_hilbert_r2_finite(post_fix_dir: Path) -> None:
 def test_post_fix_astr_r2_finite(post_fix_dir: Path) -> None:
     """All per-seed ASTSR R² must be finite (scale guard prevents blowup)."""
     if not post_fix_dir.exists():
-        pytest.skip(f"post-fix dir missing: {post_fix_dir}")
+        pytest.fail(f"post-fix dir missing: {post_fix_dir}")
     for cl in ("mcf7", "a549", "a2780", "a2780cis"):
         path = post_fix_dir / cl / "per_seed_metrics.json"
         if not path.exists():
@@ -256,7 +256,7 @@ def test_post_fix_astr_r2_finite(post_fix_dir: Path) -> None:
 def test_post_fix_best_ast_lisp_non_collapse(post_fix_dir: Path) -> None:
     """At least one best_ast_lisp is a signal-driven AST (not constant)."""
     if not post_fix_dir.exists():
-        pytest.skip(f"post-fix dir missing: {post_fix_dir}")
+        pytest.fail(f"post-fix dir missing: {post_fix_dir}")
     n_signal_driven = 0
     n_total = 0
     for cl in ("mcf7", "a549", "a2780", "a2780cis"):
@@ -272,7 +272,7 @@ def test_post_fix_best_ast_lisp_non_collapse(post_fix_dir: Path) -> None:
             if re.search(r"v_\w+", lisp):
                 n_signal_driven += 1
     if n_total == 0:
-        pytest.skip("no per-seed data")
+        pytest.fail("no per-seed data")
     assert n_signal_driven > 0, (
         f"expected ≥1 signal-driven best_ast_lisp, got "
         f"{n_signal_driven}/{n_total}"
@@ -286,7 +286,7 @@ def test_post_fix_synthesis_md_pre_post_comparison(post_fix_dir: Path) -> None:
     """synthesis.md contains the pre-fix baseline anchor (−1.50 or −1.5030)."""
     syn_path = post_fix_dir / "synthesis.md"
     if not syn_path.exists():
-        pytest.skip(f"missing synthesis.md: {syn_path}")
+        pytest.fail(f"missing synthesis.md: {syn_path}")
     text = syn_path.read_text(encoding="utf-8")
     # Pre-fix anchor: −1.50 or −1.5030 (the Wf-85 P3 aggregate).
     assert "−1.50" in text or "-1.50" in text or "−1.5030" in text, (

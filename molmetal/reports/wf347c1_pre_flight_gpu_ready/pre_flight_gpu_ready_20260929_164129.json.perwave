@@ -1,0 +1,55 @@
+{
+  "schema_version": "343.v1",
+  "wave": "Wf-347-C1 launch readiness (G5/G6)",
+  "generated_at": "2026-09-29T08:41:29+00:00",
+  "n_checks": 7,
+  "n_pass": 2,
+  "n_fail": 2,
+  "n_skip": 3,
+  "overall_status": "FAIL",
+  "checks": [
+    {
+      "check_id": "preflight_freshness_24h",
+      "status": "PASS",
+      "evidence": "preflight age 74262.2s ≤ 86400s"
+    },
+    {
+      "check_id": "preflight_no_fail_gates",
+      "status": "FAIL",
+      "evidence": "preflight FAIL=2/22 (PASS=20)"
+    },
+    {
+      "check_id": "hyperparams_config_complete",
+      "status": "SKIP",
+      "evidence": "no --config provided (skipped schema check)"
+    },
+    {
+      "check_id": "yuelbond_decoder_registered",
+      "status": "PASS",
+      "evidence": "YuelBond registered via: script:train_cfm_yuelbond_wasserstein.py; adapter:flow_matching_lipman/"
+    },
+    {
+      "check_id": "wave_budget_remaining_nonneg",
+      "status": "FAIL",
+      "evidence": "budget 10.0h < est 12.50h (25 pairs × 0.5h/pair)"
+    },
+    {
+      "check_id": "gpu_vram_available",
+      "status": "SKIP",
+      "evidence": "--skip-live set (CPU-only test mode)"
+    },
+    {
+      "check_id": "disk_free_space",
+      "status": "SKIP",
+      "evidence": "--skip-live set (CPU-only test mode)"
+    }
+  ],
+  "honest_framing": "Wf-343C2 per-wave check on wave='Wf-347-C1 launch readiness (G5/G6)': 2/7 PASS, 2 FAIL, 3 SKIP. MEASURED live probes (nvidia-smi, df, preflight mtime); PROJECTED budget/HR estimates flagged as such.",
+  "schema_valid": true,
+  "config_path": "",
+  "preflight_path": "/home/hugo/codes/mol-metal/molmetal/reports/wf259_run/pre_flight.json",
+  "n_pairs": 25,
+  "budget_hr": 10.0,
+  "skip_live": true,
+  "error": ""
+}

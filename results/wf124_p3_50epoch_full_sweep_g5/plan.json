@@ -1,0 +1,24 @@
+{
+  "wrapper": "launch_wf124_p3_g5.sh",
+  "wf_origin": "Wf-366-A1 (USER_OK gate fix)",
+  "parent_plan": "TODO/completed/181_wf124_p3_50_epoch_full_sweep.md",
+  "user_ok": true,
+  "dry_run": true,
+  "metals": ["Ru", "Ir", "Os", "Rh", "Re"],
+  "seeds": [0, 1, 2],
+  "epochs": 50,
+  "total_runs": 15,
+  "gpu": "cuda:0",
+  "wall_budget_hr": 5,
+  "wall_budget_label": "PROJECTED (~5 hr GPU sequential per Wf-260 G6 timing; Ru heaviest ~30 min/seed x 3 + Ir ~30 min x 3 + Os ~15 min x 3 + Rh ~15 min x 3 + Re ~10 min x 3)",
+  "trainer": "molmetal/scripts/train_dmpnn_multitask_wasserstein.py",
+  "data_csv": "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+  "out_base": "results/wf124_p3_50epoch_full_sweep_g5",
+  "honest_framing": {
+    "MEASURED_today": "wrapper ready; user_ok gate enforced; 15 pairs enumerated; DRY_RUN.log emitted",
+    "PROJECTED": "Ru seed 2 + Ir seed 0 in flight on GPU 0 (Wf-328 G6 PID 2040025); G5 wall ~5 hr on GPU 1",
+    "kill_then_adapt_directive": "5-hr wall budget; USER_OK gate HARD-REQUIRED per mol-metal-gpu-execution §0 + AGENTS.md §5.1",
+    "wf337_g2_status": "Wf-337-G2 hardened launcher config to mirror G6; Wf-366-A1 closes the residual USER_OK gate gap surfaced by Wf-363-A2 audit"
+  },
+  "status": "PLAN_ONLY"
+}

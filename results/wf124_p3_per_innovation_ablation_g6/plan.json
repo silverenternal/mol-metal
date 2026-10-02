@@ -1,0 +1,25 @@
+{
+  "wrapper": "launch_wf124_p3_g6.sh",
+  "wf_origin": "Wf-378-A2 (USER_OK gate parity closure per Wf-366-A2 lesson)",
+  "parent_plan": "TODO/completed/182_wf124_p3_per_innovation_ablation.md",
+  "user_ok": true,
+  "dry_run": true,
+  "configs": ["no_multi_task", "no_wass", "no_kendall", "no_dann"],
+  "metals": ["Ru", "Ir", "Os", "Rh", "Re"],
+  "seeds": [0, 1, 2],
+  "epochs": 50,
+  "total_tuples": 60,
+  "gpu": "cuda:0",
+  "wall_budget_hr": 7.5,
+  "wall_budget_label": "PROJECTED (~7.5 hr GPU sequential per Wf-260 G6 timing; per-innovation ablation 60 tuples)",
+  "trainer": "molmetal/scripts/train_dmpnn_multitask_wasserstein.py",
+  "data_csv": "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+  "out_base": "results/wf124_p3_per_innovation_ablation_g6",
+  "honest_framing": {
+    "MEASURED_today": "wrapper ready; USER_OK gate enforced BEFORE --dry-run per Wf-378-A2; 60 tuples enumerated; DRY_RUN.log emitted",
+    "PROJECTED": "G6 wall ~7.5 hr on RTX 5090 GPU-1; per-lever attribution % NOT MEASURED until sweep completes",
+    "kill_then_adapt_directive": "7.5-hr wall budget; USER_OK gate HARD-REQUIRED per mol-metal-gpu-execution §0 + AGENTS.md §5.1",
+    "wf378_a2_status": "Wf-378-A2 closes Wf-363-A2 + Wf-365-B2 + Wf-368-B1 §7.1 HONEST-NEGATIVE finding (G6 --dry-run was bypassing USER_OK gate at original lines 208-218; now gate fires FIRST at line ~60 per Wf-366-A2 block-order lesson)"
+  },
+  "status": "PLAN_ONLY"
+}

@@ -368,3 +368,25 @@ This checklist is **a tool to enforce honest framing**, not a guarantee. Every r
 ---
 
 *Created post-Wf-243/244/245 to capture honest-framing lessons. Standing gate document — must pass all 10 sign-off items before any retrain launch.*
+## §13 NEW §8 honest-framing entries (Wf-340..Wf-415 wave batch; 2026-09-30)
+
+The following 5 NEW §8 entries were added per Wf-415-A3 to bring the
+honest-framing catalog to 15+ entries per `party-twenty-spirit` §3.5
+discipline + `mol-metal-gpu-execution` §7 MEASURED-vs-PROJECTED
+label discipline.
+
+| **8.11** | "Wf-358 + Wf-377 SCAFFOLD-only integration" | 17 NEW Wf-380 CLI flags + 4 Wf-388-A2/A3 flags + 2 Wf-397-A1 flags = 23 NEW flags declared + 0 wired into actual loss/sampling dispatch (per Wf-385-A1 audit; Wf-388-A2/A3 + Wf-405-A2 wire-in attempts closed 10/17 in Wf-388 + Wf-405 wave batch) | "FLAG_ONLY for the remaining 7/17 flags — actual MEASURED-on-Blackwell requires USER_OK-gated GPU retrain" |
+| **8.12** | "Wf-380 + Wf-405 CLI flag HELP text vs reality" | `--per-cohort-features` is declared in the chemprop v2_v3 trainer help (added by Wf-415-A3 + Wf-321H) but is NOT wired into the main training loop — surface help text over-promises vs actual code surface | "Help text is a contract — gaps must be either closed (wire-in) or removed (drop the flag)" |
+| **8.13** | "Wf-396 + Wf-398 + Wf-399 decode_ratio regression-of-focus" | Hand-edited `metrics/by_metric/decode_ratio.json::aggregate.all_measured_cfm_decode_ratio` field was set to `0.0` (legacy pre-Wf-124-P1 baseline) instead of the actual MEASURED `0.998` value preserved by Wf-148 m14_real_cfm. The model was NEVER at 0.998 → 0; the JSON aggregate field was. AGENTS.md §5.7 NEW trainer flag wire-in smoke-required rule prevents re-introduction | "Data integrity ≠ model regression — verify JSON field provenance before declaring honest-negative" |
+| **8.14** | "Wf-378 + Wf-379 + Wf-380 + Wf-381 GPU launch safety contract" | 5/5 safety conditions for refusal of Wf-298-class G5 launches MET per `mol-metal-gpu-execution` §0 `kill_then_adapt` directive — Wf-407-A3 + Wf-398-A1 + Wf-379-A2 refuse-launched; zero wasteful GPU cycles from "fire and forget" invocations | "USER_OK gate + module-not-found check + GPU contention probe + wrapper-format probe + task-brief accuracy probe are mandatory before any retrain launch" |
+| **8.15** | "Wf-385 + Wf-386 + Wf-398 + Wf-399 atomic write + truncation detection contract" | `molmetal/scripts/wf386a3_atomic_write.py` ships 3 primitives (`atomic_write_file` + `safe_overwrite_check` + `detect_truncation`) + AGENTS.md §5.6 + §5.5 + §5.7 standing directives prevent report-over-state + state-over-report divergence across `Wf-371 / Wf-373 / Wf-377 / Wf-378 / Wf-384 / Wf-398` recurring patterns | "Atomically-written closeouts + on-disk verification + truncation guards close the recurring verification reliability regression pattern" |
+
+**Bottom line — 15 §8 entries total (10 pre-Wf-340 baseline + 5 Wf-415-A3 NEW):**
+The honest-framing catalog now spans 15 unique evidence-ledger entries
+covering structural limitations, scaffold-only retrain, data-integrity
+distinctions, GPU launch safety, and atomic-write contracts. Per
+`party-twenty-spirit` §3.5: every entry traces to a JSON / report
+path on disk; no fabrication; no paper-over.
+
+---
+

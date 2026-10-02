@@ -1,0 +1,35 @@
+{
+  "status": "MEASURED_SMOKE",
+  "generated_at": "2026-09-29T02:32:25+00:00",
+  "source": "Wf-319B",
+  "honest_framing": {
+    "scope": "smoke (100 conformers; CPU-only RDKit UFF)",
+    "data_source": "/home/hugo/codes/mol-metal/.data/molmetal/platinai_4cell.csv",
+    "downstream": "m10 Vina Min Score ceiling (WEAK_TO_STRONG §2.7 PROJECTED)",
+    "full_pipeline": "UFF-min × Vina requires GPU portion (out of scope for this smoke)"
+  },
+  "config": {
+    "n_requested": 100,
+    "seed": 42,
+    "max_iter": 200,
+    "embed_method": "ETKDGv3 (fallback ETKDGv2)"
+  },
+  "n_conformers_generated": 96,
+  "n_conformers_failed": 4,
+  "energy_kcal_per_mol": {
+    "mean": 8474806030185.788,
+    "std": 70248949437765.445,
+    "min": 0.15446173516293957,
+    "max": 682225018266748.8,
+    "distribution_buckets": {
+      "<0": 0,
+      "0-50": 9,
+      "50-200": 26,
+      "200-500": 8,
+      ">=500": 53
+    }
+  },
+  "wall_clock_sec": 73.7258397359401,
+  "HONEST_NEGATIVE_UFF_PT_PARAMS_MISSING": true,
+  "honest_negative_reason": "RDKit UFF force field lacks Pt (d-block metal) atom-type parameters; UFFTYPER logs 'Unrecognized atom type: Pt6+2' for every Pt atom. Energies are fallback terms, not physical. Conformers (3D coords) are valid for downstream Vina docking but should NOT be used as a real minimization metric. The m10 Vina Min Score ceiling improvement (WEAK_TO_STRONG §2.7) remains PROJECTED — full UFF-min x Vina pipeline requires a force field that includes d-block metal parameters (e.g. MACE-OFF23 or SMIRNOFF/OpenFF with d-block coverage, neither of which is in this venv)."
+}

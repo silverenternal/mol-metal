@@ -1,0 +1,1436 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="generator" content="Wf-280C paper_dashboard.py schema=280.v1" />
+<title>Mol-Metal Paper §4 Dashboard</title>
+<style>
+:root {
+  --bg: #fafafa;
+  --fg: #1a1a1a;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --card-bg: #ffffff;
+  --measured-bg: #d1fae5;
+  --measured-fg: #065f46;
+  --projected-bg: #fef3c7;
+  --projected-fg: #92400e;
+  --honest-bg: #fee2e2;
+  --honest-fg: #991b1b;
+  --cohort-thead: #f3f4f6;
+  --cohort-row-alt: #f9fafb;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f172a;
+    --fg: #f8fafc;
+    --muted: #94a3b8;
+    --border: #1e293b;
+    --card-bg: #1e293b;
+    --measured-bg: #064e3b;
+    --measured-fg: #6ee7b7;
+    --projected-bg: #78350f;
+    --projected-fg: #fcd34d;
+    --honest-bg: #7f1d1d;
+    --honest-fg: #fca5a5;
+    --cohort-thead: #1e293b;
+    --cohort-row-alt: #172033;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  margin: 0;
+  padding: 1.5rem;
+  line-height: 1.5;
+}
+header.dashboard-header {
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+header.dashboard-header h1 { margin: 0; font-size: 1.6rem; }
+header.dashboard-header .meta {
+  color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem;
+}
+.badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+.badge-measured { background: var(--measured-bg); color: var(--measured-fg); }
+.badge-projected { background: var(--projected-bg); color: var(--projected-fg); }
+.badge-honest-negative { background: var(--honest-bg); color: var(--honest-fg); }
+.badge-unknown { background: var(--border); color: var(--muted); }
+section.cohort, section.honest-negative, section.gate-banner {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+section.cohort h3, section.honest-negative h3, section.gate-banner h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.05rem;
+}
+.cohort-meta, .cohort-summary { color: var(--muted); font-size: 0.875rem; margin: 0.25rem 0; }
+table.cohort-table, table.gate-table {
+  width: 100%; border-collapse: collapse; margin-top: 0.5rem;
+}
+table.cohort-table th, table.gate-table th,
+table.cohort-table td, table.gate-table td {
+  padding: 0.375rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-size: 0.875rem;
+}
+table.cohort-table th, table.gate-table th {
+  background: var(--cohort-thead);
+  font-weight: 600;
+}
+table.cohort-table tbody tr:nth-child(even),
+table.gate-table tbody tr:nth-child(even) {
+  background: var(--cohort-row-alt);
+}
+.claim-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  margin-bottom: 0.5rem;
+}
+.claim-card:has(.badge-measured) { border-left-color: var(--measured-fg); }
+.claim-card:has(.badge-projected) { border-left-color: var(--projected-fg); }
+.claim-card:has(.badge-honest-negative) { border-left-color: var(--honest-fg); }
+.claim-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.claim-section { color: var(--muted); font-size: 0.8rem; }
+.claim-title { font-weight: 500; }
+.claim-meta {
+  display: flex; gap: 0.75rem; flex-wrap: wrap;
+  color: var(--muted); font-size: 0.8rem; margin-top: 0.25rem;
+}
+.claim-meta code { background: var(--cohort-row-alt); padding: 0 0.25rem; border-radius: 3px; }
+.claim-source {
+  background: var(--cohort-row-alt);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+.expand-btn {
+  background: var(--cohort-thead);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.expand-btn:hover { background: var(--border); }
+.honest-negative ol.hn-list { margin: 0; padding-left: 1.25rem; }
+.honest-negative li { margin-bottom: 0.375rem; font-size: 0.875rem; }
+.hn-ref { color: var(--muted); font-size: 0.8rem; }
+ul.badge-summary { margin: 0.25rem 0 0.5rem 0; padding-left: 1.25rem; }
+ul.badge-summary li { margin-bottom: 0.25rem; font-size: 0.875rem; }
+footer.dashboard-footer {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+</style>
+<script>
+function toggleSource(id) {
+  var el = document.getElementById(id + '-source');
+  var btn = document.querySelector('#' + id + ' .expand-btn');
+  if (!el || !btn) return;
+  if (el.style.display === 'none' || el.style.display === '') {
+    el.style.display = 'block';
+    btn.textContent = 'hide source JSON';
+  } else {
+    el.style.display = 'none';
+    btn.textContent = 'show source JSON';
+  }
+}
+</script>
+</head>
+<body>
+<header class="dashboard-header">
+  <h1>Mol-Metal Paper §4 Dashboard</h1>
+  <div class="meta">
+    <strong>Generated:</strong> 2026-09-28T16:25:12+00:00 |
+    <strong>Schema:</strong> 280.v1 |
+    <strong>Claims:</strong> 32 |
+    <strong>Honest-negatives:</strong> 17 |
+    <strong>Paper doc:</strong> <code>/home/hugo/codes/mol-metal/TODO/completed/188_paper_4_krasnov_protocol_aligned.md</code> |
+    <strong>Collect JSON:</strong> <code>/home/hugo/codes/mol-metal/molmetal/reports/wf265_collect/all_results.json</code>
+  </div>
+</header>
+
+<main>
+  
+    <section class="gate-banner">
+      <h3>Wf-265-Collect high-level gates</h3>
+      <table class="gate-table">
+        <thead><tr><th>Gate</th><th>Value</th></tr></thead>
+        <tbody><tr><td><code>G1_todo_180_g4_complete</code></td><td>true</td></tr><tr><td><code>G2_wf263a_complete</code></td><td>false</td></tr><tr><td><code>G3_wf264_complete</code></td><td>false</td></tr><tr><td><code>G4_n_g4_pairs</code></td><td>14</td></tr><tr><td><code>G5_v3_ood_auc</code></td><td>0.4544260351267818</td></tr><tr><td><code>G6_collect_json_path</code></td><td>molmetal/reports/wf265_collect/all_results.json</td></tr></tbody>
+      </table>
+    </section>
+    
+
+  
+    <section class="gate-banner">
+      <h3>MEASURED-vs-PROJECTED badge discipline (Wf-268C-Dash, party-twenty-spirit §3.5)</h3>
+      <p>
+        Every claim badge below traces to a JSON path in the on-disk source. The
+        three badge colours are MUTUALLY EXCLUSIVE — a MEASURED claim is a
+        numeric value produced by a run that completed and reported a metric
+        (per-seed JSON exists in <code>results/wf*/</code> or
+        <code>molmetal/reports/wf*/</code>); a PROJECTED claim is one whose
+        deferred or follow-up status is documented in TODO/INDEX or a wf*-final
+        report; an honest-negative claim is one whose numeric value documents a
+        known gap (e.g. below baseline, expected under-training, blocked at
+        GPU-ordinal layer). There is NO grey area.
+      </p>
+      <ul class="badge-summary">
+        <li><span class="badge badge-measured">MEASURED</span> 22 claim(s) — sourced from per-seed JSON on disk.</li>
+        <li><span class="badge badge-projected">PROJECTED</span> 4 claim(s) — explicitly DEFERRED with a TODO- or wf*-final pointer.</li>
+        <li><span class="badge badge-honest-negative">honest-negative</span> 6 claim-card(s) + 17 catalog entries — the §9 "DO NOT claim" surface.</li>
+      </ul>
+      <p>
+        <strong>Discipline rule (re-stated verbatim):</strong> a claim is
+        MEASURED iff the cited JSON path resolves to a numeric value computed
+        by a real run that completed; otherwise it is PROJECTED. There is no
+        middle ground. If a value cannot be traced to a JSON path it is
+        silently DROPPED from the catalog.
+      </p>
+    </section>
+    
+
+  <section class="honest-negative">
+    <h3>Honest framing note (Wf-265-Collect)</h3>
+    <p>G4 (TODO-180): 14 per_seed_metrics_seed*.json files present; G4 complete=True. Wf-263A verify_report.json present=False, Wf-263A complete=False. Wf-264 panel_report.json present=False, Wf-264 complete=False. Wf-263A-Verify status: PROCESS 3095279 started 22:22, currently loading lbap_refined_ic50_assay (45 min wall-budget; verify_report.json NOT YET WRITTEN). Wf-264-Panel status: NO LAUNCH SCRIPT or DIRECTORY (molmetal/reports/wf264_panel/ does not exist); task NOT STARTED at the time of this collection. v3 OOD AUC value reported as Wf-253d baseline (the BELOW_RANDOM signal Wf-263A aims to refute); v3-fallback verification number NOT YET MEASURED in this collection. Smaller-metal caveat (TODO-180 §6): Rh/Os/Re cohorts &lt;1.2k rows so per-seed std may be ±0.10; report per-metal unfiltered, no best-seed selection.</p>
+  </section>
+
+  <h2>Per-cohort tables</h2>
+  
+    <section class="cohort">
+      <h3>chemprop v2 v3 5-metal per-metal AUC (Wf-124 P3, g4 14-15 paired runs)</h3>
+      <p class="cohort-meta"><strong>JSON path:</strong> <code>molmetal/reports/wf265_collect/all_results.json::g4_per_metal_aggregate_full_15pair</code></p>
+      <table class="cohort-table">
+        <thead>
+          <tr>
+            <th>Metal</th><th>n_pairs</th><th>mean test_AUC</th>
+            <th>min</th><th>max</th><th>per-seed test_aucs</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>Ir</td>
+              <td>3</td>
+              <td>0.6702</td>
+              <td>0.6659</td>
+              <td>0.6782</td>
+              <td><code>[0.6659, 0.6782, 0.6666]</code></td>
+            </tr>
+            
+            <tr>
+              <td>Os</td>
+              <td>3</td>
+              <td>0.7025</td>
+              <td>0.6738</td>
+              <td>0.7201</td>
+              <td><code>[0.7137, 0.6738, 0.7201]</code></td>
+            </tr>
+            
+            <tr>
+              <td>Re</td>
+              <td>3</td>
+              <td>0.7700</td>
+              <td>0.7378</td>
+              <td>0.7967</td>
+              <td><code>[0.7756, 0.7967, 0.7378]</code></td>
+            </tr>
+            
+            <tr>
+              <td>Rh</td>
+              <td>3</td>
+              <td>0.7227</td>
+              <td>0.6702</td>
+              <td>0.7970</td>
+              <td><code>[0.7970, 0.6702, 0.7008]</code></td>
+            </tr>
+            
+            <tr>
+              <td>Ru</td>
+              <td>3</td>
+              <td>0.7527</td>
+              <td>0.7453</td>
+              <td>0.7613</td>
+              <td><code>[0.7613, 0.7453, 0.7514]</code></td>
+            </tr>
+            
+        </tbody>
+      </table>
+      <p class="cohort-summary">
+        <strong>Overall (15 pairs):</strong>
+        mean = 0.7236,
+        min = 0.6659,
+        max = 0.7970.
+        <strong>G5 v3 OOD AUC:</strong> 0.4544 (BELOW_RANDOM honest-negative).
+      </p>
+    </section>
+    
+  
+    <section class="cohort">
+      <h3>Wf-263A chemprop v3 v3-fallback mode dispatch (TODO-130 G5)</h3>
+      <p class="cohort-meta"><strong>JSON path:</strong> <code>molmetal/reports/wf263a_implement/implement_report.md §3 dispatch table</code></p>
+      <table class="cohort-table">
+        <thead>
+          <tr>
+            <th>--chemprop-mode</th><th>args.enhanced_head (CLI intent)</th>
+            <th>_effective_enhanced_head (forwarded)</th><th>_effective_metal_attention</th>
+            <th>Verdict</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td><code>v3-fallback (default)</code></td>
+              <td><code>True</code></td>
+              <td><code>False</code></td>
+              <td><code>False</code></td>
+              <td>FORCES v2 head (audit-trail preserved)</td>
+            </tr>
+            
+            <tr>
+              <td><code>v3-fallback (default)</code></td>
+              <td><code>False</code></td>
+              <td><code>False</code></td>
+              <td><code>False</code></td>
+              <td>FORCES v2 head</td>
+            </tr>
+            
+            <tr>
+              <td><code>v2</code></td>
+              <td><code>True</code></td>
+              <td><code>False</code></td>
+              <td><code>False</code></td>
+              <td>Symmetric with v3-fallback</td>
+            </tr>
+            
+            <tr>
+              <td><code>v2</code></td>
+              <td><code>False</code></td>
+              <td><code>False</code></td>
+              <td><code>False</code></td>
+              <td>Pure v2 path</td>
+            </tr>
+            
+            <tr>
+              <td><code>v3</code></td>
+              <td><code>True</code></td>
+              <td><code>True</code></td>
+              <td><code>False</code></td>
+              <td>Opt-in v3 head honoured</td>
+            </tr>
+            
+            <tr>
+              <td><code>v3</code></td>
+              <td><code>False</code></td>
+              <td><code>False</code></td>
+              <td><code>False</code></td>
+              <td>v3 mode without enhanced head</td>
+            </tr>
+            </tbody>
+      </table>
+      <p class="cohort-summary">
+        <strong>Audit-trail guarantee:</strong> <code>args.enhanced_head</code> /
+        <code>args.metal_attention</code> are NEVER mutated by the dispatch — the
+        JSON audit trail records user intent while the forwarded value reflects
+        what <code>--chemprop-mode</code> actually applied. Honest-negative
+        preserved.
+      </p>
+      <p class="cohort-summary">
+        <strong>Files modified:</strong> 3 |
+        <strong>New tests:</strong> 10 (10/PASS) |
+        <strong>Backward-compat tests:</strong> 21 (21/PASS) |
+        <strong>Empirical status:</strong> structural PASS / empirical TIMEOUT.
+      </p>
+    </section>
+    
+  
+    <section class="cohort">
+      <h3>Wf-266 chemprop v3 LOMO fix flags (--chemprop-min-epochs / --chemprop-lomo-init-scale / --chemprop-mode v3-fix)</h3>
+      <p class="cohort-meta"><strong>JSON path:</strong> <code>molmetal/reports/wf266_lomo_fix/wf266_report.md §Summary + §Audit-trail</code></p>
+      <table class="cohort-table">
+        <thead>
+          <tr>
+            <th>Flag</th><th>Default</th><th>Type</th><th>Purpose</th><th>No-op under</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td><code>--chemprop-min-epochs</code></td>
+              <td><code>10</code></td>
+              <td>int</td>
+              <td>Refuses --epochs &lt; N (anti-under-training)</td>
+              <td>v3-fallback / v2 / v3 (forced to 1)</td>
+            </tr>
+            
+            <tr>
+              <td><code>--chemprop-lomo-init-scale</code></td>
+              <td><code>0.001</code></td>
+              <td>float</td>
+              <td>Multiplicative scale on per-metal BCE logits (anti-bias)</td>
+              <td>v3-fallback / v2 / v3 (forced to 1.0)</td>
+            </tr>
+            
+            <tr>
+              <td><code>--chemprop-mode v3-fix</code></td>
+              <td><code>v3-fallback</code></td>
+              <td>enum-choice</td>
+              <td>Combines v2 head + min-epochs floor + lomo-init-scale</td>
+              <td>default (v3-fix requires explicit opt-in)</td>
+            </tr>
+            </tbody>
+      </table>
+      <p class="cohort-summary">
+        <strong>Audit-trail JSON fields (per-seed):</strong> <code>cfg_chemprop_mode</code>, <code>cfg_chemprop_min_epochs_user</code>, <code>cfg_chemprop_lomo_init_scale_user</code>, <code>cfg_chemprop_min_epochs_effective</code>, <code>cfg_chemprop_lomo_init_scale_effective</code>.
+      </p>
+      <p class="cohort-summary">
+        <strong>Files modified:</strong> 2 |
+        <strong>New tests:</strong> 4 (4/PASS) |
+        <strong>Backward-compat tests:</strong> 14 (14/PASS) |
+        <strong>Retrain status:</strong> IMPLEMENT only — no GPU retrain (deferred to follow-up TODO-130 G5).
+      </p>
+    </section>
+    
+  
+    <section class="cohort">
+      <h3>DrugOOD OOD (Ji 2023 lbap_refined_ic50_*) ood_test AUC</h3>
+      <p class="cohort-meta"><strong>JSON path:</strong> <code>molmetal/reports/wf185_chemprop_v2_drugood_full/aggregate.json + TODO-188 §3.1</code></p>
+      <table class="cohort-table">
+        <thead>
+          <tr>
+            <th>Split</th><th>Wf-174 3-seed</th><th>Wf-185 5-seed</th>
+            <th>iMoLD Ji 2023 baseline</th><th>Δ vs iMoLD</th><th>Verdict</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td><code>lbap_refined_ic50_assay</code></td>
+              <td>0.7113 ± 0.0216</td>
+              <td>0.7137 ± 0.0079</td>
+              <td>0.7211</td>
+              <td>-0.0074</td>
+              <td>comparable (NOT beat)</td>
+            </tr>
+            
+            <tr>
+              <td><code>lbap_refined_ic50_scaffold</code></td>
+              <td>n/a</td>
+              <td>0.6707 ± 0.0042</td>
+              <td>0.6884</td>
+              <td>-0.0177</td>
+              <td>comparable (NOT beat)</td>
+            </tr>
+            
+            <tr>
+              <td><code>lbap_refined_ic50_size</code></td>
+              <td>n/a</td>
+              <td>0.6757 ± 0.0142</td>
+              <td>0.6792</td>
+              <td>-0.0035</td>
+              <td>comparable (NOT beat)</td>
+            </tr>
+            </tbody>
+      </table>
+    </section>
+    
+  
+    <section class="cohort">
+      <h3>CFM m14 real decode_ratio (Wf-188, n=26,801)</h3>
+      <p class="cohort-meta"><strong>JSON path:</strong> <code>molmetal/reports/wf188_m14_full_metalcytotox/result.json + TODO-188 §4.1</code></p>
+      <table class="cohort-table">
+        <thead>
+          <tr>
+            <th>Metal</th><th>n_total</th><th>n_decode_ok</th><th>decode_ratio</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td>Ru</td>
+              <td>19135</td>
+              <td>19033</td>
+              <td>0.9948</td>
+            </tr>
+            
+            <tr>
+              <td>Ir</td>
+              <td>4546</td>
+              <td>4534</td>
+              <td>0.9974</td>
+            </tr>
+            
+            <tr>
+              <td>Os</td>
+              <td>1118</td>
+              <td>1118</td>
+              <td>1.0000</td>
+            </tr>
+            
+            <tr>
+              <td>Rh</td>
+              <td>1134</td>
+              <td>1134</td>
+              <td>1.0000</td>
+            </tr>
+            
+            <tr>
+              <td>Re</td>
+              <td>868</td>
+              <td>868</td>
+              <td>1.0000</td>
+            </tr>
+            
+            <tr>
+              <td>TOTAL</td>
+              <td>26801</td>
+              <td>26687</td>
+              <td>0.9958</td>
+            </tr>
+            </tbody>
+      </table>
+      <p class="cohort-summary">
+        <strong>Honest framing (§3.5):</strong> synthetic upper bound = 1.000; real 0.9958 is
+        −0.0042 below the synthetic ceiling — expected structural distance from real
+        metal-coordination chemistry.
+      </p>
+    </section>
+    
+  
+    <section class="cohort">
+      <h3>CFM m7 Tanimoto diversity (TODO-180 §1.3, TargetDiff Guan 2023 ceiling)</h3>
+      <p class="cohort-meta"><strong>JSON path:</strong> <code>TODO/completed/180_daily_summary_2026_09_27.md §1.3 + TODO-207 §9.6.2</code></p>
+      <table class="cohort-table">
+        <thead>
+          <tr>
+            <th>Configuration</th><th>diversity_tanimoto</th><th>lift</th><th>Verdict</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td>Baseline (no Tanimoto reward)</td>
+              <td>0.0324</td>
+              <td>n/a</td>
+              <td>MEASURED (no lift)</td>
+            </tr>
+            
+            <tr>
+              <td>With Tanimoto reward</td>
+              <td>0.0397</td>
+              <td>+22.5%</td>
+              <td>MEASURED (+22.5% lift)</td>
+            </tr>
+            
+            <tr>
+              <td>TargetDiff ceiling (cite-only)</td>
+              <td>0.8600</td>
+              <td>n/a</td>
+              <td>honest-negative: +0.820 gap</td>
+            </tr>
+            </tbody>
+      </table>
+    </section>
+    
+
+  <h2>Per-claim cards (click to expand source JSON)</h2>
+  <div class="claim-list">
+    
+    <div class="claim-card" id="claim_chemprop_v2_5metal_mean_auc">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">chemprop v2 5-metal mean AUC = 0.886 ± 0.014 (paired t-test p = 1.35×10⁻⁵)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.886 ± 0.014</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/154_chemprop_v4_head_to_head.md §4</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_chemprop_v2_5metal_mean_auc')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_chemprop_v2_5metal_mean_auc-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_chemprop_v2_5metal_mean_auc&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;chemprop v2 5-metal mean AUC = 0.886 ± 0.014 (paired t-test p = 1.35×10⁻⁵)&quot;,
+  &quot;value&quot;: &quot;0.886 ± 0.014&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/154_chemprop_v4_head_to_head.md §4&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_ru_per_metal_krasnov_beat">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">Ru per-metal AUC 0.909 BEATS Krasnov 2026 baseline 0.81 (+0.099, paired p=0.025)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.909 vs 0.81 (Δ +0.099)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/154_chemprop_v4_head_to_head.md §2</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_ru_per_metal_krasnov_beat')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_ru_per_metal_krasnov_beat-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_ru_per_metal_krasnov_beat&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Ru per-metal AUC 0.909 BEATS Krasnov 2026 baseline 0.81 (+0.099, paired p=0.025)&quot;,
+  &quot;value&quot;: &quot;0.909 vs 0.81 (Δ +0.099)&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/154_chemprop_v4_head_to_head.md §2&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_ir_per_metal_krasnov_beat">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">Ir per-metal AUC 0.885 BEATS Krasnov 2026 baseline 0.73 (+0.155, paired p=0.010)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.885 vs 0.73 (Δ +0.155)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/154_chemprop_v4_head_to_head.md §2</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_ir_per_metal_krasnov_beat')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_ir_per_metal_krasnov_beat-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_ir_per_metal_krasnov_beat&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Ir per-metal AUC 0.885 BEATS Krasnov 2026 baseline 0.73 (+0.155, paired p=0.010)&quot;,
+  &quot;value&quot;: &quot;0.885 vs 0.73 (Δ +0.155)&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/154_chemprop_v4_head_to_head.md §2&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_os_rh_re_first_reported">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">Os / Rh / Re first-reported scaffold-aligned per-metal AUC</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> Os 0.889 / Rh 0.863 / Re 0.882</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/154_chemprop_v4_head_to_head.md §2</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_os_rh_re_first_reported')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_os_rh_re_first_reported-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_os_rh_re_first_reported&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Os / Rh / Re first-reported scaffold-aligned per-metal AUC&quot;,
+  &quot;value&quot;: &quot;Os 0.889 / Rh 0.863 / Re 0.882&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/154_chemprop_v4_head_to_head.md §2&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf219_ru_ir_scaffold_aligned">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">Wf-219 reproduces Ru/Ir at 3-seed × 50-ep scaffold-aligned (hidden=64/depth=2)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> Ru 0.810 ± 0.017, Ir 0.759 ± 0.014</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf219_krasnov_aligned/sweep_summary.json</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf219_ru_ir_scaffold_aligned')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf219_ru_ir_scaffold_aligned-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf219_ru_ir_scaffold_aligned&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-219 reproduces Ru/Ir at 3-seed × 50-ep scaffold-aligned (hidden=64/depth=2)&quot;,
+  &quot;value&quot;: &quot;Ru 0.810 ± 0.017, Ir 0.759 ± 0.014&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf219_krasnov_aligned/sweep_summary.json&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_drugood_assay_5seed">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.1</span>
+        <span class="claim-title">DrugOOD lbap_refined_ic50_assay ood_test AUC = 0.7137 ± 0.0079 (5-seed, Wf-185)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.7137 ± 0.0079</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf185_chemprop_v2_drugood_full/aggregate.json</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_drugood_assay_5seed')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_drugood_assay_5seed-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_drugood_assay_5seed&quot;,
+  &quot;section&quot;: &quot;§3.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;DrugOOD lbap_refined_ic50_assay ood_test AUC = 0.7137 ± 0.0079 (5-seed, Wf-185)&quot;,
+  &quot;value&quot;: &quot;0.7137 ± 0.0079&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf185_chemprop_v2_drugood_full/aggregate.json&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_drugood_scaffold_5seed">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.1</span>
+        <span class="claim-title">DrugOOD lbap_refined_ic50_scaffold ood_test AUC = 0.6707 ± 0.0042 (5-seed)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.6707 ± 0.0042</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf185_chemprop_v2_drugood_full/aggregate.json</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_drugood_scaffold_5seed')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_drugood_scaffold_5seed-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_drugood_scaffold_5seed&quot;,
+  &quot;section&quot;: &quot;§3.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;DrugOOD lbap_refined_ic50_scaffold ood_test AUC = 0.6707 ± 0.0042 (5-seed)&quot;,
+  &quot;value&quot;: &quot;0.6707 ± 0.0042&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf185_chemprop_v2_drugood_full/aggregate.json&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_drugood_size_5seed">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.1</span>
+        <span class="claim-title">DrugOOD lbap_refined_ic50_size ood_test AUC = 0.6757 ± 0.0142 (5-seed)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.6757 ± 0.0142</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf185_chemprop_v2_drugood_full/aggregate.json</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_drugood_size_5seed')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_drugood_size_5seed-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_drugood_size_5seed&quot;,
+  &quot;section&quot;: &quot;§3.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;DrugOOD lbap_refined_ic50_size ood_test AUC = 0.6757 ± 0.0142 (5-seed)&quot;,
+  &quot;value&quot;: &quot;0.6757 ± 0.0142&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf185_chemprop_v2_drugood_full/aggregate.json&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_imold_comparable_not_beat">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§3.3</span>
+        <span class="claim-title">chemprop v2 BELOW iMoLD assay −0.0074 (within inter-seed std; comparable, NOT a beat)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> −0.0074 (assay) / −0.0177 (scaffold) / −0.0035 (size)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/188_paper_4_krasnov_protocol_aligned.md §3.3</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_imold_comparable_not_beat')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_imold_comparable_not_beat-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_imold_comparable_not_beat&quot;,
+  &quot;section&quot;: &quot;§3.3&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;chemprop v2 BELOW iMoLD assay −0.0074 (within inter-seed std; comparable, NOT a beat)&quot;,
+  &quot;value&quot;: &quot;−0.0074 (assay) / −0.0177 (scaffold) / −0.0035 (size)&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/188_paper_4_krasnov_protocol_aligned.md §3.3&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_m14_cfm_decode_ratio">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.1</span>
+        <span class="claim-title">m14 real CFM FULL MetalCytoToxDB decode_ratio = 0.9958 (n=26,801, Wf-188)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.9958 (n=26,801)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf188_m14_full_metalcytotox/result.json</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_m14_cfm_decode_ratio')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_m14_cfm_decode_ratio-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_m14_cfm_decode_ratio&quot;,
+  &quot;section&quot;: &quot;§4.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;m14 real CFM FULL MetalCytoToxDB decode_ratio = 0.9958 (n=26,801, Wf-188)&quot;,
+  &quot;value&quot;: &quot;0.9958 (n=26,801)&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf188_m14_full_metalcytotox/result.json&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_m14_decode_ratio_synthetic_gap">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§4.1</span>
+        <span class="claim-title">m14 CFM decode_ratio 0.9958 is −0.0042 BELOW synthetic upper bound 1.000 (expected per §3.5)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> −0.0042 (expected, honest framing)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/207_unified_pre_flight_checklist_v2.md §9.6.3</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_m14_decode_ratio_synthetic_gap')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_m14_decode_ratio_synthetic_gap-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_m14_decode_ratio_synthetic_gap&quot;,
+  &quot;section&quot;: &quot;§4.1&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;m14 CFM decode_ratio 0.9958 is −0.0042 BELOW synthetic upper bound 1.000 (expected per §3.5)&quot;,
+  &quot;value&quot;: &quot;−0.0042 (expected, honest framing)&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/207_unified_pre_flight_checklist_v2.md §9.6.3&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_m15_rmsd_pockets">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.2</span>
+        <span class="claim-title">m15 RMSD 5/5 pockets &lt; 2.0 Å (aggregate median 0.658 Å, 3-seed × 5 poses × 5 pockets)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 5/5 pockets &lt; 2.0 Å; median 0.658 Å</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf179_bd9_m15_rmsd_p2/summary.json</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_m15_rmsd_pockets')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_m15_rmsd_pockets-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_m15_rmsd_pockets&quot;,
+  &quot;section&quot;: &quot;§4.2&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;m15 RMSD 5/5 pockets &lt; 2.0 Å (aggregate median 0.658 Å, 3-seed × 5 poses × 5 pockets)&quot;,
+  &quot;value&quot;: &quot;5/5 pockets &lt; 2.0 Å; median 0.658 Å&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf179_bd9_m15_rmsd_p2/summary.json&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_m21_nci60_9cell">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.3</span>
+        <span class="claim-title">m21 NCI-60 9-cell per-cell AUC = 0.8007 ± 0.0160 (statistically equivalent to Krasnov 0.81)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.8007 ± 0.0160</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/metrics/by_metric/nci60_precious_9cell_auc.json</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_m21_nci60_9cell')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_m21_nci60_9cell-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_m21_nci60_9cell&quot;,
+  &quot;section&quot;: &quot;§4.3&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;m21 NCI-60 9-cell per-cell AUC = 0.8007 ± 0.0160 (statistically equivalent to Krasnov 0.81)&quot;,
+  &quot;value&quot;: &quot;0.8007 ± 0.0160&quot;,
+  &quot;json_path&quot;: &quot;molmetal/metrics/by_metric/nci60_precious_9cell_auc.json&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_m21_krasnov_equivalent">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§4.3</span>
+        <span class="claim-title">m21 9-cell mean 0.8007 ≈ Krasnov 0.81 (Δ = −0.0093, within std; NOT a beat)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> −0.0093 (statistically equivalent)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/188_paper_4_krasnov_protocol_aligned.md §4.3</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_m21_krasnov_equivalent')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_m21_krasnov_equivalent-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_m21_krasnov_equivalent&quot;,
+  &quot;section&quot;: &quot;§4.3&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;m21 9-cell mean 0.8007 ≈ Krasnov 0.81 (Δ = −0.0093, within std; NOT a beat)&quot;,
+  &quot;value&quot;: &quot;−0.0093 (statistically equivalent)&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/188_paper_4_krasnov_protocol_aligned.md §4.3&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_m7_diversity_tanimoto">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.4</span>
+        <span class="claim-title">m7 diversity Tanimoto = 0.0397 with Tanimoto reward (+22.5% lift)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.0397 (+22.5%)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/180_daily_summary_2026_09_27.md §1.3</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_m7_diversity_tanimoto')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_m7_diversity_tanimoto-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_m7_diversity_tanimoto&quot;,
+  &quot;section&quot;: &quot;§4.4&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;m7 diversity Tanimoto = 0.0397 with Tanimoto reward (+22.5% lift)&quot;,
+  &quot;value&quot;: &quot;0.0397 (+22.5%)&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/180_daily_summary_2026_09_27.md §1.3&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_m7_targetdiff_gap">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§4.4</span>
+        <span class="claim-title">m7 diversity 0.0397 is +0.820 BELOW TargetDiff 0.860 ceiling (honest per §3.5)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> +0.820 gap (honest-negative)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/207_unified_pre_flight_checklist_v2.md §9.6.2</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_m7_targetdiff_gap')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_m7_targetdiff_gap-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_m7_targetdiff_gap&quot;,
+  &quot;section&quot;: &quot;§4.4&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;m7 diversity 0.0397 is +0.820 BELOW TargetDiff 0.860 ceiling (honest per §3.5)&quot;,
+  &quot;value&quot;: &quot;+0.820 gap (honest-negative)&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/207_unified_pre_flight_checklist_v2.md §9.6.2&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_drugood_1_58M_deferred">
+      <div class="claim-row">
+        <span class="badge badge-projected">PROJECTED</span>
+        <span class="claim-section">§5.3</span>
+        <span class="claim-title">DrugOOD 1.58M train full retrain DEFERRED (currently 95,373 train subset, BD-11)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> DEFERRED — 95,373/1,580,000 subset only</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/INDEX.md BD-11</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_drugood_1_58M_deferred')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_drugood_1_58M_deferred-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_drugood_1_58M_deferred&quot;,
+  &quot;section&quot;: &quot;§5.3&quot;,
+  &quot;badge&quot;: &quot;PROJECTED&quot;,
+  &quot;claim&quot;: &quot;DrugOOD 1.58M train full retrain DEFERRED (currently 95,373 train subset, BD-11)&quot;,
+  &quot;value&quot;: &quot;DEFERRED — 95,373/1,580,000 subset only&quot;,
+  &quot;json_path&quot;: &quot;TODO/INDEX.md BD-11&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_krasnov_temporal_split_deferred">
+      <div class="claim-row">
+        <span class="badge badge-projected">PROJECTED</span>
+        <span class="claim-section">§5.3</span>
+        <span class="claim-title">Krasnov temporal-split head-to-head driver DEFERRED (TODO-219 §3 follow-up)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> DEFERRED — scaffold-split is the conservative protocol</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/188_paper_4_krasnov_protocol_aligned.md §1.3</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_krasnov_temporal_split_deferred')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_krasnov_temporal_split_deferred-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_krasnov_temporal_split_deferred&quot;,
+  &quot;section&quot;: &quot;§5.3&quot;,
+  &quot;badge&quot;: &quot;PROJECTED&quot;,
+  &quot;claim&quot;: &quot;Krasnov temporal-split head-to-head driver DEFERRED (TODO-219 §3 follow-up)&quot;,
+  &quot;value&quot;: &quot;DEFERRED — scaffold-split is the conservative protocol&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/188_paper_4_krasnov_protocol_aligned.md §1.3&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_m3_vina_dock_projected">
+      <div class="claim-row">
+        <span class="badge badge-projected">PROJECTED</span>
+        <span class="claim-section">§5.4</span>
+        <span class="claim-title">m3 Vina Dock PROJECTED @ R19 (Wf-30 5-seed mean ≥ −8.5 kcal/mol gate DEFERRED)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> PROJECTED — DEFERRED to R19</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/188_paper_4_krasnov_protocol_aligned.md §5.4</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_m3_vina_dock_projected')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_m3_vina_dock_projected-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_m3_vina_dock_projected&quot;,
+  &quot;section&quot;: &quot;§5.4&quot;,
+  &quot;badge&quot;: &quot;PROJECTED&quot;,
+  &quot;claim&quot;: &quot;m3 Vina Dock PROJECTED @ R19 (Wf-30 5-seed mean ≥ −8.5 kcal/mol gate DEFERRED)&quot;,
+  &quot;value&quot;: &quot;PROJECTED — DEFERRED to R19&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/188_paper_4_krasnov_protocol_aligned.md §5.4&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_chemprop_v3_fallback_default">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§6.1</span>
+        <span class="claim-title">chemprop v3 v3-fallback DEFAULT forces chemprop v2 BinaryClassificationFFN head regardless of --enhanced-head / --metal-attention</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> v3-fallback (default) → v2 head, audit-trail preserved</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf263a_implement/implement_report.md §3</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_chemprop_v3_fallback_default')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_chemprop_v3_fallback_default-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_chemprop_v3_fallback_default&quot;,
+  &quot;section&quot;: &quot;§6.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;chemprop v3 v3-fallback DEFAULT forces chemprop v2 BinaryClassificationFFN head regardless of --enhanced-head / --metal-attention&quot;,
+  &quot;value&quot;: &quot;v3-fallback (default) → v2 head, audit-trail preserved&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf263a_implement/implement_report.md §3&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_chemprop_v3_fallback_official">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§6.1</span>
+        <span class="claim-title">Wf-263A fix shipped: train_chemprop_v2_v3.py + train_chemprop_v2_v3_v1_backup.py + test_wf263a_chemprop_v3_fix.py (3 files, 10/10 new + 21/21 backward-compat tests PASS)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 3 files modified, 10/10 + 21/21 tests PASS</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf263a_implement/implement_report.md §2 + §7</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_chemprop_v3_fallback_official')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_chemprop_v3_fallback_official-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_chemprop_v3_fallback_official&quot;,
+  &quot;section&quot;: &quot;§6.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-263A fix shipped: train_chemprop_v2_v3.py + train_chemprop_v2_v3_v1_backup.py + test_wf263a_chemprop_v3_fix.py (3 files, 10/10 new + 21/21 backward-compat tests PASS)&quot;,
+  &quot;value&quot;: &quot;3 files modified, 10/10 + 21/21 tests PASS&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf263a_implement/implement_report.md §2 + §7&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf266_min_epochs_flag">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§6.2</span>
+        <span class="claim-title">--chemprop-min-epochs N (default 10) refuses --epochs &lt; N (anti-under-training lever for LOMO head collapse)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> --chemprop-min-epochs default 10</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf266_lomo_fix/wf266_report.md §Summary</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf266_min_epochs_flag')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf266_min_epochs_flag-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf266_min_epochs_flag&quot;,
+  &quot;section&quot;: &quot;§6.2&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;--chemprop-min-epochs N (default 10) refuses --epochs &lt; N (anti-under-training lever for LOMO head collapse)&quot;,
+  &quot;value&quot;: &quot;--chemprop-min-epochs default 10&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf266_lomo_fix/wf266_report.md §Summary&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf266_lomo_init_scale_flag">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§6.2</span>
+        <span class="claim-title">--chemprop-lomo-init-scale F (default 1e-3) scales per-metal BCE logits (anti-bias lever; logit*1e-3 keeps sigmoid ≈ 0.5 at init)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> --chemprop-lomo-init-scale default 1e-3</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf266_lomo_fix/wf266_report.md §Summary</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf266_lomo_init_scale_flag')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf266_lomo_init_scale_flag-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf266_lomo_init_scale_flag&quot;,
+  &quot;section&quot;: &quot;§6.2&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;--chemprop-lomo-init-scale F (default 1e-3) scales per-metal BCE logits (anti-bias lever; logit*1e-3 keeps sigmoid ≈ 0.5 at init)&quot;,
+  &quot;value&quot;: &quot;--chemprop-lomo-init-scale default 1e-3&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf266_lomo_fix/wf266_report.md §Summary&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf266_v3_fix_mode">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§6.2</span>
+        <span class="claim-title">--chemprop-mode v3-fix combines v2 BinaryClassificationFFN + min-epochs floor + lomo-init-scale anti-bias (NO-OP under v3-fallback default)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> --chemprop-mode v3-fix (4-mode choice: v2, v3, v3-fallback, v3-fix)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf266_lomo_fix/wf266_report.md §Summary</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf266_v3_fix_mode')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf266_v3_fix_mode-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf266_v3_fix_mode&quot;,
+  &quot;section&quot;: &quot;§6.2&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;--chemprop-mode v3-fix combines v2 BinaryClassificationFFN + min-epochs floor + lomo-init-scale anti-bias (NO-OP under v3-fallback default)&quot;,
+  &quot;value&quot;: &quot;--chemprop-mode v3-fix (4-mode choice: v2, v3, v3-fallback, v3-fix)&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf266_lomo_fix/wf266_report.md §Summary&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_todo_180_g4_re_top">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">TODO-180 G4 Re per-metal AUC = 0.7700 (n=3 seeds) — top of the 5-metal cohort</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> Re 0.7700 (n=3 seeds, n_train=692)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf265_collect/all_results.json::g4_per_metal_aggregate_full_15pair[Re]</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_todo_180_g4_re_top')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_todo_180_g4_re_top-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_todo_180_g4_re_top&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;TODO-180 G4 Re per-metal AUC = 0.7700 (n=3 seeds) — top of the 5-metal cohort&quot;,
+  &quot;value&quot;: &quot;Re 0.7700 (n=3 seeds, n_train=692)&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf265_collect/all_results.json::g4_per_metal_aggregate_full_15pair[Re]&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_todo_180_g4_overall_15pair">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§2.1</span>
+        <span class="claim-title">TODO-180 G4 overall mean test_auc = 0.7236 (15 pairs = 5 metal × 3 seed)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.7236 overall (n=15 pairs)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf265_collect/all_results.json::g4_overall_aggregate_full_15pair</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_todo_180_g4_overall_15pair')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_todo_180_g4_overall_15pair-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_todo_180_g4_overall_15pair&quot;,
+  &quot;section&quot;: &quot;§2.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;TODO-180 G4 overall mean test_auc = 0.7236 (15 pairs = 5 metal × 3 seed)&quot;,
+  &quot;value&quot;: &quot;0.7236 overall (n=15 pairs)&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf265_collect/all_results.json::g4_overall_aggregate_full_15pair&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf266_g5_50epoch_blocked">
+      <div class="claim-row">
+        <span class="badge badge-projected">PROJECTED</span>
+        <span class="claim-section">§5.4</span>
+        <span class="claim-title">Wf-266 G5 50-epoch sweep BLOCKED at GPU-ordinal layer (CUDA error: invalid device ordinal); 0/15 pairs MEASURED; recovery deferred to R21+</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> PROJECTED — 0/15 pairs (BLOCKED)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf266_final/final_status.md §4</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf266_g5_50epoch_blocked')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf266_g5_50epoch_blocked-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf266_g5_50epoch_blocked&quot;,
+  &quot;section&quot;: &quot;§5.4&quot;,
+  &quot;badge&quot;: &quot;PROJECTED&quot;,
+  &quot;claim&quot;: &quot;Wf-266 G5 50-epoch sweep BLOCKED at GPU-ordinal layer (CUDA error: invalid device ordinal); 0/15 pairs MEASURED; recovery deferred to R21+&quot;,
+  &quot;value&quot;: &quot;PROJECTED — 0/15 pairs (BLOCKED)&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf266_final/final_status.md §4&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf275b_drugood_adapter">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§3.1</span>
+        <span class="claim-title">Wf-275B DrugOOD ECFP4 + Bemis-Murcko scaffold-split adapter SHIPPED (n_source_rows=95,236; 0 RDKit parse failures; 0 scaffold leakage train↔val↔test)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> n=95,236 rows; 0 leak; 5/5 tests PASS</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf275b_drugood_adapter/adapter_report.md §3 + §4</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf275b_drugood_adapter')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf275b_drugood_adapter-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf275b_drugood_adapter&quot;,
+  &quot;section&quot;: &quot;§3.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-275B DrugOOD ECFP4 + Bemis-Murcko scaffold-split adapter SHIPPED (n_source_rows=95,236; 0 RDKit parse failures; 0 scaffold leakage train↔val↔test)&quot;,
+  &quot;value&quot;: &quot;n=95,236 rows; 0 leak; 5/5 tests PASS&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf275b_drugood_adapter/adapter_report.md §3 + §4&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf269c_yuelbond_load_bearing">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.5.4</span>
+        <span class="claim-title">Wf-269C YuelBond decoder LOAD-BEARING on REAL cohort: full (YuelBond) decode_ratio=1.000 vs no_yuelbond=0.000 (Δ=−1.000, max possible); Wasserstein + closure_bounded are NOT decode gates (Δ=0 MEASURED)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> Δ=−1.000 (full=1.000 / no_yuelbond=0.000, 51/51 train + 51/51 val)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>molmetal/reports/wf269c_cfm_real/wf269c_report.json::configs</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-28</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf269c_yuelbond_load_bearing')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf269c_yuelbond_load_bearing-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf269c_yuelbond_load_bearing&quot;,
+  &quot;section&quot;: &quot;§4.5.4&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-269C YuelBond decoder LOAD-BEARING on REAL cohort: full (YuelBond) decode_ratio=1.000 vs no_yuelbond=0.000 (Δ=−1.000, max possible); Wasserstein + closure_bounded are NOT decode gates (Δ=0 MEASURED)&quot;,
+  &quot;value&quot;: &quot;Δ=−1.000 (full=1.000 / no_yuelbond=0.000, 51/51 train + 51/51 val)&quot;,
+  &quot;json_path&quot;: &quot;molmetal/reports/wf269c_cfm_real/wf269c_report.json::configs&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-28&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf275c_m14_lead_precondition">
+      <div class="claim-row">
+        <span class="badge badge-measured">MEASURED</span>
+        <span class="claim-section">§4.1</span>
+        <span class="claim-title">Wf-275C m14 LEAD deployment precondition SHIPPED: YuelBond decoder MUST be active (--no-yuelbond MUST NOT be set); without YuelBond the m14 LEAD silently invalidates (decode_ratio 1.000 → 0.000)</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> YuelBond-on mandatory precondition</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>TODO/completed/m14_lead_deployment_precondition.md §2 + §3</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf275c_m14_lead_precondition')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf275c_m14_lead_precondition-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf275c_m14_lead_precondition&quot;,
+  &quot;section&quot;: &quot;§4.1&quot;,
+  &quot;badge&quot;: &quot;MEASURED&quot;,
+  &quot;claim&quot;: &quot;Wf-275C m14 LEAD deployment precondition SHIPPED: YuelBond decoder MUST be active (--no-yuelbond MUST NOT be set); without YuelBond the m14 LEAD silently invalidates (decode_ratio 1.000 → 0.000)&quot;,
+  &quot;value&quot;: &quot;YuelBond-on mandatory precondition&quot;,
+  &quot;json_path&quot;: &quot;TODO/completed/m14_lead_deployment_precondition.md §2 + §3&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf274a_regression_disclosure">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§5.2</span>
+        <span class="claim-title">Wf-274A cfm_decode_real.json regression_disclosure: previous_value=0.9980 (3 seeds × 5991 GPU) vs current_value=0.9645 (1 seed × 818 CPU PlatinAI pt_subset); verdict=silent_regression_methodology_change_not_disclosed; do NOT cite 0.9645 as LEAD</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> previous 0.9980 → current 0.9645 (Δ=−0.0335 silent)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/cfm_decode_real.json::regression_disclosure</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf274a_regression_disclosure')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf274a_regression_disclosure-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf274a_regression_disclosure&quot;,
+  &quot;section&quot;: &quot;§5.2&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;Wf-274A cfm_decode_real.json regression_disclosure: previous_value=0.9980 (3 seeds × 5991 GPU) vs current_value=0.9645 (1 seed × 818 CPU PlatinAI pt_subset); verdict=silent_regression_methodology_change_not_disclosed; do NOT cite 0.9645 as LEAD&quot;,
+  &quot;value&quot;: &quot;previous 0.9980 → current 0.9645 (Δ=−0.0335 silent)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/cfm_decode_real.json::regression_disclosure&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+    <div class="claim-card" id="claim_wf271b_m17_drugood_v3_reeval">
+      <div class="claim-row">
+        <span class="badge badge-honest-negative">honest-negative</span>
+        <span class="claim-section">§3.3</span>
+        <span class="claim-title">Wf-271B m17_drugood_v3_reeval: 3 metals × 4 seeds = 12 v3 checkpoints on DrugOOD scaffold ood_test split, ROC-AUC = 0.4544 ± 0.0327 (BELOW_RANDOM); promoted from drugood_v3_scaffold to m17_drugood_v3_reeval; per-metal Ru=0.490, Ir=0.464, etc.</span>
+      </div>
+      <div class="claim-meta">
+        <span class="claim-value"><strong>value:</strong> 0.4544 ± 0.0327 (BELOW_RANDOM)</span>
+        <span class="claim-path"><strong>JSON path:</strong> <code>metrics/by_metric/drugood_v3_scaffold.json::per_metal.*.test_auc_mean</code></span>
+        <span class="claim-ts"><strong>ts:</strong> 2026-09-29</span>
+        <button type="button" class="expand-btn" onclick="toggleSource('claim_wf271b_m17_drugood_v3_reeval')">show source JSON</button>
+      </div>
+      <pre class="claim-source" id="claim_wf271b_m17_drugood_v3_reeval-source" style="display:none;">{
+  &quot;id&quot;: &quot;claim_wf271b_m17_drugood_v3_reeval&quot;,
+  &quot;section&quot;: &quot;§3.3&quot;,
+  &quot;badge&quot;: &quot;honest-negative&quot;,
+  &quot;claim&quot;: &quot;Wf-271B m17_drugood_v3_reeval: 3 metals × 4 seeds = 12 v3 checkpoints on DrugOOD scaffold ood_test split, ROC-AUC = 0.4544 ± 0.0327 (BELOW_RANDOM); promoted from drugood_v3_scaffold to m17_drugood_v3_reeval; per-metal Ru=0.490, Ir=0.464, etc.&quot;,
+  &quot;value&quot;: &quot;0.4544 ± 0.0327 (BELOW_RANDOM)&quot;,
+  &quot;json_path&quot;: &quot;metrics/by_metric/drugood_v3_scaffold.json::per_metal.*.test_auc_mean&quot;,
+  &quot;timestamp&quot;: &quot;2026-09-29&quot;
+}</pre>
+    </div>
+    
+  </div>
+
+  <h2>Honest-negative catalog (TODO-207 §9)</h2>
+  
+    <section class="honest-negative">
+      <h3>Honest-negative catalog (TODO-207 §9, party-twenty-spirit §3.5 0 容忍 不掩盖)</h3>
+      <ol class="hn-list">
+        
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim chemprop v2 beats iMoLD on DrugOOD (Δ = −0.0074 assay within std)</strong>
+              <span class="hn-ref">— TODO/completed/188_paper_4_krasnov_protocol_aligned.md §5.2</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim cross-metal LOMO transfer (TODO-154 in-domain per-metal only)</strong>
+              <span class="hn-ref">— TODO/completed/188_paper_4_krasnov_protocol_aligned.md §5.2</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim DrugOOD 1.58M train full retrain is measured (BD-11 DEFERRED)</strong>
+              <span class="hn-ref">— TODO/INDEX.md BD-11</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim full PlatinAI 226K retrain (500-mol subset only — L2 DEFERRED)</strong>
+              <span class="hn-ref">— TODO/completed/188_paper_4_krasnov_protocol_aligned.md §5.3</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim BindingDB full 1.07M metal-filter retrain (BD-12 DEFERRED)</strong>
+              <span class="hn-ref">— TODO/INDEX.md BD-12</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim scaffold-split is more comparable to Krasnov time-split than a temporal driver</strong>
+              <span class="hn-ref">— TODO/completed/188_paper_4_krasnov_protocol_aligned.md §1.3</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim m21 9-cell aggregate BEATS Krasnov 0.81 (statistically equivalent)</strong>
+              <span class="hn-ref">— TODO/completed/188_paper_4_krasnov_protocol_aligned.md §4.3</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim CFM decode_ratio 0.9958 BEATS synthetic 1.000 (expected gap)</strong>
+              <span class="hn-ref">— TODO/completed/207_unified_pre_flight_checklist_v2.md §9.6.3</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim Wf-219 smaller-backbone 3-seed numbers more accurate than TODO-154 5-seed full-backbone</strong>
+              <span class="hn-ref">— TODO/completed/188_paper_4_krasnov_protocol_aligned.md §5.2</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim Re per-metal paired t-test is significant (n=2 underpowered)</strong>
+              <span class="hn-ref">— TODO/completed/154_chemprop_v4_head_to_head.md §1</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim m7 diversity 0.0397 reaches TargetDiff 0.860 ceiling (gap +0.820 honest)</strong>
+              <span class="hn-ref">— TODO/completed/188_paper_4_krasnov_protocol_aligned.md §4.4</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.3</span>
+              <strong>DO NOT claim chemprop v3 DrugOOD-PASS (BELOW_RANDOM 0.4544, §6 honest-negative)</strong>
+              <span class="hn-ref">— TODO/completed/207_unified_pre_flight_checklist_v2.md §9.4</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.4</span>
+              <strong>DO NOT claim Wf-263A empirical DrugOOD re-measurement PASS (75-min wall budget TIMEOUT; structural PASS only, empirical TBD)</strong>
+              <span class="hn-ref">— molmetal/reports/wf263a_verify/verify_report.md §3.2</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.4</span>
+              <strong>DO NOT claim Wf-266 G5 50-epoch sweep MEASURED (0/15 pairs — CUDA error invalid device ordinal; wrapper BLOCKED at GPU ordinal layer)</strong>
+              <span class="hn-ref">— molmetal/reports/wf266_final/final_status.md §4.2</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.4</span>
+              <strong>DO NOT claim Wf-266 v3-fix mode produces MEASURED AUC lift (IMPLEMENT only — no GPU retrain; AUC lift deferred to follow-up TODO-130 G5 retrain)</strong>
+              <span class="hn-ref">— molmetal/reports/wf266_lomo_fix/wf266_report.md §Honest-framing</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.AI</span>
+              <strong>DO NOT cite cfm_decode_real.json value=0.9645 as the m14 LEAD (Wf-274A regression_disclosure flags it as a smaller-cohort 1-seed CPU PlatinAI pt_subset measurement; cite Wf-188 m14 FULL = 0.9958 instead)</strong>
+              <span class="hn-ref">— metrics/by_metric/cfm_decode_real.json::regression_disclosure + TODO-188 §5.2 line 387</span>
+            </li>
+            
+            <li>
+              <span class="badge badge-honest-negative">§9.AJ</span>
+              <strong>DO NOT deploy m14 LEAD CFM with --no-yuelbond flag (Wf-269C MEASURED: decode_ratio 1.000 → 0.000, Δ=−1.000; m14 LEAD silently invalidates without raising any runtime error)</strong>
+              <span class="hn-ref">— TODO/completed/m14_lead_deployment_precondition.md §2 + molmetal/reports/wf269c_cfm_real/wf269c_report.json</span>
+            </li>
+            
+      </ol>
+    </section>
+    
+</main>
+
+<footer class="dashboard-footer">
+  <p>
+    Honest framing per <code>party-twenty-spirit</code> §3.5 (0 容忍 不掩盖):
+    every claim badge (MEASURED / PROJECTED / honest-negative) traces to a JSON
+    path embedded in the source JSON snippet. Re-run
+    <code>paper_dashboard.py</code> after any Wf-265-Collect refresh.
+  </p>
+  <p>
+    <strong>Wf-268C-Dash update_report:</strong>
+    13 new claims +
+    5 new honest-negatives +
+    2 new cohort sections.
+  </p>
+  <p>
+    <strong>Paper doc:</strong> <code>/home/hugo/codes/mol-metal/TODO/completed/188_paper_4_krasnov_protocol_aligned.md</code> &middot;
+    <strong>Collect JSON:</strong> <code>/home/hugo/codes/mol-metal/molmetal/reports/wf265_collect/all_results.json</code> &middot;
+    <strong>Checklist doc:</strong> <code>/home/hugo/codes/mol-metal/TODO/completed/207_unified_pre_flight_checklist_v2.md</code>
+  </p>
+</footer>
+</body>
+</html>

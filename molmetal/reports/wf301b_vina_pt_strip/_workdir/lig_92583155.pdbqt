@@ -1,0 +1,11 @@
+REMARK SMILES [O][Cl+3]([O-])([O-])[O-]
+REMARK SMILES IDX 3 1 2 2 4 3 5 4 1 5
+REMARK H PARENT
+ROOT
+ATOM      1  O   UNL     1       1.257  -0.058  -0.720  1.00  0.00    -0.179 OA
+ATOM      2 Cl   UNL     1      -0.000  -0.000   0.000  1.00  0.00    +0.140 Cl
+ATOM      3  O   UNL     1      -0.041  -1.061   0.988  1.00  0.00    -0.179 OA
+ATOM      4  O   UNL     1      -1.098  -0.165  -0.932  1.00  0.00    -0.179 OA
+ATOM      5  O   UNL     1      -0.118   1.284   0.664  1.00  0.00    +0.398 OA
+ENDROOT
+TORSDOF 0

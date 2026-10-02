@@ -1,0 +1,519 @@
+#!/usr/bin/env bash
+# Wf-355-A2 — R20 §4 BindingDB 1.07M chemprop v2 launch wrapper
+#
+# Date: 2026-09-29
+# Owner: Hugo Lee + ultracode agent
+# Origin: Wf-355-A2 ultracode residual closure wave (per AGENTS.md §6)
+# Parent: TODO/03_plans/R20_BIG_DATASET_FULL_RETRAIN_PLAN.md §4 (Phase 3 — BindingDB)
+# Sister: TODO/completed/354b2_r20_p4_binding_db_wrapper.md (HONEST-NEGATIVE predecessor)
+# Status: DRY-RUN READY; USER_OK-gated GPU launch (per Wf-294B kill_then_adapt)
+#
+# Purpose
+# -------
+# Launch chemprop v2 retrain on the FULL BindingDB 1.07M filtered to
+# metal-binding entries. The R20 §3 (per R20 plan) / §4 (per task title;
+# task explicitly names BindingDB) targets Affinity Pearson r ≥ 0.65
+# (Boltz-2 baseline 0.86). Wall-time PROJECTED ~7 hr single RTX 5090.
+#
+# Pre-launch checks (BEFORE any GPU work)
+# --------------------------------------
+#   1. pre_flight_check.py --pipeline all (TODO-207 v3 62/62 PASS gate)
+#   2. wave_budget_tracker.py (advisory; cfm-yuelbond not required)
+#   3. per_wave_checklist.py --wave Wf-355-A2-1 (gate before launch)
+#   4. USER_OK gate (per Wf-294B kill_then_adapt + AGENTS.md §5.1)
+#   5. VRAM budget check via nvidia-smi (per AGENTS.md §5.1)
+#   6. Data quality gate: BindingDB full 1.07M on disk + metal filter
+#      output passes row-count + no-NaN-pIC50 (gate G5)
+#
+# Wf-328 wire-up flags (mirror the production trainer defaults)
+# --------------------------------------------------------------
+#   W1 torch.compile   (default ON)
+#   W2 num-workers     (--cpu-num-workers 8)
+#   W3 BF16            (default ON)
+#   W4 TF32            (default ON)
+#   W5 W₂ sort         (--w2-gradient-mode sort)
+#   W6 DataLoader      (--num-workers 8)
+#   W7 PyG backend     (default ON)
+#   W8 CUDA Graphs     (default OFF per Wf-335-R3 safety lever)
+#   W9 Triton edge     (default OFF)
+#   W10 DMPNN cache    (default ON)
+#
+# Scope (PROJECTED per R20 §3 + Wf-148 §1.1)
+# ------------------------------------------
+#   R1 mode (default; CPU verification):  1 seed × 1 epoch × hidden=64
+#                                          × depth=2 → ~30 sec wall
+#   R3 mode (USER_OK=YES; RTX 5090):     3 seeds × 50 epochs
+#                                          × hidden=300 × depth=3
+#                                          → ~7 hr wall PROJECTED
+#
+# HONEST FRAMING (party-twenty-spirit §3.5):
+#   - USER_OK gate HARD-REQUIRED for both R1 and R3 (kill_then_adapt)
+#   - DATA-HOLD risk: on-disk metal_filter output is currently 278 rows
+#     (per Wf-354-B2 closeout + this audit), BELOW the R20 §3 projected
+#     50K-200K rows. If --strict-data-quality is set, the wrapper
+#     refuses to launch and emits HONEST_NEGATIVE_DATA_HOLD.
+#   - The launch runs the existing chemprop v2 v3 trainer
+#     (molmetal/scripts/train_chemprop_v2_v3.py) which consumes the
+#     canonical 6-col schema produced by wf175_bindingdb_metal_filter.py.
+#     The wrapper symlinks the metal-filtered CSV to a path the trainer
+#     can ingest (MetalCytoToxDB.csv alias) so the trainer's existing
+#     load_metal_cytotox() picks it up.
+#   - Wall-time figures PROJECTED (not measured); actual GPU launch
+#     requires USER_OK=YES.
+#
+# Usage
+# -----
+#   USER_OK=YES bash scripts/launch_wf310e_r20_p4_bindingdb_1.07M.sh --dry-run --mode R1
+#       # CPU smoke (USER_OK REQUIRED even for R1)
+#   USER_OK=YES bash scripts/launch_wf310e_r20_p4_bindingdb_1.07M.sh --mode R3
+#       # 3-seed × 50-epoch RTX 5090 full retrain
+#
+
+set -euo pipefail
+
+# -----------------------------------------------------------------------------
+# Constants
+# -----------------------------------------------------------------------------
+PY="${PY:-/home/hugo/codes/mol-metal/.venv/bin/python}"
+PROJECT_ROOT="/home/hugo/codes/mol-metal"
+SCRIPTS_DIR="${PROJECT_ROOT}/molmetal/scripts"
+REPORTS_DIR="${PROJECT_ROOT}/molmetal/reports/wf355a2_r20_p4_bindingdb"
+PRE_FLIGHT="${SCRIPTS_DIR}/pre_flight_check.py"
+BUDGET_TRACKER="${SCRIPTS_DIR}/wave_budget_tracker.py"
+PER_WAVE="${SCRIPTS_DIR}/per_wave_checklist.py"
+DOWNLOAD_SCRIPT="${PROJECT_ROOT}/scripts/download_bindingdb_1.07M.sh"
+CHEMPROP_TRAINER="${SCRIPTS_DIR}/train_chemprop_v2_v3.py"
+
+# Wf-363-A1: source the shared DRY_RUN.log helper (consistent per-pair schema)
+DRY_RUN_LOG_HELPER="${PROJECT_ROOT}/scripts/_dry_run_log_helper.sh"
+[ -f "${DRY_RUN_LOG_HELPER}" ] || die "DRY_RUN log helper missing: ${DRY_RUN_LOG_HELPER}"
+# shellcheck source=../_dry_run_log_helper.sh
+source "${DRY_RUN_LOG_HELPER}"
+
+DATA_DIR="${PROJECT_ROOT}/.data/molmetal/bindingdb_full"
+METAL_CSV="${DATA_DIR}/metal_binding_db_full.csv"
+METAL_CYTOTOX_CANONICAL="${PROJECT_ROOT}/.data/molmetal/MetalCytoToxDB.csv"
+BINDINGDB_CANONICAL_LINK="${DATA_DIR}/MetalCytoToxDB.csv"
+
+# Per-phase budget in hours (kill_then_adapt < 2 hr/phase hard cap)
+R1_BUDGET_HR=0.5        # Wf-355-A2 R1 smoke (CPU; 1 seed × 1 ep)
+R3_BUDGET_HR=8.0        # Wf-355-A2 R3 full GPU (3 seeds × 50 ep)
+
+# Per-phase GPU assignment (per Wf-130 default kanzi GPU 1)
+R1_GPU="cpu"            # R1 is CPU verification
+R3_GPU="cuda:1"         # R3 is RTX 5090
+
+# Wf-328 wire-up flags (mirror the production trainer defaults)
+WF328_NUM_WORKERS=8
+WF328_TORCH_COMPILE=1
+WF328_TF32=1
+WF328_BF16=1
+WF328_W2_MODE="sort"
+WF328_DMPNN_BACKEND="pyg"
+
+# VRAM budget (per AGENTS.md §5.1 — RTX 5090 32GB or RTX PRO 6000 98GB)
+VRAM_BUDGET_GB=20
+
+# Honest-negative thresholds
+EXPECTED_FILTERED_MIN_ROWS=50        # below this → DATA_HOLD
+EXPECTED_PEARSON_R_GATE=0.65          # Boltz-2 baseline 0.86
+
+mkdir -p "${REPORTS_DIR}/r1" "${REPORTS_DIR}/r3"
+
+# -----------------------------------------------------------------------------
+# Color codes (only when stdout is a tty)
+# -----------------------------------------------------------------------------
+if [ -t 1 ]; then
+    C_RED=$'\033[0;31m'; C_GRN=$'\033[0;32m'; C_YEL=$'\033[0;33m'; C_RST=$'\033[0m'
+else
+    C_RED=""; C_GRN=""; C_YEL=""; C_RST=""
+fi
+
+log()  { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; }
+die()  { printf '%s[FATAL]%s %s\n' "${C_RED}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; exit 1; }
+ok()   { printf '%s[OK]%s %s\n' "${C_GRN}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; }
+warn() { printf '%s[WARN]%s %s\n' "${C_YEL}" "${C_RST}" "$*" | tee -a "${REPORTS_DIR}/launch.log" >&2; }
+
+# -----------------------------------------------------------------------------
+# CLI
+# -----------------------------------------------------------------------------
+DRY_RUN=0
+MODE="R1"            # Wf-355-A2 R1 default (CPU smoke)
+STRICT_DATA=0        # if 1, refuse on DATA_HOLD
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --dry-run)               DRY_RUN=1; shift ;;
+        --mode)                  MODE="${2:-R1}"; shift 2 ;;
+        --mode-*)                MODE="${1#--mode-}"; shift ;;
+        --strict-data-quality)   STRICT_DATA=1; shift ;;
+        -h|--help)
+            sed -n '2,80p' "$0"; exit 0 ;;
+        *)                       die "unknown arg: $1" ;;
+    esac
+done
+
+[ "${MODE}" = "R1" ] || [ "${MODE}" = "R3" ] \
+    || die "mode must be R1 | R3 (got: ${MODE})"
+
+# -----------------------------------------------------------------------------
+# USER_OK gate (per Wf-294B / Wf-300C pattern; kill_then_adapt)
+#   R1: REQUIRED (smoke only; CPU; gate is reproducibility audit invariant)
+#   R3: REQUIRED (full GPU run; ~7 hr wall)
+# -----------------------------------------------------------------------------
+user_ok_gate() {
+    local mode="$1"
+    if [ -z "${USER_OK:-}" ]; then
+        die "USER_OK env var not set. Re-run with: USER_OK=YES bash $0 --mode ${mode}"
+    fi
+    if [ "${USER_OK}" != "YES" ]; then
+        die "USER_OK must equal 'YES' (got: '${USER_OK}')"
+    fi
+    ok "USER_OK gate passed (USER_OK=YES)"
+}
+
+# -----------------------------------------------------------------------------
+# Pre-launch sanity
+# -----------------------------------------------------------------------------
+[ -x "$(command -v "${PY}")" ]   || die "PY not found: ${PY}"
+[ -f "${PRE_FLIGHT}" ]            || die "pre_flight_check.py missing"
+[ -f "${BUDGET_TRACKER}" ]        || die "wave_budget_tracker.py missing"
+[ -f "${PER_WAVE}" ]              || die "per_wave_checklist.py missing"
+[ -f "${DOWNLOAD_SCRIPT}" ]       || die "download script missing: ${DOWNLOAD_SCRIPT}"
+[ -f "${CHEMPROP_TRAINER}" ]      || die "chemprop trainer missing: ${CHEMPROP_TRAINER}"
+
+# Trainer marker check — chemprop v2 v3 driver
+grep -q "Wf-200" "${CHEMPROP_TRAINER}" \
+    || die "chemprop v2 v3 trainer missing Wf-200 marker"
+grep -q "load_metal_cytotox" "${CHEMPROP_TRAINER}" \
+    || die "chemprop v2 v3 trainer missing load_metal_cytotox wiring"
+
+log "Wf-355-A2 launch begin — mode=${MODE} dry-run=${DRY_RUN} strict_data=${STRICT_DATA}"
+user_ok_gate "${MODE}"
+
+# -----------------------------------------------------------------------------
+# Pre-launch check #1 — pre_flight_check.py --pipeline all
+# -----------------------------------------------------------------------------
+pre_flight_gate() {
+    log "pre_flight_check.py --pipeline all (TODO-207 v3 gate)"
+    if [ "${DRY_RUN}" -eq 1 ]; then
+        warn "DRY-RUN: skipping pre_flight GPU/live gates"
+        return 0
+    fi
+    if ! "${PY}" "${PRE_FLIGHT}" --pipeline all --json \
+            > "${REPORTS_DIR}/pre_flight.json" 2>&1; then
+        die "pre_flight_check FAIL — see ${REPORTS_DIR}/pre_flight.json"
+    fi
+    local n_pass n_fail
+    n_pass=$(grep -c '"status": "PASS"' "${REPORTS_DIR}/pre_flight.json" || true)
+    n_fail=$(grep -c '"status": "FAIL"' "${REPORTS_DIR}/pre_flight.json" || true)
+    ok "pre_flight ${n_pass} PASS / ${n_fail} FAIL"
+    [ "${n_fail}" -eq 0 ] || die "pre_flight FAIL count > 0 — BLOCKER (per TODO-207 v3)"
+}
+
+# -----------------------------------------------------------------------------
+# Pre-launch check #2 — wave_budget_tracker.py
+# -----------------------------------------------------------------------------
+budget_gate() {
+    log "wave_budget_tracker.py (advisory; bindingdb is not CFM)"
+    if [ "${DRY_RUN}" -eq 1 ]; then
+        warn "DRY-RUN: budget tracker advisory only"
+        return 0
+    fi
+    if ! "${PY}" "${BUDGET_TRACKER}" --budget-hr 8 \
+            --report-json "${REPORTS_DIR}/budget_report.json" \
+            > "${REPORTS_DIR}/budget.log" 2>&1; then
+        warn "budget tracker returned non-zero (advisory only)"
+    fi
+    ok "budget tracker logged"
+}
+
+# -----------------------------------------------------------------------------
+# Pre-launch check #3 — per_wave_checklist emission
+# -----------------------------------------------------------------------------
+per_wave_gate() {
+    log "per_wave_checklist.py --wave Wf-355-A2-1 (gate before launch)"
+    if [ "${DRY_RUN}" -eq 1 ]; then
+        warn "DRY-RUN: skipping per_wave_checklist emission"
+        return 0
+    fi
+    if ! "${PY}" "${PER_WAVE}" --wave "Wf-355-A2-1" \
+            > "${REPORTS_DIR}/per_wave.json" 2>&1; then
+        die "per_wave_checklist FAIL — see ${REPORTS_DIR}/per_wave.json"
+    fi
+    ok "per_wave_checklist emitted"
+}
+
+# -----------------------------------------------------------------------------
+# Pre-launch check #4 — VRAM budget (per AGENTS.md §5.1)
+# -----------------------------------------------------------------------------
+vram_gate() {
+    local gpu="$1"
+    log "VRAM budget check (--vram-budget-gb ${VRAM_BUDGET_GB})"
+    if [ "${DRY_RUN}" -eq 1 ]; then
+        warn "DRY-RUN: skipping nvidia-smi VRAM probe"
+        return 0
+    fi
+    if [ "${gpu}" = "cpu" ]; then
+        ok "CPU mode (Wf-355-A2 R1) — no VRAM check required"
+        return 0
+    fi
+    if ! command -v nvidia-smi >/dev/null 2>&1; then
+        die "nvidia-smi not found in PATH (required for ${MODE} GPU launch)"
+    fi
+    local idx="${gpu##cuda:}"
+    local free_mib
+    free_mib=$(nvidia-smi --query-gpu=memory.free \
+                       --format=csv,noheader -i "${idx}" 2>/dev/null \
+                | head -1 | tr -d ' ' || echo "0")
+    local free_gb
+    free_gb=$(echo "${free_mib} / 1024" | bc 2>/dev/null || echo "0")
+    if [ "$(echo "${free_gb} < ${VRAM_BUDGET_GB}" | bc 2>/dev/null || echo 1)" -eq 1 ]; then
+        die "VRAM free=${free_gb}GB < budget=${VRAM_BUDGET_GB}GB on GPU ${idx} (AGENTS.md §5.1 OOM risk)"
+    fi
+    ok "VRAM free=${free_gb}GB on GPU ${idx} (budget=${VRAM_BUDGET_GB}GB OK)"
+}
+
+# -----------------------------------------------------------------------------
+# Pre-launch check #5 — data quality gate (per Wf-148 §1.1 + R20 §3)
+# -----------------------------------------------------------------------------
+data_quality_gate() {
+    log "Data quality check (BindingDB full + metal filter)"
+    if [ ! -f "${DATA_DIR}/BindingDB_All.tsv" ]; then
+        die "Raw BindingDB TSV missing: ${DATA_DIR}/BindingDB_All.tsv. " \
+            "Run: bash ${DOWNLOAD_SCRIPT}"
+    fi
+    if [ ! -f "${METAL_CSV}" ]; then
+        die "Metal-filtered CSV missing: ${METAL_CSV}. " \
+            "Run: bash ${DOWNLOAD_SCRIPT}"
+    fi
+
+    # Row count check on raw TSV (expect ~1.07M data rows after header)
+    local n_raw
+    n_raw=$(wc -l < "${DATA_DIR}/BindingDB_All.tsv")
+    log "  raw TSV rows: ${n_raw}"
+
+    # Row count check on filtered CSV
+    local n_filtered
+    n_filtered=$(($(wc -l < "${METAL_CSV}") - 1))
+    log "  metal-filtered rows: ${n_filtered}"
+
+    # Gate: at least EXPECTED_FILTERED_MIN_ROWS rows in filtered output
+    if [ "${n_filtered}" -lt "${EXPECTED_FILTERED_MIN_ROWS}" ]; then
+        warn "DATA_HOLD: filtered output ${n_filtered} rows < " \
+             "minimum ${EXPECTED_FILTERED_MIN_ROWS} (R20 §3 projected 50K-200K)"
+        if [ "${STRICT_DATA}" -eq 1 ]; then
+            die "DATA_HOLD with --strict-data-quality — REFUSE launch"
+        fi
+        warn "Continuing in NON-STRICT mode; metric gate may not be reachable"
+    else
+        ok "Data quality gate PASS (${n_filtered} filtered rows)"
+    fi
+
+    # Gate G5: no NaN pIC50
+    local n_nan
+    n_nan=$(awk -F, 'NR > 1 && ($5 == "" || $5 == "nan" || $5 == "NaN" || $5 == "NA") { c++ } END { print c+0 }' "${METAL_CSV}")
+    if [ "${n_nan}" -gt 0 ]; then
+        warn "Gate G5 (no NaN pIC50): ${n_nan} rows with empty/NaN pIC50"
+    else
+        ok "Gate G5 (no NaN pIC50) PASS"
+    fi
+
+    # Symlink filtered CSV → MetalCytoToxDB.csv path so the trainer's
+    # load_metal_cytotox() picks it up (preserves the existing 6-col schema
+    # while letting the trainer treat it as the canonical MetalCytoToxDB).
+    if [ ! -e "${BINDINGDB_CANONICAL_LINK}" ]; then
+        ln -sf "${METAL_CSV}" "${BINDINGDB_CANONICAL_LINK}"
+        ok "Aliased metal-filtered CSV → ${BINDINGDB_CANONICAL_LINK}"
+    fi
+
+    # Data summary
+    {
+        printf '{\n'
+        printf '  "raw_tsv": "%s",\n' "${DATA_DIR}/BindingDB_All.tsv"
+        printf '  "raw_tsv_lines": %s,\n' "${n_raw}"
+        printf '  "metal_filtered_csv": "%s",\n' "${METAL_CSV}"
+        printf '  "metal_filtered_rows": %s,\n' "${n_filtered}"
+        printf '  "gate_G5_nan_pic50": %s,\n' "${n_nan}"
+        printf '  "expected_filtered_min_rows": %s,\n' "${EXPECTED_FILTERED_MIN_ROWS}"
+        printf '  "expected_pearson_r_gate": %s,\n' "${EXPECTED_PEARSON_R_GATE}"
+        printf '  "honest_negative_data_hold": %s,\n' \
+            "$( [ "${n_filtered}" -lt "${EXPECTED_FILTERED_MIN_ROWS}" ] && echo true || echo false )"
+        printf '  "ts": "%s"\n' "$(date -Iseconds)"
+        printf '}\n'
+    } > "${REPORTS_DIR}/data_quality.json"
+    ok "Data quality summary → ${REPORTS_DIR}/data_quality.json"
+}
+
+# -----------------------------------------------------------------------------
+# Wf-328 wire-up flag builder
+# -----------------------------------------------------------------------------
+build_wf328_flags() {
+    local mode="$1"
+    local gpu="$2"
+    local out_dir="$3"
+
+    local args=(
+        --out-dir "${out_dir}"
+        --ckpt-dir "${PROJECT_ROOT}/molmetal/checkpoints"
+        --use-kendall
+        --wasserstein-weight 0.05
+        --alpha 0.5
+        --lr 1e-3
+        --cpu-num-workers "${WF328_NUM_WORKERS}"
+        --w2-gradient-mode "${WF328_W2_MODE}"
+    )
+
+    if [ "${mode}" = "R1" ]; then
+        args+=( --seeds 0 --epochs 1 --hidden 64 --depth 2 --quick )
+    else
+        args+=( --seeds 0 1 2 --epochs 50 --hidden 300 --depth 3 --batch-size 64 )
+    fi
+
+    if [ "${gpu}" != "cpu" ]; then
+        args+=( --device cuda )
+    fi
+
+    printf '%s\n' "${args[@]}"
+}
+
+# -----------------------------------------------------------------------------
+# Per-phase runner with abort criteria + kill_then_adapt semantics
+# -----------------------------------------------------------------------------
+run_phase() {
+    local phase_label="$1"
+    local budget_hr="$2"
+    local trainer="$3"
+    local gpu="$4"
+    local out_dir="$5"
+    shift 5
+    # remaining args = --flag pairs
+
+    log "==== Phase ${phase_label} begin (budget=${budget_hr} hr, gpu=${gpu}) ===="
+    log "  trainer: ${trainer}"
+    log "  out_dir: ${out_dir}"
+    log "  flags:   $*"
+
+    if [ "${DRY_RUN}" -eq 1 ]; then
+        log "DRY-RUN: would launch Phase ${phase_label}"
+        # Wf-363-A1: use shared DRY_RUN.log schema helper for per-pair polish
+        emit_dry_run_log "${out_dir}/DRY_RUN.log" \
+            --title "Wf-355-A2 ${phase_label}" \
+            --wrapper "$(basename "$0")" \
+            --mode "${phase_label}" \
+            --trainer "${trainer}" \
+            --flags "$*" \
+            --gpu "${gpu}" \
+            --budget-hr "${budget_hr}" \
+            --user-ok "$( [ "${phase_label}" = "R3" ] && echo REQUIRED || echo OPTIONAL_smoke )"
+        ok "Phase ${phase_label} DRY-RUN logged"
+        return 0
+    fi
+
+    local started_at deadline pid aborted
+    started_at=$(date +%s)
+    deadline=$(( started_at + ${budget_hr%.*} * 3600 ))
+    aborted=0
+
+    if [ "${gpu}" = "cpu" ]; then
+        "${PY}" "${trainer}" --out-dir "${out_dir}" "$@" \
+            > "${out_dir}/train.log" 2>&1 &
+        pid=$!
+    else
+        local idx="${gpu##cuda:}"
+        CUDA_VISIBLE_DEVICES="${idx}" \
+            "${PY}" "${trainer}" --out-dir "${out_dir}" "$@" \
+                > "${out_dir}/train.log" 2>&1 &
+        pid=$!
+    fi
+
+    log "Phase ${phase_label} PID=${pid}; monitoring..."
+
+    while kill -0 "${pid}" 2>/dev/null; do
+        local now
+        now=$(date +%s)
+        if [ "${now}" -ge "${deadline}" ]; then
+            warn "Phase ${phase_label} exceeded budget ${budget_hr} hr (kill_then_adapt §7.2.1)"
+            kill -TERM "${pid}" 2>/dev/null || true
+            sleep 5
+            kill -KILL "${pid}" 2>/dev/null || true
+            aborted=1
+            break
+        fi
+        if [ "${gpu}" != "cpu" ]; then
+            local gpu_util
+            gpu_util=$(nvidia-smi --query-gpu=utilization.gpu \
+                                    --format=csv,noheader \
+                                    -i "${gpu##cuda:}" 2>/dev/null \
+                        | head -1 || echo "0")
+            log "  tick now=${now} pid=${pid} gpu_util=${gpu_util}%"
+        fi
+        sleep 60
+    done
+
+    wait "${pid}" 2>/dev/null || true
+
+    local wall_sec
+    wall_sec=$(( $(date +%s) - started_at ))
+    log "Phase ${phase_label} wall=${wall_sec}s ($(echo "scale=2; ${wall_sec}/3600" | bc) hr)"
+
+    if [ "${aborted}" -eq 1 ] || ! grep -q "phase complete\|TEST.*Pearson\|VAL.*Pearson" "${out_dir}/train.log"; then
+        warn "Phase ${phase_label} FAIL — see ${out_dir}/train.log"
+        die "Phase ${phase_label} aborted"
+    fi
+
+    ok "Phase ${phase_label} complete — ${wall_sec}s"
+}
+
+# -----------------------------------------------------------------------------
+# Phase R1 — Wf-355-A2 R1 smoke (1 seed × 1 epoch CPU)
+# -----------------------------------------------------------------------------
+phase_R1() {
+    local out="${REPORTS_DIR}/r1"
+    log "Wf-355-A2 R1 plan: BindingDB chemprop v2 smoke 1 seed × 1 epoch (~30 sec, CPU)"
+    log "  Wf-328 wire-ups: --cpu-num-workers 8 --w2-gradient-mode sort"
+    log "                   --use-kendall --hidden 64 --depth 2 (smoke small)"
+    local args
+    mapfile -t args < <(build_wf328_flags "R1" "${R1_GPU}" "${out}")
+    run_phase "R1" "${R1_BUDGET_HR}" \
+        "${CHEMPROP_TRAINER}" "${R1_GPU}" "${out}" "${args[@]}"
+    ok "Phase R1 BindingDB chemprop v2 smoke complete"
+}
+
+# -----------------------------------------------------------------------------
+# Phase R3 — Wf-355-A2 R3 full GPU run (3 seeds × 50 epochs RTX 5090)
+# -----------------------------------------------------------------------------
+phase_R3() {
+    local out="${REPORTS_DIR}/r3"
+    log "Wf-355-A2 R3 plan: BindingDB chemprop v2 full 3-seed × 50-epoch (~7 hr, cuda:1)"
+    log "  Wf-328 wire-ups: --cpu-num-workers 8 --w2-gradient-mode sort"
+    log "                   --use-kendall --hidden 300 --depth 3 --batch-size 64 --lr 1e-3"
+    local args
+    mapfile -t args < <(build_wf328_flags "R3" "${R3_GPU}" "${out}")
+    run_phase "R3" "${R3_BUDGET_HR}" \
+        "${CHEMPROP_TRAINER}" "${R3_GPU}" "${out}" "${args[@]}"
+    ok "Phase R3 BindingDB chemprop v2 full GPU run complete"
+}
+
+# -----------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------
+pre_flight_gate
+budget_gate
+per_wave_gate
+data_quality_gate
+
+if [ "${MODE}" = "R1" ]; then
+    vram_gate "${R1_GPU}"
+    phase_R1
+elif [ "${MODE}" = "R3" ]; then
+    vram_gate "${R3_GPU}"
+    phase_R3
+fi
+
+ok "Wf-355-A2 launch script done — mode=${MODE}"
+log "Reports: ${REPORTS_DIR}"
+log "Honest framing: PROJECTED wall-times; MEASURED after each phase runs."
+log "Per Wf-294B kill_then_adapt: USER_OK=YES REQUIRED for both R1 (audit invariant)"
+log "and R3 (full GPU launch). DATA_HOLD tolerated in NON-STRICT mode; --strict-data-quality"
+log "refuses launch when metal-filtered rows < ${EXPECTED_FILTERED_MIN_ROWS}."
+log "Acceptance gate: Affinity Pearson r ≥ ${EXPECTED_PEARSON_R_GATE} (Boltz-2 baseline 0.86)."

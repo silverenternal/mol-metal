@@ -1,0 +1,21 @@
+{
+  "atom_count": 25,
+  "extraction_kind": "sdf",
+  "formula": "C16H15N7O2",
+  "heavy_atom_count": 25,
+  "inchikey": "PWTBZOIUWZOPFT-UHFFFAOYSA-N",
+  "ligand_resname": null,
+  "notes": "AA2AR_HUMAN ZMA (ZM241385, A2A antagonist) CrossDocked SDF. Note: CrossDocked ships the imino tautomer (no NH2), so InChIKey differs from PubChem canonical. We keep the CrossDocked version to match the crystal coordinates.",
+  "ok": true,
+  "phase2_recovery_path": "conda-forge vina install OR MOLMETAL_VINA_BIN env override per Wf-84 P2 stub_warning (Wf-309A discovery: which vina \u2192 not found)",
+  "phase2_redocking_status": "BLOCKED",
+  "pocket_id": "3eml",
+  "smiles": "N=c1nc(NCCc2ccc(O)cc2)nc2nc(-c3ccco3)[nH]n12",
+  "source_metadata_json": "molmetal/data/pocket_ref_ligands/ligand_metadata.json",
+  "source_path": "/home/hugo/codes/mol-metal/.data/molmetal/crossdocked/AA2AR_HUMAN_1_315_TM_0/3eml_A_rec_3eml_zma_lig_tt_min_0.sdf",
+  "source_sha256": "74442f7ed482708fdcf97b28534e661b2d41a6cf0cd121ab44426213d0c4a768",
+  "source_synthesis_md": "molmetal/reports/wf139_p1_ref_ligands/synthesis.md",
+  "source_wf": "Wf-139 P1",
+  "wf313a_relink_kind": "REFACTOR_FROM_FLAT_LAYOUT",
+  "wf313a_relink_utc": "2026-09-29T02:22:53.662179+00:00"
+}

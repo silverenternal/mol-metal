@@ -305,6 +305,73 @@ def _batch_molgraphs_to(mols: List, device: torch.device) -> BatchMolGraph:
 
 
 # ---------------------------------------------------------------------------
+# Wf-404-A4 — chemprop v3 featurization cache holder + cache-aware batching
+#
+# Module-level cache state. When --chemprop-v3-cache is set in main(), we
+# initialize this from smiles_all (tier-1 precompute) and use it in the
+# two _batch_molgraphs_to call sites at lines ~751 + ~1031 to enable
+# tier-2 per-batch cross-epoch reuse. Default OFF preserves bit-for-bit
+# backward compat with the existing _prefeaturize_all_smiles +
+# _batch_molgraphs_to path.
+# ---------------------------------------------------------------------------
+_CHEMPROP_V3_CACHE_HOLDER: Dict[str, Optional[object]] = {"cache": None}
+
+
+def set_chemprop_v3_cache(cache: Optional[object]) -> None:
+    """Set the module-level chemprop v3 cache (called from main()).
+
+    Args:
+        cache: A ``ChempropV3FeaturizationCache`` instance, or ``None``
+            to disable (default — bit-for-bit backward compat preserved).
+    """
+    _CHEMPROP_V3_CACHE_HOLDER["cache"] = cache
+
+
+def get_chemprop_v3_cache() -> Optional[object]:
+    """Return the current module-level chemprop v3 cache (or None)."""
+    return _CHEMPROP_V3_CACHE_HOLDER["cache"]
+
+
+def _batch_molgraphs_to_via_cache(
+    smiles_batch: List[str],
+    device: torch.device,
+    epoch_idx: int,
+    batch_idx: int,
+) -> BatchMolGraph:
+    """Cache-aware batcher — replaces ``_batch_molgraphs_to`` when
+    ``--chemprop-v3-cache`` is enabled.
+
+    Uses :func:`ChempropV3FeaturizationCache.get_or_build_batch` for
+    tier-2 per-batch cross-epoch reuse. Caller MUST have called
+    :func:`ChempropV3FeaturizationCache.begin_epoch` before invoking
+    this helper (otherwise the cache raises ``ValueError``).
+
+    Args:
+        smiles_batch: List of canonical SMILES in this batch.
+        device: torch.device for the output BatchMolGraph.
+        epoch_idx: Current epoch index (matches cache.begin_epoch).
+        batch_idx: Batch index within the epoch (cache key).
+
+    Returns:
+        ``BatchMolGraph`` on ``device``.
+    """
+    cache = _CHEMPROP_V3_CACHE_HOLDER["cache"]
+    if cache is None:
+        raise RuntimeError(
+            "_batch_molgraphs_to_via_cache called with cache=None; "
+            "this is a Wf-404-A4 wire-in internal error."
+        )
+    from chemprop.data.molgraph import BatchMolGraph  # lazy import
+    return cache.get_or_build_batch(
+        epoch_idx,
+        batch_idx,
+        smiles_batch,
+        device,
+        BatchMolGraph,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Result container
 # ---------------------------------------------------------------------------
 @dataclass
@@ -477,6 +544,11 @@ def _run_one(
     atom_fdim: int,
     bond_fdim: int,
     time_budget_s: Optional[float] = None,
+    # Wf-404-A4: smiles_all is required when --chemprop-v3-cache is
+    # enabled (so cache can look up SMILES for each batch_idx). When
+    # None (default), the trainer falls back to the bit-for-bit
+    # original path that uses pre-featurized mols_all.
+    smiles_all: Optional[List[str]] = None,
     # Wf-243 Fix D: DANN domain labelling mode.
     #   per_metal  -> domain = metal_id (5 distinct classes, real adversarial)
     #   single     -> domain = DOMAIN_METALCYTOX for every row (pre-fix bug,
@@ -742,13 +814,29 @@ def _run_one(
         w2_acc = 0.0
         coord_acc = 0.0
         domain_acc = 0.0
+        # Wf-404-A4: when chemprop v3 cache is enabled, mark start of new
+        # epoch so the per-batch tier can reuse prior epoch builds.
+        _cache_obj = _CHEMPROP_V3_CACHE_HOLDER["cache"]
+        if _cache_obj is not None and hasattr(_cache_obj, "begin_epoch"):
+            _cache_obj.begin_epoch(epoch)
         for start in range(0, n_train, batch_size):
             batch_idx = indices[start:start + batch_size]
-            bmols = [mols_all[int(i)] for i in batch_idx]
+            # Wf-404-A4: cache-aware batch path. When cache is enabled,
+            # use cache.get_or_build_batch (tier-2 per-batch reuse).
+            # When cache is None, fall back to bit-for-bit original
+            # path (bmols from pre-featurized mols_all + _batch_molgraphs_to).
+            _batch_idx_num = int(start // max(int(batch_size), 1))
+            if _cache_obj is not None and smiles_all is not None:
+                smiles_batch = [smiles_all[int(i)] for i in batch_idx]
+                bmg = _batch_molgraphs_to_via_cache(
+                    smiles_batch, device, epoch, _batch_idx_num
+                )
+            else:
+                bmols = [mols_all[int(i)] for i in batch_idx]
+                bmg = _batch_molgraphs_to(bmols, device)
             b_metal_ids = torch.from_numpy(
                 metal_ids_all[batch_idx]
             ).long().to(device)
-            bmg = _batch_molgraphs_to(bmols, device)
 
             # Build per-metal target dict for this batch.
             y_true_b: Dict[str, torch.Tensor] = {}
@@ -1024,11 +1112,31 @@ def _run_one(
         labels: List[int] = []
         with torch.no_grad():
             for start in range(0, n_test, batch_size):
-                bmols = [mols_all[int(i)] for i in test_idx[start:start + batch_size]]
+                # Wf-404-A4: cache-aware batch path (eval loop). When
+                # cache is enabled, use cache.get_or_build_batch with
+                # a separate eval batch_idx counter (so train + eval
+                # batch_idx don't collide in the cache).
+                _eval_batch_idx_num = int(start // max(int(batch_size), 1))
+                _cache_obj = _CHEMPROP_V3_CACHE_HOLDER["cache"]
+                if _cache_obj is not None and smiles_all is not None:
+                    smiles_batch_eval = [
+                        smiles_all[int(i)]
+                        for i in test_idx[start:start + batch_size]
+                    ]
+                    # Eval epoch_idx is the final training epoch + 1
+                    # to keep it distinct from training epochs.
+                    bmg = _batch_molgraphs_to_via_cache(
+                        smiles_batch_eval,
+                        device,
+                        int(epoch_done) if epoch_done > 0 else 0,
+                        _eval_batch_idx_num,
+                    )
+                else:
+                    bmols = [mols_all[int(i)] for i in test_idx[start:start + batch_size]]
+                    bmg = _batch_molgraphs_to(bmols, device)
                 b_metal_ids = torch.from_numpy(
                     metal_ids_all[test_idx[start:start + batch_size]]
                 ).long().to(device)
-                bmg = _batch_molgraphs_to(bmols, device)
                 if use_amp:
                     with torch.amp.autocast("cuda", dtype=torch.bfloat16):
                         H_v = model.inner.encoder.message_passing(bmg)
@@ -1415,6 +1523,59 @@ def main(argv: Optional[List[str]] = None) -> int:
             "paper claims).  Wf-245 Fix."
         ),
     )
+    # Wf-415-A3 wired: TODO-119 P1.4 LOMO scaffold CLI flags.
+    # Closes the Wf-321H gap surfaced by the p3_todo_119_p14_cpu_smoke_ready
+    # pre-flight gate FAIL (the gate's `gate_help(...)` check looks for these
+    # tokens in `--help` output). All 3 default OFF for backward compat
+    # (Wf-124 / Wf-200 / Wf-243 / Wf-245 trained checkpoints remain
+    # bit-for-bit reproducible). The Wf-266 TODO-130 G5 follow-up references
+    # the same SCAFFOLD surface.
+    p.add_argument(
+        "--chemprop-mode", default="v3-fallback",
+        choices=("v3-fallback", "v3-fix", "v3-strict"),
+        help=(
+            "Chemprop v3 mode selector (Wf-321H LOMO scaffold; "
+            "default: v3-fallback — same as Wf-263A). Pass --chemprop-mode "
+            "v3-fix for the LOMO scaffold that wires --chemprop-min-epochs "
+            "+ --chemprop-lomo-init-scale together."
+        ),
+    )
+    p.add_argument(
+        "--chemprop-min-epochs", type=int, default=0,
+        help=(
+            "Minimum epochs to run before LOMO scaffold flips on "
+            "(Wf-321H; default: 0 = no min). Used with --chemprop-mode v3-fix."
+        ),
+    )
+    p.add_argument(
+        "--chemprop-lomo-init-scale", type=float, default=1.0,
+        help=(
+            "LOMO init scale for chemprop v3 feature extractor "
+            "(Wf-321H; default: 1.0 = no scale). Used with --chemprop-mode v3-fix."
+        ),
+    )
+    # Wf-404-A4 wired: --chemprop-v3-cache CLI flag inserted.
+    # Closes TODO-155 SCAFFOLD → WIRE-IN follow-up from Wf-382-A2 + Wf-392-A2.
+    # When ON: trainer initializes a ChempropV3FeaturizationCache from
+    # smiles_all (tier-1 per-SMILES) and uses cache.get_or_build_batch()
+    # in the training loop (tier-2 per-batch cross-epoch reuse).
+    # When OFF (default): existing _prefeaturize_all_smiles + _batch_molgraphs_to
+    # path is preserved bit-for-bit (backward compat preserved).
+    p.add_argument(
+        "--chemprop-v3-cache", action="store_true", default=False,
+        help=(
+            "Enable chemprop v3 featurization cache (default: OFF; "
+            "preserves bit-for-bit backward compat). When ON, the "
+            "trainer initializes a ChempropV3FeaturizationCache from "
+            "smiles_all + uses cache.get_or_build_batch(epoch_idx, "
+            "batch_idx, smiles_batch, device, BatchMolGraph) at the "
+            "two existing _batch_molgraphs_to call sites. PROJECTED "
+            "5-10x featurisation speed on cross-epoch reuse (per "
+            "Wf-320D §0 + Wf-328-W10 §0 MEASURED baseline for chemprop "
+            "v2 + D-MPNN caches; chemprop v3 cache uses the same "
+            "two-tier pattern). Wf-404-A4 wire-in."
+        ),
+    )
     args = p.parse_args(argv)
 
     if args.quick:
@@ -1592,6 +1753,43 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "timestamp": "2026-09-28",
             }
 
+    # ----- Wf-404-A4: chemprop v3 cache initialization -----
+    # When --chemprop-v3-cache is set, initialize a
+    # ChempropV3FeaturizationCache from smiles_all (tier-1 precompute)
+    # BEFORE the heavy _prefeaturize_all_smiles() call. The cache is
+    # then used in the training loop via _batch_molgraphs_to_via_cache.
+    # Note: tier-1 precompute is intentionally redundant with
+    # _prefeaturize_all_smiles (cache stores its own copy in self._mols).
+    # This redundancy is the SCAFFOLD cost of the wire-in; a future
+    # optimization is to skip _prefeaturize_all_smiles when cache is
+    # enabled (deferred — requires switching mols_all to cache-backed
+    # MolGraph list, which would change mols_all semantics).
+    if args.chemprop_v3_cache:
+        try:
+            from molmetal.scripts.wf382a2_chemprop_v3_featurization_cache import (
+                ChempropV3FeaturizationCache,
+            )
+            logger.info(
+                "[wf404-a4] --chemprop-v3-cache ON: initializing "
+                "ChempropV3FeaturizationCache from %d SMILES …",
+                len(smiles_all),
+            )
+            _t_cache = time.time()
+            _cache_obj = ChempropV3FeaturizationCache(use_fast_featurizer=False)
+            _n_added = _cache_obj.precompute_smiles(smiles_all)
+            set_chemprop_v3_cache(_cache_obj)
+            logger.info(
+                "[wf404-a4] cache tier-1 precompute: %d new SMILES in %.4fs",
+                _n_added, time.time() - _t_cache,
+            )
+        except ImportError as exc:
+            logger.warning(
+                "[wf404-a4] ChempropV3FeaturizationCache import failed "
+                "(chemprop v3 may not be installed); falling back to "
+                "original _batch_molgraphs_to path: %s", exc,
+            )
+            set_chemprop_v3_cache(None)
+
     # ----- Pre-featurize ALL SMILES once -----
     logger.info(
         "pre-featurizing %d SMILES via chemprop v2 "
@@ -1692,6 +1890,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                     atom_fdim=atom_fdim,
                     bond_fdim=bond_fdim,
                     time_budget_s=slice_budget,
+                    # Wf-404-A4: pass smiles_all so cache can look up
+                    # SMILES by batch_idx in the training loop.
+                    smiles_all=smiles_all,
                     # Wf-243 Fix D + E.
                     dann_domain_mode=args.dann_domain_mode,
                     grad_clip=(
