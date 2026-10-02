@@ -870,7 +870,35 @@ def train_one_metal_one_seed(
         use_dann=use_dann,
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    criterion = MultiTaskLoss(alpha=alpha)
+    # Wf-405-A2 + TODO-201 wire-in (Wf-201 forward-looking): when
+    # --per-cohort-features is set, override the BCE `alpha` based on
+    # the *actual* joint pool size (not the metals×200 estimate used at
+    # main()-level logging).  Direct kwarg threading so the per-cohort
+    # config actually reaches the loss cascade.  Default OFF preserves
+    # Wf-131 P1 + Wf-251-F4 baseline bit-for-bit (per_wf405a2 §0).
+    effective_alpha = alpha
+    if per_cohort_features:
+        try:
+            from molmetal.scripts.wf380a2_m2_r2_per_cohort import (
+                select_features,
+            )
+            _pc = select_features(int(len(train_pool_idx)))
+            effective_alpha = float(_pc.get("alpha", alpha))
+            print(
+                f"[Wf-405-A2] --per-cohort-features ENABLED: "
+                f"tier={_pc.get('tier', '?')} "
+                f"features={_pc.get('features', '?')} "
+                f"n_pool={len(train_pool_idx)} "
+                f"alpha_override={alpha:+.3f}->{effective_alpha:+.3f}",
+                flush=True,
+            )
+        except Exception as exc:
+            print(
+                f"[Wf-405-A2][WARNING] --per-cohort-features override "
+                f"failed: {exc}; falling back to alpha={alpha:.3f}.",
+                flush=True,
+            )
+    criterion = MultiTaskLoss(alpha=effective_alpha)
 
     best_val_auc = -1.0
     best_state: Optional[Dict] = None

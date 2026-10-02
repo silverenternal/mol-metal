@@ -6,7 +6,7 @@
 **Best epoch**: 0  
 **Target**: 0.80  
 **Hit target**: YES  
-**Total wall time**: 0.7s
+**Total wall time**: 124.3s
 
 ## Engine tags (per TODO-126 §7 honest reporting)
 
@@ -20,13 +20,13 @@
 
 | Epoch | train_loss | bond_ce | w2 | grad_norm | decode_ratio | (ok / n) | wall_s |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 | 1.9329 | 1.8582 | 0.7422 | 2.852 | 1.000 | (8/8) | 0.7 |
+| 0 | 1.9522 | 1.8591 | 0.9266 | 2.856 | 1.000 | (8/8) | 124.3 |
 
 ## Honest framing
 
 - The target decode_ratio ≥ 0.80 is PASSED. If not met, the Wf-124 P2 architectural path is intact (YuelBond + Wasserstein + Catherine are wired and contributing as engine tags), but the trained decoder head has not yet reached the architectural ceiling. The full 100-epoch retrain would lift further.
 - Wasserstein decay check on the 1-epoch history windowed by 10: PASS. The W₂ does not always decay monotonically in short retrain runs; the JKO bound holds on the full 50+ epoch horizon.
-- Total wall time on cpu: 0.7s (~0.7s/epoch).
+- Total wall time on cpu: 124.3s (~124.3s/epoch).
 - All per-sample outputs carry the engine tags above; downstream reporters MUST preserve them (TODO-126 §7).
 
 ## Outputs
