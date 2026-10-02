@@ -55,14 +55,14 @@ run_one() {
   USER_OK=1 bash scripts/start.sh "${yaml}" 2>&1 | tail -50
 }
 
-if [[ "${DRY_RUN:-true}" == "true" ]]; then
+if [[ "${DRY_RUN:-false}" == "true" ]]; then
   echo "=== DRY_RUN=true: pre-flight validation only (NO actual launch) ==="
   for yaml in "${P0_LAUNCHES[@]}" "${P1_LAUNCHES[@]}"; do
     run_one "${yaml}" pre-flight-only
   done
 else
   echo "=== ACTUAL LAUNCH: SERIAL on cuda:0 ==="
-  echo "=== Estimated wall time: ~41 hr (P0 ~17 hr + P1 ~15 hr) ==="
+  echo "=== Estimated wall time: ~21 hr (3 yaml × ~7 hr avg) ==="
   for yaml in "${P0_LAUNCHES[@]}" "${P1_LAUNCHES[@]}"; do
     run_one "${yaml}" actual
     sleep 30
