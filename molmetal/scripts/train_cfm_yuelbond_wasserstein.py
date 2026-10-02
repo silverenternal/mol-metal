@@ -1966,6 +1966,39 @@ def parse_args() -> argparse.Namespace:
             "EGNN where exploding gradients are a concern."
         ),
     )
+    # Wf-A5 N3 + Wf-A8c FIX (2026-10-03) — start.sh passes --checkpoint-interval
+    # + --resume-from + --resume-from-path from the YAML output section.
+    # Without these flags, trainer dies with argparse error.
+    p.add_argument(
+        "--checkpoint-interval",
+        type=int,
+        default=50,
+        help=(
+            "Wf-A5 N3 — per-epoch checkpoint save interval (default 50). "
+            "Final epoch always saves regardless of interval. "
+            "Default preserves Wf-131 P1 + Wf-251-F4 baseline bit-for-bit."
+        ),
+    )
+    p.add_argument(
+        "--resume-from",
+        choices=["auto", "none", "path"],
+        default="auto",
+        help=(
+            "Wf-A5 N3 — checkpoint resume mode (default 'auto'). "
+            "'auto' scans ckpt_dir for dmpnn_mtw_{metal}_seed{seed}.pt; "
+            "'none' cold-starts; 'path' uses --resume-from-path. "
+            "Default 'auto' preserves baseline bit-for-bit."
+        ),
+    )
+    p.add_argument(
+        "--resume-from-path",
+        type=str,
+        default=None,
+        help=(
+            "Wf-A5 N3 — explicit checkpoint path (requires "
+            "--resume-from path). Default None (auto-scan)."
+        ),
+    )
     p.add_argument("--patience", type=int, default=DEFAULT_PATIENCE,
                    help="Early-stopping patience (default 10 epochs).")
     p.add_argument(

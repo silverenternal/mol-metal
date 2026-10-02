@@ -222,6 +222,37 @@ def _decode_smoke(adapter, n_samples: int = 16, seed: int = 0) -> dict:
 # ---------------------------------------------------------------------------
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    # Wf-A8c FIX (2026-10-03): add --config + --checkpoint-interval + --resume-from +
+    # --resume-from-path so start.sh can pass yaml-driven flags without argparse errors.
+    # Per AGENTS.md §5.5 filesystem-truth rule: smoke trainer must accept the
+    # same flags as main trainer so yaml-managed launches are uniform.
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help=(
+            "Path to YAML config (applies overrides via wfA2_config_loader). "
+            "Default None = no YAML overrides; CLI flags alone."
+        ),
+    )
+    parser.add_argument(
+        "--checkpoint-interval",
+        type=int,
+        default=50,
+        help="Wf-A5 N3 — per-epoch checkpoint save interval (default 50)",
+    )
+    parser.add_argument(
+        "--resume-from",
+        choices=["auto", "none", "path"],
+        default="auto",
+        help="Wf-A5 N3 — checkpoint resume mode (default auto)",
+    )
+    parser.add_argument(
+        "--resume-from-path",
+        type=str,
+        default=None,
+        help="Wf-A5 N3 — explicit checkpoint path (requires --resume-from path)",
+    )
     parser.add_argument("--csv", type=Path,
                         default=PROJECT_ROOT / "molmetal" / "data" / "metallo_drugs_500_train.csv",
                         help="Training-pool CSV (default metallo_drugs_500_train.csv)")
