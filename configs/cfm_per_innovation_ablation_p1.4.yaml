@@ -163,7 +163,7 @@ entry:
   # Per AGENTS.md §5.5 + §5.7 + user voice "never use CLI again always yaml"
   # All retrain hyperparameters live in yaml sections above (data + model + flow + train + protocol);
   # trainer applies via wfA2_config_loader.py
-  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --flags "{flags_joined}" --seed {seed} --out-dir {out_dir}
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --out-dir {out_dir}
   # FIX C: yaml-driven config + only debug/seed/out-dir CLI flags remain (per task brief DEBUG_FLAG_OVERRIDES)
   warm_start_checkpoint: molmetal/checkpoints/cfm_yuelbond_wasserstein.pt
   # Original inline-CLI command preserved as legacy_inline_command for backward-compat rollback only
