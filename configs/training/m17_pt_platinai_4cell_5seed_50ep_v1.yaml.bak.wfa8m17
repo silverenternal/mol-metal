@@ -136,6 +136,11 @@ protocol:
   # 0.0 preserves Wf-131 P1 baseline bit-for-bit; >0 enables L2
   # regularisation across all trainable params.
   weight_decay: 0.0
+  # Wf-A6 A5 (2026-10-03) — max-norm gradient clipping threshold (audit R6
+  # closure); trainer's --max-norm flag accepts this via start.sh parse_yaml
+  # (line 209). Default 5.0 = Pascanu 2013 standard. Pass 0.0 to disable
+  # clipping (preserves Wf-131 P1 + Wf-251-F4 baseline bit-for-bit).
+  max_norm: 5.0
 
 # ============================================================================
 # EVALUATION
@@ -196,6 +201,13 @@ output:
 # NOT VALID for D-MPNN trainer (not in argparse):
 #   --torch-compile / --tf32 / --cudnn-benchmark / --channels-last
 #   See protocol section rationale above.
+# NOTE: compute.* fields below are SCHEMA-ONLY for the D-MPNN trainer
+# (molmetal/scripts/train_dmpnn_multitask_wasserstein.py) — D-MPNN currently
+# supports NONE of these flags. Only the CFM trainer
+# (molmetal/scripts/train_cfm_yuelbond_wasserstein.py, per Wf-431-B1) supports
+# --bf16 + --torch-compile + --cudnn-benchmark + --channels-last + --tf32.
+# When D-MPNN trainer grows these CLI flags (Wf-A7+ forward-looking), these
+# fields will become LIVE instead of SCHEMA-ONLY.
 compute:
   gpu: cuda:0  # RTX PRO 6000 Blackwell
   # Wf-A5 N4 data.num_workers: 4 → 8 (PyTorch DataLoader docs recommend

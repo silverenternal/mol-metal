@@ -1,0 +1,256 @@
+# Wf-A2 NEW: M17 Pt × 4-cell × 5-seed × 50-epoch canonical training config.
+#
+# HONEST FRAMING (party-twenty-spirit §3.5):
+# - The harness task brief referenced "M17 Pt × 4-cell × 5-seed × 50-epoch".
+#   Per TODO/02_metrics/MECHANISM_METRIC_MAPPING.md, M17 is the
+#   "Reference loader flat-clone auto-detect" MECHANISM, not a training
+#   config ID. There is no existing "M17 training config" canonical
+#   config — this YAML authors a NEW canonical training config matching
+#   the harness brief's protocol (Pt × PlatinAI 4-cell × 5-seed × 50-epoch)
+#   for ONE canonical retrain target, NOT a refactor of an existing
+#   "M17 training config". Name kept verbatim to match the brief.
+# - Status: SCAFFOLD-only (Wf-A2 CPU-only docs+code+test wave; no GPU
+#   launch per AGENTS.md §5.1 standing GPU grant + kill_then_adapt §0).
+# - Data grounding: PlatinAI 4-cell pIC50 cohort per Rusanov 2025
+#   (A2780 + MCF7 + A549 + A2780cis cisplatin-resistant); 4-cell cohort
+#   matches Wf-13 P1 / Wf-379-A1 / Wf-260 patterns.
+# - Bit-for-bit backward compat: no --config = argparse-only path.
+
+# ============================================================================
+# DATA — REAL PlatinAI 4-cell cohort (Pt-coordination pIC50)
+# ============================================================================
+# Wf-A5 N4 — data.num_workers: 4 → 8 (PyTorch DataLoader docs recommendation;
+# rationale: Blackwell sm_120 + 6-batch featurisation handles 8 workers
+# without saturating CPU; cross-ref: Wf-358-A3 recommendation)
+data:
+  dataset: platinai_4cell
+  cohort_filter:
+    metals: [Pt]
+    cells: [A2780, MCF7, A549, A2780cis]
+  expected_columns_subset: [smiles, metal, cell, pic50, source]
+  # Wf-A5 N4 — num_workers: 4 → 8 (PyTorch DataLoader docs; cross-ref:
+  # Wf-358-A3 + Wf-431-B1 recommendation)
+  num_workers: 8
+  # Wf-A5 N4 — pin_memory: already true (D-MPNN has no --pin-memory flag;
+  # trainer uses default DataLoader semantics which pins by default;
+  # cross-ref: PyTorch DataLoader docs + Wf-358-A3)
+  pin_memory: true
+
+# ============================================================================
+# MODEL — D-MPNN multi-task Wasserstein pIC50 (50-ep protocol)
+# ============================================================================
+model:
+  backbone: chemprop_v2_v3
+  ablation_config: mtl_baseline
+  hidden_dim: 300
+  depth: 3
+  wasserstein_weight: 0.05
+  alpha: 0.5
+  n_mc: 256
+  w2_gradient_mode: sliced
+  use_l2_guard: true
+
+# ============================================================================
+# TRAINING PROTOCOL — 1 × 5 × 50 (Pt × 5-seed × 50-epoch)
+# ============================================================================
+# Wf-A5 N4 — resource scaling research (per TODO/A5_remaining_tasks.json §N4
+# research_scope + AGENTS.md §5.5 filesystem-truth + §5.7 trainer flag
+# wire-in smoke-required rule + party-twenty-spirit §3.5 honest framing):
+#
+# VALID changes (D-MPNN trainer actually supports these flags):
+#   batch_size: 64 → 128 (rationale: NVIDIA A100 paper linear scaling rule;
+#   Blackwell sm_120 has 98GB VRAM so doubling is safe; lr scaled linearly
+#   per the same rule (Goyal et al. 2017 "Accurate, Large Minibatch SGD:
+#   Training ImageNet in 1 Hour"))
+#   lr: 1e-3 → 2e-3 (rationale: linear scaling — lr = base_lr × new_batch /
+#   old_batch = 1e-3 × 2 = 2e-3; sqrt scaling (Goyal √256) NOT applied since
+#   we use Adam not SGD)
+#
+# NOT VALID for D-MPNN trainer per §5.5 filesystem-truth audit (these flags
+# do NOT exist in train_dmpnn_multitask_wasserstein.py argparse surface):
+#   --torch-compile (only in train_cfm_yuelbond_wasserstein.py line 2361,
+#     Wf-431-B1)
+#   --tf32 (only in train_cfm_yuelbond_wasserstein.py line 2372, Wf-431-B1)
+#   --cudnn-benchmark (only in train_cfm_yuelbond_wasserstein.py line 2383,
+#     Wf-431-B1)
+#   --channels-last (only in train_cfm_yuelbond_wasserstein.py line 2393,
+#     Wf-431-B1)
+#   --amp / --bf16 (D-MPNN trainer has NO bf16/AMP path; protocol.bf16=true
+#     is schema-only and does not activate any code path)
+#   --num-workers / --pin-memory (D-MPNN has --cpu-num-workers line 1570
+#     only, NOT --pin-memory; YAML data section pinned by compute.cpu_workers)
+#   --gradient-accumulation (D-MPNN has NO gradient accumulation; the
+#     effective_batch can be matched via batch_size alone since 128 fits
+#     Blackwell sm_120 98GB VRAM)
+#
+# Forward-looking: port the 7 missing flags to D-MPNN trainer (Wf-A6+ work).
+# See docs/RESOURCE_SCALING.md §13 for the per-flag port plan.
+# NOTE: protocol.bf16 below is SCHEMA-ONLY for the D-MPNN trainer
+# (molmetal/scripts/train_dmpnn_multitask_wasserstein.py). D-MPNN currently
+# has NO --bf16 / --amp flag path (the trainer uses default fp32 throughout);
+# only the CFM trainer (molmetal/scripts/train_cfm_yuelbond_wasserstein.py,
+# per Wf-431-B1) supports --bf16. Setting protocol.bf16=true is a
+# forward-compatibility declaration: when D-MPNN grows a bf16 AMP path
+# (Wf-A7+ forward-looking), this field will activate a code path instead
+# of being purely schema-only.
+protocol:
+  n_seeds: 5
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 50
+  # Wf-A5 N4 batch_size: 64 → 128 (linear scaling rule, NVIDIA A100 paper)
+  batch_size: 128
+  # Wf-A5 N4 lr: 1e-3 → 2e-3 (linear scaling rule)
+  lr: 2.0e-3
+  # Wf-A5 N4: gradient_accumulation_steps kept at 1 (no D-MPNN trainer
+  # support; batch_size=128 already matches effective_batch 128 directly)
+  gradient_accumulation_steps: 1
+  grad_clip_norm: 5.0
+  bf16: true  # schema-only; D-MPNN trainer has no actual bf16 path
+  # Wf-A5 N3 — wall-clock runtime ceiling per (metal, seed) pair (Wf-A5
+  # follow-up design field §3); trainer knows to stop even mid-epoch
+  # if the cumulative wall_seconds exceeds this budget.  Combined with
+  # checkpoint_interval, a Ctrl+C / SIGTERM triggers a graceful exit
+  # that writes the latest state to disk (post-loop save) so the next
+  # invocation can resume.  24h is the upper-bound wall budget for a
+  # single (metal, seed) pair on RTX PRO 6000 Blackwell @ 50-ep protocol.
+  max_runtime_hr: 24
+  enumerated_runs:
+    - {metal: Pt, seed: 0}
+    - {metal: Pt, seed: 1}
+    - {metal: Pt, seed: 2}
+    - {metal: Pt, seed: 3}
+    - {metal: Pt, seed: 4}
+  n_runs_total: 5
+  # Wf-A6 A2 BLOCKER C fix (2026-10-03) — LR scheduler (per user
+  # voice verbatim "学习率的控制至少得用余弦退火或者更加高级的方案，做一下调研然后应用").
+  # Loshchilov-Hutter 2017 SGDR (arXiv:1608.03983) + Smith-Topin 2018
+  # super-convergence (arXiv:1708.07120) survey recommended
+  # Linear warmup + CosineAnnealingLR as conservative primary path;
+  # OneCycleLR as opt-in super-convergence path.  Default = "none"
+  # preserves Wf-131 P1 + Wf-251-F4 baseline bit-for-bit.
+  scheduler:
+    type: cosine  # {none, cosine, onecycle}; cosine = Linear warmup + CosineAnnealingLR via SequentialLR
+    warmup_epochs: 5  # EDM 2022 recommendation
+    min_lr: 1.0e-6  # CosineAnnealingLR floor; OneCycleLR final_div_factor
+  # Wf-A6 A2 BLOCKER C fix — Adam weight_decay (audit R5 closure):
+  # 0.0 preserves Wf-131 P1 baseline bit-for-bit; >0 enables L2
+  # regularisation across all trainable params.
+  weight_decay: 0.0
+  # Wf-A6 A5 (2026-10-03) — max-norm gradient clipping threshold (audit R6
+  # closure); trainer's --max-norm flag accepts this via start.sh parse_yaml
+  # (line 209). Default 5.0 = Pascanu 2013 standard. Pass 0.0 to disable
+  # clipping (preserves Wf-131 P1 + Wf-251-F4 baseline bit-for-bit).
+  max_norm: 5.0
+
+# ============================================================================
+# EVALUATION
+# ============================================================================
+eval:
+  per_pair_metrics: [test_auc, val_auc, wasserstein_final, best_epoch]
+  target_test_auc: 0.86  # Krasnov 2026 — PROJECTED (NOT MEASURED)
+
+# ============================================================================
+# OUTPUT — REPO_ROOT results/ per project convention
+# ============================================================================
+output:
+  base_dir: results/m17_pt_platinai_4cell_5seed_50ep
+  per_metal_dir: results/m17_pt_platinai_4cell_5seed_50ep/{metal}/per_seed_metrics_seed{seed}.json
+  training_summary: results/m17_pt_platinai_4cell_5seed_50ep/training_summary.json
+  log_master: results/m17_pt_platinai_4cell_5seed_50ep/master.log
+  # Wf-A6 A3 BLOCKER B fix (2026-10-03) — ckpt_dir is the canonical Wf-131 P3
+  # + Wf-251-F4 checkpoint storage path per AGENTS.md 5.5 filesystem-truth;
+  # do not remove or rename. Without this, start.sh fallback resolves
+  # {ckpt_dir} to results/auto/ckpts instead of molmetal/checkpoints, which
+  # breaks resume_from: auto (the resume_from code scans ckpt_dir for
+  # dmpnn_mtw_{metal}_seed{seed}.pt). Wf-131 P3 + Wf-251-F4 use this
+  # canonical path; Wf-A6 fixes it for Wf-A5 N3 resume_from integration.
+  ckpt_dir: molmetal/checkpoints
+  # Wf-A5 N3 — checkpoint resumption (per A5_remaining_tasks.json §N3
+  # design field + user voice 2026-10-03 "训练时不降低效率且能断点续训").
+  # checkpoint_interval = N epochs between persisted resumable checkpoints
+  # (final epoch always saves regardless of interval).  resume_from = how
+  # to load prior state at the start of each (metal, seed) run:
+  #   'auto' — scan ckpt_dir for dmpnn_mtw_{metal}_seed{seed}.pt; cold
+  #                   start if not found
+  #   'none' — always cold start (ignore any pre-existing checkpoint)
+  #   'path' — use --resume-from-path (explicit)
+  # Both map to `torch.save` epoch + `trainer flag` — see Wf-A5-N3 closeout
+  # in TODO/completed/N3_checkpoint_resume.md + trainer docs at line ~719.
+  checkpoint_interval: 50
+  resume_from: auto
+
+# ============================================================================
+# COMPUTE
+# ============================================================================
+# Wf-A5 N4 — resource scaling research (per TODO/A5_remaining_tasks.json §N4
+# research_scope + AGENTS.md §5.5 filesystem-truth + §5.7 trainer flag
+# wire-in smoke-required rule):
+#
+# data.num_workers: 4 → 8 (rationale: PyTorch DataLoader docs recommend
+# 4-8 per GPU; Blackwell sm_120 + 6-batch featurisation handles 8 workers
+# without saturating CPU; we use the existing --cpu-num-workers trainer
+# flag, no schema change required)
+# pin_memory: already true (D-MPNN has no --pin-memory flag, but the
+# trainer uses default DataLoader semantics which pins by default)
+# compute.tf32: 'highest' → 'high' (rationale: D-MPNN has no --tf32 flag;
+# schema-only field; the actual tf32 behaviour for D-MPNN is via torch
+# backend default which is 'high' since torch 2.4+; cross-references:
+# torch.cuda.matmul.allow_tf32 default = True, torch.backends.cudnn.allow_tf32
+# default = True)
+#
+# NOT VALID for D-MPNN trainer (not in argparse):
+#   --torch-compile / --tf32 / --cudnn-benchmark / --channels-last
+#   See protocol section rationale above.
+# NOTE: compute.* fields below are SCHEMA-ONLY for the D-MPNN trainer
+# (molmetal/scripts/train_dmpnn_multitask_wasserstein.py) — D-MPNN currently
+# supports NONE of these flags. Only the CFM trainer
+# (molmetal/scripts/train_cfm_yuelbond_wasserstein.py, per Wf-431-B1) supports
+# --bf16 + --torch-compile + --cudnn-benchmark + --channels-last + --tf32.
+# When D-MPNN trainer grows these CLI flags (Wf-A7+ forward-looking), these
+# fields will become LIVE instead of SCHEMA-ONLY.
+compute:
+  gpu: cuda:0  # RTX PRO 6000 Blackwell
+  # Wf-A5 N4 data.num_workers: 4 → 8 (PyTorch DataLoader docs recommend
+  # 4-8 per GPU; cross-ref: Wf-358-A3 recommendation)
+  cpu_workers: 8
+  bf16: true
+  # Wf-A5 N4 — schema-only field; D-MPNN trainer has no actual torch.compile
+  # CLI flag; cross-ref: Wf-431-B1 trainer flag audit
+  torch_compile: false
+  # Wf-A5 N4 — schema-only field; D-MPNN trainer has no actual cudnn_benchmark
+  # CLI flag
+  cudnn_benchmark: false
+  # Wf-A5 N4 — schema-only field; D-MPNN trainer has no actual channels_last
+  # CLI flag; D-MPNN is not a ConvNet so channels_last does not apply
+  channels_last: false
+  # Wf-A5 N4 — schema-only field; D-MPNN trainer has no actual tf32 CLI flag;
+  # torch default is 'high' for matmul.allow_tf32 + cudnn.allow_tf32
+  tf32: high
+  # Wf-A5 N4 — schema-only field; D-MPNN trainer has no actual amp CLI flag;
+  # protocol.bf16=true is schema-only
+  amp: bf16
+
+# ============================================================================
+# STANDING DIRECTIVES
+# ============================================================================
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  no_enforce_budget: true
+  user_ok_required: true
+  per_wave_user_ok_required: false  # single-wave protocol (5 seeds serial)
+
+# ============================================================================
+# ENTRY POINT — reference existing trainer (do NOT recreate)
+# ============================================================================
+entry:
+  command: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --metals Pt --seeds 0 1 2 3 4 --epochs 50 --batch-size 128 --lr 2e-3 --alpha 0.5 --wasserstein-weight 0.05 --use-l2-guard --cpu-num-workers 8 --device cuda:0 --out-dir {out_dir} --ckpt-dir {ckpt_dir} --no-enforce-budget
+  warm_start_checkpoint: "n/a"  # cold-start each seed
+
+# ============================================================================
+# CROSS-REFERENCES
+# ============================================================================
+cross_references:
+  - TODO/02_metrics/MECHANISM_METRIC_MAPPING.md  # M17 = Reference loader mechanism
+  - TODO/02_metrics/METRICS_TARGETS.md
+  - molmetal/scripts/train_dmpnn_multitask_wasserstein.py

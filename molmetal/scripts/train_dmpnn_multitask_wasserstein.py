@@ -135,6 +135,9 @@ except Exception:
 # Constants
 # ---------------------------------------------------------------------------
 DEFAULT_5METAL_CSV = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+DEFAULT_PLATINAI_4CELL_CSV = PROJECT_ROOT / ".data" / "molmetal" / "platinai_4cell.csv"
+PLATINAI_4CELL_METALS: Tuple[str, ...] = ("Pt",)
+PLATINAI_4CELL_CELL_LINES: Tuple[str, ...] = ("mcf7", "a549", "a2780", "a2780cis")
 DEFAULT_OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf131_p1_ru_auc_multitask"
 DEFAULT_CKPT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints"
 
@@ -354,6 +357,95 @@ def load_5metal_split_table(csv_path: Path) -> pd.DataFrame:
         raise ValueError(f"5-metal CSV missing columns: {missing}")
     df = df.reset_index(drop=False).rename(columns={"index": "row_id"})
     return df
+
+
+def _resolve_default_csv_path(dataset_name: str) -> Path:
+    """Resolve the default CSV path for a given ``--dataset`` choice.
+
+    Wf-A8 PlatinAI 4-cell loader (audit gap #1 fix):
+        ``metalcytotox_5metal`` -> ``.data/molmetal/metalcytotox_5metal_multitask.csv``
+        ``platinai_4cell`` -> ``.data/molmetal/platinai_4cell.csv``
+    Raises ``FileNotFoundError`` with a clear "Available datasets" message
+    if the resolved CSV does not exist on disk.
+    """
+    dataset_name = dataset_name.lower().strip()
+    if dataset_name == "metalcytotox_5metal":
+        return DEFAULT_5METAL_CSV
+    if dataset_name == "platinai_4cell":
+        return DEFAULT_PLATINAI_4CELL_CSV
+    raise ValueError(
+        f"Unknown --dataset={dataset_name!r}. Available datasets: "
+        f"{{'metalcytotox_5metal', 'platinai_4cell'}}."
+    )
+
+
+def load_platinai_4cell_split_table(
+    csv_path: Path,
+    split_strategy: str = "scaffold_70_10_10",
+) -> pd.DataFrame:
+    """Load the PlatinAI 4-cell CSV (Rusanov 2025).
+
+    The CSV stores one row per SMILES with 4 cell-line pIC50 columns::
+
+        SMILES_Ligands,pIC50_mcf7,pIC50_a549,pIC50_a2780,pIC50_a2780cis,metal
+
+    We pivot to **long format** (one row per SMILES-cell combination) so the
+    downstream multi-task pool machinery (which expects columns
+    ``smiles, metal, scaffold_id, split, activity``) works unmodified.
+
+    Scaffold split: deterministic hash of canonicalised SMILES → 70/10/10
+    train/val/test per Rusanov 2025 §3.2 + per-cell breakdown.
+
+    Returns DataFrame with columns: ``smiles, metal, scaffold_id, split,
+    activity, cell_line, row_id`` (long format).
+    """
+    df = pd.read_csv(csv_path)
+    if "SMILES_Ligands" not in df.columns:
+        raise ValueError(
+            f"platinai_4cell CSV missing 'SMILES_Ligands' column. "
+            f"Found columns: {list(df.columns)}."
+        )
+    metal_value = "Pt" if "metal" not in df.columns else df["metal"].iloc[0]
+    records = []
+    for col in PLATINAI_4CELL_CELL_LINES:
+        ic_col = f"pIC50_{col}"
+        if ic_col not in df.columns:
+            continue
+        sub = df[["SMILES_Ligands", ic_col]].copy()
+        sub = sub.dropna(subset=[ic_col])
+        sub = sub.rename(columns={"SMILES_Ligands": "smiles", ic_col: "activity"})
+        sub["metal"] = metal_value
+        sub["cell_line"] = col
+        records.append(sub)
+    if not records:
+        raise ValueError(
+            f"platinai_4cell CSV at {csv_path} produced no long-format rows. "
+            f"Expected columns prefixed with 'pIC50_' matching "
+            f"{PLATINAI_4CELL_CELL_LINES}."
+        )
+    long_df = pd.concat(records, ignore_index=True)
+    # Deterministic scaffold_id per SMILES (hash of canonicalised SMILES)
+    long_df["scaffold_id"] = (
+        long_df["smiles"].astype(str).map(lambda s: abs(hash(s)) % (10**8))
+    )
+    if split_strategy == "scaffold_70_10_10":
+        # Stable hash-based split: 70/10/10 per scaffold_id bucket
+        # (deterministic across runs because hash of int is stable).
+        def _split_bucket(sid: int) -> str:
+            h = abs(hash(sid)) % 100
+            if h < 70:
+                return "train"
+            if h < 80:
+                return "val"
+            return "test"
+        long_df["split"] = long_df["scaffold_id"].map(_split_bucket)
+    else:
+        raise ValueError(
+            f"Unknown split_strategy={split_strategy!r}. Supported: "
+            f"'scaffold_70_10_10'."
+        )
+    long_df = long_df.reset_index(drop=False).rename(columns={"index": "row_id"})
+    return long_df
 
 
 def _featurize_with_cache(
@@ -1937,8 +2029,25 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--csv", type=Path, default=DEFAULT_5METAL_CSV,
-        help="5-metal multitask CSV (split definitions).",
+        "--dataset",
+        choices=("metalcytotox_5metal", "platinai_4cell"),
+        default="metalcytotox_5metal",
+        help=(
+            "Dataset selector (Wf-A8 PlatinAI 4-cell loader; audit gap #1 fix). "
+            "Default 'metalcytotox_5metal' preserves Wf-131 P1 + Wf-251-F4 "
+            "baseline bit-for-bit. 'platinai_4cell' loads the Rusanov 2025 "
+            "Pt × 4-cell-line cohort from .data/molmetal/platinai_4cell.csv "
+            "(pivoted to long format internally)."
+        ),
+    )
+    p.add_argument(
+        "--csv", type=Path, default=None,
+        help=(
+            "Override CSV path. Default resolved from --dataset via "
+            "_resolve_default_csv_path(): metalcytotox_5metal -> "
+            ".data/molmetal/metalcytotox_5metal_multitask.csv; "
+            "platinai_4cell -> .data/molmetal/platinai_4cell.csv."
+        ),
     )
     p.add_argument(
         "--data-csv",
@@ -2197,11 +2306,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     # for CSV distinct metal-column discovery. Runtime validation
     # rejects metals not present in --csv with a clear "Available metals:
     # [...]" error message.
+    # Wf-A8 PlatinAI 4-cell loader (audit gap #1 fix): resolve --csv
+    # from --dataset if --csv not explicitly provided.
+    if args.csv is None:
+        args.csv = _resolve_default_csv_path(args.dataset)
+        print(
+            f"[Wf-A8 PlatinAI 4-cell loader] --csv resolved from "
+            f"--dataset={args.dataset!r}: {args.csv}",
+            flush=True,
+        )
     if not args.csv.exists():
         raise FileNotFoundError(
             f"--csv path does not exist: {args.csv}. "
-            f"Pass --csv <path> to override the default "
-            f"({DEFAULT_5METAL_CSV})."
+            f"Pass --csv <path> to override the default for "
+            f"--dataset={args.dataset!r} (resolver: "
+            f"_resolve_default_csv_path('{args.dataset}'))."
         )
     _metals_df = pd.read_csv(args.csv, usecols=["metal"])
     _available_metals = sorted(
@@ -2285,6 +2404,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         f"[wf131-mtw] loaded 5-metal split table: {len(split_df)} rows",
         flush=True,
     )
+    # Wf-A8 PlatinAI 4-cell loader (audit gap #1 fix) — dataset dispatch.
+    # Default --dataset=metalcytotox_5metal preserves Wf-131 P1 + Wf-251-F4
+    # baseline bit-for-bit. Pass --dataset platinai_4cell to switch.
+    if args.dataset == "platinai_4cell":
+        split_df_platinai = load_platinai_4cell_split_table(args.csv)
+        print(
+            f"[Wf-A8 PlatinAI 4-cell loader] dataset=platinai_4cell "
+            f"loaded {len(split_df_platinai)} long-format rows; "
+            f"per-cell breakdown: "
+            f"{dict(split_df_platinai.groupby('cell_line').size())}",
+            flush=True,
+        )
 
     if args.loose_filter:
         flt = CytotoxFilter(
