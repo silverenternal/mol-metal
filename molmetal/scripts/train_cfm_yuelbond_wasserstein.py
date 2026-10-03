@@ -113,6 +113,7 @@ import csv
 import json
 import sys
 import time
+import warnings
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -1487,6 +1488,70 @@ def train_one_epoch(
         # the loss cascade.  All default to OFF / zero-contribution so
         # backward compat with Wf-388-A2/A3 + Wf-406-A2 baseline is
         # preserved bit-for-bit when no flag is set on the CLI.
+        # 2026-10-04 NEW — flow-matching objective, and the (x0, x1, x_t, t)
+        # path the FM-family regularisers below need.
+        #
+        # Why this exists: this trainer's original velocity signal regresses
+        # `vel_probe` toward `build_reference_positions()` — a HARD-CODED
+        # literal Pt-square geometry (Pt at origin + 4 donors at 2.05 A).  That
+        # is fitting one constant geometry, not learning a distribution, and it
+        # is why every flow-matching-family regulariser in this file had
+        # nowhere to attach: shortcut-consistency, EDM consistency,
+        # log-normal-t and SO(3)-averaged FM all need an `(x0, x1, x_t, t)`
+        # path and a time-conditioned velocity field.  Neither existed.
+        #
+        # This branch supplies both, and it is deliberately DYNAMIC — every
+        # quantity that could collapse into a constant is resampled per batch:
+        #   * x1   — the batch's own coordinates (fresh every step)
+        #   * x0   — Gaussian noise, redrawn every step
+        #   * t    — redrawn every step, from a configurable law
+        # Nothing here is read off a fixed tensor, which is exactly the failure
+        # shape the 2026-10-04 audit found in 11 of the 13 other loss terms.
+        #
+        # NOTE ON ORDER — this block sits ABOVE the shortcut / consistency /
+        # SO(3) / EDM blocks on purpose.  Those regularisers consume `x_t`,
+        # `t`, `z_all` and `target_dx`, so the path has to be built first.  With
+        # `fm_objective` off, all four names stay None and each consumer checks
+        # `fm_objective` itself before touching them.
+        fm_term = torch.zeros((), device=device)
+        x_t: Optional[torch.Tensor] = None
+        t: Optional[torch.Tensor] = None
+        z_all: Optional[torch.Tensor] = None
+        target_dx: Optional[torch.Tensor] = None
+        if fm_objective and batch_clouds:
+            x1 = torch.cat([c.positions.float().to(device) for c in batch_clouds], dim=0)
+            z_all = torch.cat(
+                [c.atomic_numbers.long().to(device) for c in batch_clouds], dim=0
+            )
+            n_atoms = int(x1.shape[0])
+            x0 = torch.randn_like(x1)
+            # `--log-normal-t` is honoured here rather than in its own dead
+            # term.  That flag (and its mu/sigma) previously fed a block that
+            # sampled a t, then threw it away and re-assigned torch.zeros — the
+            # comment said "Logging only".  The sampling now happens for real,
+            # on the t the objective actually uses, so the flag means something.
+            _ln = (fm_t_dist == "log_normal") or bool(log_normal_t)
+            if _ln:
+                # Karras 2022 arXiv:2206.00364 §3.4: p(t) = sigmoid(N(mu, sigma)).
+                # The sigmoid maps the normal onto (0, 1), concentrating t near
+                # the mid-range where the FM regression is hardest.
+                _mu = (
+                    float(log_normal_t_mu) if log_normal_t else float(fm_log_normal_mu)
+                )
+                _sig = (
+                    float(log_normal_t_sigma)
+                    if log_normal_t
+                    else float(fm_log_normal_sigma)
+                )
+                t = torch.sigmoid(_mu + _sig * torch.randn(n_atoms, device=device))
+            else:
+                t = torch.rand(n_atoms, device=device)
+            t_col = t.reshape(-1, 1)
+            x_t = (1.0 - t_col) * x0 + t_col * x1
+            target_dx = x1 - x0
+            fm_term = float(fm_weight) * F.mse_loss(
+                model.fm_velocity(x_t, t, z_all), target_dx
+            )
         # (a) shortcut_distill — Frans 2024 teacher-student distillation.
         #     CPU-safe scaffold: when shortcut_distill=True but no CUDA
         #     is available, the term collapses to zero (preserves Wf-380
@@ -1494,34 +1559,35 @@ def train_one_epoch(
         #     ShortcutDistiller is built lazily and distillation_loss is
         #     added with p_distill=0.5 (Wf-353-A2 §1 spec).
         shortcut_distill_loss = torch.zeros((), device=device)
-        if shortcut_distill:
+        if shortcut_distill and fm_objective and x_t is not None and t is not None:
             try:
-                import torch as _t
+                from molmetal.adapters.flow_matching_lipman import (
+                    shortcut_distillation_wf380 as _sd,
+                )
 
-                if _t.cuda.is_available() and batch_velocities:
-
-                    # CPU-safe short-circuit: stub distillation loss on
-                    # a synthetic teacher-student pair (zero-grad
-                    # teacher).  PROJECTED p_distill=0.5 → ~10-20%
-                    # sample-quality lift per Wf-353-A2 §3.
-                    _p_distill = 0.5
-                    _b = max(int(all_logits.shape[0] * _p_distill), 1)
-                    _ref_pos = (
-                        reference_positions.to(device)
-                        if reference_positions is not None
-                        else torch.zeros(_b, 3, device=device)
-                    )
-                    shortcut_distill_loss = torch.tensor(
-                        float(_p_distill),
-                        dtype=torch.float32,
-                        device=device,
-                    ) * torch.tensor(
-                        0.0,
-                        dtype=torch.float32,
-                        device=device,
-                    )
-            except Exception:
-                # Defensive: fall back to zero contribution.
+                # Frans 2024 §3.2 self-distillation, now actually attached to
+                # the (x0, x1, x_t, t) path built above.  Before that path
+                # existed this term could only ever be `p_distill * 0.0`.
+                # x_t / t / target_dx are resampled every batch, which is what
+                # keeps it from decaying into the constant shape.
+                shortcut_distill_loss = _sd.shortcut_distillation_loss(
+                    pred_fn=lambda x, tt: model.fm_velocity(x, tt, z_all),
+                    x_time=x_t,
+                    t=t,
+                    target_dx=target_dx,
+                    # Wf-353-A2 §1 spec.
+                    p_self=0.5,
+                )
+            except Exception as _sd_exc:  # noqa: BLE001 — warned, not hidden
+                # WARN, do not silently zero.  A swallowed exception here is
+                # exactly what kept pll_term pinned at zero unnoticed: 4
+                # hardcoded SMILES raised, `except ...: continue` ate it, and
+                # the term looked wired for as long as nobody measured it.
+                warnings.warn(
+                    f"[cfm-fm] shortcut_distill fell back to 0: {_sd_exc!r}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
                 shortcut_distill_loss = torch.zeros((), device=device)
         # (b) consistency_weight — EDM Karras 2022 temporal consistency.
         #     The default 0.0 collapses the term to zero.  When > 0.0,
@@ -1529,24 +1595,27 @@ def train_one_epoch(
         #     probes (CPU-safe scaffold: zero contribution when
         #     consistency_weight > 0 but no velocities are available).
         consistency_term = torch.zeros((), device=device)
-        if float(consistency_weight) > 0.0 and batch_velocities:
+        if float(consistency_weight) > 0.0 and fm_objective and x_t is not None:
             try:
-
-                # CPU-safe scaffold: set weight to 0 (the user's
-                # consistency_weight multiplier is applied below) so
-                # the loss contribution collapses to zero unless the
-                # SCAFFOLD module is FULLY wired (CPU-only short-circuit
-                # preserves bit-for-bit backward compat).
-                consistency_term = torch.tensor(
-                    float(consistency_weight),
-                    dtype=torch.float32,
-                    device=device,
-                ) * torch.tensor(
-                    0.0,
-                    dtype=torch.float32,
-                    device=device,
+                from molmetal.adapters.flow_matching_lipman import (
+                    consistency_regularization_wf380 as _cr,
                 )
-            except Exception:
+
+                # EDM (Karras 2022) temporal consistency.  The adapter wants
+                # pred_fn(x) -> velocity, so the per-batch t and z are closed
+                # over; x_t is the flow state built above.  Previously this was
+                # `consistency_weight * 0.0` — a constant, whatever the weight.
+                consistency_term = _cr.consistency_loss_fn(
+                    pred_fn=lambda x: model.fm_velocity(x, t, z_all),
+                    x_t=x_t,
+                    weight=float(consistency_weight),
+                )
+            except Exception as _cr_exc:  # noqa: BLE001 — warned, not hidden
+                warnings.warn(
+                    f"[cfm-fm] consistency fell back to 0: {_cr_exc!r}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
                 consistency_term = torch.zeros((), device=device)
         # (c) per_cohort_features — wf380a2.select_features logging only.
         #     Default OFF (False); when ON, the per-cohort config is
@@ -1568,56 +1637,42 @@ def train_one_epoch(
         #     contribution is exactly 0 unless so3_average=True AND a
         #     velocity probe + target are available.
         so3_term = torch.zeros((), device=device)
-        if so3_average and batch_velocities:
+        if so3_average and fm_objective and x_t is not None and t is not None:
             try:
                 from molmetal.adapters.flow_matching_lipman import (
                     so3_average as _so3,
                 )
 
-                vel = torch.cat(batch_velocities, dim=0)
-                # Use bond_ce.detach() as the pred_fn surrogate — for the
-                # velocity loss this is a closed-form MSE-equivalent
-                # SCAFFOLD that exercises the rotation code path.
-                so3_term = torch.tensor(
-                    float(so3_average_weight),
-                    dtype=torch.float32,
-                    device=device,
-                ) * _so3.so3_average_loss(
-                    pred_fn=lambda x: vel.detach().expand(x.shape[0], *vel.shape[1:])[
-                        :, : vel.shape[-1]
-                    ],
-                    x_t=vel.detach(),
-                    target=vel.detach(),
+                # Cao 2025 ICML arXiv:2507.09785 SO(3)-averaged FM.  Every
+                # operand used to be `vel.detach()` — the term produced a
+                # nonzero value (measured 0.007) with zero gradient, which is
+                # invisible to a grep for consumers and to the §5.7 smoke.
+                # Now it runs on the live flow state and target.
+                so3_term = float(so3_average_weight) * _so3.so3_average_loss(
+                    pred_fn=lambda x: model.fm_velocity(x, t, z_all),
+                    x_t=x_t,
+                    target=target_dx,
                     n_rotations=2,
                 )
-            except Exception:
+            except Exception as _so3_exc:  # noqa: BLE001 — warned, not hidden
+                warnings.warn(
+                    f"[cfm-fm] so3_average fell back to 0: {_so3_exc!r}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
                 so3_term = torch.zeros((), device=device)
-        # (b) log_normal_t — Karras 2022 NeurIPS arXiv:2206.00364 log-
-        #     normal t-sampling.  Default OFF (uniform t via torch.rand).
-        #     When ON, replaces the t-sample with sigmoid(mu + sigma *
-        #     randn) and reweights the velocity interpolation.  For the
-        #     SCAFFOLD wire-in we set the contribution to 0 (CPU-only
-        #     placeholder) so the actual t-sample is consumed by the
-        #     canonical CFM loss body below — preserves backward compat
-        #     bit-for-bit when log_normal_t=False.
-        log_normal_t_term = torch.zeros((), device=device)
-        if log_normal_t:
-            try:
-                from molmetal.adapters.flow_matching_lipman import (
-                    log_normal_t as _lnt,
-                )
-
-                _t = _lnt.log_normal_t_sampling(
-                    batch_size=max(int(all_logits.shape[0]), 1),
-                    mu=float(log_normal_t_mu),
-                    sigma=float(log_normal_t_sigma),
-                )
-                # CPU-safe scaffold: the term is exactly 0 (the actual
-                # t-sample is consumed by the CFM canonical loss body
-                # which already lives in the model).  Logging only.
-                log_normal_t_term = torch.zeros((), device=device)
-            except Exception:
-                log_normal_t_term = torch.zeros((), device=device)
+        # (b) log_normal_t — RETIRED 2026-10-04, no longer a loss term.
+        #
+        # It used to sample t here and then immediately re-assign
+        # `torch.zeros` ("Logging only" per its own comment), so it entered the
+        # loss sum as an exact zero while `--log-normal-t` looked wired.  That
+        # is the same shape as pll_term and log_normal_t's three siblings.
+        #
+        # The feature is real now, it just lives where the t is actually used:
+        # the FM block above reads `log_normal_t` / `log_normal_t_mu` /
+        # `log_normal_t_sigma` and draws `t` from sigmoid(N(mu, sigma)) on the
+        # path the objective consumes.  So the flag kept its meaning and the
+        # term left the cascade.  Do NOT re-add a term here.
         # (c) edm_preconditioning — Karras 2022 NeurIPS arXiv:2206.00364
         #     σ-preconditioning.  Default OFF (plain F.cross_entropy).
         #     When ON, the velocity loss is replaced with
@@ -1626,27 +1681,35 @@ def train_one_epoch(
         #     edm_preconditioning=True AND a velocity probe + target
         #     are available.
         edm_term = torch.zeros((), device=device)
-        if edm_preconditioning and batch_velocities:
+        if edm_preconditioning and fm_objective and x_t is not None:
             try:
                 from molmetal.adapters.flow_matching_lipman import (
                     edm_preconditioning as _edm,
                 )
 
-                vel = torch.cat(batch_velocities, dim=0)
-                # Synthetic sigma schedule: log-normal per Karras §4.3.
+                # Karras 2022 EDM σ-preconditioning.  Every operand used to be
+                # `.detach()`d, and x_t/target_dx were both `vel` — a literal
+                # self-reference — so the term was a constant regardless of the
+                # flag.  It now consumes the real flow state and target, with
+                # pred_raw the live velocity prediction.
                 _sigma = torch.full(
-                    (vel.shape[0],),
+                    (int(x_t.shape[0]),),
                     float(edm_sigma_data),
                     dtype=torch.float32,
                     device=device,
                 )
                 edm_term = _edm.preconditioned_loss(
-                    pred_raw=all_logits.detach().float(),
-                    x_t=vel.detach(),
-                    target_dx=vel.detach(),
+                    pred_raw=model.fm_velocity(x_t, t, z_all),
+                    x_t=x_t,
+                    target_dx=target_dx,
                     sigma=_sigma,
                 )
-            except Exception:
+            except Exception as _edm_exc:  # noqa: BLE001 — warned, not hidden
+                warnings.warn(
+                    f"[cfm-fm] edm_preconditioning fell back to 0: {_edm_exc!r}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
                 edm_term = torch.zeros((), device=device)
         # (d) chemprop_v3_cache — Wf-392-A2 chemprop-trainer-primary cache
         #     side-channel for CFM.  Default OFF (no cache); when ON, a
@@ -1705,47 +1768,6 @@ def train_one_epoch(
                 # degrades to no-op, loss contribution stays at 0,
                 # bit-for-bit backward compat preserved.
                 pass
-        # 2026-10-04 NEW — flow-matching objective (default OFF).
-        #
-        # Why this exists: this trainer's original velocity signal regresses
-        # `vel_probe` toward `build_reference_positions()` — a HARD-CODED
-        # literal Pt-square geometry (Pt at origin + 4 donors at 2.05 A).  That
-        # is fitting one constant geometry, not learning a distribution, and it
-        # is why every flow-matching-family regulariser in this file had
-        # nowhere to attach: shortcut-consistency, EDM consistency,
-        # log-normal-t and SO(3)-averaged FM all need an `(x0, x1, x_t, t)`
-        # path and a time-conditioned velocity field.  Neither existed.
-        #
-        # This branch supplies both, and it is deliberately DYNAMIC — every
-        # quantity that could collapse into a constant is resampled per batch:
-        #   * x1   — the batch's own coordinates (fresh every step)
-        #   * x0   — Gaussian noise, redrawn every step
-        #   * t    — redrawn every step, from a configurable law
-        # Nothing here is read off a fixed tensor, which is exactly the failure
-        # shape the 2026-10-04 audit found in 11 of the 13 other loss terms.
-        fm_term = torch.zeros((), device=device)
-        if fm_objective and batch_clouds:
-            x1 = torch.cat([c.positions.float().to(device) for c in batch_clouds], dim=0)
-            z_all = torch.cat(
-                [c.atomic_numbers.long().to(device) for c in batch_clouds], dim=0
-            )
-            n_atoms = int(x1.shape[0])
-            x0 = torch.randn_like(x1)
-            if fm_t_dist == "log_normal":
-                # Karras 2022 arXiv:2206.00364 §3.4: p(t) = sigmoid(N(mu, sigma)).
-                # The sigmoid maps the normal onto (0, 1), concentrating t near
-                # the mid-range where the FM regression is hardest.
-                t = torch.sigmoid(
-                    float(fm_log_normal_mu)
-                    + float(fm_log_normal_sigma) * torch.randn(n_atoms, device=device)
-                )
-            else:
-                t = torch.rand(n_atoms, device=device)
-            t_col = t.reshape(-1, 1)
-            x_t = (1.0 - t_col) * x0 + t_col * x1
-            target_dx = x1 - x0
-            _pred_dx = model.fm_velocity(x_t, t, z_all)
-            fm_term = float(fm_weight) * F.mse_loss(_pred_dx, target_dx)
         loss = (
             bond_ce
             + wasserstein_weight * w2_val
@@ -1762,7 +1784,8 @@ def train_one_epoch(
             # + Wf-405-A2 + Wf-406-A2 + Wf-409-A1 baseline is preserved
             # bit-for-bit when no flag is set on the CLI.
             + so3_term  # Wf-408-A2 so3_average
-            + log_normal_t_term  # Wf-408-A2 log_normal_t
+            # log_normal_t_term REMOVED 2026-10-04 — it was an exact zero in
+            # this sum; the flag now drives the FM block's t-sampling instead.
             + edm_term  # Wf-408-A2 edm_preconditioning
             + chemprop_v3_cache_term  # Wf-408-A2 chemprop_v3_cache
             + fm_term  # 2026-10-04 NEW — flow-matching objective (default OFF)
@@ -1786,7 +1809,6 @@ def train_one_epoch(
                 "per_cohort_term": per_cohort_term,
                 "pll_term": pll_term,
                 "so3_term": so3_term,
-                "log_normal_t_term": log_normal_t_term,
                 "edm_term": edm_term,
                 "chemprop_v3_cache_term": chemprop_v3_cache_term,
                 "fm_term": fm_term,

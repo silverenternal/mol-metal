@@ -70,7 +70,6 @@ ALL_TERMS = frozenset(
         "per_cohort_term",
         "pll_term",
         "so3_term",
-        "log_normal_t_term",
         "edm_term",
         "chemprop_v3_cache_term",
         "fm_term",
@@ -91,12 +90,21 @@ EXPECTED_LIVE = frozenset(
         # NEW 2026-10-04: the flow-matching objective.  Unlike every other
         # entry in this test, this one was never a placeholder -- it did not
         # exist before today.  It is the (x0, x1, x_t, t) path that the
-        # shortcut/consistency/EDM/log-normal-t/SO(3)-FM regularisers need in
-        # order to be wireable at all.  Its inputs are resampled every batch
-        # (x1 = batch coords, x0 ~ N(0,I), t ~ uniform or log-normal), so it
-        # cannot collapse into a constant the way the fixed-reference
-        # regression it sits beside can.
+        # shortcut/consistency/EDM/SO(3)-FM regularisers need in order to be
+        # wireable at all.  Its inputs are resampled every batch (x1 = batch
+        # coords, x0 ~ N(0,I), t ~ uniform or log-normal), so it cannot
+        # collapse into a constant the way the fixed-reference regression it
+        # sits beside can.
         "fm_term",
+        # Wired 2026-10-04 onto that path.  Each of these was previously
+        # unusable for want of an (x0, x1, x_t, t) input, not for want of care:
+        # shortcut/consistency were `weight * torch.tensor(0.0)`; so3/edm
+        # computed on fully-detached tensors (so3 measured nonzero at 0.007
+        # with zero gradient).  They now consume the per-batch x_t/t/target_dx.
+        "shortcut_distill_loss",
+        "consistency_term",
+        "so3_term",
+        "edm_term",
     }
 )
 
@@ -114,15 +122,6 @@ ALLOWED_DEAD = {
         "the graph, and _synthesize_sa_scores_from_clouds returns List[float]. "
         "Retired by: remove from the sum, or make the surrogate differentiable."
     ),
-    "shortcut_distill_loss": (
-        "literally p_distill * torch.tensor(0.0). Retired by: the FM-objective "
-        "work item (this trainer has no (x0,x1,x_t,t) path and no "
-        "time-conditioned velocity field, so this cannot be wired before that)."
-    ),
-    "consistency_term": (
-        "literally consistency_weight * torch.tensor(0.0). Retired by: the "
-        "FM-objective work item (same blocker as shortcut_distill_loss)."
-    ),
     "per_cohort_term": (
         "always torch.zeros; its own comment says it contributes 0 to the loss "
         "and exists for logging. Retired by: drop it from the sum and log it."
@@ -134,19 +133,6 @@ ALLOWED_DEAD = {
         "be a constant: per TODO-94, PLL is a per-molecule DESCRIPTOR for a "
         "downstream regressor, not a loss term. Retired by: drop from the sum, "
         "log as a diagnostic."
-    ),
-    "so3_term": (
-        "every operand is vel.detach() (measured value nonzero, gradient zero). "
-        "Retired by: the FM-objective work item, or remove."
-    ),
-    "log_normal_t_term": (
-        "the active branch computes a t-sample and then re-assigns "
-        "torch.zeros; its comment says 'Logging only'. Retired by: drop from "
-        "the sum."
-    ),
-    "edm_term": (
-        "every operand is .detach() (pred_raw, x_t and target_dx all detached). "
-        "Retired by: the FM-objective work item, or remove."
     ),
     "chemprop_v3_cache_term": (
         "always torch.zeros; its comment says the cache's 'purpose is speedup, "
