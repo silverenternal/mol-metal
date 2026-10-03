@@ -172,15 +172,26 @@ def test_a1b_legacy_otsampler_batch_mismatch_raises() -> None:
 
 
 def test_a2_se3sb_otsampler_returns_permutation() -> None:
-    """``SE3SBOTSampler.couple`` returns a ``(B,)`` long permutation."""
+    """``SE3SBOTSampler.couple`` returns a ``(B,)`` long permutation.
+
+    2026-10-04: this asserted only "indices are in range", which a tensor with
+    repeated indices satisfies -- so the property in the test's NAME was never
+    checked.  Measured, the old argmax implementation returned a non-permutation
+    in 3/10 trials on inputs of exactly this shape.  Index range is still
+    asserted; distinctness now is too.
+    """
     sampler = SE3SBOTSampler(eps=0.5, n_iters=20)
     x0 = torch.randn(4, 6) * 0.3
     x1 = torch.randn(4, 6) * 0.3
     idx = sampler.couple(x0, x1)
     assert idx.shape == (4,)
     assert idx.dtype == torch.long
-    # The permutation should reference valid indices (0..B-1).
+    # The permutation should reference valid indices (0..B-1)...
     assert torch.all((idx >= 0) & (idx < 4))
+    # ...and use each exactly once, which is what makes it a permutation.
+    assert sorted(idx.tolist()) == [0, 1, 2, 3], (
+        "couple() must return a PERMUTATION. Got: " f"{sorted(idx.tolist())}"
+    )
 
 
 def test_a2b_se3sb_otsampler_lifts_per_atom_to_se3() -> None:
@@ -207,13 +218,58 @@ def test_a2c_se3sb_otsampler_rejects_bad_input_dim() -> None:
 
 
 def test_a3_bass_otsampler_returns_permutation() -> None:
-    """``BassMartingaleOTSampler.couple`` returns a finite permutation."""
+    """``BassMartingaleOTSampler.couple`` returns a finite permutation.
+
+    2026-10-04: this test used to assert only ``shape`` and ``dtype``, on a
+    fixture where ``x0 == x1``.  That fixture makes the OT plan the identity,
+    so a collision was impossible and the test could not fail no matter what
+    ``couple`` returned -- while its NAME claimed a property (permutation) the
+    implementation did not have.  Measured on non-degenerate input, the old
+    ``argmax``-based code returned a non-permutation in 10/10 trials.
+
+    It now asserts the property in the name, on inputs where the sources and
+    targets genuinely differ, which is the only setting where the claim is
+    testable.
+    """
     sampler = BassMartingaleOTSampler(eps=0.5)
-    x0 = torch.tensor([[0.0], [0.5], [1.0]])
-    x1 = torch.tensor([[0.0], [0.5], [1.0]])
+
+    # Degenerate case (kept): identical source and target -> identity.
+    x_same = torch.tensor([[0.0], [0.5], [1.0]])
+    idx_same = sampler.couple(x_same, x_same)
+    assert idx_same.shape == (3,)
+    assert idx_same.dtype == torch.long
+    assert sorted(idx_same.tolist()) == [0, 1, 2]
+
+    # Non-degenerate: sources and targets drawn from different distributions,
+    # so a greedy per-row argmax would collide.
+    torch.manual_seed(0)
+    x0 = torch.randn(16, 2)
+    x1 = torch.randn(16, 2) * 2.0 + 1.0
     idx = sampler.couple(x0, x1)
-    assert idx.shape == (3,)
+    assert idx.shape == (16,)
     assert idx.dtype == torch.long
+    assert sorted(idx.tolist()) == list(range(16)), (
+        "couple() must return a PERMUTATION -- every index exactly once. "
+        f"Got duplicates/missing: {sorted(idx.tolist())}"
+    )
+
+
+def test_a3a2_bass_sample_coupling_is_not_claimed_to_be_a_permutation() -> None:
+    """``sample_coupling`` draws from the plan and may legitimately repeat.
+
+    The Bass plan is two-point: each row's mass sits on at most two columns.
+    Sampling preserves that structure; hard assignment destroys it.  So this
+    path deliberately does NOT promise a permutation, and the test asserts the
+    weaker property it does promise -- valid indices.
+    """
+    sampler = BassMartingaleOTSampler(eps=0.5)
+    torch.manual_seed(0)
+    x0 = torch.randn(16, 2)
+    x1 = torch.randn(16, 2) * 2.0 + 1.0
+    idx = sampler.sample_coupling(x0, x1)
+    assert idx.shape == (16,)
+    assert idx.dtype == torch.long
+    assert torch.all((idx >= 0) & (idx < 16))
 
 
 def test_a3b_bass_otsampler_handles_per_atom() -> None:

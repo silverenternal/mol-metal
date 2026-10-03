@@ -1038,6 +1038,15 @@ def train_one_epoch(
     fm_t_dist: str = "uniform",  # {"uniform", "log_normal"}
     fm_log_normal_mu: float = -0.5,  # only used when fm_t_dist="log_normal"
     fm_log_normal_sigma: float = 1.0,  # only used when fm_t_dist="log_normal"
+    # 2026-10-04 NEW — frontier-math OT coupling of the FM objective's (x0, x1)
+    # pair.  `flow.bass_martingale` / `flow.se3_sb` in the yaml; both require
+    # fm_objective and are mutually exclusive (make_ot_sampler raises).
+    bass_martingale: bool = False,
+    se3_sb: bool = False,
+    bass_eps: float = 0.5,
+    sb_eps: float = 0.1,
+    sb_n_iters: int = 50,
+    ot_coupling_mode: str = "assignment",
     # Wf-A9 FIX (2026-10-03) — gradient-clip threshold threaded as a
     # kwarg.  The Wf-A8 patch referenced ``args`` inside this function,
     # but ``args`` is ``main()``-scoped → NameError at the first
@@ -1536,6 +1545,48 @@ def train_one_epoch(
             )
             n_atoms = int(x1.shape[0])
             x0 = torch.randn_like(x1)
+            # 2026-10-04 — frontier-math OT coupling (Bass martingale /
+            # SE(3) Schrodinger bridge), the point where the repo's R18 math
+            # finally has something to act on.
+            #
+            # These samplers expose `couple(x0, x1) -> idx` meaning "pair
+            # x0[i] with x1[idx[i]]".  Until this pass there was no (x0, x1)
+            # pair anywhere in this trainer, so the coupling had no input and
+            # the corresponding yaml keys could only ever be dead.  The
+            # coupling is recomputed EVERY batch on freshly drawn noise, so it
+            # stays part of the dynamic path rather than becoming a fixed
+            # pairing baked once at startup.
+            if (bass_martingale or se3_sb) and len(batch_clouds) > 1:
+                _n_clouds = len(batch_clouds)
+                if x1.shape[0] % _n_clouds == 0 and x1.shape[0] > _n_clouds:
+                    _per = x1.shape[0] // _n_clouds
+                    from molmetal.adapters.flow_matching_lipman.se3sb_bass_integration import (  # noqa: E501
+                        make_ot_sampler as _make_ot_sampler,
+                    )
+
+                    _ot_mode, _ot_sampler = _make_ot_sampler(
+                        use_se3_sb=bool(se3_sb),
+                        use_bass_martingale=bool(bass_martingale),
+                        sb_eps=float(sb_eps),
+                        sb_n_iters=int(sb_n_iters),
+                        bass_eps=float(bass_eps),
+                    )
+                    # Two distinct semantics, both real (see the
+                    # --ot-coupling-mode help): 'assignment' is an exact
+                    # one-to-one permutation; 'sample' draws from the plan and
+                    # may repeat a target, which is the faithful way to draw a
+                    # two-point Bass coupling.
+                    _x0_3d = x0.reshape(_n_clouds, _per, 3)
+                    _x1_3d = x1.reshape(_n_clouds, _per, 3)
+                    if str(ot_coupling_mode) == "sample":
+                        _idx = _ot_sampler.sample_coupling(_x0_3d, _x1_3d)
+                    else:
+                        _idx = _ot_sampler.couple(_x0_3d, _x1_3d)
+                    # Reorder the TARGET side (and its atomic numbers, which
+                    # must stay aligned with their coordinates).  x0 is noise,
+                    # so reordering it instead would be a no-op.
+                    x1 = x1.reshape(_n_clouds, _per, 3)[_idx].reshape(-1, 3)
+                    z_all = z_all.reshape(_n_clouds, _per)[_idx].reshape(-1)
             # `--log-normal-t` is honoured here rather than in its own dead
             # term.  That flag (and its mu/sigma) previously fed a block that
             # sampled a t, then threw it away and re-assigned torch.zeros — the
@@ -2232,6 +2283,68 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--fm-log-normal-mu", type=float, default=-0.5)
     p.add_argument("--fm-log-normal-sigma", type=float, default=1.0)
+    # 2026-10-04 — frontier-math OT couplings, driven by the yaml
+    # `flow.bass_martingale` / `flow.se3_sb` keys.  Both re-pair the FM
+    # objective's freshly-sampled (x0, x1) every batch; they are mutually
+    # exclusive (make_ot_sampler raises), matching the two yaml keys being
+    # alternatives rather than additives.
+    p.add_argument(
+        "--use-bass-martingale",
+        dest="bass_martingale",
+        action="store_true",
+        default=False,
+        help=(
+            "Henry-Labordere Bass mean-preserving martingale coupling "
+            "between x0 and x1 in the flow-matching objective.  Requires "
+            "--use-fm-objective.  Mutually exclusive with --use-se3-sb.  "
+            "Before 2026-10-04 this had nothing to act on: the trainer had no "
+            "(x0, x1) pair at all."
+        ),
+    )
+    p.add_argument(
+        "--use-se3-sb",
+        dest="se3_sb",
+        action="store_true",
+        default=False,
+        help=(
+            "SE(3) Schrodinger-bridge Sinkhorn coupling between x0 and x1 in "
+            "the flow-matching objective.  Requires --use-fm-objective.  "
+            "Mutually exclusive with --use-bass-martingale."
+        ),
+    )
+    p.add_argument(
+        "--bass-eps",
+        type=float,
+        default=0.5,
+        help="Bass mixing weight (Henry-Labordere canonical default 0.5).",
+    )
+    p.add_argument(
+        "--sb-eps",
+        type=float,
+        default=0.1,
+        help="SE(3) Schrodinger-bridge Sinkhorn regularisation epsilon.",
+    )
+    p.add_argument(
+        "--sb-n-iters",
+        type=int,
+        default=50,
+        help="SE(3) Schrodinger-bridge Sinkhorn iterations.",
+    )
+    p.add_argument(
+        "--ot-coupling-mode",
+        type=str,
+        default="assignment",
+        choices=["assignment", "sample"],
+        help=(
+            "How the coupling matrix becomes a pairing.  'assignment' (default) "
+            "solves the one-to-one assignment exactly, giving a true "
+            "permutation -- one target per source, which is what OT-CFM "
+            "(Lipman 2023) wants for equal-size batches.  'sample' draws "
+            "j ~ Pi[i, :] per source, which preserves a two-point Bass plan's "
+            "structure at the cost of repeating targets.  These are genuinely "
+            "different semantics, not a quality setting."
+        ),
+    )
     p.add_argument("--lr", type=float, default=DEFAULT_LR)
     # Wf-A6 A2 BLOCKER C fix — LR scheduler (cosine/onecycle) + warmup + weight decay
     # per user voice 2026-10-03 verbatim '学习率的控制至少得用余弦退火或者更加高级的方案'.
@@ -3550,6 +3663,13 @@ def main() -> int:
             fm_t_dist=str(getattr(args, "fm_t_dist", "uniform")),
             fm_log_normal_mu=float(getattr(args, "fm_log_normal_mu", -0.5)),
             fm_log_normal_sigma=float(getattr(args, "fm_log_normal_sigma", 1.0)),
+            # 2026-10-04 NEW — frontier-math OT coupling kwargs.
+            bass_martingale=bool(getattr(args, "bass_martingale", False)),
+            se3_sb=bool(getattr(args, "se3_sb", False)),
+            bass_eps=float(getattr(args, "bass_eps", 0.5)),
+            sb_eps=float(getattr(args, "sb_eps", 0.1)),
+            sb_n_iters=int(getattr(args, "sb_n_iters", 50)),
+            ot_coupling_mode=str(getattr(args, "ot_coupling_mode", "assignment")),
             # Wf-A9 FIX (2026-10-03) — thread the gradient-clip threshold
             # from the yaml-driven ``args.max_norm`` (start.sh passes
             # ``--max-norm "$MAX_NORM"`` sourced from ``protocol.max_norm``).

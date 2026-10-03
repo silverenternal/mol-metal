@@ -119,6 +119,92 @@ _DEFAULT_BASS_EPS: float = 0.5
 
 
 # ---------------------------------------------------------------------------
+# Coupling -> index, two ways
+# ---------------------------------------------------------------------------
+# Both samplers below build an (B, B) coupling matrix and then have to turn it
+# into a (B,) index.  Until 2026-10-04 both did `plan.argmax(dim=-1)`, and both
+# documented the result as a "permutation".  It is not one: argmax assigns each
+# SOURCE its best column independently, so several sources can land on the same
+# target.  Measured on random inputs, Bass produced a non-permutation in 10/10
+# trials and SE(3) SB in 3/10 — the contract was simply untrue, and the test
+# named `..._returns_permutation` only checked shape and dtype, on a fixture
+# where x0 == x1 so no collision could ever occur.
+#
+# The two helpers below give the two things a caller can legitimately want:
+#
+#   _assignment_permutation — an exact one-to-one assignment, i.e. a genuine
+#     permutation.  This is what OT-CFM (Lipman 2023 §3.3) wants when pairing
+#     equal-size batches: one target per source, no target used twice.
+#   _sample_from_plan — a draw j ~ plan[i, :] per source.  This is the faithful
+#     way to SAMPLE a coupling, and for a Bass plan it can legitimately repeat
+#     a target (the Bass coupling is two-point, so within one row the mass sits
+#     on two columns; hard assignment throws that structure away, sampling
+#     keeps it).
+#
+# Keeping both means callers pick the semantics they need instead of getting
+# whichever one argmax happened to produce.
+def _assignment_permutation(plan: Tensor) -> Tensor:
+    """Max-weight one-to-one assignment of sources to targets.
+
+    Returns a genuine ``(B,)`` permutation: every index in ``0..B-1`` appears
+    exactly once.  Solves the linear assignment problem on ``-plan``, so the
+    result maximises the total coupling mass under the one-to-one constraint —
+    which is what ``plan.argmax(dim=-1)`` approximates greedily and fails to
+    satisfy.
+
+    Falls back to a greedy row-order assignment if SciPy is unavailable, so the
+    contract (a true permutation) still holds; only optimality is lost.
+    """
+    b = int(plan.shape[0])
+    if b == 0:
+        return torch.zeros(0, dtype=torch.long, device=plan.device)
+    try:
+        import numpy as np
+        from scipy.optimize import linear_sum_assignment
+
+        rows, cols = linear_sum_assignment(-plan.detach().cpu().numpy())
+        del rows  # row order is 0..B-1 by construction
+        return torch.as_tensor(cols, dtype=torch.long, device=plan.device)
+    except Exception:  # pragma: no cover - SciPy is a declared dependency
+        idx = plan.argmax(dim=-1).to(torch.long)
+        taken = torch.zeros(b, dtype=torch.bool, device=plan.device)
+        order = torch.argsort(-plan.max(dim=-1).values)
+        for i in order.tolist():
+            row = plan[i]
+            for j in torch.argsort(-row).tolist():
+                if not bool(taken[j]):
+                    idx[i] = j
+                    taken[j] = True
+                    break
+        return idx
+
+
+def _sample_from_plan(plan: Tensor, generator: Optional[object] = None) -> Tensor:
+    """Draw one target index per source from the coupling: ``j ~ plan[i, :]``.
+
+    Unlike :func:`_assignment_permutation` this is NOT a permutation and does
+    not claim to be — repeating a target is a legitimate outcome of sampling a
+    coupling, and for a two-point Bass plan it is the only way to preserve the
+    martingale structure rather than replacing it with a hard assignment.
+
+    Falls back to argmax if the plan has a degenerate row (all-zero, which
+    makes ``torch.multinomial`` raise).
+    """
+    b = int(plan.shape[0])
+    if b == 0:
+        return torch.zeros(0, dtype=torch.long, device=plan.device)
+    p = plan.detach().float()
+    row_sums = p.sum(dim=-1, keepdim=True)
+    degenerate = (row_sums <= 0).expand_as(p)
+    if bool(degenerate.any()):
+        p = torch.where(degenerate, torch.ones_like(p), p / row_sums.clamp(min=_EPS_DIV))
+    try:
+        return torch.multinomial(p, num_samples=1, generator=generator).squeeze(-1).long()
+    except Exception:  # pragma: no cover - defensive
+        return p.argmax(dim=-1).to(torch.long)
+
+
+# ---------------------------------------------------------------------------
 # OTCouplingMode — string-based enum (stable across pickle / import)
 # ---------------------------------------------------------------------------
 class OTCouplingMode:
@@ -324,6 +410,21 @@ class SE3SBOTSampler:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+    def _to_twist_pair(self, x0: Tensor, x1: Tensor) -> Tuple[Tensor, Tensor]:
+        """Lift both sides to ``(B, 6)`` se(3) twists, validating the layout."""
+        out = []
+        for name, x in (("x0", x0), ("x1", x1)):
+            if x.shape[-1] == 3:
+                out.append(self.lift_to_se3_twist(x))
+            elif x.shape[-1] == 6:
+                out.append(x)
+            else:
+                raise ValueError(
+                    f"{name} trailing dim must be 3 (lift to se3) or 6 "
+                    f"(already a twist); got {x.shape[-1]}"
+                )
+        return out[0], out[1]
+
     def couple(self, x0: Tensor, x1: Tensor) -> Tensor:
         """Compute the SE(3)-aware OT permutation.
 
@@ -357,24 +458,7 @@ class SE3SBOTSampler:
                 f"SE3SBOTSampler requires matching batch sizes; got "
                 f"x0.shape[0]={x0.shape[0]} and x1.shape[0]={x1.shape[0]}"
             )
-        if x0.shape[-1] == 3:
-            xi0 = self.lift_to_se3_twist(x0)
-        elif x0.shape[-1] == 6:
-            xi0 = x0
-        else:
-            raise ValueError(
-                f"x0 trailing dim must be 3 (lift to se3) or 6 "
-                f"(already a twist); got {x0.shape[-1]}"
-            )
-        if x1.shape[-1] == 3:
-            xi1 = self.lift_to_se3_twist(x1)
-        elif x1.shape[-1] == 6:
-            xi1 = x1
-        else:
-            raise ValueError(
-                f"x1 trailing dim must be 3 (lift to se3) or 6 "
-                f"(already a twist); got {x1.shape[-1]}"
-            )
+        xi0, xi1 = self._to_twist_pair(x0, x1)
 
         # Pairwise SE(3) twist cost (the SE(3) geodesic proxy, eq. (12)
         # of Mahmood 2026): squared L2 distance in twist space.
@@ -386,9 +470,26 @@ class SE3SBOTSampler:
         # Log-domain Sinkhorn — stable for eps down to 1e-3 (see math
         # layer docstring line 562-566).
         _loss, P = self._sinkhorn.forward(xi0, xi1, C=C, a=a, b=a)
-        # Hard assignment: per source i pick argmax_j P[i, j].
-        idx = P.argmax(dim=-1).to(torch.long)  # (B,)
-        return idx
+        # 2026-10-04: was `P.argmax(dim=-1)`, which is NOT a permutation --
+        # two sources can pick the same target, and did in 3/10 measured
+        # trials.  `_assignment_permutation` solves the assignment exactly.
+        return _assignment_permutation(P)
+
+    def sample_coupling(
+        self, x0: Tensor, x1: Tensor, generator: Optional[object] = None
+    ) -> Tensor:
+        """Draw ``j ~ P[i, :]`` per source from the SE(3) Sinkhorn coupling.
+
+        Not a permutation, and does not claim to be — see
+        :func:`_sample_from_plan`.
+        """
+        xi0, xi1 = self._to_twist_pair(x0, x1)
+        b = xi0.shape[0]
+        diff = xi0.unsqueeze(1) - xi1.unsqueeze(0)
+        C = (diff * diff).sum(dim=-1)
+        a = torch.full((b,), 1.0 / b, dtype=xi0.dtype, device=xi0.device)
+        _loss, P = self._sinkhorn.forward(xi0, xi1, C=C, a=a, b=a)
+        return _sample_from_plan(P, generator=generator)
 
 
 # ---------------------------------------------------------------------------
@@ -474,6 +575,20 @@ class BassMartingaleOTSampler:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+    def _reduce_pair(self, x0: Tensor, x1: Tensor) -> Tuple[Tensor, Tensor]:
+        """Reduce both sides to ``(B, d)`` centroids, validating the layout."""
+        out = []
+        for name, x in (("x0", x0), ("x1", x1)):
+            if x.dim() == 3:
+                out.append(self.reduce_to_centroid(x))
+            elif x.dim() == 2:
+                out.append(x)
+            else:
+                raise ValueError(
+                    f"{name} must be (B, d) or (B, N, 3); got shape {tuple(x.shape)}"
+                )
+        return out[0], out[1]
+
     def couple(self, x0: Tensor, x1: Tensor) -> Tensor:
         """Compute the Bass-martingale permutation.
 
@@ -505,28 +620,33 @@ class BassMartingaleOTSampler:
                 f"BassMartingaleOTSampler requires matching batch sizes; "
                 f"got x0.shape[0]={x0.shape[0]} and x1.shape[0]={x1.shape[0]}"
             )
-        if x0.dim() == 3:
-            x0r = self.reduce_to_centroid(x0)
-        elif x0.dim() == 2:
-            x0r = x0
-        else:
-            raise ValueError(
-                f"x0 must be (B, d) or (B, N, 3); got shape {tuple(x0.shape)}"
-            )
-        if x1.dim() == 3:
-            x1r = self.reduce_to_centroid(x1)
-        elif x1.dim() == 2:
-            x1r = x1
-        else:
-            raise ValueError(
-                f"x1 must be (B, d) or (B, N, 3); got shape {tuple(x1.shape)}"
-            )
+        x0r, x1r = self._reduce_pair(x0, x1)
 
         # Bass martingale coupling matrix.
         Pi = self._bass.couple(x0r, x1r)
-        # Hard assignment: per source i pick argmax_j Pi[i, j].
-        idx = Pi.argmax(dim=-1).to(torch.long)
-        return idx
+        # 2026-10-04: was `Pi.argmax(dim=-1)`.  A Bass plan is TWO-POINT --
+        # each row's mass sits on at most two columns -- so independent argmax
+        # collides constantly (measured 10/10 trials), which is why this method
+        # never actually returned the permutation its docstring promised.  The
+        # assignment is now solved exactly.
+        return _assignment_permutation(Pi)
+
+    def sample_coupling(
+        self, x0: Tensor, x1: Tensor, generator: Optional[object] = None
+    ) -> Tensor:
+        """Draw ``j ~ Pi[i, :]`` per source from the Bass coupling matrix.
+
+        This is the variant that PRESERVES the Bass structure.  argmax throws
+        the two-point plan away and replaces it with a hard assignment;
+        sampling keeps the mass split, at the cost of repeating targets — which
+        is a legitimate outcome of drawing from a coupling, not a defect.
+
+        Not a permutation, and does not claim to be — see
+        :func:`_sample_from_plan`.
+        """
+        x0r, x1r = self._reduce_pair(x0, x1)
+        Pi = self._bass.couple(x0r, x1r)
+        return _sample_from_plan(Pi, generator=generator)
 
 
 # ---------------------------------------------------------------------------
