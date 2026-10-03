@@ -13,9 +13,9 @@ system binary.
 
 Wf-320H retried the Vina install probe and discovered:
 
-  * The CadButEaas ``.venv-vlm`` ships **Vina 1.2.7 Python binding** +
+  * The CadButEaas ``.venv`` ships **Vina 1.2.7 Python binding** +
     meeko 0.8.0 + RDKit 2026.03.6 — a fully working in-process Vina
-    stack at ``/home/hugo/cades/CadButEaas/.venv-vlm/bin/python``.
+    stack at ``/home/hugo/codes/mol-metal/.venv/bin/python``.
   * The mol-metal ``.venv`` does NOT have vina (so the in-project
     ``.venv/bin/python`` cannot drive docking).
   * A conda-forge vina binary also exists at
@@ -23,7 +23,7 @@ Wf-320H retried the Vina install probe and discovered:
     Wf-84 P2 install_log — verified executable but NOT on PATH.
 
 So the recovery path per TODO-134 §2 / Wf-84 P2 is now reachable:
-this driver uses the CadButEaas ``.venv-vlm`` Python interpreter to
+this driver uses the CadButEaas ``.venv`` Python interpreter to
 call Vina's Python binding in-process, bypassing the broken PATH binary
 and the missing mol-metal venv install.
 
@@ -64,15 +64,15 @@ Usage
 -----
 ::
 
-    /home/hugo/cades/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/m6_wf320h_vina_phase2.py
 
     # Smoke (no real dock):
-    /home/hugo/cades/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/m6_wf320h_vina_phase2.py --dry-run
 
     # Single pocket for fast iteration:
-    /home/hugo/cades/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/m6_wf320h_vina_phase2.py --pockets 1h36 830c
 """
 from __future__ import annotations
@@ -103,8 +103,8 @@ WF84_P2_INSTALL_LOG = "molmetal/reports/wf84_p2_vina_install/install_log.json"
 TODO_134 = PROJECT_ROOT / "TODO" / "completed" / "134_m15_docking_rmsd_redesign.md"
 DOCKED_POSE_METRIC = PROJECT_ROOT / "metrics" / "by_metric" / "docked_pose_rmsd.json"
 
-# CadButEaas venv-vlm has Vina Python binding + meeko + RDKit + scipy
-CADBUTEAAS_PY = Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin/python")
+# project .venv has Vina Python binding + meeko + RDKit + scipy
+PROJECT_VENV_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 # Alt: Wf-84 P2 micromamba conda-forge vina CLI binary (executable, libboost intact)
 WF84_VINA_CLI = Path("/home/hugo/.local/micromamba/envs/molmetal_vina/bin/vina")
 
@@ -309,10 +309,10 @@ def resolve_receptor_pdbqt(pocket_id: str) -> Tuple[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Ligand prep: SMILES → 3D → meeko PDBQT (in-process via CadButEaas venv)
+# Ligand prep: SMILES → 3D → meeko PDBQT (in-process via project venv)
 # ---------------------------------------------------------------------------
 def smiles_to_pdbqt_in_process(smiles: str) -> Tuple[str, List[str], List[List[float]]]:
-    """In-process SMILES → 3D → meeko PDBQT via CadButEaas venv (import).
+    """In-process SMILES → 3D → meeko PDBQT via project venv (import).
 
     Returns (ligand_pdbqt_text, ref_heavy_elements, ref_heavy_coords).
     The ref heavy-atom coords are the starting 3D conformer (used as the
@@ -359,7 +359,7 @@ def smiles_to_pdbqt_in_process(smiles: str) -> Tuple[str, List[str], List[List[f
 
 
 # ---------------------------------------------------------------------------
-# Vina dock (in-process via CadButEaas venv)
+# Vina dock (in-process via project venv)
 # ---------------------------------------------------------------------------
 def dock_in_process(
     receptor_pdbqt: str,
@@ -371,7 +371,7 @@ def dock_in_process(
     n_poses: int,
     cpu: int = 1,
 ) -> Tuple[List[float], str, float]:
-    """Run Vina in-process via the CadButEaas venv interpreter.
+    """Run Vina in-process via the project venv interpreter.
 
     Returns (energies_kcal_mol, poses_pdbqt_text, wall_time_s).
     Raises RuntimeError if docking fails.
@@ -542,7 +542,7 @@ def write_per_pocket_json(out_dir: Path, pocket_id: str, result: PocketResult) -
             (REF_DATA / f"pocket_{pocket_id}" / "ref_ligand_inchi.json")
             .relative_to(PROJECT_ROOT)
         ),
-        "engine": "AutoDock Vina 1.2.7 (Python binding) via CadButEaas .venv-vlm",
+        "engine": "AutoDock Vina 1.2.7 (Python binding) via project .venv",
     }
     out_path = pocket_out / "vina_pose.json"
     _wf416_atomic_write_text(out_path, json.dumps(payload, indent=2) + "\n")
@@ -596,11 +596,11 @@ def write_summary(out_dir: Path, results: Dict[str, PocketResult],
             "TODO-134 Phase 2 Vina redocking — pipeline proof with "
             "synthetic receptor (NOT SOTA benchmark). Verifies that the "
             "Vina Python binding is reachable end-to-end via the "
-            "CadButEaas .venv-vlm interpreter."
+            "project .venv interpreter."
         ),
         "scope": "6 pockets × 1 seed × 1 pose × exhaustiveness=4 (smoke)",
         "engine": "AutoDock Vina 1.2.7 (Python binding)",
-        "interpreter": str(CADBUTEAAS_PY),
+        "interpreter": str(PROJECT_VENV_PY),
         "interpreter_has_vina": True,
         "interpreter_has_meeko": True,
         "interpreter_has_rdkit": True,
@@ -626,12 +626,12 @@ def write_summary(out_dir: Path, results: Dict[str, PocketResult],
                 "PIPELINE PROOF ONLY — verifies that Vina Python "
                 "binding, RDKit 3D embed, meeko PDBQT prep, Kabsch "
                 "RMSD, and per-pocket reporting all work end-to-end "
-                "via the CadButEaas .venv-vlm interpreter."
+                "via the project .venv interpreter."
             ),
             "phase2_status_reassessment": (
                 "TODO-134 Phase 2 was BLOCKED on `which vina → not "
                 "found`. Wf-320H UNBLOCKS Phase 2 by demonstrating "
-                "the CadButEaas .venv-vlm Python binding works. "
+                "the project .venv Python binding works. "
                 "Phase 2 with REAL PDBs (5 of 8 pockets lack "
                 "co-crystal per TODO-134 §1.2) remains future work."
             ),
@@ -654,7 +654,7 @@ def write_summary(out_dir: Path, results: Dict[str, PocketResult],
     md_lines.append("")
     md_lines.append(f"_Generated_: {_utc_now_iso()}  ")
     md_lines.append(f"_Engine_: AutoDock Vina 1.2.7 (Python binding)  ")
-    md_lines.append(f"_Interpreter_: `{CADBUTEAAS_PY}`  ")
+    md_lines.append(f"_Interpreter_: `{PROJECT_VENV_PY}`  ")
     md_lines.append(f"_Scope_: {payload['scope']}  ")
     md_lines.append(f"_Receptor_: Wf-30 staged real receptor.pdbqt (5/6 READY) — SYNTHETIC 200 ALA scaffold only if Wf-30 missing.  ")
     md_lines.append("")
@@ -699,10 +699,10 @@ def write_summary(out_dir: Path, results: Dict[str, PocketResult],
     md_lines.append(
         "* Per Wf-320H discovery: `which vina` returns NOT-FOUND on "
         "this host (libboost broken per Wf-309A), but the CadButEaas "
-        "`.venv-vlm` Python interpreter ships a working Vina 1.2.7 "
+        "`.venv` Python interpreter ships a working Vina 1.2.7 "
         "Python binding — the recovery path per TODO-134 §2 / "
         "Wf-84 P2 stub_warning is now reachable via "
-        "`CADBUTEAAS_PY`."
+        "`PROJECT_VENV_PY`."
     )
     md_lines.append("")
     md_lines.append("## Files")
@@ -734,17 +734,17 @@ def update_pipeline_readiness(results: Dict[str, PocketResult]) -> None:
         "n_pockets_pipeline_proof_success": n_measured,
         "n_pockets_total": len(results),
         "recovery_path_chosen": (
-            "CadButEaas .venv-vlm Python binding (Vina 1.2.7 + "
+            "project .venv Python binding (Vina 1.2.7 + "
             "meeko 0.8.0 + RDKit 2026.03.6 + scipy 1.18.1)"
         ),
-        "interpreter": str(CADBUTEAAS_PY),
+        "interpreter": str(PROJECT_VENV_PY),
         "previous_block_reason": (
             "TODO-134 Phase 2 BLOCKED on `which vina → not found` "
             "(Wf-309A discovery). Wf-84 P2 wrapper points at a "
             "libboost-broken system binary."
         ),
         "new_status": (
-            "UNBLOCKED via CadButEaas .venv-vlm — pipeline proven end-to-end."
+            "UNBLOCKED via project .venv — pipeline proven end-to-end."
             " Real-PDB redocking still requires staged receptors (5/8 "
             "pockets have no co-crystal per TODO-134 §1.2)."
         ),
@@ -765,7 +765,7 @@ def _parse_args() -> argparse.Namespace:
         prog="m6_wf320h_vina_phase2",
         description=(
             "Wf-320H TODO-134 Phase 2 Vina attempt driver — uses the "
-            "CadButEaas .venv-vlm Python interpreter (Vina 1.2.7 + "
+            "project .venv Python interpreter (Vina 1.2.7 + "
             "meeko + RDKit + scipy) to run Vina redocking against a "
             "synthetic receptor (pipeline proof only)."
         ),
@@ -802,13 +802,13 @@ def main() -> int:
     out_dir: Path = args.out_dir
 
     # Interpreter probe
-    if not CADBUTEAAS_PY.exists():
-        print(f"FAIL: CadButEaas interpreter missing: {CADBUTEAAS_PY}",
+    if not PROJECT_VENV_PY.exists():
+        print(f"FAIL: project-venv interpreter missing: {PROJECT_VENV_PY}",
               file=sys.stderr)
         return 1
 
     print("Wf-320H — TODO-134 Phase 2 Vina attempt")
-    print(f"  interpreter: {CADBUTEAAS_PY}")
+    print(f"  interpreter: {PROJECT_VENV_PY}")
     print(f"  scope: {len(args.pockets)} pockets × 1 seed × "
           f"{args.n_poses} poses × exhaustiveness={args.exhaustiveness}")
     print(f"  receptor: SYNTHETIC 200 ALA atoms (PIPELINE PROOF only)")

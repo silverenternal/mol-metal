@@ -87,7 +87,7 @@ data:
 # rather than nine independent per-cell models.
 # ============================================================================
 model:
-  backbone: chemprop_v2_v3
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'backbone' removed (no --backbone dest in either trainer).
   ablation_config: mtl_baseline
   # Must be `hidden`, NOT `hidden_dim`. MEASURED: the argparse dest is
   # `hidden` (trainer line ~2514, `--hidden`, default DMPNN_HIDDEN=128).
@@ -126,8 +126,8 @@ protocol:
   weight_decay: 1.0e-5
   max_norm: 5.0
   gradient_accumulation_steps: 1  # schema-only; D-MPNN has no such flag
-  grad_clip_norm: 5.0  # schema-only; see max_norm
-  bf16: false  # schema-only; D-MPNN trainer has no AMP path
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'grad_clip_norm: 5.0' removed (loader alias grad_clip_norm->--max-norm; operative key = protocol.max_norm above).
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16: false' removed (no AMP path exists to disable).
   scheduler:
     type: cosine
     warmup_epochs: 5
@@ -202,15 +202,19 @@ output:
 # COMPUTE
 # Per AGENTS.md §5.9 single-venv rule: the launch wrapper MUST use the project
 # venv /home/hugo/codes/mol-metal/.venv/bin/python.
-# HONEST-NEGATIVE: the venv currently carries torch==2.14.0+rocm7.2, so
-# cuda_available is False and a real launch falls back to CPU. Closure path =
-# install the cu130 build (USER_OK-gated, 6-17 min wall). Until then this
-# config can be smoke-tested on CPU but not launched for a real result.
+# MEASURED 2026-10-03 (re-checked after the Wf-A10 closeout was written):
+# the venv carries torch==2.14.1+cu130, torch.version.hip is None,
+# torch.cuda.is_available() is True, 2 devices visible, and a real
+# matmul on cuda:0 succeeds. So a GPU launch WORKS — an earlier revision of
+# this comment claimed torch==2.14.0+rocm7.2 / cuda_available=False and is
+# now STALE. Do not re-add that claim without re-measuring.
+# The launch remains USER_OK-gated per AGENTS.md §5.1 — not because of the
+# interpreter, but because the launch is the user's to make.
 # ============================================================================
 compute:
   gpu: cuda:0  # GPU 0 only, per standing user directive "只用gpu0吧"
   cpu_workers: 8
-  bf16: false  # schema-only; D-MPNN trainer has no AMP path
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16: false' removed (no AMP path exists to disable).
   torch_compile: false  # schema-only
   cudnn_benchmark: false  # schema-only
   channels_last: false  # schema-only; D-MPNN is not a ConvNet

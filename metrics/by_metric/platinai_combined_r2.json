@@ -7,7 +7,7 @@
   "baseline_astr_r2_mean": -0.4027960052271771,
   "post_fix_combined_r2_mean_4cell_agg": -5.662524090882017,
   "post_fix_combined_r2_std_4cell_agg": 1.3646,
-  "n_methods": 6,
+  "n_methods": 7,
   "methods": [
     "wf77_p1_hilbert_baseline/platinai_4cell",
     "wf77_p2_astr_baseline/platinai_4cell",
@@ -40,7 +40,7 @@
         },
         "ic50_a2780cis_nm": {
           "mean": -0.4883321365592398,
-          "std": 0.0053786263758847004,
+          "std": 0.0053786263758847,
           "n_seeds": 5
         }
       },
@@ -165,13 +165,32 @@
       "feature_pipeline": "Multi-PH 16-bin × 8-d RDKit join → variance-ranked hilbert_dim=64",
       "device": "cpu",
       "per_target_summary": {
-        "ic50_mcf7_nm": {"mean": -0.0582, "std": 0.0173, "n_seeds": 5},
-        "ic50_a549_nm": {"mean": -0.0702, "std": 0.0314, "n_seeds": 5},
-        "ic50_a2780_nm": {"mean": -0.0967, "std": 0.0231, "n_seeds": 5},
-        "ic50_a2780cis_nm": {"mean": -0.0868, "std": 0.0243, "n_seeds": 5}
+        "ic50_mcf7_nm": {
+          "mean": -0.0582,
+          "std": 0.0173,
+          "n_seeds": 5
+        },
+        "ic50_a549_nm": {
+          "mean": -0.0702,
+          "std": 0.0314,
+          "n_seeds": 5
+        },
+        "ic50_a2780_nm": {
+          "mean": -0.0967,
+          "std": 0.0231,
+          "n_seeds": 5
+        },
+        "ic50_a2780cis_nm": {
+          "mean": -0.0868,
+          "std": 0.0243,
+          "n_seeds": 5
+        }
       },
       "astr_scale_guard_fires": 0,
-      "l2_penalty_last_range": [1e-5, 3e-5],
+      "l2_penalty_last_range": [
+        1e-05,
+        3e-05
+      ],
       "wasserstein_pred_term_mean": 0.032,
       "wall_time_per_fold_s": 0.001,
       "target_r2_geq_0_30_met": false,
@@ -183,7 +202,7 @@
   },
   "pre_fix_comparison": {
     "description": "Wf-85 P3 pre-fix anchor (collapse-tricked) preserved for direct comparison",
-    "aggregate_combined_r2_mean": -1.5030,
+    "aggregate_combined_r2_mean": -1.503,
     "aggregate_combined_r2_std": 1.3226,
     "source": "molmetal/reports/wf85_p3_hilbert_astr_combined_real/{mcf7,a549,a2780,a2780cis}/per_seed_metrics.json",
     "delta_post_fix_vs_pre_fix": -4.1595,
@@ -211,7 +230,11 @@
     "l7_target_r2_geq_0_30_met": false,
     "l7_delta_vs_gate": -0.378,
     "l7_arch_ceiling_proof": "12-d RDKit signal |ρ| ≤ 0.019 on PlatinAI pIC50 (Wf-49 §Cause 2 audit); linear R² upper bound = (0.019)² · 12 = 0.0043. Wf-129 P3 Multi-PH+PLL (256→64 variance-rank) MEASURED R² = -0.0780; closest to zero of the 3 Wf. +5.58 R² delta over Wf-122 P3 post-fix is regularisation stabilisation (Hilbert L2 + ASTSR scale + W₂ pIC50 dist), NOT signal-floor lift. The 64-d variance-rank projection is dominated by 12-d RDKit + bond-angle histogram (target-signal |ρ| ≤ 0.019 on both).",
-    "l7_lift_paths": ["Wf-94 R20-P3 Multi-PH + PLL real feature augmentation on 172-d PlatinAI stack (~3 wk GPU retrain)", "R22-P4 AlphaFold-Multimer protein-aware descriptors (~6-12 mo)", "R23-P6 wet-lab pIC50 hybrid training (~12-18 mo)"],
+    "l7_lift_paths": [
+      "Wf-94 R20-P3 Multi-PH + PLL real feature augmentation on 172-d PlatinAI stack (~3 wk GPU retrain)",
+      "R22-P4 AlphaFold-Multimer protein-aware descriptors (~6-12 mo)",
+      "R23-P6 wet-lab pIC50 hybrid training (~12-18 mo)"
+    ],
     "l7_paper_section6_verdict": "RELEGATE to §6 honest limitations; do NOT cite in §4 main; cite the Wf-129 P3 R² = -0.0780 vs target +0.30 vs Wf-37 P3 baseline +0.087 as the architectural-ceiling evidence.",
     "wf128_p3_3way_caveat_refreshed": "Wf-128 P3 3-way on PlatinAI 4-cell (combined R² = -114.87, collapse_any = 20/20) is PASS vs single-stream Hilbert (-124.54, lift +9.66) but REGRESSION vs Wf-122 P3 post-fix (-5.66, gap -109.21). The collapse-on-all-folds regime is driven by the ASTSR [0,1] clip on zero-padded 172-d features. The Wf-128 P3 lift is +9.66 R² over Hilbert, but the absolute R² is still bounded by the same 12-d signal floor — hence the same architectural-ceiling conclusion as Wf-129 P3."
   },
@@ -246,5 +269,20 @@
     "data_signal_floor": "TODO/completed/91_wf49_r2_root_fix.md",
     "architectural_fix": "TODO/pending/94_r20_p3_multiph_pll_feature.md",
     "lambda_roadmap": "TODO/03_plans/LAMBDA_ROADMAP.md §4.2 L4/L5/L7/L8/L11 columns"
-  }
+  },
+  "n_methods_definition": "len(methods) = len(per_method); promote_metrics.py::build_platinai_combined_r2 defines n_methods as len(per_source).",
+  "n_methods_with_measured_r2": 5,
+  "methods_without_measured_r2": [
+    "wf79_p2_3way_pll/platinai_4cell (overall_r2_mean null, per_target_summary empty)",
+    "wf125_p3_172d_multitask/platinai_4cell (status CODE_SHIP_BENCH_DEFERRED; no R² value)"
+  ],
+  "corrections": [
+    {
+      "field": "n_methods",
+      "old_value": 6,
+      "new_value": 7,
+      "reason": "the file's own methods/per_method lists carry 7 entries and promote_metrics.py defines n_methods=len(per_source). 6 matched neither the 7 registered nor the 5 entries carrying a measured R² value (measured: wf77_p1 -0.4028, wf77_p2 -0.4028, wf122_p3 -5.6625, wf128_p3 -114.873, wf129_p3 -0.0780; unmeasured: wf79_p2 null, wf125_p3 deferred). Both counts are now explicit.",
+      "date": "2026-10-03"
+    }
+  ]
 }

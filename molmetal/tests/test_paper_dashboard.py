@@ -55,11 +55,11 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import paper_dashboard  # noqa: E402
 
-VENV_PY = "/home/hugo/cades/CadButEaas/.venv-vlm/bin/python"
+VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 # Fallback to the codes-prefixed venv if the cades-prefixed one is missing
 # (some symlink layouts).
 if not Path(VENV_PY).exists():
-    _alt = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+    _alt = "/home/hugo/codes/mol-metal/.venv/bin/python"
     if Path(_alt).exists():
         VENV_PY = _alt
 

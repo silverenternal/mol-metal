@@ -20,7 +20,7 @@ This file ships 1-2 tests per fix:
 
 Run with::
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -m pytest \\
+    /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf252_apply.py --tb=short
 """
 

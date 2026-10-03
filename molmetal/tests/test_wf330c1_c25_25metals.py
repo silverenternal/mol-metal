@@ -106,12 +106,12 @@ def _load_json(path: Path) -> Dict[str, Any]:
 def _python_executable() -> str:
     """Locate the project's primary venv binary used for CLI bench runs.
 
-    The bench is CPU-only; the project's ``CadButEaas/.venv-vlm`` Python
+    The bench is CPU-only; the project's ``/home/hugo/codes/mol-metal/.venv`` Python
     (the same binary the Wf-330 ship surface uses) is preferred, but the
     bare ``python3`` fallback keeps the test runnable in a fresh shell.
     """
     candidates = [
-        Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"),
+        Path("/home/hugo/codes/mol-metal/.venv/bin/python"),
         Path("/home/hugo/.venvs/.venv-flowmol311/bin/python"),
         Path("/home/hugo/codes/mol-metal/.venv/bin/python"),
     ]

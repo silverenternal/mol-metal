@@ -3,8 +3,7 @@
 # Cross-links: TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/decisions/0002-tier2-scope.md
 # Cross-links: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md + COMPARISON_BASELINES.md
 # Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
-dry_run: true
-user_ok_required: true
+# Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: removed 'dry_run: true' + 'user_ok_required: true' (no consumer anywhere; launch mode = start.sh flags + USER_OK env, AGENTS.md 5.1)
 data:
   dataset: metalcytotox_5metal  # Wf-A8c FIX
   split:
@@ -33,7 +32,7 @@ data:
     scaffold_split: true
     split_column: split
 model:
-  backbone: chemprop_v2_v3
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'backbone' removed (no --backbone dest in either trainer; never reached the trainer).
   hidden_dim: 300
   depth: 3
   alpha: 0.5
@@ -48,8 +47,8 @@ protocol:
   epochs: 50
   batch_size: 64
   lr: 0.001
-  grad_clip_norm: 5.0
-  bf16: true
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'grad_clip_norm: 5.0' removed (loader alias grad_clip_norm->--max-norm; operative key = protocol.max_norm: 5.0 below).
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16' removed (ZERO bf16/autocast/GradScaler occurrences in either trainer; claimed an AMP path that does not exist).
   total_runs: 60
   wave_decomposition: 8
   scheduler:
@@ -219,7 +218,7 @@ waves:
 compute:
   gpu: cuda:1
   cpu_workers: 4
-  bf16: true
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16' removed (ZERO bf16/autocast/GradScaler occurrences in either trainer; claimed an AMP path that does not exist).
 directives:
   kill_then_adapt: true
   time_budget: 13h

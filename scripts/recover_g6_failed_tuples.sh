@@ -137,7 +137,7 @@ OUT_BASE="results/wf124_p3_per_innovation_ablation_g6"
 LOG="${OUT_BASE}/master.log"
 MANIFEST="${OUT_BASE}/recovery_manifest.tsv"
 
-PY="/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+PY="/home/hugo/codes/mol-metal/.venv/bin/python"
 SCRIPT="molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
 GPU="cuda:0"
 DATA_CSV="/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"

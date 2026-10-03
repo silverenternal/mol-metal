@@ -5,7 +5,7 @@
 
 set -e
 cd /home/hugo/codes/mol-metal
-PY=/home/hugo/codes/CadButEaas/.venv-vlm/bin/python
+PY=/home/hugo/codes/mol-metal/.venv/bin/python
 OUT=molmetal/reports/wf187_p3_rh_oversample_fix
 LOG=$OUT/run.log
 

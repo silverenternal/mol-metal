@@ -31,7 +31,7 @@ The test surface is split into 5 test classes:
 The end-to-end SUBPROCESS smoke (50-step CPU training with all 14
 Wf-380 flags ON) is NOT exercised in this test suite — it requires
 the torch-enabled runtime (kanzi_venv or
-``/home/hugo/codes/CadButEaas/.venv-vlm/bin/python`` per AGENTS.md
+``/home/hugo/codes/mol-metal/.venv/bin/python`` per AGENTS.md
 §5.1) and runs ~30-60 s; the ``pre_flight_check.py --pipeline all``
 invocation already covers this on every fresh-run by virtue of the
 Wf-385 gate being wired into ``build_gates('all')``. The test

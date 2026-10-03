@@ -598,7 +598,7 @@ def bench_vina_test_001(
             (
                 "AutoDock Vina install is NOT yet blessed by env.sh on this host "
                 "(see TODO/README.md risk §Vina install). The Wf-30 staging script "
-                "(`mk_prepare_receptor.py`) is wired to CadButEaas/.venv-vlm but the "
+                "(`mk_prepare_receptor.py`) is wired to /home/hugo/codes/mol-metal/.venv but the "
                 "Vina Python binding + meeko are not yet pinned to the canonical env."
             ),
         ],
@@ -624,7 +624,7 @@ def bench_vina_test_001(
             "in this snapshot. AutoDock Vina install is also not blessed by env.sh. "
             "Lifting to MEASURED requires: (a) `python -m molmetal.scripts.stage_test_001` "
             "(a future Wf-62 script) to produce molmetal/reports/wf30_pocket_prep/test_001/"
-            "receptor.pdbqt, and (b) `pip install vina meeko` (or a CadButEaas bridge) "
+            "receptor.pdbqt, and (b) `pip install vina meeko` (or a project-venv bridge) "
             "to invoke the Wf-30 5-candidate × 5-seed docking sweep."
         ),
     }
@@ -849,7 +849,7 @@ def _synthesis_md(
         "(`pip install posebusters rdkit-pypi`) **and** a docked.pdbqt per pocket "
         "(a real Vina docking sweep on the 10/10 cohort lifts this).\n"
         "3. **vina_*_test_001 → MEASURED**: requires (a) `pip install vina meeko` "
-        "on the canonical env (or a CadButEaas bridge blessed by env.sh), and "
+        "on the canonical env (or a project-venv bridge blessed by env.sh), and "
         "(b) staging `molmetal/reports/wf30_pocket_prep/test_001/receptor.pdbqt` "
         "via `mk_prepare_receptor.py` from `molmetal/data/test_*_subset_manifest.csv`."
     )

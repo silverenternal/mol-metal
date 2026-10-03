@@ -6,9 +6,9 @@ Wf-323G re-proved that:
 
   * Vina CLI binary ``/home/hugo/.local/micromamba/envs/molmetal_vina/bin/vina``
     is reachable and reports ``AutoDock Vina f458505-mod``.
-  * The CadButEaas ``/home/hugo/codes/CadButEaas/.venv-vlm/bin/python`` carries
+  * The CadButEaas ``/home/hugo/codes/mol-metal/.venv/bin/python`` carries
     the in-process Vina Python binding + meeko 0.8.0 + RDKit + scipy.
-  * Wf-320H actually ran 6/6 pockets via the CadButEaas interpreter; the
+  * Wf-320H actually ran 6/6 pockets via the project-venv interpreter; the
     ``molmetal/reports/wf320h_vina_phase2/summary.json`` shows
     ``interpreter_has_vina: true``.
   * The canonical ``metrics/by_metric/docked_pose_rmsd.json`` carries
@@ -19,7 +19,7 @@ Wf-329-W7 verifies these 4 invariants on disk so the BLOCKED claim cannot
 re-occur:
 
   1. The conda-forge Vina CLI binary exists at the canonical path.
-  2. The CadButEaas ``.venv-vlm`` interpreter is reachable and imports vina.
+  2. The CadButEaas ``.venv`` interpreter is reachable and imports vina.
   3. The ``docked_pose_rmsd.json`` metric is MEASURED (NOT not_measured).
   4. The ``m6_wf320h_vina_phase2.py`` driver references both recovery
      paths (in-process via CadButEaas + CLI fallback at WF84_VINA_CLI).
@@ -54,7 +54,7 @@ if str(PROJECT_ROOT) not in sys.path:
 # Canonical paths (per Wf-323G §2.2 + m6_wf320h_vina_phase2.py:107-109)
 # ---------------------------------------------------------------------------
 WF84_VINA_CLI = Path("/home/hugo/.local/micromamba/envs/molmetal_vina/bin/vina")
-CADBUTEAAS_PY = Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin/python")
+PROJECT_VENV_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 PROJECT_VENV_PY = PROJECT_ROOT / ".venv" / "bin" / "python"
 
 DOCKED_POSE_METRIC = (
@@ -168,7 +168,7 @@ def test_docked_pose_rmsd_metric_is_measured_not_blocked() -> None:
 def test_m6_driver_references_both_recovery_paths() -> None:
     """The m6 driver must reference BOTH recovery paths.
 
-    Per Wf-323G §0 + §2.4: Wf-320H used the CadButEaas interpreter
+    Per Wf-323G §0 + §2.4: Wf-320H used the project-venv interpreter
     (in-process Vina Python binding). The driver also defines
     ``WF84_VINA_CLI`` for the conda-forge binary fallback. Both
     references must be present so the probe-miss regression cannot
@@ -179,13 +179,13 @@ def test_m6_driver_references_both_recovery_paths() -> None:
     text = M6_DRIVER.read_text()
 
     # Reference 1: in-process via CadButEaas
-    assert "CADBUTEAAS_PY" in text, (
-        f"Driver does NOT reference CADBUTEAAS_PY. Per Wf-320H, the "
+    assert "PROJECT_VENV_PY" in text, (
+        f"Driver does NOT reference PROJECT_VENV_PY. Per Wf-320H, the "
         f"in-process Vina Python binding lives at /home/hugo/codes/"
-        f"CadButEaas/.venv-vlm/bin/python and must be the primary path."
+        f"/home/hugo/codes/mol-metal/.venv/bin/python and must be the primary path."
     )
-    assert str(CADBUTEAAS_PY) in text, (
-        f"Driver does NOT reference the canonical CadButEaas path {CADBUTEAAS_PY}."
+    assert str(PROJECT_VENV_PY) in text, (
+        f"Driver does NOT reference the canonical CadButEaas path {PROJECT_VENV_PY}."
     )
 
     # Reference 2: CLI fallback at WF84_VINA_CLI

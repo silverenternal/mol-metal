@@ -17,7 +17,7 @@
       * persistent_workers keeps worker PID stable across epochs
       * pin_memory toggles do not blow up host RSS by > 10 MB / worker
 
-Run with: ``PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -m pytest molmetal/tests/test_wf326b_dataloader_optimization.py -v``
+Run with: ``PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/mol-metal/.venv/bin/python -m pytest molmetal/tests/test_wf326b_dataloader_optimization.py -v``
 
 Honest framing (AGENTS.md §5.2):
   - num_workers=0 is the launch-script default and *is* a bottleneck

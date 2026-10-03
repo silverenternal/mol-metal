@@ -34,7 +34,7 @@ Honest framing (party-twenty-spirit §3.5):
 Run::
 
     PYTHONPATH=/home/hugo/codes/mol-metal \\
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -m pytest \\
+    /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf333g4_pre_featurize_dmpnn.py -v
 """
 

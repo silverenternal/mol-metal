@@ -46,12 +46,12 @@ Usage examples
 --------------
 
     # default (dry-run, no doc edits): write report.json + stop
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf264a_drugood_post_fix_updater.py \\
         --wf263a-verify-json molmetal/reports/wf263a_verify/aggregate.json
 
     # explicit apply (atomic, both docs rewritten if promotion criteria met)
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf264a_drugood_post_fix_updater.py \\
         --wf263a-verify-json molmetal/reports/wf263a_verify/aggregate.json \\
         --207-doc TODO/completed/207_unified_pre_flight_checklist_v2.md \\

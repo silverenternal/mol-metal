@@ -713,11 +713,11 @@ Signature: ____________________
 ```bash
 # 1. 跑完整 evaluator sanity check
 source env.sh
-/hugo/codes/CadButEaas/.venv-vlm/bin/python -u molmetal/scripts/eval_all_evaluators.py
+/home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/eval_all_evaluators.py
 # 期望: 14/14 PASS
 
 # 2. 跑 pitfall guards
-/hugo/codes/CadButEaas/.venv-vlm/bin/python -u molmetal/scripts/wf_pitfall_guard/check_all.py
+/home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/wf_pitfall_guard/check_all.py
 # 期望: 7/7 PASS (shim + vocab + clamp + warmup + scaffold + 18-rule + MCTS budget)
 
 # 3. 跑 ablation smoke (200-step)

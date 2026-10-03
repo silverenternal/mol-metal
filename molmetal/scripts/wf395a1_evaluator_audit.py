@@ -17,7 +17,7 @@ This script:
 
 Usage:
     cd /home/hugo/codes/mol-metal
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf395a1_evaluator_audit.py
 
 Output:
@@ -26,7 +26,7 @@ Output:
 
 Honest framing (party-twenty-spirit §3.5):
     - MEASURED: each evaluator import + small-input probe returns a value
-      on venv-vlm + Blackwell sm_120 host at Wf-395-A1 ship timestamp.
+      on .venv + Blackwell sm_120 host at Wf-395-A1 ship timestamp.
     - SCAFFOLD-tier vs MEASURED-ON-REAL: a SCAFFOLD probe passing does NOT
       imply the metric has been MEASURED end-to-end on real cohorts. That
       requires Wf-388-A1 (m2 R²) / Wf-179 Vina retrain / Wf-299 CFM 3-wave
@@ -387,7 +387,7 @@ def main() -> int:
     print("=" * 80)
     print()
     by_tier = audit_evaluator_coverage()
-    print("Inventory (MEASURED on venv-vlm + Blackwell sm_120):")
+    print("Inventory (MEASURED on .venv + Blackwell sm_120):")
     for tier in ["R17", "SCAFFOLD", "WIRE-IN", "MEASURED-ON-REAL"]:
         if tier in by_tier:
             print(f"  {tier:25s} {by_tier[tier]:>3d} evaluators")

@@ -71,7 +71,7 @@ Honest framing (party-twenty-spirit §3.5)
 CLI::
 
     PYTHONPATH=/home/hugo/codes/mol-metal \\
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf325b_vina_pt_zn_substitution.py \\
         --out molmetal/reports/wf325b_vina_pt_zn_substitution/result.json \\
         --execute

@@ -32,7 +32,7 @@ Honest framing per AGENTS.md §5.2:
 Run with::
 
     PYTHONPATH=/home/hugo/codes/mol-metal \\
-        /home/hugo/cades/CadButEaas/.venv-vlm/bin/python \\
+        /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf331r4_m7_diversity_multiph.py \\
         --output-dir molmetal/reports/wf331r4_m7_diversity
 """

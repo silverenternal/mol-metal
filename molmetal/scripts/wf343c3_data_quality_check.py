@@ -64,7 +64,7 @@ CLI
 ::
 
     PYTHONPATH=/home/hugo/codes/mol-metal \
-      /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+      /home/hugo/codes/mol-metal/.venv/bin/python \
       molmetal/scripts/wf343c3_data_quality_check.py
 
 Honest framing

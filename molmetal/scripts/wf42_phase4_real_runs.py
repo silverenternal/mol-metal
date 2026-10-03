@@ -70,7 +70,7 @@ Usage
 ::
 
     source env.sh
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf42_phase4_real_runs.py \\
         --out-dir molmetal/reports/wf42_real_runs
 """

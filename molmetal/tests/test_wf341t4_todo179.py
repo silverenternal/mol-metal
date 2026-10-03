@@ -52,7 +52,7 @@ Honest framing (per `party-twenty-spirit` §3.5):
 
 Run via::
 
-    PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -m pytest \\
+    PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf341t4_todo179.py -v
 """
 

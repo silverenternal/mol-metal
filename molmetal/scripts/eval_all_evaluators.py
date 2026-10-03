@@ -3,7 +3,7 @@
 Run:
     cd /home/hugo/codes/mol-metal
     source env.sh
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u molmetal/scripts/eval_all_evaluators.py
+    /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/eval_all_evaluators.py
 """
 from __future__ import annotations
 

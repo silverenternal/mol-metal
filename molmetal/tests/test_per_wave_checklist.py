@@ -52,7 +52,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import per_wave_checklist  # noqa: E402
 
-VENV_PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 # Required top-level contract fields per 207 v2 §9.1 (per-wave JSON).
 REQUIRED_TOP_KEYS = (
@@ -481,10 +481,10 @@ def test_validate_schema_strict():
 
 
 def test_subprocess_via_venv(tmp_path: Path):
-    """The venv-vlm interpreter must be able to run --help and a real
+    """The project-venv interpreter must be able to run --help and a real
     checklist run; covered for backward-compat smoke."""
     if not Path(VENV_PY).exists():
-        pytest.skip(f"venv-vlm interpreter not present at {VENV_PY}")
+        pytest.skip(f"project-venv interpreter not present at {VENV_PY}")
     # --help (rc=0)
     rc = subprocess.run(
         [VENV_PY, str(per_wave_checklist.__file__), "--help"],

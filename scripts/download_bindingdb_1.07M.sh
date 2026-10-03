@@ -56,7 +56,7 @@ set -euo pipefail
 # -----------------------------------------------------------------------------
 PROJECT_ROOT="/home/hugo/codes/mol-metal"
 DATA_DIR="${PROJECT_ROOT}/.data/molmetal/bindingdb_full"
-PY="${PY:-/home/hugo/codes/CadButEaas/.venv-vlm/bin/python}"
+PY="${PY:-/home/hugo/codes/mol-metal/.venv/bin/python}"
 METAL_FILTER="${PROJECT_ROOT}/scripts/wf175_bindingdb_metal_filter.py"
 
 # BindingDB download URL — TSV format (~9 GB unzipped). The download

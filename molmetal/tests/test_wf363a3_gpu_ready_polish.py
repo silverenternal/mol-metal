@@ -34,7 +34,7 @@ import pytest
 
 PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
 WRAPPER = PROJECT_ROOT / "scripts" / "pre_flight_gpu_ready.sh"
-VENV_PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 # Expected gate names (5 gates per Wf-350-B1 spec)
 EXPECTED_GATES = [

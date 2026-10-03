@@ -1,14 +1,15 @@
 # Mol-Metal — single-file developer entry point.
 # All targets are PHONY (no files to collide with); .DEFAULT_GOAL := help.
 # Usage:
-#   source env.sh           # wire up the shared .venv-vlm CUDA env first
+#   source env.sh           # wire up the repo-local .venv CUDA env first
 #   make <target>
 #
-# Convention: PY points at the shared .venv-vlm interpreter that env.sh
-# already routes `uv run` at. Override on the cmdline if needed:
+# Convention: PY points at the repo-local canonical .venv interpreter
+# (AGENTS.md §5.9) that env.sh already routes `uv run` at. Override on
+# the cmdline if needed:
 #   make test PY=python3
 
-PY        ?= /home/hugo/codes/CadButEaas/.venv-vlm/bin/python
+PY        ?= /home/hugo/codes/mol-metal/.venv/bin/python
 SEED      ?= 0
 PROJECT   := $(shell pwd)
 PYTEST    := $(PY) -m pytest
@@ -26,8 +27,8 @@ help:                       ## list all targets with one-line summaries
 		{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 # ----- env wiring -----------------------------------------------------------
-setup:                      ## activate env.sh + sync .venv-vlm (idempotent)
-	@echo "Run:  source env.sh   (wires UV_PROJECT_ENVIRONMENT at .venv-vlm)"
+setup:                      ## activate env.sh + verify .venv (idempotent)
+	@echo "Run:  source env.sh   (wires UV_PROJECT_ENVIRONMENT at the repo-local .venv)"
 	@test -x "$(PY)" || { \
 	    echo "ERROR: $(PY) not found — run 'source env.sh' first."; \
 	    exit 1; }

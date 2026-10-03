@@ -63,7 +63,7 @@ cat /home/hugo/.claude/projects/-home-hugo-codes-mol-metal/ffc3dc80-f5b7-45cd-85
 # 1. LipmanFlowMatchingAdapter 仍可 import + setup
 cd /home/hugo/codes/mol-metal
 source env.sh
-/home/hugo/codes/CadButEaas/.venv-vlm/bin/python -c "
+/home/hugo/codes/mol-metal/.venv/bin/python -c "
 from molmetal.adapters.flow_matching_lipman import LipmanFlowMatchingAdapter
 a = LipmanFlowMatchingAdapter(hidden_dim=64, n_layers=2)
 a.setup(device='cuda')
@@ -72,7 +72,7 @@ print('atom_vocab:', a.atom_vocab)
 "
 
 # 2. decode smoke 仍能跑
-/home/hugo/codes/CadButEaas/.venv-vlm/bin/python molmetal/scripts/metallo_drug_smoke_retrain.py \
+/home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/metallo_drug_smoke_retrain.py \
   --steps 100 --batch-size 4 --seed 0 \
   --hidden-dim 64 --n-layers 2 \
   --lr-warmup-steps 20 \
@@ -86,7 +86,7 @@ print('atom_vocab:', a.atom_vocab)
 
 ```bash
 # 1. atoms/combinators.py 仍可 import
-/home/hugo/codes/CadButEaas/.venv-vlm/bin/python -c "
+/home/hugo/codes/mol-metal/.venv/bin/python -c "
 from molmetal.molmetal_lam.atoms.combinators import PRIMITIVE_ATOMS, METAL_SYMBOLS
 print(f'PRIMITIVE_ATOMS: {len(PRIMITIVE_ATOMS)} entries')
 print(f'METAL_SYMBOLS: {len(METAL_SYMBOLS)} metals')
@@ -96,7 +96,7 @@ print('atoms/combinators: PASS')
 "
 
 # 2. pt_click_compat 注册规则数（合并前 B-line 应 ≥ 101）
-/home/hugo/codes/CadButEaas/.venv-vlm/bin/python -c "
+/home/hugo/codes/mol-metal/.venv/bin/python -c "
 from molmetal.molmetal_lam.lam_chem.pt_click_compat import list_registered_rules
 rules = list_registered_rules()
 print(f'Click rules: {len(rules)}')
@@ -104,7 +104,7 @@ for r in rules[:5]: print(f'  - {r}')
 "
 
 # 3. MCTSProofSearch with PLL heuristic
-/home/hugo/codes/CadButEaas/.venv-vlm/bin/python -c "
+/home/hugo/codes/mol-metal/.venv/bin/python -c "
 from molmetal.molmetal_lam.search_alg.proof_search import MCTSProofSearch
 m = MCTSProofSearch(use_pll_heuristic=True, fpu_reduction=0.25)
 print('MCTS+PLL: PASS')
@@ -115,7 +115,7 @@ print('MCTS+PLL: PASS')
 
 ```bash
 # 84-rule matrix 调用路径仍有效
-/home/hugo/codes/CadButEaas/.venv-vlm/bin/python -c "
+/home/hugo/codes/mol-metal/.venv/bin/python -c "
 from molmetal.molmetal_lam.lam_chem.pt_click_compat import register_metal_ligand_exchange_rules
 rules = register_metal_ligand_exchange_rules()
 print(f'MLE rules registered: {len(rules)}')
@@ -128,7 +128,7 @@ print('Click chemistry: PASS')
 
 ```bash
 # MetalCytoToxDB + PlatinAI 加载仍正常
-/home/hugo/codes/CadButEaas/.venv-vlm/bin/python -c "
+/home/hugo/codes/mol-metal/.venv/bin/python -c "
 from molmetal.data.cytotox import load_metal_cytotox
 from molmetal.molmetal_lam.lam_chem.platinai_dataset import load_platinai_subset
 cyto = load_metal_cytotox()
@@ -147,7 +147,7 @@ print(f'PlatinAI subset: {len(plat)}')
 ```bash
 cd /home/hugo/codes/mol-metal
 source env.sh
-/home/hugo/codes/CadButEaas/.venv-vlm/bin/python -m pytest \
+/home/hugo/codes/mol-metal/.venv/bin/python -m pytest \
   molmetal/tests/test_f2a_metal_ligand_exchange.py \
   molmetal/tests/test_synthemol_reactions.py \
   molmetal/tests/test_lambda_combinators_expansion.py \
@@ -176,7 +176,7 @@ cd /home/hugo/codes/mol-metal
 source env.sh
 
 # 1. 用 B-line 的 84-rule + LambdaASTSR + flag fix
-/home/hugo/codes/CadButEaas/.venv-vlm/bin/python molmetal/scripts/r4_lambda_only_run.py \
+/home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/r4_lambda_only_run.py \
   --metal-seed cisplatin \
   --pockets 10 --seeds 0 \
   --n-simulations 1000 \

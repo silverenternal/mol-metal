@@ -73,9 +73,46 @@ class SyntheMolRuleError(ValueError):
 # ---------------------------------------------------------------------------
 
 
-_SYNTHEMOL_PATH = Path(
-    "/home/hugo/codes/try_triton_on_rocm/molmetal/references/SyntheMol/synthemol"
-)
+def _resolve_synthemol_path() -> Path:
+    """Locate the SyntheMol checkout, preferring the one inside this repo.
+
+    Wf-A13 FIX (2026-10-03).  This was hardcoded to
+    ``/home/hugo/codes/try_triton_on_rocm/molmetal/references/SyntheMol/synthemol``
+    — a path from a DIFFERENT checkout (the ROCm-era ``try_triton_on_rocm``
+    tree) that no longer exists on this host.  The failure was silent in the
+    worst way: ``beta_reductions`` catches the resulting ImportError, emits one
+    RuntimeWarning, and carries on with ONLY the 5 click rules instead of the
+    18 documented ones.  Nothing fails; the model merely reasons over a third
+    of its reaction space, and the only trace is a warning nobody reads.
+
+    MEASURED before the fix:
+        [beta_reductions] SyntheMol registration failed: [Errno 2] No such file
+        or directory: '.../try_triton_on_rocm/molmetal/references/SyntheMol/
+        synthemol/utils.py'
+    while the repo-local checkout at ``references/SyntheMol/`` was present and
+    complete (its ``synthemol/utils.py`` is on disk).
+
+    Derived from ``__file__`` rather than hardcoded, so it follows the repo
+    instead of the machine.  The legacy absolute path is kept as a fallback so
+    a host that genuinely has the old layout still works.
+    """
+    repo_local = (
+        Path(__file__).resolve().parents[3] / "references" / "SyntheMol" / "synthemol"
+    )
+    candidates = (
+        repo_local,
+        Path("/home/hugo/codes/try_triton_on_rocm/molmetal/references/SyntheMol/synthemol"),
+    )
+    for candidate in candidates:
+        if (candidate / "utils.py").is_file():
+            return candidate
+    # Return the preferred candidate anyway: the caller's contract is to raise
+    # a clear error rather than degrade silently, and naming the path it wanted
+    # is what makes the error actionable.
+    return repo_local
+
+
+_SYNTHEMOL_PATH = _resolve_synthemol_path()
 
 
 def _bootstrap_synthemol() -> None:

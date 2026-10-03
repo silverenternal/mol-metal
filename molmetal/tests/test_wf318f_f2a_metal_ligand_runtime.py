@@ -28,7 +28,7 @@ This file locks down the dispatcher contract (12 tests total):
 
 Run with::
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -m pytest \\
+    /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf318f_f2a_metal_ligand_runtime.py -v
 
 Honest framing

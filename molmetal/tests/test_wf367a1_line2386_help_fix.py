@@ -50,7 +50,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPTS_DIR = PROJECT_ROOT / "molmetal" / "scripts"
 TRAINER_PATH = SCRIPTS_DIR / "train_dmpnn_multitask_wasserstein.py"
-VENV_PY = Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin/python")
+VENV_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 
 
 # ===========================================================================

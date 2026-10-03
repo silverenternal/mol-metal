@@ -69,7 +69,7 @@ MAX_AGE_SEC = 24 * 3600.0
 MAX_AGE_HR = 24
 
 PYTHONPATH = "/home/hugo/codes/mol-metal"
-PYTHON_BIN = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+PYTHON_BIN = "/home/hugo/codes/mol-metal/.venv/bin/python"
 PRE_FLIGHT_SCRIPT = (
     REPO_ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
 )

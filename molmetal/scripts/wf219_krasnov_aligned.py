@@ -50,7 +50,7 @@ Usage (default 5-metal × 3-seed × 50-epoch, scaffold split):
 
     source env.sh
     CUDA_VISIBLE_DEVICES=1 \\
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf219_krasnov_aligned.py
 
 Honest framing per party-twenty-spirit §3.5

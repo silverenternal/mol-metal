@@ -250,7 +250,7 @@ def test_ood_filter_cli_flag_exists_in_train_script(ood_module):
     import subprocess
     proc = subprocess.run(
         [
-            "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python",
+            "/home/hugo/codes/mol-metal/.venv/bin/python",
             str(Path(_REPO) / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"),
             "--help",
         ],

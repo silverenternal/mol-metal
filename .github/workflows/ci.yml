@@ -9,10 +9,10 @@
 #   [mechanism]   ≥217 PASSED  (8 named mechanism smoke test files)
 #
 # Hardware target: self-hosted runner (mol-metal dev box) with the
-# shared CadButEaas venv at $UV_PROJECT_ENVIRONMENT.  GPU is NOT
-# required for this CI gate — everything is CPU-only sanity.  A
-# GitHub-hosted ubuntu-latest runner can also be used if the env
-# path below is replaced with the project-local .venv setup.
+# canonical repo-local .venv at $UV_PROJECT_ENVIRONMENT (AGENTS.md §5.9
+# single-venv rule).  GPU is NOT required for this CI gate — everything
+# is CPU-only sanity.  A GitHub-hosted ubuntu-latest runner needs a
+# repo-local `uv sync` first (same .venv path).
 name: ci
 
 on:
@@ -36,9 +36,9 @@ jobs:
     runs-on: [self-hosted, linux, x64, mol-metal]  # see runs-on notes above
     timeout-minutes: 15
     env:
-      # Shared venv with rdkit, openbabel, openmm, posebusters, meeko, etc.
-      UV_PROJECT_ENVIRONMENT: /home/hugo/codes/CadButEaas/.venv-vlm
-      VIRTUAL_ENV: /home/hugo/codes/CadButEaas/.venv-vlm
+      # Canonical repo-local .venv (AGENTS.md §5.9) with rdkit, torch, posebusters, meeko, etc.
+      UV_PROJECT_ENVIRONMENT: ${{ github.workspace }}/.venv
+      VIRTUAL_ENV: ${{ github.workspace }}/.venv
       # Project-local data (loaders honour these since the 2026-09-25 patch)
       MOLMETAL_DATA_DIR: /home/hugo/codes/mol-metal/.data/molmetal
       MOLMETAL_TMQM_DIR: /home/hugo/codes/mol-metal/.data/molmetal/tmQM
@@ -53,7 +53,7 @@ jobs:
           lfs: true
           fetch-depth: 0
 
-      - name: Setup Python (shared venv path)
+      - name: Setup Python (canonical .venv path)
         run: |
           set -euo pipefail
           echo "PYTHON_BIN=$UV_PROJECT_ENVIRONMENT/bin/python"
@@ -89,9 +89,9 @@ jobs:
     # skip this job so the self-hosted Blackwell box isn't a hard dep.
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     env:
-      # Shared venv (CUDA-enabled torch, triton, rdkit, …)
-      UV_PROJECT_ENVIRONMENT: /home/hugo/codes/CadButEaas/.venv-vlm
-      VIRTUAL_ENV: /home/hugo/codes/CadButEaas/.venv-vlm
+      # Canonical repo-local .venv (CUDA-enabled torch, rdkit, …)
+      UV_PROJECT_ENVIRONMENT: ${{ github.workspace }}/.venv
+      VIRTUAL_ENV: ${{ github.workspace }}/.venv
       # Project-local data (loaders honour these since the 2026-09-25 patch)
       MOLMETAL_DATA_DIR: /home/hugo/codes/mol-metal/.data/molmetal
       MOLMETAL_TMQM_DIR: /home/hugo/codes/mol-metal/.data/molmetal/tmQM
@@ -112,7 +112,7 @@ jobs:
           lfs: true
           fetch-depth: 0
 
-      - name: Source env.sh (CUDA, BF16, data dirs, shared venv)
+      - name: Source env.sh (CUDA, BF16, data dirs, canonical .venv)
         run: |
           set -euo pipefail
           source ./env.sh
@@ -181,8 +181,8 @@ jobs:
     runs-on: [self-hosted, linux, x64, mol-metal]
     timeout-minutes: 10
     env:
-      UV_PROJECT_ENVIRONMENT: /home/hugo/codes/CadButEaas/.venv-vlm
-      VIRTUAL_ENV: /home/hugo/codes/CadButEaas/.venv-vlm
+      UV_PROJECT_ENVIRONMENT: ${{ github.workspace }}/.venv
+      VIRTUAL_ENV: ${{ github.workspace }}/.venv
       PYTHONUNBUFFERED: "1"
     steps:
       - name: Checkout repository
@@ -215,8 +215,8 @@ jobs:
     runs-on: [self-hosted, linux, x64, mol-metal]
     timeout-minutes: 10
     env:
-      UV_PROJECT_ENVIRONMENT: /home/hugo/codes/CadButEaas/.venv-vlm
-      VIRTUAL_ENV: /home/hugo/codes/CadButEaas/.venv-vlm
+      UV_PROJECT_ENVIRONMENT: ${{ github.workspace }}/.venv
+      VIRTUAL_ENV: ${{ github.workspace }}/.venv
       PYTHONUNBUFFERED: "1"
     steps:
       - name: Checkout repository
@@ -251,8 +251,8 @@ jobs:
     runs-on: [self-hosted, linux, x64, mol-metal]
     timeout-minutes: 20
     env:
-      UV_PROJECT_ENVIRONMENT: /home/hugo/codes/CadButEaas/.venv-vlm
-      VIRTUAL_ENV: /home/hugo/codes/CadButEaas/.venv-vlm
+      UV_PROJECT_ENVIRONMENT: ${{ github.workspace }}/.venv
+      VIRTUAL_ENV: ${{ github.workspace }}/.venv
       MOLMETAL_DATA_DIR: /home/hugo/codes/mol-metal/.data/molmetal
       MOLMETAL_TMQM_DIR: /home/hugo/codes/mol-metal/.data/molmetal/tmQM
       TOKENIZERS_PARALLELISM: "false"
@@ -303,7 +303,7 @@ jobs:
   #          ubuntu-latest runner so the Wf-35 refactor contract
   #          (parse_args + main + _common_train_args group titles)
   #          is exercised end-to-end without depending on the
-  #          shared CadButEaas venv.  `--skip-smoke` is required
+  #          host venv.  `--skip-smoke` is required
   #          because the 1-epoch smokes need .data/molmetal/*.csv
   #          which is local-only.
   # ----------------------------------------------------------------------

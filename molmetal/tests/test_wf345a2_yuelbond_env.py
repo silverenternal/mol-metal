@@ -347,12 +347,11 @@ def test_gate_yuelbond_decoder_env_skip_when_torch_missing(
         f"SKIP evidence must name 'torch' as the missing dep so the "
         f"operator can resolve the env gap; got: {result.evidence}"
     )
-    # The expected runtime per AGENTS.md §5.1 standing GPU grant:
-    # either kanzi_venv (the canonical CFM-retrain venv) or the
-    # CadButEaas .venv-vlm (the observed torch-enabled runtime).
+    # The expected runtime per AGENTS.md §5.1 standing GPU grant +
+    # §5.9 single-venv rule: the repo-local canonical .venv is THE
+    # torch-enabled runtime.
     assert (
-        "kanzi_venv" in result.evidence
-        or "venv-vlm" in result.evidence
+        "/home/hugo/codes/mol-metal/.venv/bin/python" in result.evidence
     ), (
         f"SKIP evidence must name the expected torch-enabled runtime "
         f"per AGENTS.md §5.1; got: {result.evidence}"

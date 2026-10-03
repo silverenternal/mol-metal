@@ -1,6 +1,6 @@
 {
   "metric": "nci60_precious_9cell_auc",
-  "description": "Test per-cell ROC-AUC on the precious-metal (Ru, Ir, Rh, Os, Re) 9-cell-line subset of MetalCytoToxDB overlapping with the NCI-60 panel (k=9 cell lines) with D-MPNN k-cell-line multi-task (9 cls + 9 reg heads).",
+  "description": "Test per-cell ROC-AUC on the precious-metal (Ru, Ir, Rh, Os, Re) 9-cell-line subset of MetalCytoToxDB overlapping with the NCI-60 panel (k=9 cell-line panel; 8 with MEASURED AUC — DU145 per-seed AUC null across all 3 seeds, excluded) with D-MPNN k-cell-line multi-task (9 cls + 9 reg heads).",
   "unit": "ROC-AUC (0-1, higher better) per cell line",
   "scope": "tier1_precious_metal_anticancer",
   "source": "molmetal/scripts/train_nci60_10cell.py (seeds=[0, 1, 2], epochs=50, scaffold_split=True)",
@@ -93,7 +93,7 @@
   },
   "n_seeds": 3,
   "n_rows": 5207,
-  "n_cells": 9,
+  "n_cells": 8,
   "cell_lines": [
     "MCF7",
     "A549",
@@ -115,7 +115,7 @@
   "timestamp": "2026-09-25",
   "data_source": "MetalCytoToxDB.csv (precious-metal subset, NCI-60-overlapping cells)",
   "status": "MEASURED",
-  "honest_framing": "Data source: MetalCytoToxDB precious-metal (Ru, Ir, Rh, Os, Re) x NCI-60 9-cell-line subset (5,207 rows); NCI-60 raw release has no SMILES so we use MetalCytoToxDB precious subset restricted to NCI-60-overlapping cell lines. Model: D-MPNN k-cell-line multi-task (dmpnn_kcell_multitask) with 9 cls + 9 reg heads. Protocol: scaffold split, 3 seeds [0,1,2], 50 epochs. Krasnov 2026 baseline = 0.81 cite-only; iMoLD cite-only. NOT a head-to-head against Krasnov chemprop v2 reference — same-protocol comparison requires chemprop v2 backbone + full training. Cites TODO-140/141/142/143/144.",
+  "honest_framing": "Data source: MetalCytoToxDB precious-metal (Ru, Ir, Rh, Os, Re) x NCI-60 9-cell-line subset (5,207 rows); NCI-60 raw release has no SMILES so we use MetalCytoToxDB precious subset restricted to NCI-60-overlapping cell lines. Model: D-MPNN k-cell-line multi-task (dmpnn_kcell_multitask) with 9 cls + 9 reg heads. Protocol: scaffold split, 3 seeds [0,1,2], 50 epochs. Krasnov 2026 baseline = 0.81 cite-only; iMoLD cite-only. NOT a head-to-head against Krasnov chemprop v2 reference — same-protocol comparison requires chemprop v2 backbone + full training. Cites TODO-140/141/142/143/144. [Aggregate correction 2026-10-03: the 0.8007 headline is the mean over the 8 cell lines with MEASURED AUC; DU145 is null across all 3 seeds and excluded. The earlier '9-cell-line' summary and n_cells=9 overstated the measured panel; see corrections[]. Headline value + value_overall_mean_std unchanged — both recompute exactly from the 8 measured cells (std = pop-std of the 3 per-seed overall means = 0.015980).]",
   "framing": "NCI-60 raw release has no SMILES; we use the MetalCytoToxDB precious-metal subset restricted to 9 NCI-60-overlapping cell lines.",
   "split": "scaffold",
   "model": "dmpnn_kcell_multitask",
@@ -265,5 +265,26 @@
       "badge": "honest-negative"
     },
     "wf_ref": "339 (Wf-312B NCI-60 9-cell per-cell aggregate contract)"
-  }
+  },
+  "n_cells_panel": 9,
+  "n_cells_with_measured_auc": 8,
+  "cells_without_measured_auc": [
+    "DU145"
+  ],
+  "corrections": [
+    {
+      "field": "n_cells",
+      "old_value": 9,
+      "new_value": 8,
+      "reason": "DU145 auc_mean is null across all 3 seeds; value_overall_mean_auc=0.80072017249287 recomputes exactly (sum of the 8 non-null auc_mean / 8 = 0.80072017249287; also equals the flat mean over the 24 measured per-seed values). n_cells=9 counted a cell line with no measurement. Downstream docs already describe this mean as 'across 8 cells' (TODO/completed/35_nci60_precious_9cell_shipped.md line 19; metrics/by_metric/_audit/m5_real_per_metric.json).",
+      "date": "2026-10-03"
+    },
+    {
+      "field": "description/honest_framing label",
+      "old_value": "'9-cell-line subset (k=9 cell lines)', unqualified",
+      "new_value": "'k=9 cell-line panel; 8 with MEASURED AUC — DU145 null across all 3 seeds'",
+      "reason": "label correction only; numeric headline unchanged (it was already the 8-cell mean)",
+      "date": "2026-10-03"
+    }
+  ]
 }

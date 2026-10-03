@@ -77,19 +77,22 @@ import numpy as np
 import pytest
 import torch
 
-# Ensure the canonical venv-vlm bin directory is on PATH so that
+# Ensure the canonical .venv bin directory is on PATH so that
 # downstream subprocess calls (mk_prepare_receptor.py invoked by
 # VinaDockingAdapter) can locate meeko / vina / prepare scripts.
 # This is a no-op if the directory is already on PATH; the guard
 # exists because pytest is sometimes invoked from shells that lack
-# the venv-vlm bin in their default PATH (the task's verification
-# command references ``/home/hugo/cades/CadButEaas/.venv-vlm/bin``
-# but the actual path on this host is ``/home/hugo/codes/CadButEaas``).
-_VENV_VLM_BIN_CANDIDATES = (
-    Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin"),
-    Path("/home/hugo/cades/CadButEaas/.venv-vlm/bin"),
+# the .venv bin in their default PATH.
+#
+# Wf-A13 (2026-10-03): this tuple used to be a two-entry fallback list — the
+# canonical path plus the then-shared CadButEaas ``.venv-vlm`` bin. Both entries
+# were migrated onto the single canonical venv (AGENTS.md §5.9), which left the
+# tuple holding the same path twice. Collapsed to one entry rather than keeping
+# a duplicate that looks like a fallback chain but is not one.
+_VENV_BIN_CANDIDATES = (
+    Path("/home/hugo/codes/mol-metal/.venv/bin"),
 )
-for _candidate in _VENV_VLM_BIN_CANDIDATES:
+for _candidate in _VENV_BIN_CANDIDATES:
     if _candidate.is_dir():
         bin_path = str(_candidate)
         if bin_path not in os.environ.get("PATH", ""):

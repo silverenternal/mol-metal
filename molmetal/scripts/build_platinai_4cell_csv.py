@@ -51,7 +51,7 @@ Usage
 -----
 ::
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/build_platinai_4cell_csv.py \\
         --out .data/molmetal/platinai_4cell.csv --seed 42 --n-target 4078
 """

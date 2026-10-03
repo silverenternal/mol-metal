@@ -26,9 +26,16 @@ Two things happened, in this order.
    CPU smoke: **9/9 cell lines, EXIT=0**; §5.7 **4/4**.
 
 **Not done, and deliberately so:** no GPU launch. Per the standing user
-directive the launch is the user's to make, and the venv currently carries a
-ROCm torch build (`cuda_available=False`) so a real run would silently fall
-back to CPU anyway.
+directive the launch is the user's to make.
+
+> **CORRECTION (2026-10-03, same day).** This paragraph originally added
+> "the venv currently carries a ROCm torch build (`cuda_available=False`) so a
+> real run would silently fall back to CPU anyway." **That is now false and has
+> been removed.** Re-measured: `torch==2.14.1+cu130`, `torch.version.hip is
+> None`, `torch.cuda.is_available() is True`, 2 devices, real matmul on
+> `cuda:0` succeeds. GPU launch works. The claim was true when written and
+> went stale within the session — a live example of the environment-fact
+> drift the docs-consolidation pass exists to stop.
 
 ---
 
@@ -313,7 +320,7 @@ is *unique-molecule*-level. Different groupings, both stable.)
 | §5.5 filesystem-truth | `ls -la` evidence in §5 |
 | §5.6 atomic write | closeout written via `atomic_write_file` |
 | §5.7 flag smoke | 4/4 (inv 3 N/A by rule) |
-| §5.8 token budget | work done inline; AGENTS.md is 1.2 MB and blocks subagent spawns |
+| §5.8 token budget | work done inline (this wave predates the AGENTS.md trim). AGENTS.md is now 47,350 B, not 1.2 MB — subagent spawns work again (commit `6007efda6d`) |
 | §5.9 single venv | all invocations via `.venv/bin/python` |
 | YAML-only control | run config is YAML; no CLI hyperparameters |
 
@@ -354,9 +361,10 @@ Import health re-confirmed at closeout: **12/12 marked scripts import OK**
 
 ## §7 Not done / next
 
-- **No GPU launch** — user's call, and the venv's torch is ROCm
-  (`cuda_available=False`), so a launch would silently CPU-fall-back until the
-  cu130 build is installed.
+- **No GPU launch** — user's call. (An earlier revision of this line claimed
+  the venv's torch was ROCm / `cuda_available=False`. **Re-measured and false:**
+  `2.14.1+cu130`, CUDA available, matmul on `cuda:0` verified. See the
+  correction in §0.)
 - **The 50-epoch comparison is unrun.** Everything here is 1-epoch plumbing
   verification. Whether the main trainer's loss machinery beats 0.8007 is
   *unknown* and is the actual experiment.

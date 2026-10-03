@@ -302,7 +302,7 @@ Per `party-twenty-spirit` §3.5, every retrain run MUST honestly acknowledge:
 | **F4** Kendall log_sigma std = 0 | `log_sigmas.std() == 0` | Verify Fix A (kendall in optimizer); if still 0, file honest-negative bug |
 | **F5** Wall-time exceeds 2× estimate | Per-(metal, seed) > 5 min on RTX 5090 hidden=300 | Abort wave, switch to RTX PRO 6000 (slower but available) or hidden=64 |
 | **F6** Vina MISSING_DEP | vina binary missing | Install AutoDock Vina 1.2.7; fallback to difflab |
-| **F7** chemprop install fails | `ModuleNotFoundError` | Use CadButEaas venv (`/home/hugo/codes/CadButEaas/.venv-vlm/bin/python`) which has chemprop 2.3.1 |
+| **F7** chemprop install fails | `ModuleNotFoundError` | Use project venv (`/home/hugo/codes/mol-metal/.venv/bin/python`) which has chemprop 2.3.1 |
 | **F8** Gradient explosion | `grad_norm > 100` | Verify Fix E (clip_grad_norm=1.0); if still, lower max_norm |
 
 ---
@@ -327,7 +327,7 @@ Per `party-twenty-spirit` §3.5, every retrain run MUST honestly acknowledge:
 **Launch command template** (to be filled per wave):
 
 ```bash
-CUDA_VISIBLE_DEVICES=<0|1> /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+CUDA_VISIBLE_DEVICES=<0|1> /home/hugo/codes/mol-metal/.venv/bin/python \
   molmetal/scripts/train_chemprop_v2_v3.py \
     --seeds 0 1 2 3 4 \
     --epochs 50 \

@@ -34,9 +34,9 @@ RECEPT_DIR = REPO / "molmetal/reports/wf30_pocket_prep"
 
 # Real Vina binary at pocket2mol311
 VINA_BIN = "/home/hugo/codes/pocket/.eval_envs/pocket2mol311/bin/vina"
-# CadButEaas venv has meeko + mk_prepare_ligand.py
-CADVENV_PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
-MKPREP_LIG = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/mk_prepare_ligand.py"
+# project venv has meeko + mk_prepare_ligand.py
+CADVENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
+MKPREP_LIG = "/home/hugo/codes/mol-metal/.venv/bin/mk_prepare_ligand.py"
 MOL_VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 # Task scope: 5 pockets (organic cofactor set; 830c excluded due to MMP13 hydroxamate special-case)
@@ -197,7 +197,7 @@ print("OK")
     )
     if result.returncode != 0:
         raise RuntimeError(f"RDKit embed fail: {result.stderr[:300]}")
-    # Convert SDF -> PDBQT via mk_prepare_ligand.py in CadButEaas venv
+    # Convert SDF -> PDBQT via mk_prepare_ligand.py in project venv
     result2 = subprocess.run(
         [CADVENV_PY, MKPREP_LIG, "-i", sdf_intermediate, "-o", out_pdbqt_path, "--charge_model", "gasteiger"],
         capture_output=True, text=True, timeout=60,

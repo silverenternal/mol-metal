@@ -42,7 +42,7 @@ Honest framing per AGENTS.md §5.2:
 
 Run with::
     PYTHONPATH=/home/hugo/codes/mol-metal \\
-        /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+        /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf325g_m7_multi_ph_lift.py \\
         --report-dir molmetal/reports/wf325g_m7_multi_ph_lift
 """

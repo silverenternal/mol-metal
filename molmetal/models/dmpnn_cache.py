@@ -40,7 +40,7 @@ Honest framing per ``party-twenty-spirit`` §3.5
 
 CLI smoke::
 
-    /home/hugo/cades/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
             molmetal/scripts/smoke_wf328w10_dmpnn_cache.py --n_smiles 200 --epochs 3
 
 Output::

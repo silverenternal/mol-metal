@@ -16,7 +16,7 @@ The script writes:
 
 Usage
 -----
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+    /home/hugo/codes/mol-metal/.venv/bin/python \
         molmetal/scripts/verify_end_to_end_cached_path.py \
         [--steps 3] [--batch 8] [--max-rows 512] [--out reports/.../out.json]
 

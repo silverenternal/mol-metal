@@ -57,7 +57,7 @@ References
 Run::
 
     PYTHONPATH=/home/hugo/codes/mol-metal \\
-        /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+        /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf364a2_m6_kappa_maml_neural_ode_combined.py \\
         --epochs 5 --out-dir molmetal/reports/wf364a2_m6_kappa_combined/
 """

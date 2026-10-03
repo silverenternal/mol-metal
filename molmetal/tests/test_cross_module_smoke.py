@@ -303,7 +303,7 @@ def test_020_median_ms_helper():
 
 # ---------------------------------------------------------------------------
 # Test 21 — full end-to-end benchmark writes the JSON report to the
-# canonical path.  Uses the shared CadButEaas venv if available so the
+# canonical path.  Uses the project-local .venv if available so the
 # torch import succeeds; otherwise skips with a clear message.
 # ---------------------------------------------------------------------------
 def test_021_end_to_end_writes_json_report(tmp_path, monkeypatch):

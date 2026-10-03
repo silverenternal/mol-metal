@@ -192,4 +192,4 @@ C. 84+ SMARTS 反应规则列表
 - 数据集：CrossDocked2020 + MetalCytoToxDB + tmQM + NCI-60 GI50 已下载至 `.data/molmetal/`
 - 训练脚本：`molmetal/scripts/metallo_drug_smoke_retrain.py`（R17 production config）
 - 模型 ckpt：`logs/r17_retrain_10k/seed_{0,1,2}/ckpt.pt`（3 seed × 10K-step）
-- 复现命令：`source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u molmetal/scripts/metallo_drug_smoke_retrain.py --steps 10000 --seed $SEED --hidden-dim 128 --n-layers 3 --lr-warmup-steps 200 --decode-smoke-every 1000 --out-dir logs/r17_retrain_10k/seed_$SEED`
+- 复现命令：`source env.sh && /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/metallo_drug_smoke_retrain.py --steps 10000 --seed $SEED --hidden-dim 128 --n-layers 3 --lr-warmup-steps 200 --decode-smoke-every 1000 --out-dir logs/r17_retrain_10k/seed_$SEED`

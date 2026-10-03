@@ -107,7 +107,7 @@ class TestBenchCatherine30Metals:
         import subprocess
         proc = subprocess.run(
             [
-                "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python",
+                "/home/hugo/codes/mol-metal/.venv/bin/python",
                 str(
                     Path(_REPO)
                     / "molmetal/scripts/bench_catherine_30metals.py"

@@ -80,7 +80,7 @@ Per INDEX.md + TODO-148 §0:
 ```bash
 cd /home/hugo/codes/mol-metal
 TRITON_USE_FUSED=0 CUDA_VISIBLE_DEVICES=1 \
-  /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+  /home/hugo/codes/mol-metal/.venv/bin/python \
     molmetal/scripts/wf146_chemprop_lomo.py \
       --metals Rh Ru Ir Os Re \
       --seeds 0 1 2 3 4 \
@@ -103,7 +103,7 @@ TRITON_USE_FUSED=0 CUDA_VISIBLE_DEVICES=1 \
 cd /home/hugo/codes/mol-metal
 bash /tmp/wf131_resume.sh  # or equivalent
 # Manual version:
-CUDA_VISIBLE_DEVICES=1 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+CUDA_VISIBLE_DEVICES=1 /home/hugo/codes/mol-metal/.venv/bin/python \
   molmetal/scripts/train_metal_lomo_wasserstein.py \
   --metals Rh Re --seeds 3 4 0 1 2 \
   --epochs 50 --wasserstein-weight 0.05 \
@@ -142,7 +142,7 @@ Per §1.1, must add `molmetal/data/drugood_loader.py` first. Then:
 ```bash
 cd /home/hugo/codes/mol-metal
 TRITON_USE_FUSED=0 CUDA_VISIBLE_DEVICES=1 \
-  /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+  /home/hugo/codes/mol-metal/.venv/bin/python \
     molmetal/scripts/train_drugood_full.py \
       --data-path .data/molmetal/drugood/ic50/data/train.csv \
       --splits assay scaffold size \

@@ -283,7 +283,7 @@ def test_backward_compat_dry_run_idempotent():
     # Backward compat: --chemprop-mode + --chemprop-min-epochs +
     # --chemprop-lomo-init-scale are all present in --help (sanity probe)
     proc_help = subprocess.run(
-        ["/home/hugo/codes/CadButEaas/.venv-vlm/bin/python",
+        ["/home/hugo/codes/mol-metal/.venv/bin/python",
          str(TRAINER), "--help"],
         cwd=str(ROOT),
         capture_output=True,

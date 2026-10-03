@@ -13,8 +13,8 @@ train:
   batch_size: 32
   lr: 0.0001
   epochs: 30
-  warmup_steps: 200
-  grad_clip_norm: 1.0
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'warmup_steps: 200' removed — D-MPNN has no --lr-warmup-steps dest; its warmup is protocol.scheduler.warmup_epochs -> --lr-warmup-epochs.
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'grad_clip_norm: 1.0' removed — real dest is protocol.max_norm (5.0 below); loader alias now maps grad_clip_norm->max_norm.
   ema_decay: 0.999
   edge_cutoff: 6.0
 data:
@@ -26,7 +26,7 @@ data:
     test_frac: 0.2
   target_index: null
 device: cuda
-seed: 42
+# Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'seed: 42' removed — D-MPNN dest is --seeds (list), not --seed; seed enumeration is per-pair.
 output:
   ckpt_dir: molmetal/checkpoints
   events_jsonl: true

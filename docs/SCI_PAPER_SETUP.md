@@ -25,8 +25,8 @@ follow the §1-§4 install steps below. Per-tool status as of 2026-09-29:
 | `sn-jnl.cls` (Springer Nature class) | **SHIPPED** at `.tools/latex/sn-jnl.cls` (55,331 B, 2026-09-29 17:17 UTC) | §4 |
 | Zotero + Better BibTeX | **INSTALLED** Zotero 10.0.3 (Zotero Zotero 140.15.0esr) at `~/apps/zotero/` (2026-09-30 per Wf-372-A1); Better BibTeX plugin **MANUAL GUI** install — see §1.2 | §1 |
 | tectonic (LaTeX engine) | **INSTALLED** tectonic 0.17.0 at `~/.local/bin/tectonic` (2026-09-30 per Wf-372-A2); `tectonic --version` reports `Tectonic 0.17.0` | §2 |
-| scienceplots (Python figure style) | **INSTALLED** in `.venv-vlm` (v2.2.2) | §3 |
-| pybtex (Python BibTeX processor) | **INSTALLED** in `.venv-vlm` (v0.26.1) | (see `.tools/sci-paper/README.md` §1.2) |
+| scienceplots (Python figure style) | **INSTALLED** in `.venv` (v2.2.2) | §3 |
+| pybtex (Python BibTeX processor) | **INSTALLED** in `.venv` (v0.26.1) | (see `.tools/sci-paper/README.md` §1.2) |
 | latexmk + pdflatex (fallback engine) | **EXISTS** at `/usr/bin/latexmk` + `/usr/bin/pdflatex` | §2 |
 | CSL styles for Mol. Divers. | **SHIPPED** at `.tools/sci-paper/styles/mol-divers.csl` | (see `.tools/sci-paper/README.md` §4) |
 
@@ -218,10 +218,10 @@ library for matplotlib figure rendering.
 ### §3.1 Install
 
 ```bash
-# Already installed in CadButEaas .venv-vlm at version 2.2.2 (2026-09-29 17:17 UTC)
+# Already installed in project .venv at version 2.2.2 (2026-09-29 17:17 UTC)
 # If re-installing:
 PYTHONPATH=/home/hugo/codes/mol-metal \
-  /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -m pip install scienceplots
+  /home/hugo/codes/mol-metal/.venv/bin/python -m pip install scienceplots
 
 # Or in the project's own .venv (recommended for self-contained CI):
 pip install scienceplots  # MIT, journal-style presets
@@ -231,7 +231,7 @@ pip install scienceplots  # MIT, journal-style presets
 
 ```bash
 PYTHONPATH=/home/hugo/codes/mol-metal \
-  /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -c \
+  /home/hugo/codes/mol-metal/.venv/bin/python -c \
   "import scienceplots; print('scienceplots OK:', scienceplots)"
 # expect: scienceplots OK: <module 'scienceplots' from '.../scienceplots/__init__.py'>
 ```

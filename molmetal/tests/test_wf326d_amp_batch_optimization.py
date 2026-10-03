@@ -32,7 +32,7 @@ Honest framing (per ``party-twenty-spirit §3.5``):
 Run::
 
     PYTHONPATH=/home/hugo/codes/mol-metal \\
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -m pytest \\
+    /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf326d_amp_batch_optimization.py -v
 """
 

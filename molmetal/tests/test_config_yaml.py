@@ -36,7 +36,9 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from molmetal.scripts.wfA2_config_loader import (
+    UnresolvedConfigKey,
     apply_yaml_overrides,
+    last_skipped_keys,
     load_config,
 )
 
@@ -230,7 +232,10 @@ class TestApplyYamlOverridesCliWins:
 # ---------------------------------------------------------------------------
 
 class TestApplyYamlOverridesIgnoresUnknown:
-    def test_forward_compat_key_silently_skipped(self):
+    def test_forward_compat_key_reported_not_fatal(self):
+        """Wf-A11 (2026-10-03): unknown keys remain NON-FATAL by default, but
+        are no longer silent — every skip is reported via last_skipped_keys()
+        and args.yaml_unresolved_keys (WFA2_CONFIG_STRICT=1 raises instead)."""
         path = _make_yaml(
             "lr: 0.0007\nfuture_some_new_flag: 42\n"
             "another_unknown_key: [a, b]\n"
@@ -242,6 +247,58 @@ class TestApplyYamlOverridesIgnoresUnknown:
             assert out.lr == 0.0007
             assert not hasattr(out, "future_some_new_flag")
             assert not hasattr(out, "another_unknown_key")
+            skipped = [e["key"] for e in last_skipped_keys()]
+            assert "future_some_new_flag" in skipped
+            assert "another_unknown_key" in skipped
+            assert [e["key"] for e in out.yaml_unresolved_keys] == skipped
+        finally:
+            os.unlink(path)
+
+
+# ---------------------------------------------------------------------------
+# TestWfA11AliasResolution (dead-key durable fix, 2026-10-03)
+# ---------------------------------------------------------------------------
+
+def _make_alias_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser()
+    p.add_argument("--hidden", type=int, default=128)
+    p.add_argument("--max-norm", type=float, default=5.0)
+    p.add_argument("--config", default=None)
+    return p
+
+
+class TestWfA11AliasResolution:
+    def test_hidden_dim_alias_resolves_to_hidden(self):
+        path = _make_yaml("model:\n  hidden_dim: 300\n")
+        try:
+            p = _make_alias_parser()
+            args = p.parse_args(["--config", path])
+            out = apply_yaml_overrides(p, args, args.config)
+            assert out.hidden == 300  # declared value now REACHES the trainer
+            assert not [e for e in out.yaml_unresolved_keys if e["key"] == "model.hidden_dim"]
+        finally:
+            os.unlink(path)
+
+    def test_direct_key_beats_alias_and_is_reported(self):
+        path = _make_yaml("protocol:\n  max_norm: 5.0\n  grad_clip_norm: 1.0\n")
+        try:
+            p = _make_alias_parser()
+            args = p.parse_args(["--config", path])
+            out = apply_yaml_overrides(p, args, args.config)
+            assert out.max_norm == 5.0  # direct key wins over alias
+            reasons = {e["key"]: e.get("reason") for e in out.yaml_unresolved_keys}
+            assert "alias suppressed" in (reasons.get("protocol.grad_clip_norm") or "")
+        finally:
+            os.unlink(path)
+
+    def test_strict_mode_raises(self, monkeypatch):
+        path = _make_yaml("model:\n  hidden_typo: 300\n")
+        try:
+            monkeypatch.setenv("WFA2_CONFIG_STRICT", "1")
+            p = _make_alias_parser()
+            args = p.parse_args(["--config", path])
+            with pytest.raises(UnresolvedConfigKey):
+                apply_yaml_overrides(p, args, args.config)
         finally:
             os.unlink(path)
 

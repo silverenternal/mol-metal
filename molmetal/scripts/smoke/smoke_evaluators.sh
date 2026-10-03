@@ -41,8 +41,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "${REPO_ROOT}"
 
-# Locate the shared venv (mirrors env.sh convention).
-SHARED_VENV="/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+# Locate the canonical repo-local venv (AGENTS.md §5.9 single-venv rule).
+SHARED_VENV="${REPO_ROOT}/.venv/bin/python"
 if [[ -x "${SHARED_VENV}" ]]; then
     PY="${SHARED_VENV}"
 else

@@ -28,8 +28,8 @@ WF141_DATA = REPO / "molmetal/reports/wf141_ex32_lift"
 RECEPT_DIR = REPO / "molmetal/reports/wf30_pocket_prep"
 
 VINA_BIN = "/home/hugo/codes/pocket/.eval_envs/pocket2mol311/bin/vina"
-CADVENV_PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
-MKPREP_LIG = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/mk_prepare_ligand.py"
+CADVENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
+MKPREP_LIG = "/home/hugo/codes/mol-metal/.venv/bin/mk_prepare_ligand.py"
 MOL_VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 POCKETS = ["1h36", "3eml", "3ny8", "4aaw", "4rlu"]

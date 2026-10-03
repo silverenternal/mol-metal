@@ -16,20 +16,21 @@ If you plan to send a PR, please read the entire document — sections
 ## 1. Quick start
 
 The repository ships a single-file developer entry point (`Makefile`) plus a
-shared-environment bootstrap script (`env.sh`) that pins all contributors to
-the same Python interpreter (`/home/hugo/codes/CadButEaas/.venv-vlm`,
-torch 2.14.0 + cu130, triton 3.8.0, rdkit, openbabel, posebusters, etc.).
+canonical-environment bootstrap script (`env.sh`) that pins all contributors
+to the same Python interpreter — the repo-local
+`/home/hugo/codes/mol-metal/.venv` (AGENTS.md §5.9 single-venv rule: torch
+2.14.1 + cu130, rdkit, posebusters, meeko, vina, etc.).
 
 ```bash
 # 1. Clone
 git clone https://github.com/Hugo-Lee/mol-metal.git
 cd mol-metal
 
-# 2. Bootstrap the shared venv (idempotent — wires UV_PROJECT_ENVIRONMENT)
+# 2. Bootstrap the canonical venv (idempotent — wires UV_PROJECT_ENVIRONMENT)
 source env.sh
 
 # 3. Sanity-check the environment
-make setup            # verifies the .venv-vlm interpreter is reachable
+make setup            # verifies the canonical .venv interpreter is reachable
 
 # 4. Run the full evaluation harness (all 14 evaluators on Blackwell)
 make eval

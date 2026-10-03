@@ -44,7 +44,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import abort_recovery  # noqa: E402
 
-VENV_PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 SUPPORTED_PATTERNS = ("NaN", "OOM", "IndexError", "cfm-collapse")
 SUPPORTED_METALS = ("Ru", "Ir", "Os", "Rh", "Re")
@@ -269,15 +269,15 @@ def test_params_finite_flags_nan():
 
 
 # ---------------------------------------------------------------------------
-# Test 8 — Invoking via the venv-vlm interpreter works (smoke test)
+# Test 8 — Invoking via the project-venv interpreter works (smoke test)
 # ---------------------------------------------------------------------------
 
 
 def test_subprocess_via_venv():
-    """The contract interpreter ``/home/hugo/codes/CadButEaas/.venv-vlm/bin/python``
+    """The contract interpreter ``/home/hugo/codes/mol-metal/.venv/bin/python``
     must be able to run ``--help`` and a hard-fail invocation."""
     if not Path(VENV_PY).exists():
-        pytest.skip(f"venv-vlm interpreter not present at {VENV_PY}")
+        pytest.skip(f"project-venv interpreter not present at {VENV_PY}")
     # --help smoke (exit 0)
     rc = subprocess.run(
         [VENV_PY, str(abort_recovery.__file__), "--help"],

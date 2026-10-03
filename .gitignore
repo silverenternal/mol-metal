@@ -6,12 +6,12 @@
 # =============================================================================
 
 # --- Python bytecode & venv -------------------------------------------------
-# .venv is the stale local env that uv auto-creates by default. Mol-Metal
-# routes uv to the shared /home/hugo/codes/CadButEaas/.venv-vlm via
-# UV_PROJECT_ENVIRONMENT in env.sh; pyproject.toml sets [tool.uv] managed =
-# false so uv does not recreate mol-metal/.venv silently. The pre-commit /
-# CI guard at molmetal/scripts/check_no_stale_venv.sh fails if a stale venv
-# reappears here.
+# .venv/ is the CANONICAL Mol-Metal environment (AGENTS.md §5.9 single-venv
+# rule: the repo-local .venv is THE interpreter; the legacy CadButEaas /
+# kanzi venvs are forbidden). It is ignored because environments are never
+# committed — not because it is stale. The guard at
+# molmetal/scripts/check_no_stale_venv.sh fails if the repo is pointed at
+# any interpreter other than this .venv.
 .venv/
 venv/
 __pycache__/

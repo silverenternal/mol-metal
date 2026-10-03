@@ -37,7 +37,7 @@ numpy).
 Run with::
 
     PYTHONPATH=/home/hugo/codes/mol-metal \\
-        /home/hugo/cades/CadButEaas/.venv-vlm/bin/python -m pytest \\
+        /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf329w4_multiph_pll.py -v
 """
 from __future__ import annotations

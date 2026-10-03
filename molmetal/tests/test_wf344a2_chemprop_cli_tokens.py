@@ -7,7 +7,7 @@ was reported FAIL because the chemprop v2/v3 trainer's ``--help`` output was
 alleged to be missing the four tokens ``--chemprop-mode``, ``v3-fix``,
 ``--chemprop-min-epochs``, ``--chemprop-lomo-init-scale``.  As of the
 2026-09-29 fresh-run pre-flight, all four tokens ARE exposed in ``--help`` and
-the gate reports PASS (rc=0, wall 4.93s on /home/hugo/codes/CadButEaas/.venv-vlm).
+the gate reports PASS (rc=0, wall 4.93s on /home/hugo/codes/mol-metal/.venv).
 
 This file provides 4 regression tests that re-verify the gate contract from a
 fresh subprocess — guarding against (i) tokens being deleted by future commits,
@@ -54,16 +54,16 @@ _SCRIPT_DIR = _REPO_ROOT / "molmetal" / "scripts"
 _PRE_FLIGHT = _SCRIPT_DIR / "pre_flight_check.py"
 _CHEMPROP = _SCRIPT_DIR / "train_chemprop_v2_v3.py"
 
-# Pre-flight uses /home/hugo/codes/CadButEaas/.venv-vlm/bin/python
+# Pre-flight uses /home/hugo/codes/mol-metal/.venv/bin/python
 # (see molmetal/scripts/pre_flight_check.py line 81).  We honour that
 # contract here so that the gate runs the same way it does in CI.
-_VENV_VLM = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+_VENV_VLM = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 
 def _python_for_chemprop() -> str:
     """Pick the python interpreter that has ``chemprop`` installed.
 
-    Pre-flight uses ``/home/hugo/codes/CadButEaas/.venv-vlm/bin/python`` by
+    Pre-flight uses ``/home/hugo/codes/mol-metal/.venv/bin/python`` by
     default.  If that venv is unavailable (CI runner without it), we
     fall back to ``sys.executable`` — the test will then SKIP if
     chemprop is not importable.

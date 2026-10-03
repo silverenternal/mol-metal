@@ -40,7 +40,7 @@ import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPTS_DIR = PROJECT_ROOT / "molmetal" / "scripts"
-VENV_PY = Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin/python")
+VENV_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 
 
 @pytest.mark.skipif(not VENV_PY.exists(), reason="vlm venv not on disk")

@@ -1,21 +1,20 @@
 {
   "metric": "nci60_precious_9cell_auc",
-  "description": "Wf-312A per-cell ROC-AUC on the precious-metal (Ru/Ir/Rh/Os/Re) 9-cell-line subset of MetalCytoToxDB overlapping with the NCI-60 panel (k=8 unique cells + 1 alias HCT-116 = 9 default cells) using per-cell single-task chemprop v2 with random 80/10/20 split. 3-seed x 5-epoch CPU smoke (paper-grade numbers need GPU per kill_then_adapt).",
+  "description": "Wf-312A per-cell ROC-AUC on the precious-metal (Ru/Ir/Rh/Os/Re) 9-cell-line subset of MetalCytoToxDB overlapping with the NCI-60 panel (k=8 unique cells; the HCT-116 key is an alias of HCT116 with byte-identical per-seed arrays and is excluded from aggregates; SKOV3 absent from this run) using per-cell single-task chemprop v2 with random 80/10/20 split. 3-seed x 5-epoch CPU smoke (paper-grade numbers need GPU per kill_then_adapt).",
   "unit": "ROC-AUC (0-1, higher better) per cell line",
   "scope": "tier1_precious_metal_anticancer",
   "source": "molmetal/scripts/nci60_9cell_chemprop_driver.py (seeds=[0,1,2], epochs=5, hidden=128, depth=3)",
   "krasnov_2026_baseline_auc": 0.81,
   "gate_target": 0.7,
-  "value_overall_mean_auc": 0.688,
-  "value_overall_mean_std": 0.0429,
+  "value_overall_mean_auc": 0.6883250000000001,
+  "value_overall_mean_std": 0.0448375,
   "n_seeds": 3,
-  "n_cells": 9,
+  "n_cells": 8,
   "cell_lines": [
     "A2780",
     "A2780cis",
     "A549",
     "DU145",
-    "HCT-116",
     "HCT116",
     "HL60",
     "MCF7",
@@ -154,7 +153,7 @@
   "split": "random_80_10_20_per_cell_seeded",
   "model": "chemprop_v2_per_cell_single_task",
   "framing": "Wf-312A 3-seed x 5-epoch CPU smoke (paper-grade needs GPU per kill_then_adapt)",
-  "honest_framing": "27/27 ok runs in 3.23 min on CPU. PC3 0.7274 +0.51 vs the 1-seed-1-epoch smoke 0.2153 (n_test=55, sufficient for honest AUC). A2780 0.5641 BELOW_GATE (cell-line effect: cisplatin-resistant signature not recoverable from precious-metal-only SMILES at this depth/epochs). DU145 0.9062 high (small n_test=33, easy split). A549 0.7436 PASS (n_train=1852, largest cohort).",
+  "honest_framing": "27/27 ok runs in 3.23 min on CPU. PC3 0.7274 +0.51 vs the 1-seed-1-epoch smoke 0.2153 (n_test=55, sufficient for honest AUC). A2780 0.5641 BELOW_GATE (cell-line effect: cisplatin-resistant signature not recoverable from precious-metal-only SMILES at this depth/epochs). DU145 0.9062 high (small n_test=33, easy split). A549 0.7436 PASS (n_train=1852, largest cohort). [Aggregate correction 2026-10-03: value_overall_mean_auc recomputed over the 8 UNIQUE cell lines = 0.688325 (the old 0.688 = nine-key mean 0.687967, double-counting the HCT-116 alias); value_overall_mean_std = 0.0448375 (old 0.0429 = nine-key mean of per-cell stds, the file's convention); n_cells 9 -> 8; duplicate HCT-116 row removed from paper_dashboard_claims. See corrections[].]",
   "audit_provenance": {
     "wf": "Wf-312A",
     "todo_ref": "TODO-completed/312_wf312a_re_degenerate_nci60_paper_grade.md",
@@ -202,15 +201,6 @@
       "n_train": 112
     },
     {
-      "cell": "HCT-116",
-      "mean_auc": 0.6851,
-      "std": 0.0274,
-      "verdict": "BELOW_GATE",
-      "paper_gate_target": 0.7,
-      "n_seeds": 3,
-      "n_train": 490
-    },
-    {
       "cell": "HCT116",
       "mean_auc": 0.6851,
       "std": 0.0274,
@@ -245,6 +235,43 @@
       "paper_gate_target": 0.7,
       "n_seeds": 3,
       "n_train": 192
+    }
+  ],
+  "n_cell_keys": 9,
+  "cell_lines_aliased_out": {
+    "HCT-116": "alias of HCT116 (identical per-seed arrays); excluded from aggregate"
+  },
+  "cells_absent_vs_9cell_panel": [
+    "SKOV3"
+  ],
+  "corrections": [
+    {
+      "field": "value_overall_mean_auc",
+      "old_value": 0.688,
+      "new_value": 0.6883250000000001,
+      "reason": "old 0.688 = mean over the 9 per_cell_line keys (0.687967 to 6 dp), which counts HCT-116/HCT116 (same cell line) twice; recomputed over the 8 unique lines = 0.688325. Small delta, wrong denominator.",
+      "date": "2026-10-03"
+    },
+    {
+      "field": "value_overall_mean_std",
+      "old_value": 0.0429,
+      "new_value": 0.0448375,
+      "reason": "old 0.0429 == exact mean of the nine per-cell auc_std values (nine-key mean-of-stds convention); recomputed over the 8 unique lines = 0.0448375.",
+      "date": "2026-10-03"
+    },
+    {
+      "field": "n_cells / '9 default cells' label",
+      "old_value": 9,
+      "new_value": 8,
+      "reason": "HCT-116 and HCT116 are one cell line (byte-identical per-seed arrays); aggregates now use the 8 unique lines. SKOV3 is absent from this run (noted in cells_absent_vs_9cell_panel).",
+      "date": "2026-10-03"
+    },
+    {
+      "field": "paper_dashboard_claims",
+      "old_value": "included duplicate 'HCT-116' row",
+      "new_value": "duplicate row removed",
+      "reason": "same alias de-duplication applied to the dashboard claims list",
+      "date": "2026-10-03"
     }
   ]
 }

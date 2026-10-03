@@ -42,7 +42,7 @@ same nested-layout problem; the schema difference (G5 flat vs G4 nested)
 is the new wrinkle.
 
 Usage:
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf278a_g5_aggregate.py \\
         --input-dir results/wf124_p3_50epoch_full_sweep_g5 \\
         --output   results/wf124_p3_50epoch_full_sweep_g5/training_summary.json

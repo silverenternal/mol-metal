@@ -66,7 +66,7 @@ data:
 # multi-task baseline is the Tier-2 §3 main-result anchor.
 # ============================================================================
 model:
-  backbone: chemprop_v2_v3  # --backbone {chemprop_v2_v3, dmpnn_v1} default dmpnn_v1; this config overrides to chemprop_v2_v3
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'backbone' removed — the comment claimed a --backbone CLI flag; no such flag exists in either trainer.
   ablation_config: mtl_baseline  # --ablation-config {mtl_baseline, single_task_baseline, kendall_only, dann_only, ...}
   hidden_dim: 300  # per chemprop_v2_v3 5-seed × 50-epoch standard protocol
   depth: 3  # standard message-passing depth
@@ -93,10 +93,10 @@ protocol:
   batch_size: 128  # --batch-size (linear scaling rule; NVIDIA A100 paper)
   lr: 2.0e-3  # --lr (linear scaling: lr = base_lr × new_batch / old_batch)
   gradient_accumulation_steps: 1  # NOT IN TRAINER (D-MPNN has no --gradient-accumulation); schema-only
-  grad_clip_norm: 5.0  # schema-only field; actual max_norm below
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'grad_clip_norm: 5.0' removed (loader alias grad_clip_norm->--max-norm; operative key = protocol.max_norm below).
   weight_decay: 1.0e-5  # --weight-decay (Adam L2 regularisation)
   max_norm: 5.0  # --max-norm (Pascanu 2013 standard for transformer/GNN stability)
-  bf16: false  # SCHEMA-ONLY field; D-MPNN trainer has no actual bf16/AMP path
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16: false' removed (no AMP path exists to disable).
   # Wf-A6 A2 BLOCKER C fix (2026-10-03) — LR scheduler (per user voice
   # "学习率的控制至少得用余弦退火或者更加高级的方案，做一下调研然后应用").
   # Loshchilov-Hutter 2017 SGDR + Smith-Topin 2018 super-convergence survey.
@@ -201,21 +201,26 @@ output:
 # Per AGENTS.md §5.9 single-venv rule: launch wrapper MUST use the project
 # venv /home/hugo/codes/mol-metal/.venv/bin/python, NOT bare /usr/bin/python,
 # NOT legacy CadButEaas venvs, NOT kanzi_venv.
-# HONEST-NEGATIVE: current venv has torch==2.14.0+rocm7.2 (cpu_available=False);
-# per user voice 2026-10-03 "torch 环境的话应该是 cuda 的，rocm 在这个机子里面彻底
-# 是不需要的". Closure path = pip install torch==2.14.0+cu130 + uv lock regen
-# (USER_OK-gated, heavy, 6-17 min wall, out of scope for this YAML rewrite
-# per AGENTS.md §5.8 token-budget discipline).
+# RESOLVED 2026-10-03. The paragraph that stood here read:
+#   "HONEST-NEGATIVE: current venv has torch==2.14.0+rocm7.2 (cpu_available=False);
+#    ... Closure path = pip install torch==2.14.0+cu130 + uv lock regen"
+# That is now FALSE and has been removed rather than left to mislead.
+# RE-MEASURED with .venv/bin/python:
+#   torch 2.14.1+cu130 | torch.version.hip is None | cuda.is_available() True
+#   device_count 2 | real 64x64 matmul on cuda:0 succeeded
+# So the CUDA build the user asked for ("torch 环境的话应该是 cuda 的，rocm 在这个
+# 机子里面彻底是不需要的") is ALREADY installed; no pip install / uv lock work is
+# outstanding, and no GPU run falls back to CPU. Nothing further to close here.
 # =============================================================================
 compute:
   gpu: cuda:0  # RTX PRO 6000 Blackwell (per TODO/decisions/0002-tier2-scope.md)
   cpu_workers: 8  # PyTorch DataLoader docs; cross-ref: Wf-358-A3
-  bf16: false  # SCHEMA-ONLY field; D-MPNN trainer has no actual bf16 path (only CFM trainer has Wf-431-B1 --bf16)
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16: false' removed — the 'only CFM trainer has --bf16' claim is FALSE: grep shows zero bf16/autocast in the CFM trainer too.
   torch_compile: false  # SCHEMA-ONLY field; D-MPNN trainer has no --torch-compile flag (only CFM trainer has Wf-431-B1)
   cudnn_benchmark: false  # SCHEMA-ONLY field; D-MPNN trainer has no --cudnn-benchmark flag
   channels_last: false  # SCHEMA-ONLY field; D-MPNN is not a ConvNet so channels_last does not apply
   tf32: high  # SCHEMA-ONLY field; torch default is 'high' for matmul.allow_tf32 + cudnn.allow_tf32
-  amp: bf16  # SCHEMA-ONLY field; D-MPNN trainer has no actual amp path
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'amp: bf16' removed (no AMP path).
 
 # ============================================================================
 # STANDING DIRECTIVES

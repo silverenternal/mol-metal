@@ -53,7 +53,7 @@ PREFLIGHT_JSON = (
 )
 SCRIPTS_DIR = PROJECT_ROOT / "molmetal" / "scripts"
 WF343C2_SCRIPT = SCRIPTS_DIR / "wf343c2_per_wave_check.py"
-VENV_PY = Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin/python")
+VENV_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 PREFLIGHT_FRESHNESS_CAP_SEC = 86400  # 24 h per Wf-302A AnchorGuard
 
 

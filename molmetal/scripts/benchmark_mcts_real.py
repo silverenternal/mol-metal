@@ -54,7 +54,7 @@ Usage
 
 Defaults are tuned so the full ``--n-samples 100`` run completes
 in <5 min on a 4-core CPU container with RDKit+torch pre-installed
-via the shared CadButEaas ``.venv-vlm``.  The script writes
+via the project-local ``.venv``.  The script writes
 :file:`molmetal/reports/wf_mcts_real_bench/results.json` plus a
 ``benchmark_log.md`` summary next to it.
 """

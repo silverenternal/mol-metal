@@ -60,7 +60,7 @@ Test environment notes
 ----------------------
 This test module assumes the standard molmetal-test environment
 (``sys.path`` includes the project root + the shared CadButEaas
-``.venv-vlm``).  The upstream ``flow_matching`` reference clone is
+``.venv``).  The upstream ``flow_matching`` reference clone is
 *not* required — the test exercises the
 :class:`WaveformRelaxationSolver` only via the local ODESolver shim.
 """

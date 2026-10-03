@@ -25,7 +25,7 @@ designed to import without the heavy upstream stack.
 
 Run from the project root::
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -m pytest \\
+    /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_biolm_score_oracle.py -v --tb=short
 """
 
@@ -258,7 +258,7 @@ def test_cli_smoke(tmp_path: Path) -> None:
     """
     import subprocess
 
-    bin_ = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+    bin_ = "/home/hugo/codes/mol-metal/.venv/bin/python"
     proc = subprocess.run(
         [
             bin_,

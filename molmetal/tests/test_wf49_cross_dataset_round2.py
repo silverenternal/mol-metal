@@ -8,7 +8,7 @@ tests against the real data CSVs.
 
 Run with:
 
-    PY=/home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    PY=/home/hugo/codes/mol-metal/.venv/bin/python \\
     $PY -m pytest molmetal/tests/test_wf49_cross_dataset_round2.py -v
 """
 

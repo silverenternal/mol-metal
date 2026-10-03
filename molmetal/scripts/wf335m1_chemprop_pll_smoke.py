@@ -30,7 +30,7 @@ Honest framing (AGENTS.md §5.2)
 Run::
 
     PYTHONPATH=/home/hugo/codes/mol-metal \\
-        /home/hugo/cades/CadButEaas/.venv-vlm/bin/python \\
+        /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf335m1_chemprop_pll_smoke.py \\
         --output-dir molmetal/reports/wf335m1_chemprop_pll
 """

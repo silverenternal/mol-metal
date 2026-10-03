@@ -23,7 +23,7 @@ Covers the §7.1 + §C contract documented in
      ``schema_version``, ``ts``).
   7. Auto-discovery: when ``--waves`` is omitted, the wave list is
      derived from ``configs/*.yaml`` + canonical §0.3 baseline.
-  8. Subprocess smoke via the contract ``.venv-vlm/bin/python``.
+  8. Subprocess smoke via the contract ``.venv/bin/python``.
 
 All tests are CPU-only (no torch, no GPU); they construct ephemeral
 reports/log dirs under ``tmp_path`` so the real ``molmetal/reports/``
@@ -46,7 +46,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import wave_budget_tracker  # noqa: E402
 
-VENV_PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 CONTRACT_FIELDS = (
     "schema_version",
@@ -396,15 +396,15 @@ def test_compute_wave_status_running_boundary():
 
 
 # ---------------------------------------------------------------------------
-# Test 10 — Subprocess smoke via the venv-vlm interpreter
+# Test 10 — Subprocess smoke via the project-venv interpreter
 # ---------------------------------------------------------------------------
 
 
 def test_subprocess_via_venv(tmp_path: Path):
-    """The contract interpreter ``/home/hugo/codes/CadButEaas/.venv-vlm/bin/python``
+    """The contract interpreter ``/home/hugo/codes/mol-metal/.venv/bin/python``
     must be able to run ``--help`` and a typical CLI invocation."""
     if not Path(VENV_PY).exists():
-        pytest.skip(f"venv-vlm interpreter not present at {VENV_PY}")
+        pytest.skip(f"project-venv interpreter not present at {VENV_PY}")
     # --help smoke (exit 0).
     rc = subprocess.run(
         [VENV_PY, str(wave_budget_tracker.__file__), "--help"],

@@ -42,7 +42,7 @@ Verify
 ------
 ::
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf47_pb_aizynth_real_runs.py \\
         --out-dir molmetal/reports/wf47_real_runs
 
@@ -88,11 +88,11 @@ GENERATED_UTC = datetime.now(timezone.utc).isoformat()
 # ---------------------------------------------------------------------------
 # Subprocess runner — invoke each script under the shared venv python.
 # ---------------------------------------------------------------------------
-# On this host the shared venv at /home/hugo/codes/CadButEaas/.venv-vlm/
+# On this host the shared venv at /home/hugo/codes/mol-metal/.venv/
 # is where torch / rdkit / posebusters live; using sys.excript
 # (the system python) would ImportError on torch.  The harness therefore
 # prefers the shared venv when present, falling back to sys.executable.
-SHARED_VENV_PY = Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin/python")
+SHARED_VENV_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 LOCAL_VENV_PY = _REPO_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"
 if SHARED_VENV_PY.is_file():
     PYTHON_EXE: str = str(SHARED_VENV_PY)

@@ -11,7 +11,7 @@ Scope
 * Real DrugOOD ``lbap_refined_ic50_assay`` (266,522 rows × 5 splits:
   train 95,373 + iid_val 31,401 + iid_test 33,164 + ood_val 53,293 +
   ood_test 53,291) — loaded via :func:`molmetal.data.drugood_loader.load_drugood`
-  with ``prefer_library=False`` (raw JSON fallback so the .venv-vlm env can
+  with ``prefer_library=False`` (raw JSON fallback so the .the project .venv can
   consume the data without ``mmcv``/``drugood`` libs installed).
 * Train fold (95,373 rows) trains the chemprop v2 backbone for 20 epochs.
 * Per-split AUC computed at the end of training for train / iid_val /

@@ -29,7 +29,7 @@ combined.
 Run with::
 
     PYTHONPATH=/home/hugo/codes/mol-metal \\
-        /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -m pytest \\
+        /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf361b2_m6_kappa_neural_ode.py -v
 """
 from __future__ import annotations

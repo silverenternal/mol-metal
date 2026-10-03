@@ -49,11 +49,11 @@ Honest framing
 CLI::
 
     # Default: 100 trajectories × 5 rounds × 5 seeds × 4 cells
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/triangle_closure_platinai_4cell.py
 
     # Smoke (16 trajectories × 2 rounds × 2 seeds × 4 cells)
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/triangle_closure_platinai_4cell.py \\
         --n-trajectories 16 --n-rounds 2 --seeds 0 1
 

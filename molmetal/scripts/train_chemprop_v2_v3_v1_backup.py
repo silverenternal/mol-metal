@@ -60,12 +60,12 @@ v2 backbone (Wf-148's :class:`ChempropV2MTModel`):
 -----
 Default (5-metal × 3-seed × 50-epoch, GPU + BF16)::
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/train_chemprop_v2_v3.py
 
 Smoke (1-metal × 1-seed × 2-epoch, CPU fallback)::
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/train_chemprop_v2_v3.py --quick
 """
 

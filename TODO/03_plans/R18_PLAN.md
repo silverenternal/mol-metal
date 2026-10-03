@@ -282,7 +282,7 @@ Week 8  : Phase 4 (paper final + skill + close-out)
 | Resource | Need | Notes |
 |---|---|---|
 | GPU Blackwell sm_120 | 100-step × 100-pocket × 3-seed ≈ 6h | **单卡独占时段**（§risk） |
-| Shared env `~/.venv-vlm` | All Python deps | 已经 ship |
+| Shared env `~/.venv` | All Python deps | 已经 ship |
 | scipy.spatial.transform | Lie group exp/log | pip already |
 | gudhi or ripser | Persistent Homology | already in 84-rule path |
 | ultracode agents | 3-4 parallel (paper / Phase 1 / Phase 2 / Phase 4) | |

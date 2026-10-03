@@ -139,11 +139,11 @@ def _probe_real_diffdock_adapter() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Per-script runner — invokes the script as a subprocess with a small budget
 # ---------------------------------------------------------------------------
-# On this host the shared venv at /home/hugo/codes/CadButEaas/.venv-vlm is
+# On this host the shared venv at /home/hugo/codes/mol-metal/.venv is
 # where torch / rdkit / posebusters / meeko actually live; using sys.executable
 # (the system python) means torch ImportError.  The harness therefore prefers
 # the shared venv python when present; falls back to sys.executable.
-SHARED_VENV_PY = Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin/python")
+SHARED_VENV_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 if SHARED_VENV_PY.is_file():
     PYTHON_EXE: str = str(SHARED_VENV_PY)
 else:

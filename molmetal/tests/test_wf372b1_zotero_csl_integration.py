@@ -62,9 +62,9 @@ BIB_PATH = SCI_PAPER_DIR / "refs" / "references.bib"
 PYBTEX_WRAPPER = SCI_PAPER_DIR / "bin" / "pybtex-compile.py"
 MOL_DIVERS_CSL = STYLES_DIR / "mol-divers.csl"
 
-# CadButEaas venv-vlm interpreter is the canonical python for pybtex-compile
+# project .venv interpreter is the canonical python for pybtex-compile
 # (per Wf-351-B2 audit; pybtex 0.24.x installed there)
-VLM_PYTHON = Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin/python")
+VLM_PYTHON = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 
 
 class TestWf372B1ZoteroCslIntegration:
@@ -167,7 +167,7 @@ class TestWf372B1ZoteroCslIntegration:
 
         assert BIB_PATH.exists(), f"references.bib missing: {BIB_PATH}"
 
-        # Find a working Python interpreter (prefer venv-vlm, fall back to sys.executable)
+        # Find a working Python interpreter (prefer .venv, fall back to sys.executable)
         python_bin = str(VLM_PYTHON) if VLM_PYTHON.exists() else sys.executable
 
         # Run pybtex-compile.py with the on-disk references.bib → /tmp output

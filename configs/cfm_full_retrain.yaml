@@ -59,7 +59,7 @@ data:
     test_frac: 0.2
     seed: 261  # Wf-261 strict Bemis-Murcko scaffold split RNG seed (0 leak verified)
 model:
-  backbone: chemprop_v2_mt
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'backbone' removed (no --backbone dest).
   hidden_dim: 128
   n_layers: 3
   atom_vocab_size: 14
@@ -81,7 +81,7 @@ train:
   batch_size: 16
   lr: 0.0001
   warmup_steps: 200
-  grad_clip_norm: 1.0
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'grad_clip_norm: 1.0' REMOVED — never reached the trainer (real dest --max-norm, declared 5.0 below). Intent flagged AMBIGUOUS.
   ema_decay: 0.999
   wasserstein_weight: 0.1
   closure_bounded: true
@@ -134,8 +134,8 @@ output:
   events_jsonl: true
 compute:
   gpu: cuda:0
-  cpu_workers: 4
-  bf16: true
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'cpu_workers: 4' removed (CFM trainer has no --cpu-num-workers dest; only D-MPNN does).
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16' removed (zero bf16/autocast in either trainer).
 directives:
   kill_then_adapt: true
   time_budget: 10h
@@ -157,7 +157,7 @@ entry:
   warm_start_checkpoint: molmetal/checkpoints/cfm_yuelbond_wasserstein.pt
   # Original inline-CLI command preserved as legacy_inline_command for backward-compat rollback only
   # NOT used by start.sh per AGENTS.md §5.8 + §5.5 filesystem-truth
-  legacy_inline_command: "CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\n  molmetal/scripts/metallo_drug_smoke_retrain.py\\n  --csv .data/molmetal/metalcytotox_5metal_multitask_v2.csv \\n  --n-train 26632 \\n  --steps 5000 \\n  --batch-size 16 \\n  --lr 1e-4 \\n  --hidden-dim 128 \\n  --n-layers 3 \\n  --joint-train \\n  --bond-head learned \\n  --decode-smoke-every 500 \\n  --decode-smoke-samples 16 \\n  --seed {seed} \\n  --out-dir {out_dir}\n"
+  legacy_inline_command: "CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/mol-metal/.venv/bin/python \\n  molmetal/scripts/metallo_drug_smoke_retrain.py\\n  --csv .data/molmetal/metalcytotox_5metal_multitask_v2.csv \\n  --n-train 26632 \\n  --steps 5000 \\n  --batch-size 16 \\n  --lr 1e-4 \\n  --hidden-dim 128 \\n  --n-layers 3 \\n  --joint-train \\n  --bond-head learned \\n  --decode-smoke-every 500 \\n  --decode-smoke-samples 16 \\n  --seed {seed} \\n  --out-dir {out_dir}\n"
 honest_framing:
   claims:
   - CFM full retrain on MetalCytoToxDB 5-metal v2 corpus (26632 rows, Wf-261 strict Bemis-Murcko scaffold 70/10/20, 0 leak)

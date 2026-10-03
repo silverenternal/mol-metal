@@ -1,42 +1,48 @@
 #!/usr/bin/env bash
-# check_no_stale_venv.sh — fail if mol-metal/.venv exists.
+# check_no_stale_venv.sh — assert the repo is pointed at the CANONICAL venv.
 #
-# Mol-Metal routes uv to the shared /home/hugo/codes/CadButEaas/.venv-vlm via
-# UV_PROJECT_ENVIRONMENT (set in env.sh). A stale mol-metal/.venv will shadow
-# that shared env when `uv run` auto-detects it. This guard fails loudly so
-# CI / pre-commit catches regressions.
+# AGENTS.md §5.9 (single-venv rule): the canonical interpreter is the
+# repo-local /home/hugo/codes/mol-metal/.venv (derived here from this
+# script's location as $REPO_ROOT/.venv). The legacy CadButEaas / kanzi
+# venvs are FORBIDDEN. This guard FAILS when UV_PROJECT_ENVIRONMENT or
+# VIRTUAL_ENV points at any interpreter other than the canonical .venv.
 #
 # Wire it up:
 #   * pre-commit:   - repo: local; hooks: [{id: no-stale-venv, entry: bash molmetal/scripts/check_no_stale_venv.sh}]
 #   * CI gate:      bash molmetal/scripts/check_no_stale_venv.sh
 #   * manual:       bash molmetal/scripts/check_no_stale_venv.sh
 #
-# Always exits 0 when no stale venv is present; exits 1 (with diagnostics)
-# when mol-metal/.venv is found.
+# Contract: exits 0 (PASS) when the repo is canonical — both vars unset is
+# canonical too, since uv then defaults to the repo-local .venv. Exits 1
+# (FAIL, diagnostics on stderr) when a var resolves anywhere else.
+# NEVER suggests deleting .venv — .venv IS canonical.
 
 set -euo pipefail
 
 # Resolve repo root from this script's location (molmetal/scripts/ -> repo root).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-STALE_VENV="$REPO_ROOT/.venv"
+CANONICAL_VENV="$REPO_ROOT/.venv"
 
-if [ -d "$STALE_VENV" ]; then
-    echo "FAIL: stale venv detected at $STALE_VENV" >&2
-    echo "  mol-metal routes uv to the shared CadButEaas env via" >&2
-    echo "  UV_PROJECT_ENVIRONMENT (see env.sh). A local .venv here will" >&2
-    echo "  shadow it and break the CUDA/torch build assumptions." >&2
-    echo "  Remove it: rm -rf $STALE_VENV" >&2
-    exit 1
+RC=0
+for VAR in UV_PROJECT_ENVIRONMENT VIRTUAL_ENV; do
+    VALUE="${!VAR:-}"
+    [ -n "$VALUE" ] || continue
+    RESOLVED="$(realpath -m "$VALUE")"
+    if [ "$RESOLVED" != "$CANONICAL_VENV" ]; then
+        echo "FAIL: $VAR=$VALUE resolves to $RESOLVED, not the canonical venv $CANONICAL_VENV." >&2
+        echo "  AGENTS.md §5.9: Mol-Metal uses the single repo-local .venv;" >&2
+        echo "  the legacy CadButEaas / kanzi venvs are forbidden." >&2
+        echo "  Fix: unset $VAR && source env.sh" >&2
+        RC=1
+    fi
+done
+
+if [ ! -x "$CANONICAL_VENV/bin/python" ]; then
+    echo "WARN: canonical venv python missing at $CANONICAL_VENV/bin/python (run: uv sync)" >&2
 fi
 
-# Also fail if the parent shell leaked a VIRTUAL_ENV that points at this
-# repo's .venv — defensive against the exact bug this guard exists for.
-if [ -n "${VIRTUAL_ENV:-}" ] && [ "$VIRTUAL_ENV" = "$STALE_VENV" ]; then
-    echo "FAIL: VIRTUAL_ENV=$VIRTUAL_ENV points at the stale local .venv." >&2
-    echo "  Run: unset VIRTUAL_ENV && source env.sh" >&2
-    exit 1
+if [ "$RC" -eq 0 ]; then
+    echo "OK: venv points at canonical $CANONICAL_VENV (UV_PROJECT_ENVIRONMENT=${UV_PROJECT_ENVIRONMENT:-<unset>}, VIRTUAL_ENV=${VIRTUAL_ENV:-<unset>})"
 fi
-
-echo "OK: no stale mol-metal/.venv (VIRTUAL_ENV=${VIRTUAL_ENV:-<unset>})"
-exit 0
+exit "$RC"

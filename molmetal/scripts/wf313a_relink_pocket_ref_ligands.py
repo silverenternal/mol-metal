@@ -29,8 +29,8 @@ Outputs:
    - Aggregated Phase 1 + Wf-313A relink status with source_file/line citations
 
 Verify:
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python molmetal/scripts/wf313a_relink_pocket_ref_ligands.py
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -m pytest molmetal/tests/test_wf313a_m15_redesign_phase1.py -v
+    /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/wf313a_relink_pocket_ref_ligands.py
+    /home/hugo/codes/mol-metal/.venv/bin/python -m pytest molmetal/tests/test_wf313a_m15_redesign_phase1.py -v
 """
 
 from __future__ import annotations

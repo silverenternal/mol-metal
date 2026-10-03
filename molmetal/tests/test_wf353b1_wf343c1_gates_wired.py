@@ -80,7 +80,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = REPO_ROOT / "molmetal" / "scripts"
 PREFLIGHT_SCRIPT = SCRIPTS_DIR / "pre_flight_check.py"
 WF343C1_SCRIPT = SCRIPTS_DIR / "wf343c1_pre_retrain_check.py"
-VENV_PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 # The 22 NEW Wf-353-B1 gate names registered in build_gates('all').
 # Per the Wf-343c1 surface: 10 code-level (§1.1.1-§1.1.10) +

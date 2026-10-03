@@ -66,7 +66,7 @@ The "22 evaluators" count below is the MEASURED-OK synthetic-input probe; SCAFFO
 
 Run:
     cd /home/hugo/codes/mol-metal
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u molmetal/scripts/eval_all_evaluators.py
+    /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/eval_all_evaluators.py
 """
 # (legacy script unchanged — 14/14 PASS at Wf-395-A1 fresh-run)
 ```
@@ -75,7 +75,7 @@ Run:
 
 ```bash
 # Audit all 22 evaluators (12 R17 + 9 SCAFFOLD + 1 MEASURED-ON-REAL)
-/home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+/home/hugo/codes/mol-metal/.venv/bin/python \
     /home/hugo/codes/mol-metal/molmetal/scripts/wf395a1_evaluator_audit.py
 
 # Output:
@@ -231,12 +231,12 @@ When flags default OFF, trainer loss is bit-exact equivalent to Wf-380-B1 ship s
 
 ```bash
 # m7 diversity wire (6 CLI flags: --top-p --top-k --temperature --mmd-weight --repulsion-weight --scaffold-conditioning)
-/home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+/home/hugo/codes/mol-metal/.venv/bin/python \
     molmetal/scripts/train_cfm_yuelbond_wasserstein.py \
     --top-p 0.7 --mmd-weight 0.1 --scaffold-conditioning
 
 # m4 SA penalty wire
-/home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+/home/hugo/codes/mol-metal/.venv/bin/python \
     molmetal/scripts/train_cfm_yuelbond_wasserstein.py \
     --sa-penalty-weight 0.05
 ```

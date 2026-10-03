@@ -45,7 +45,7 @@ Honest framing (party-twenty-spirit §3.5):
 Run::
 
     PYTHONPATH=/home/hugo/codes/mol-metal \\
-        /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+        /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf361b2_m6_kappa_neural_ode.py \\
         --output-dir molmetal/reports/wf361b2_m6_kappa_neural_ode
 """

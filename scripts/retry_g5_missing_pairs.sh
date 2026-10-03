@@ -25,7 +25,7 @@ cd /home/hugo/codes/mol-metal
 OUT_BASE="results/wf124_p3_50epoch_full_sweep_g5"
 LOG="${OUT_BASE}/master.log"
 
-PY="/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+PY="/home/hugo/codes/mol-metal/.venv/bin/python"
 SCRIPT="molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
 DATA_CSV="/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 

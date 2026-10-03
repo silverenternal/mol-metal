@@ -51,7 +51,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import wf343c2_per_wave_check as wf343c2  # noqa: E402
 
-VENV_PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 WF343C2_SCRIPT = SCRIPT_DIR / "wf343c2_per_wave_check.py"
 # The script's --out default lives under REPORTS_DIR, not SCRIPT_DIR.
 _WF343C2_REPORT_DIR = (

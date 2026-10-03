@@ -27,7 +27,11 @@ backend:
     (``molmetal/adapters/flow_matching_lipman/amp.py:67-70``).
 
 The bootstrap is idempotent and a no-op on CPU-only hosts / non-AMD
-GPUs.  The set of expected vars is sourced from
+GPUs: the HIP-specific vars are gated on a gfx1101 GPU being visible,
+and the summary line distinguishes the gfx1101 vars actually applied
+from the unconditional general hygiene vars — on a non-AMD host it
+never claims that a gfx1101 var was set.  The set of expected vars
+is sourced from
 :data:`molmetal.adapters.flow_matching_lipman.amp.ROCM_GFX1101_ENV_VARS`
 so there is exactly one canonical list.
 """
@@ -118,15 +122,17 @@ def _apply_rocm_gfx1101_env(
         is already set.  Useful for tests that need to re-trigger the
         log line.
     quiet
-        When ``True``, suppress the one-line summary print.
+        When ``True``, suppress the summary print(s).
 
     Returns
     -------
     dict
         Mapping ``{var_name: value}`` of vars that were applied by this
-        call.  If the host has no AMD GPU visible we return ``{}`` and
-        skip the assignment entirely (so CPU hosts are not polluted
-        with HIP-related env vars).
+        call (the unconditional general hygiene vars plus, when a
+        gfx1101 GPU is visible, the HIP vars).  If the host has no AMD
+        GPU visible the HIP assignment is skipped entirely (so non-AMD
+        hosts are not polluted with HIP-related env vars), and the
+        summary line says so instead of claiming gfx1101 vars.
 
     Notes
     -----
@@ -151,7 +157,10 @@ def _apply_rocm_gfx1101_env(
             os.environ[name] = value
             applied[name] = value
 
-    # 2) ROCm gfx1101 — only if we can see an AMD GPU.
+    # 2) ROCm gfx1101 — only if we can see an AMD GPU.  Tracked in a
+    #    separate map so the summary line can tell the two groups apart
+    #    and never reports a gfx1101 var that was in fact skipped.
+    gfx1101_applied: Dict[str, str] = {}
     if _is_gfx1101_gpu():
         # Use the inline canonical map as the source of truth.  We do a
         # lazy cross-check against the AMP module's published list (so
@@ -173,13 +182,26 @@ def _apply_rocm_gfx1101_env(
         for name, value in env_vars.items():
             if os.environ.get(name) != value:
                 os.environ[name] = value
-                applied[name] = value
+                gfx1101_applied[name] = value
+
+    applied.update(gfx1101_applied)
 
     _ROCM_GFX1101_ENV_APPLIED = True
 
     if applied and not quiet:
-        kv = ", ".join(f"{k}={v}" for k, v in applied.items())
-        print(f"[molmetal] applied gfx1101 env vars: {kv}")
+        general = {k: v for k, v in applied.items() if k not in gfx1101_applied}
+        if gfx1101_applied:
+            kv = ", ".join(f"{k}={v}" for k, v in gfx1101_applied.items())
+            print(f"[molmetal] applied gfx1101 env vars: {kv}")
+        if general:
+            kv = ", ".join(f"{k}={v}" for k, v in general.items())
+            if gfx1101_applied:
+                print(f"[molmetal] applied general env vars: {kv}")
+            else:
+                print(
+                    "[molmetal] applied general env vars: "
+                    f"{kv} (no gfx1101 GPU visible; gfx1101 env vars skipped)"
+                )
 
     return applied
 

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # setup_molmetal_env.sh — single-command env activator for Mol-Metal.
 #
-# Wf-23 Phase 3 (2026-09-26): drop-in replacement for the manual
-# `source env.sh && uv run …` sequence so R18 retrain jobs can run without
-# first activating the parent shell. Mirrors env.sh verbatim for the env
-# vars that are load-bearing for the R18 modules, then exec's the user
-# command under the shared .venv-vlm Python so torch/CUDA imports work.
+# Wf-23 Phase 3 (2026-09-26; venv repointed 2026-10-03 per AGENTS.md §5.9):
+# drop-in replacement for the manual `source env.sh && uv run …` sequence
+# so R18 retrain jobs can run without first activating the parent shell.
+# Mirrors env.sh verbatim for the env vars that are load-bearing for the
+# R18 modules, then exec's the user command under the canonical repo-local
+# .venv Python so torch/CUDA imports work.
 #
 # Usage:
 #   bash molmetal/scripts/setup_molmetal_env.sh python -c "import molmetal"
@@ -13,30 +14,25 @@
 #   bash molmetal/scripts/setup_molmetal_env.sh ./molmetal/scripts/train_ru_multitask.py --help
 #
 # What it does (idempotent, safe to chain with env.sh):
-#   1. Resolves the repo root + symlinked venv (molmetal/.venvs/mol-metal-venv).
+#   1. Resolves the repo root + the canonical venv (.venv).
 #   2. Adds the repo root to PYTHONPATH so `import molmetal` resolves.
 #   3. Mirrors env.sh: PYTORCH_CUDA_ALLOC_CONF, MOLMETAL_CFM_AMP[_DTYPE],
 #      MOLMETAL_EGNN_CHECKPOINT, TOKENIZERS_PARALLELISM, TRANSFORMERS_VERBOSITY,
 #      MOLMETAL_DATA_DIR, MOLMETAL_TMQM_DIR. CUDA_VISIBLE_DEVICES defaults to 0;
 #      export CUDA_VISIBLE_DEVICES=1 before invocation to use the RTX 5090.
-#   4. Execs the shared venv's Python (or whatever interpreter is passed
-#      as $1) so torch/rdkit/openbabel imports resolve from
-#      /home/hugo/codes/CadButEaas/.venv-vlm.
+#   4. Execs the canonical venv's Python (or whatever interpreter is passed
+#      as $1) so torch/rdkit imports resolve from
+#      /home/hugo/codes/mol-metal/.venv.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-VENV_SYMLINK="$REPO_ROOT/molmetal/.venvs/mol-metal-venv"
-SHARED_VENV="/home/hugo/codes/CadButEaas/.venv-vlm"
-
-if [ ! -e "$VENV_SYMLINK" ]; then
-    echo "ERROR: $VENV_SYMLINK missing." >&2
-    echo "  Run: ln -snf $SHARED_VENV $VENV_SYMLINK" >&2
-    exit 2
-fi
+# Canonical venv per AGENTS.md §5.9 (single-venv rule); no legacy symlink.
+SHARED_VENV="$REPO_ROOT/.venv"
 if [ ! -x "$SHARED_VENV/bin/python" ]; then
-    echo "ERROR: $SHARED_VENV/bin/python not executable." >&2
+    echo "ERROR: canonical venv python missing at $SHARED_VENV/bin/python." >&2
+    echo "  Run: uv sync" >&2
     exit 2
 fi
 

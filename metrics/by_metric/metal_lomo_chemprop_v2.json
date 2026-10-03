@@ -34,7 +34,7 @@
   },
   "split_protocol": "LOMO (leave-one-metal-out) with per-metal BinaryClassificationFFN head",
   "n_total_target": 25,
-  "n_completed": 1,
+  "n_completed": 19,
   "n_remaining": 6,
   "completion_fraction": 0.76,
   "per_fold_auc_mean": {
@@ -201,5 +201,15 @@
     "Re": null
   },
   "mean_auc": 0.44580111975564496,
-  "mean_auc_3seed": 0.4444896546622958
+  "mean_auc_3seed": 0.4444896546622958,
+  "n_completed_definition": "completed (metal, seed) runs; equals n_runs_completed and the count of non-null entries in per_fold_seed_auc (Ru 5 + Ir 5 + Os 4 + Rh 5 + Re 0 = 19).",
+  "corrections": [
+    {
+      "field": "n_completed",
+      "old_value": 1,
+      "new_value": 19,
+      "reason": "stale leftover from the 1-run snapshot (per_metal_seed_auc and per_run_auc_partial still hold only Rh seed 0); the file's own per_fold_seed_auc holds 19 MEASURED (metal,seed) AUC values and honest_framing_note already states 19/25. n_remaining=6 (25-19) and completion_fraction=0.76 are consistent with 19, not 1. Cited doc TODO/completed/321f_chemprop_v2_status_reconciliation.md line 36 already reports n_completed: 19/25.",
+      "date": "2026-10-03"
+    }
+  ]
 }

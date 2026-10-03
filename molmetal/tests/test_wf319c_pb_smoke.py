@@ -7,9 +7,9 @@ Wf-319C — PoseBusters packages verify install + 1h36 PB check (ACTUAL EXECUTIO
 This module locks in the Wf-319C / Wf-315D PB smoke contract:
 
 1. **Package availability (3 envs)** — probe ``import rdkit, posebusters``
-   on the primary venv-vlm env, the alt mol-metal .venv, and the pocket
+   on the primary the project .venv, the alt mol-metal .venv, and the pocket
    posebusters311 fallback env.  At least one env must have both
-   packages; the canonical env (venv-vlm) MUST have both for the
+   packages; the canonical env (.venv) MUST have both for the
    pre-flight gate to PASS.
 
 2. **1h36 PB pass rate computation** — verify the smoke output
@@ -53,7 +53,7 @@ if str(PROJECT_ROOT) not in sys.path:
 # Canonical on-disk artefact paths (Wf-315D ship surface + Wf-319C gate)
 # ---------------------------------------------------------------------------
 
-CANONICAL_VENV_PYTHON = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+CANONICAL_VENV_PYTHON = "/home/hugo/codes/mol-metal/.venv/bin/python"
 ALT_MOLMETAL_VENV_PYTHON = "/home/hugo/codes/mol-metal/.venv/bin/python"
 POCKET_PB311_VENV_PYTHON = (
     "/home/hugo/codes/pocket/.eval_envs/posebusters311/bin/python"
@@ -128,7 +128,7 @@ def _probe_packages(python_path: str, timeout: float = 10.0) -> Tuple[bool, Opti
 
 
 def test_canonical_venv_vlm_has_rdkit_and_posebusters() -> None:
-    """Canonical venv-vlm at ``/home/hugo/codes/CadButEaas/.venv-vlm/`` MUST
+    """Canonical .venv at ``/home/hugo/codes/mol-metal/.venv/`` MUST
     carry both ``rdkit`` and ``posebusters``.  This is the env the Wf-315D
     pre-flight probe targets; if it loses either package, the
     ``p3_pb_packages_available_or_documented`` and
@@ -148,7 +148,7 @@ def test_canonical_venv_vlm_has_rdkit_and_posebusters() -> None:
 def test_alt_molmetal_venv_has_rdkit_only() -> None:
     """Alt mol-metal ``.venv`` MUST have ``rdkit`` but may NOT have
     ``posebusters``.  This pins the partial-install state observed on
-    2026-09-29: the canonical venv-vlm is the working env, the alt
+    2026-09-29: the canonical .venv is the working env, the alt
     .venv is rdkit-only (no PB).  If the alt .venv silently gains PB
     without our knowledge, the venv selection in the pre-flight probe
     becomes ambiguous and we should update wf319c_pb_venv_python.
@@ -185,7 +185,7 @@ def test_pocket_pb311_env_has_both_packages() -> None:
     """Pocket fallback env at
     ``/home/hugo/codes/pocket/.eval_envs/posebusters311/`` MUST carry
     both ``rdkit`` and ``posebusters`` (it is the documented fallback
-    if the canonical venv-vlm ever breaks).  If the pocket env also
+    if the canonical .venv ever breaks).  If the pocket env also
     loses PB, the Wf-319C ship surface has zero working envs — this is
     a fail-closed signal.
     """
@@ -288,7 +288,7 @@ def test_gate_wf319c_pb_packages_status_present_exists_and_passes() -> None:
     in :mod:`molmetal.scripts.pre_flight_check` and MUST return
     ``GateResult(status='PASS')`` when invoked against the canonical
     on-disk artefacts (the Wf-315D metric + smoke output + the
-    venv-vlm env).
+    the project .venv).
 
     This is the regression net that prevents silent removal of the
     Wf-319C gate or the Wf-315D artefacts it depends on.

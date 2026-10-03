@@ -26,7 +26,7 @@ import pytest
 
 REPO_ROOT = Path("/home/hugo/codes/mol-metal")
 WRAPPER = REPO_ROOT / "scripts" / "launch_wf310e_r20_p5_tmqm_plat_joint_retrain.sh"
-PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 
 def _run_wrapper(env_overrides: dict[str, str], *args: str, timeout: int = 30) -> subprocess.CompletedProcess:

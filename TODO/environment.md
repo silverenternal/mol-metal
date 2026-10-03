@@ -1,253 +1,161 @@
-# Environment
+# Environment — canonical measured facts
 
-## 1. Overview
+**Last measured:** 2026-10-03. Every fact in §1–§7 below was measured on this
+host in the 2026-10-03 session, with `/home/hugo/codes/mol-metal/.venv/bin/python`
+or the system tool named inline. Facts that stopped being true are preserved and
+labelled STALE in **§8** rather than deleted (§5.5 filesystem-truth + the
+project's history-preserving convention).
 
-This project is a uv-managed Python 3.12 stack running ROCm 7.2 + `triton-rocm 3.8.0` against a single AMD RX 7800 XT (gfx1101, RDNA3). The kernel-lib, training driver, and baselines all live in one virtualenv created by `uv sync` from the committed `uv.lock`. There is no `pip install`, no Poetry, no conda — `uv` is the only package manager.
+**Canonical interpreter** (AGENTS.md §5.9 single-venv rule):
+`/home/hugo/codes/mol-metal/.venv/bin/python`. Do not use bare `python3`,
+`CadButEaas` venvs, or `kanzi_venv` venvs in launchers or probes.
 
-## 2. Environment manager: `uv`
+---
 
-`uv` (https://github.com/astral-sh/uv) replaces `pip`, `poetry`, and `pyenv` in this repo. It is used because:
+## 1. Host
 
-- **Speed.** A cold `uv sync` against the locked tree is ~10x faster than `pip install` on this lockfile.
-- **Lockfile as source of truth.** `uv.lock` pins every wheel's hash + URL; `uv sync --frozen` fails fast if the lock is stale. This is how we guarantee the same `torch-2.14.0+rocm7.2` wheel on every machine.
-- **Workspaces.** A future `libs/kernels` + `apps/train` + `apps/eval` split can be expressed in `[tool.uv.workspace]` with one shared lock.
-- **Non-PyPI wheels via index sources.** ROCm PyTorch and `triton-rocm` are not on PyPI. We register a custom simple-index in `pyproject.toml` and route the two packages through it (Section 5).
+Measured 2026-10-03 with `uname -srm`, `lscpu`, `free -h`, `df -h`, `du -sh`:
 
-We never run `pip install`. We never edit `[project.dependencies]` by hand — we always go through `uv add`/`uv remove` so the lock stays atomic.
+| Item | Measured value |
+|---|---|
+| Kernel | Linux 7.2.6-hardened1-1-hardened x86_64 |
+| CPU | Intel Core i9-14900K, 32 CPUs |
+| RAM | 94 GiB total; 63 GiB available at probe time |
+| Root disk | /dev/nvme0n1p2 — 3.7 TB total, 1.6 TB free (59% used), mounted at `/home` |
+| Repo size | 202 GB (`/home/hugo/codes/mol-metal`) |
 
-## 3. Python toolchain
+## 2. GPUs (canonical)
 
-- `.python-version` pins the interpreter to `3.12`. `uv` reads it before `pyproject.toml`.
-- `pyproject.toml` declares `requires-python = "==3.12.*"` (exact major.minor, patch floats). This pins us to CPython 3.12.x and rejects 3.13 builds (ROCm wheels are cp312 only).
-- `[tool.uv] managed = true` tells `uv` to own the virtualenv at `.venv/`.
-- Local packages declared in `[tool.setuptools]`: `molmetal`, `molmetal.molmetal_lam`, `molmetal.data`, `molmetal.baselines`, `molmetal_lam`.
+Measured 2026-10-03 with
+`nvidia-smi --query-gpu=index,name,memory.total --format=csv`:
 
-```bash
-# Confirm pin
-cat .python-version           # 3.12
-grep requires-python pyproject.toml   # requires-python = "==3.12.*"
-```
+| Index | Name | VRAM |
+|---|---|---|
+| GPU 0 | NVIDIA RTX PRO 6000 Blackwell Workstation Edition | 97887 MiB |
+| GPU 1 | NVIDIA GeForce RTX 5090 | 32607 MiB |
 
-## 4. ROCm stack
+- Driver 615.71.09; CUDA UMD version 13.4 (nvidia-smi header).
+- torch probe: `torch.cuda.is_available()` → `True`; `device_count()` → 2;
+  `cuda:0` capability `(12, 0)` (sm_120, Blackwell); arch list includes `sm_120`;
+  a real 256×256 matmul on `cuda:0` succeeds.
+- **Device selection is CUDA-style now.** Measured: `CUDA_VISIBLE_DEVICES=1`
+  → 1 device (RTX 5090); `HIP_VISIBLE_DEVICES=1` has **no effect** (still 2
+  devices). This is the reverse of the historical ROCm guidance (§8).
+- VRAM budget check with `nvidia-smi` before any launch, per AGENTS.md §5.1
+  (97887 MiB + 32607 MiB cards; OOM = abort). Launch wrappers select the device
+  via `CUDA_VISIBLE_DEVICES` plus `--device` / `--cuda-visible-devices` flags
+  (e.g. `scripts/launch_wf131_p3_pt_4cells.sh:446`,
+  `scripts/launch_wf299_cfm_main.sh:513`).
 
-Two ROCm-specific packages are pinned:
+## 3. Python / torch stack (canonical)
 
-- `torch>=2.14,<2.15` — the ROCm 7.2 wheel from PyTorch's index (`torch-2.14.0+rocm7.2`). PyPI's CUDA build is **not** used.
-- `triton-rocm==3.8.0` — exact pin. ROCm ships its own `triton` fork under the `triton-rocm` name; importing the PyPI `triton` package alongside it will silently break kernel launches. See Section 9.
+Measured 2026-10-03 with `.venv/bin/python -c ...` and `grep pyproject.toml`:
 
-GPU target: **AMD Radeon RX 7800 XT, gfx1101 (RDNA3)**. Architecture-specific notes:
+- Python 3.12.13 — `.venv/bin/python` is a symlink to a uv-managed CPython
+  (`/home/hugo/.local/share/uv/python/cpython-3.12-linux-x86_64-gnu/bin/python3.12`).
+  `.python-version` = `3.12`; `pyproject.toml` `requires-python = "==3.12.*"`.
+- `uv` 0.11.8 at `/home/hugo/.local/bin/uv`; `uv.lock` present (344,202 bytes,
+  regenerated 2026-10-03) — uv is the package manager of record.
+- `torch 2.14.1+cu130`; `torch.version.hip` is `None`; CUDA available.
+- `triton 3.8.0` — the PyPI `triton==3.8.0` pinned in `pyproject.toml`
+  (NOT `triton-rocm`, which is historical — §8).
+- numpy 2.5.3 · scipy 1.18.1 · rdkit 2026.03.6.
+- `pyproject.toml` index: `pytorch-cu130` →
+  `https://download.pytorch.org/whl/cu130`; pins `torch>=2.14,<2.15` +
+  `triton==3.8.0`.
 
-- **Wave size 64.** RDNA3 hardware lanes are 32 threads, but Triton-on-ROCm 3.8.0 exposes a wave64 programming model. Use `num_warps ∈ {4, 8, 16}` as the tuning knob (one wave64 = 4 warps).
-- **`waves_per_eu` is ignored on gfx1101.** That knob is CDNA-only (MI300/MI355). On RDNA, only `num_warps` + `num_stages` matter.
-- **No MFMA at FP16 peak.** RDNA3 lacks the FP16 tensor-core throughput CDNA has, so `torch.compile(mode="max-autotune")` rarely beats hand-written Triton for hot kernels (EGNN edge aggregation, radius-neighbor gather, scatter-add, FP16→FP32 accumulators). Reserve `torch.compile` for the outer step + optimizer.
-- **Peak FLOPs** (for reporting `achieved / peak`): ~35 TFLOPS FP32, ~70 TFLOPS FP16.
+## 4. Data root (canonical)
 
-## 5. Custom index for ROCm wheels
+Measured 2026-10-03 (`ls`, `wc -l`, `du -sh`, and a `_resolve_csv()` probe):
 
-PyTorch's ROCm wheels live at `https://download.pytorch.org/whl/rocm7.2`. We register it as an **explicit** index so it is consulted only for the packages we route to it:
+- **Canonical root:** `/home/hugo/codes/mol-metal/.data/molmetal`
+  (i.e. `<repo>/.data/molmetal`).
+- **Override:** `MOLMETAL_DATA_DIR` is honoured FIRST. Measured: with a temp
+  dir holding a `MetalCytoToxDB.csv`, `MOLMETAL_DATA_DIR=/tmp/mm_env_probe`
+  made `molmetal.data.metal_cytotox._resolve_csv()` return
+  `/tmp/mm_env_probe/MetalCytoToxDB.csv`; with the var unset it returns
+  `/home/hugo/codes/mol-metal/.data/molmetal/MetalCytoToxDB.csv`.
+- `MetalCytoToxDB.csv`: 4,839,261 bytes, 26,801 data rows (`wc -l` = 26,802
+  incl. header).
+- Top-level contents (`du -sh`): chembl_29 21 GB · bindingdb_full 11 GB ·
+  drugood 911 MB · NCI60_GI50 402 MB (contains `GI50.csv`) · tmQM 324 MB ·
+  crossdocked 9.7 MB (2,466 entries incl. `split_by_name.pt`) · moleculenet
+  6.0 MB · tdc_cache 5.9 MB · `metalcytotox_5metal_multitask_v4.csv` 6.6 MB ·
+  `platinai_4cell*.csv` + `platinai_4cell_mbfinder.csv` +
+  `platinai_selenium_real_labels.csv`.
+- `molmetal/data/metal_cytotox.py::_resolve_csv` still lists a legacy fallback
+  candidate `/mnt/storage/data/molmetal/MetalCytoToxDB.csv`, but
+  **`/mnt/storage` does not exist on this host** (`ls /mnt/storage` → No such
+  file or directory), so that candidate can never resolve.
 
-```toml
-[[tool.uv.index]]
-name = "pytorch-rocm"
-url  = "https://download.pytorch.org/whl/rocm7.2"
-explicit = true
+## 5. QVina
 
-[tool.uv.sources]
-torch       = [{ index = "pytorch-rocm" }]
-triton-rocm = [{ index = "pytorch-rocm" }]
-```
+- Canonical binary: `molmetal/bin/vina` (567-byte wrapper script). Measured
+  2026-10-03: `molmetal/bin/vina --version` → `AutoDock Vina f458505-mod`.
+- `MOLMETAL_QVINA_BIN` override is supported by
+  `molmetal/molmetal_lam/sbdd_env/vina_adapter.py` (source-inspected
+  2026-10-03).
 
-- `explicit = true` means `uv` does **not** fall back to this index when resolving unmentioned packages. `numpy`, `rdkit`, `scipy`, etc. still come from PyPI.
-- Both `torch` and `triton-rocm` resolve from the same simple index — no need for a second `[[tool.uv.index]]` entry.
-- Resolving `torch` via this index is what pulls in the `+rocm7.2` build (the wheel filename contains `+rocm7.2`). On PyPI proper the same version string resolves to a CUDA wheel that will not load on this box.
+## 6. Isolated toolchains (current state)
 
-## 6. Setup commands
+- **AiZynthFinder:** runner `environments/aizynth/run.sh` exists and executes
+  `uv run --no-project --isolated --offline --python 3.12 --with-requirements
+  requirements.lock.txt` (source-inspected 2026-10-03). Its configs
+  (`molmetal/configs/aizynth_legacy_v3_{cpu,rocm}.yml`) still point at
+  `/mnt/storage/data/molmetal/aizynth_public/...`, a path that does not exist.
+  The only AiZynth asset located on this host today is
+  `/home/hugo/codes/pocket/.local/share/aizynthfinder/zinc_stock.hdf5`;
+  `uspto_legacy_converted.onnx` was not found under `/home/hugo/codes`
+  (`find ... -maxdepth 6`). Treat the legacy-v3 asset set as NOT currently
+  staged.
+- **REINVENT4:** no install found under `/home/hugo`
+  (`find -maxdepth 4 -iname "*reinvent*"` → empty, 2026-10-03). The historical
+  `/mnt/storage/envs/reinvent4` path is dead (§8).
 
-```bash
-# One-time: install uv (Linux)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Per machine: create .venv and install everything in uv.lock
-uv sync
-
-# Run any command inside the managed env (no manual activation)
-uv run python scripts/_a1_sanity.py
-uv run pytest -q
-uv run python main.py --config configs/foo.yaml
-
-# Activate the venv if you want a shell (optional)
-source .venv/bin/activate
-```
-
-`uv run` is the canonical entry point — it boots the interpreter from `.venv` resolved from `.python-version`, so we never need to `source .venv/bin/activate`.
-
-## 7. Adding a dependency
-
-Always go through `uv add`. Do not hand-edit `[project].dependencies` (breaks lock atomicity, will be overwritten).
-
-```bash
-# Default: pull from PyPI (numpy, rdkit, …)
-uv add scikit-learn
-
-# Bump a version range
-uv add "rdkit>=2024.3.2"
-
-# Add a dev/test tool (PEP 735 [dependency-groups], not [project.optional-dependencies])
-uv add --dev pytest pytest-cov
-
-# Remove
-uv remove pyyaml
-```
-
-What happens internally: `uv add foo` resolves `foo` (PyPI by default), edits `pyproject.toml`, regenerates `uv.lock`, and runs `uv sync` to install. Commit both files.
-
-For ROCm-routed packages the command is the same — `uv` already knows `torch` and `triton-rocm` are pinned to the `pytorch-rocm` index from `pyproject.toml`, so you do **not** pass `--index` on the CLI. If you ever need an explicit one-off (e.g. installing into a scratch venv):
-
-```bash
-uv pip install --index https://download.pytorch.org/whl/rocm7.2 torch==2.14.0+rocm7.2 triton-rocm==3.8.0
-```
-
-## 8. GPU verification
-
-Before attempting dataset downloads, inspect `/mnt/storage/data/molmetal`.
-This machine already has `CrossDocked2020_cascadediff.zip`, the extracted
-`crossdocked_pocket10.tar.gz`, and `split_by_name.pt`. The maintained loader
-in `molmetal/data/crossdocked.py` reads this location by default and reports
-100 test pairs plus 100,000 train pairs.
-
-QVina is available as the statically linked vendored binary at
-`molmetal/references/SoftMol/gated_mcts/utils/docking/qvina02`; the adapter
-discovers it automatically or accepts `MOLMETAL_QVINA_BIN`. REINVENT4 is kept
-isolated at `/mnt/storage/envs/reinvent4` because it pins CUDA Torch 2.12 and
-cannot share the ROCm environment; invoke its CLI with
-`/mnt/storage/envs/reinvent4/bin/reinvent --version`.
-
-This host exposes two AMD devices (RX 7800 XT `gfx1101` and integrated
-Radeon 780M `gfx1103`). For reproducible benchmarks, select the discrete
-card explicitly with `HIP_VISIBLE_DEVICES=0`; ROCm uses this variable rather
-than CUDA's equivalent. `torch.cuda.device_count()` should then report one
-device. The current stack reports PyTorch `2.14.0+rocm7.2`, HIP `7.2.53211`,
-and `triton` `3.8.0`.
-
-Run after `uv sync` to confirm the ROCm stack is wired correctly:
+## 7. Re-measure commands (canonical probes)
 
 ```bash
-# 1. torch can see the GPU
-uv run python -c "import torch; print(torch.cuda.is_available(), torch.version.hip, torch.cuda.get_device_name(0))"
-# Expect: True 7.2.4 ... Radeon RX 7800 XT ...
-
-# 2. triton-rocm is the active Triton (version pinned to 3.8.0)
-uv run python -c "import triton; print(triton.__version__)"
-# Expect: 3.8.0
-
-# 3. The driver sees the card
-rocm-smi
-# Expect: one GPU, gfx1101, VBIOS version
-
-# 4. Optional: runtime capabilities
-clinfo | grep -E 'Device Name|Version'
+nvidia-smi --query-gpu=index,name,memory.total --format=csv
+.venv/bin/python -c "import torch; print(torch.__version__, torch.version.hip, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+.venv/bin/python -c "import triton, numpy, scipy, rdkit; print(triton.__version__, numpy.__version__, scipy.__version__, rdkit.__version__)"
+.venv/bin/python -c "from molmetal.data.metal_cytotox import _resolve_csv; print(_resolve_csv())"
+wc -l .data/molmetal/MetalCytoToxDB.csv
+molmetal/bin/vina --version
 ```
 
-A quick kernel smoke test (allocates, launches, copies back):
+## 8. Historical / STALE (preserved; do NOT cite as current)
 
-```bash
-uv run python -c "import torch, triton, triton.language as tl
-@triton.jit
-def add1(x): pass
-x = torch.zeros(1, device='cuda')
-print('alloc ok', x.device)"
-```
+`TODO/environment.md` was authored for the 2026-09-18 R16 close-out (single
+git commit `4527e4f34e`). The ROCm→CUDA re-pin on this host landed 2026-10-03
+(commit `09c2202a1a`, "Wf-A5 … rocm cleanup"). Everything below stopped being
+true by 2026-10-03 and is kept only as history:
 
-If `torch.cuda.is_available()` returns `False`, `torch.version.hip` is `None`, or `clinfo` is missing — do not proceed; reinstall ROCm userland first.
-
-## 9. Common issues
-
-- **`triton` vs `triton-rocm` naming conflict.** ROCm ships its fork as `triton-rocm`. Never `uv add triton` — that installs the PyPI package, which collides at import time. The ROCm torch wheel already declares `Requires-Dist: triton-rocm~=3.8.0`, so it is installed transitively. The pin in `pyproject.toml` (`triton-rocm==3.8.0`) makes the version explicit.
-
-- **`ROCTRACER_HOME` / `HSA_*` env vars unset.** Some ROCm tooling expects `ROCTRACER_HOME`, `HSA_RUNTIME_PATH`, or `HIP_PATH`. `uv run` does not source `/etc/profile.d/rocm.sh`. Either `source /etc/profile.d/rocm.sh` before `uv run`, or install ROCm to `/opt/rocm` and symlink. Symptom: `libhsa-runtime64.so` not found.
-
-- **`HIP_VISIBLE_DEVICES` ignored.** On multi-GPU boxes, restrict with `HIP_VISIBLE_DEVICES=0 uv run python …`. ROCm does **not** honor `CUDA_VISIBLE_DEVICES`.
-
-- **MIOpen cache permissions / corruption.** MIOpen writes its compiled-kernel cache under `~/.cache/miopen` (or `$MIOPEN_CACHE_DIR`). If kernels hang or behave nondeterministically after a driver upgrade, nuke the cache: `rm -rf ~/.cache/miopen`. Set `MIOPEN_DISABLE_CACHE=1` to fall back to JIT (slower startup).
-
-- **`triton.autotune` thrashes.** Triton 3.8 caches per-kernel autotune results under `$TRITON_CACHE_DIR` (default `~/.triton/cache`). Set `TRITON_CACHE_DIR=/path/with/space` to a project-local path and commit a `.gitignore` line — the cache is machine-specific.
-
-- **Lock drift.** If a teammate's `uv.lock` does not match yours, run `uv lock --check` in CI to fail fast. Resolve by `uv lock` then commit.
-
-## 10. CI / reproducibility
-
-Optional research data and isolated tools discovered on this workstation:
-
-- CrossDocked2020 is staged under `/mnt/storage/data/molmetal/crossdocked`
-  (8.3 GiB, including `split_by_name.pt` and pocket10 archive). Running
-  `uv run python molmetal/scripts/stage_crossdocked100.py` generates the
-  repository manifest with 100 test pockets.
-- REINVENT4 4.8.24 is installed at `/mnt/storage/envs/reinvent4/bin/reinvent`
-  in a separate CUDA/PyTorch environment. Its standard CLI is TOML/RL based,
-  not the JSON-lines protocol used by the MolMetal adapter. The adapter now
-  rejects this mismatch explicitly (`cli_protocol_mismatch`); use the
-  isolated `reinvent4_jsonl_worker.py` bridge for protocol smoke tests and
-  reserve the standard CLI for a dedicated native REINVENT4 workflow.
-
-Pytest is configured in `pyproject.toml` with `testpaths = ["tests", "molmetal"]`
-and excludes `molmetal/references/`. The latter contains vendored projects
-with independent pytest plugins and optional dependencies; recursively
-collecting it caused collection failures (including duplicate `--device`
-options). The supported project-suite command is therefore:
-
-```bash
-HIP_VISIBLE_DEVICES=0 uv run pytest -q
-```
-
-- **`uv.lock` is committed** at repo root. It pins wheel hashes and URLs for every dep.
-- **`.python-version` is committed** at repo root (`3.12`).
-- **`.venv/` is gitignored**. `uv sync` re-creates it deterministically from the lock.
-- **CI command:** `uv sync --frozen && uv run pytest -q`. `--frozen` refuses to update the lock — if the lock is stale relative to `pyproject.toml`, CI fails with a clear diff instead of silently drifting.
-- **Pre-commit hook:** `uv lock --check` on every commit, catches accidental manual edits to `pyproject.toml`.
-- **ROCm wheel reproducibility:** the ROCm 7.2 simple index keeps historical wheels available; the version string `torch-2.14.0+rocm7.2` resolves deterministically as long as the index is reachable. If the upstream index is ever retired, mirror it under `vendor/` and point `[[tool.uv.index]].url` at the mirror.
-
-
-## 11. Genuine AiZynth CPU / ROCm policy (verified 2026-09-13)
-
-AiZynthFinder 4.4.1 runs in the separately locked `environments/aizynth`
-Python 3.12 runtime because it needs RDKit 2023.9.6 / NumPy 1.26.4. Use
-`bash environments/aizynth/run.sh python ...` for its exact cached environment;
-the root ROCm `.venv` is not added to the chemistry process import path.
-
-The working assets are explicitly **official legacy v3 USPTO** weights and
-46,695 matching templates, plus the official 17,422,831-entry ZINC stock.
-They are staged under `/mnt/storage/data/molmetal/aizynth_public`, with
-source snapshots, SHA256, range-download verification and original-model
-S3 MD5 evidence. The current upstream Zenodo policy remains unreachable;
-do not mix its model or template ordering with the legacy pair.
-
-- `molmetal/configs/aizynth_legacy_v3_cpu.yml` uses the preserved pretrained
-  weights converted to ONNX. Independent NumPy evaluation of the original
-  Keras inference equations verifies 28 inputs, max probability error 3.28e-6.
-- `molmetal/configs/aizynth_legacy_v3_rocm.yml` replaces only the Dense policy
-  predictor with a persistent worker in the root ROCm environment. Actual
-  parameters and outputs are on RX 7800 XT `gfx1101`, `cuda:0`. Its 28-input
-  ONNX comparison has max probability error 2.32e-6 and 100% top-1/10/50
-  set agreement. RDKit, templates, stock, MCTS and route analysis remain CPU.
-- Genuine CPU and GPU learned searches solve the three declared smoke targets
-  with the same final stock routes. Three actual Lambda CuAAC products also
-  obtain routes, depths 6/5/5. Small numerical changes can alter intermediate
-  MCTS trajectories; this is not a throughput or synthesis-rate benchmark.
-
-Root callers use `build_synthesis_gate("aizynthfinder_isolated", config_path)`
-or the Lambda runner's corresponding `synthesis_oracle` setting. Candidate
-checks are batched; missing assets and SMARTS fallback never count as learned
-success. A total process deadline reclaims launcher and GPU descendants.
-Generation denominators include synthesis-rejected products, with retained,
-selected and physically evaluated counts reported separately.
-
-```bash
-HIP_VISIBLE_DEVICES=0 bash environments/aizynth/run.sh python molmetal/scripts/aizynth_learned_smoke.py \
-  --config molmetal/configs/aizynth_legacy_v3_rocm.yml \
-  --protocol-label 'official legacy v3; ROCm predictor; CPU chemistry and MCTS' \
-  --output /tmp/aizynth_rocm_smoke.json
-HIP_VISIBLE_DEVICES=0 uv run --no-sync python molmetal/scripts/verify_aizynth_torch_policy.py
-```
-
-See [measured protocols and provenance](../molmetal/reports/aizynth_real_backend_20260913/report.md)
-and [isolated runtime instructions](../environments/aizynth/README.md).
+- ~~GPU target: AMD RX 7800 XT (gfx1101, RDNA3) + integrated Radeon 780M
+  (gfx1103).~~ Replaced by the two NVIDIA GPUs in §2. The wave64 /
+  `waves_per_eu` CDNA notes, MIOpen cache guidance, and
+  `ROCTRACER_HOME` / `HSA_*` / `HIP_PATH` troubleshooting do not apply under
+  CUDA.
+- ~~`torch 2.14.0+rocm7.2`, HIP `7.2.53211`, `triton-rocm 3.8.0`, index
+  `https://download.pytorch.org/whl/rocm7.2`.~~ Replaced by torch
+  `2.14.1+cu130` + `triton==3.8.0` from the `pytorch-cu130` index (§3).
+- ~~"ROCm does not honor `CUDA_VISIBLE_DEVICES`; restrict with
+  `HIP_VISIBLE_DEVICES`."~~ Measured reversal: `CUDA_VISIBLE_DEVICES` works,
+  `HIP_VISIBLE_DEVICES` is ignored (§2).
+- ~~Data root `/mnt/storage/data/molmetal`; crossdocked staged there at
+  8.3 GiB; REINVENT4 at `/mnt/storage/envs/reinvent4`; AiZynth assets under
+  `/mnt/storage/data/molmetal/aizynth_public`.~~ `/mnt/storage` does not exist
+  (2026-10-03). Crossdocked now measures 9.7 MB at
+  `.data/molmetal/crossdocked`. The old "100 test pairs + 100,000 train pairs"
+  loader claim was NOT re-verified in this update.
+- ~~QVina at `molmetal/references/SoftMol/gated_mcts/utils/docking/qvina02`.~~
+  Absent; canonical binary is `molmetal/bin/vina` (§5).
+- ~~Import-time banner `[molmetal] applied gfx1101 env vars: ...` firing on
+  this NVIDIA host.~~ Fixed 2026-10-03 in `molmetal/__init__.py`: the summary
+  now separates genuinely-applied gfx1101 vars from the unconditional general
+  hygiene vars, and prints "no gfx1101 GPU visible; gfx1101 env vars skipped"
+  when the AMD path is not hit.
+- AiZynth legacy-v3 provenance record (2026-09-13: "28 inputs, max probability
+  error 3.28e-6", official legacy v3 USPTO weights + 17,422,831-entry ZINC
+  stock): historical measurements, preserved in
+  `molmetal/reports/aizynth_real_backend_20260913/report.md` and
+  `environments/aizynth/README.md`; do not reuse as current until re-measured.

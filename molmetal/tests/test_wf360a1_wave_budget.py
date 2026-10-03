@@ -30,7 +30,7 @@ This test file covers:
      DEFERRED_TEMP (resumable-with-USER_OK) budget.
 
 Backward-compat (separate verification command per Wf-360-A1 task §8):
-``PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -m pytest molmetal/tests/test_wave_budget*.py -v 2>&1 | tail -10``
+``PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/mol-metal/.venv/bin/python -m pytest molmetal/tests/test_wave_budget*.py -v 2>&1 | tail -10``
 should still show 35/35 PASS for ``test_wave_budget_tracker.py`` +
 3/3 PASS for ``test_wf360a1_wave_budget.py``.
 
@@ -55,7 +55,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import wave_budget_tracker  # noqa: E402
 
-VENV_PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 
 # ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 =====================================================================
 Per Wf-329-W7 + Wf-323G: the canonical Vina CLI binary is already on
 disk at ``/home/hugo/.local/micromamba/envs/molmetal_vina/bin/vina``
-and the CadButEaas ``.venv-vlm`` interpreter carries the in-process
+and the CadButEaas ``.venv`` interpreter carries the in-process
 Vina Python binding.  The meeko Python wrapper is the canonical
 **alternative** ligand-preparation path when Vina CLI is unreachable
 (NOT a fallback docking engine — meeko only generates the PDBQT).

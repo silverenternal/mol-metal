@@ -17,7 +17,7 @@ Outputs:
   molmetal/reports/wf246b_m15_redesign/per_pocket_table.md
 
 Constraints:
-  USE /home/hugo/codes/CadButEaas/.venv-vlm/bin/python
+  USE /home/hugo/codes/mol-metal/.venv/bin/python
   CPU-only (no GPU)
   Backward-compatible with existing docked_pose_rmsd.json schema
 """

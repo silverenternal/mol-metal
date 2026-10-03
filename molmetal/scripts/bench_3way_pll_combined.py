@@ -43,7 +43,7 @@ Outputs
 
 Usage::
 
-    source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \\
+    source env.sh && /home/hugo/codes/mol-metal/.venv/bin/python -u \\
         molmetal/scripts/bench_3way_pll_combined.py \\
         --dataset platinai_4cell --seeds 0 1 2 3 4 --n-samples 200
 """

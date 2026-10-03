@@ -7,7 +7,7 @@ smoke. It reuses the canonical
 
 Usage (CPU smoke, default 1 epoch × 1 seed × 1 metal):
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/train_chemprop_v2_v2_fastfeaturize.py \\
         --metals Ru --seeds 0 --epochs 1 --hidden 64 --depth 2 \\
         --device cpu \\

@@ -35,7 +35,7 @@ Honest framing (per Wf-292D §5.4 + standing party-twenty-spirit §3.5)
 Usage
 -----
 ::
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/platinai_selenium_loader.py \\
         --n-target 100 --chromedb \\
         --out .data/molmetal/platinai_selenium_real_labels.csv

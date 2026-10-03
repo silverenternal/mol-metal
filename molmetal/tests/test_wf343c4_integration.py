@@ -297,9 +297,9 @@ def test_gate_wf343c4_yuelbond_decoder_env_on_canonical(
         assert "YuelBondDecoder" in canonical.evidence
     else:
         # SKIP branch — the evidence must name the missing dep +
-        # name the expected runtime per AGENTS.md §5.1.
+        # name the expected runtime per AGENTS.md §5.1 + §5.9.
         assert "torch" in canonical.evidence
-        assert "kanzi_venv" in canonical.evidence or "venv-vlm" in canonical.evidence
+        assert "/home/hugo/codes/mol-metal/.venv/bin/python" in canonical.evidence
 
     # FAIL — stub decoder without YuelBondDecoder class.
     # The stub does NOT import torch, so FAIL is expected regardless

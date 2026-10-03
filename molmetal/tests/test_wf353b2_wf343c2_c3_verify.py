@@ -23,7 +23,7 @@ import pytest
 
 REPO_ROOT = Path("/home/hugo/codes/mol-metal")
 SCRIPTS_DIR = REPO_ROOT / "molmetal" / "scripts"
-VENV_PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 REPORT_C2 = REPO_ROOT / "molmetal" / "reports" / "wf343c2_per_wave_check" / "per_wave_check.json"
 REPORT_C3 = REPO_ROOT / "molmetal" / "reports" / "wf343c3_data_quality" / "report.json"

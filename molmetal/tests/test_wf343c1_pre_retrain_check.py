@@ -33,7 +33,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "wf343c1_pre_retrain_check.py"
-VENV_PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 # Match the v1 doc schema fields we expect on every report.
 REQUIRED_TOP_KEYS = {

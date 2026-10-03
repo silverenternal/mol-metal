@@ -47,7 +47,7 @@ from chemprop.nn import AtomMessagePassing, SumAggregation  # noqa: E402
 
 from molmetal.data.drugood_loader import load_drugood  # noqa: E402
 
-DEFAULT_PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+DEFAULT_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 # ---------------------------------------------------------------------------
 # Cache directory layout (mirrors precache_chemprop_features.py for back-compat).
@@ -434,7 +434,7 @@ def main():
         report["gate_1_pipeline_runs"]
     report["honest_framing_note"] = (
         "BD-1 (drugood_loader) + BD-4 (chemprop_v2.MolGraphCache) end-to-end "
-        "integration. Measured on CPU (.venv-vlm) at the explicit "
+        "integration. Measured on CPU (.venv) at the explicit "
         f"{args.df_size}-row scale. Cache hit rate computed by re-featurizing "
         "the same canon list (BD-4 npz persist). The 5K subset is "
         "~5.2% of DrugOOD lbap_refined_ic50_assay train (95,373 rows) and "

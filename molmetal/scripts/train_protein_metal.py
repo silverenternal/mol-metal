@@ -23,7 +23,7 @@ AUC ≥ 0.85 ⇒ ✅; AUC ≥ 0.92 ⇒ 🌟 (matches Tier 1 SOTA per METRICS_TAR
 Usage
 -----
     source env.sh
-    /home/hugo/cades/CadButEaas/.venv-vlm/bin/python -u molmetal/scripts/train_protein_metal.py \
+    /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/train_protein_metal.py \
         --data molmetal/data/protein_metal_binding.csv \
         --out-dir models/protein_metal_binding --epochs 50
 """

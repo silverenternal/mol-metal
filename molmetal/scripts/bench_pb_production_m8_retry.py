@@ -57,7 +57,7 @@ Verify
 ------
 ::
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python3 \\
+    /home/hugo/codes/mol-metal/.venv/bin/python3 \\
         molmetal/scripts/bench_pb_production_m8_retry.py \\
         --pockets 830c 1h36 3eml 3ny8 4aaw 4rlu 1g9v 2hnx 4rn0 1fmc \\
         --cands 5 \\

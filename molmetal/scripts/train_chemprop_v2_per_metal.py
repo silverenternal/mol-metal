@@ -46,7 +46,7 @@ Checkpoints (per (metal, seed))
 
 Usage (default 5 metal × 5 seed × 50 epoch, 7200s wall budget)
 -------------------------------------------------------------
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/train_chemprop_v2_per_metal.py
 
 Honest framing per party-twenty-spirit §3.5

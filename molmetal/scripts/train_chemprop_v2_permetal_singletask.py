@@ -16,7 +16,7 @@ Outputs (sweep aggregate):
         per_metal_seed_auc / per_metal_summary / mean_auc_across_metals
 
 Usage (default 5-metal x 5-seed x 50-epoch, 7200s wall budget):
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/train_chemprop_v2_permetal_singletask.py
 
 Honest framing per party-twenty-spirit §3.5:

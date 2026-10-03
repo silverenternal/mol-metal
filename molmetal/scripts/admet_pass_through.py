@@ -52,11 +52,11 @@ Usage
 -----
 
     # Default cohort (449 metallo-drug SMILES)
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/admet_pass_through.py
 
     # Custom SMILES list (one SMILES per line, no header)
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/admet_pass_through.py --input my_smiles.smi
 
 Outputs

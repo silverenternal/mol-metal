@@ -6,7 +6,7 @@ retry additionally re-verifies:
 
   1. ``sn-jnl.cls`` (Apache-2.0 mirror) at ``.tools/latex/sn-jnl.cls``.
   2. ``scienceplots`` (MIT, journal-style presets) importable from the
-     CadButEaas ``.venv-vlm`` interpreter (version pinned to 2.2.2).
+     CadButEaas ``.venv`` interpreter (version pinned to 2.2.2).
   3. ``docs/SCI_PAPER_SETUP.md`` exists with the 4 mandatory sections
      (Zotero, tectonic, scienceplots, sn-jnl) + the §5 NO-paper-touches
      discipline.
@@ -49,10 +49,10 @@ CSL_SPRINGER_AUTH = REPO_ROOT / ".tools" / "sci-paper" / "styles" / "springer-au
 PYBTEX_WRAPPER = REPO_ROOT / ".tools" / "sci-paper" / "bin" / "pybtex-compile.py"
 SCI_SKILL = REPO_ROOT / ".claude" / "skills" / "mol-metal-sci-paper-submission" / "SKILL.md"
 
-# CadButEaas venv interpreter (where scienceplots + pybtex were installed
+# project venv interpreter (where scienceplots + pybtex were installed
 # per Wf-355-B3). This is the same interpreter the Wf-351-B2 + Wf-355-B3
 # tests use.
-CADBUTEAAS_VENV_PYTHON = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+PROJECT_VENV_PYTHON = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 
 # ---------------------------------------------------------------------------
@@ -116,17 +116,17 @@ def test_sn_jnl_cls_exists() -> None:
 
 def test_scienceplots_importable() -> None:
     """scienceplots (MIT, Wf-351-A4 PRIMARY recommendation) must be
-    installable + importable from the project's CadButEaas venv.
+    installable + importable from the project's project venv.
 
     Per Wf-355-B3 §6d + Wf-356-A3 retry: install via
-    ``PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -m pip install scienceplots``
+    ``PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/mol-metal/.venv/bin/python -m pip install scienceplots``
     and verify with ``python -c "import scienceplots"``.
 
     scienceplots v2.x does NOT expose ``__version__``; verify via
     ``importlib.metadata.version('scienceplots')`` to pin a known-good
     version (2.2.2 per Wf-355-B3 closeout).
     """
-    py = Path(CADBUTEAAS_VENV_PYTHON)
+    py = Path(PROJECT_VENV_PYTHON)
     if not py.exists():
         pytest.skip(f"interpreter not found at {py}")
 

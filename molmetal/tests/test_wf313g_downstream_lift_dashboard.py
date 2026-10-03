@@ -30,7 +30,7 @@ Source: TODO/pending/177_wf123_p3_m1m2_downstream_metric_lift.md §1+§2
 
 Run via::
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -m pytest \\
+    /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_wf313g_downstream_lift_dashboard.py -v
 """
 from __future__ import annotations

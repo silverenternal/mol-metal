@@ -27,7 +27,7 @@ Implementation notes:
   - Same exact LOMO protocol: hold out 1 metal as test, train on the other 4.
 
 Env: requires dgl + dgllife.  The CONSTRAINT-requested
-``/home/hugo/codes/CadButEaas/.venv-vlm/bin/python`` lacks both modules
+``/home/hugo/codes/mol-metal/.venv/bin/python`` lacks both modules
 (verified: ModuleNotFoundError on import).  We use
 ``/home/hugo/.conda_envs/drugood/bin/python`` which has dgl 2.5.0 +
 dgllife 0.3.1 + torch 2.14.0+cu130 + CUDA.  This is the same env used by
@@ -591,7 +591,7 @@ def main() -> int:
             "atom_feat_size": ATOM_FEAT_SIZE,
             "bond_feat_size": BOND_FEAT_SIZE,
             "python_env_used": "/home/hugo/.conda_envs/drugood/bin/python (constraint asked for "
-                              "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python but that venv lacks "
+                              "/home/hugo/codes/mol-metal/.venv/bin/python but that venv lacks "
                               "dgl+dgllife; drugood env has dgl 2.5.0 + dgllife 0.3.1 + torch 2.14.0+cu130)",
         },
         "split_protocol": "LOMO (leave-one-metal-out): train on {Ru, Ir, Os, Re}\\Rh, test on Rh. "
@@ -607,7 +607,7 @@ def main() -> int:
         "honest_framing_note": (
             "Wf-146 DGL-LifeSci GCN+GroupDRO baseline executed in the /home/hugo/.conda_envs/drugood/bin/python env "
             "(dgl 2.5.0 + dgllife 0.3.1 + torch 2.14.0+cu130 + CUDA 13.4, GPU = NVIDIA RTX PRO 6000 Blackwell "
-            "Workstation Edition). The CONSTRAINT requested /home/hugo/codes/CadButEaas/.venv-vlm/bin/python but "
+            "Workstation Edition). The CONSTRAINT requested /home/hugo/codes/mol-metal/.venv/bin/python but "
             "that venv is missing dgl and dgllife (verified: ModuleNotFoundError on import). Switching to the "
             "drugood env is the honest, pre-deployed, GPU-ready path and matches the same env used by "
             "wf146_dgllifesci_erm.py. Backbone: GCNPredictor (3 layers, hidden=64, dropout=0.2, residual=True, "

@@ -182,7 +182,8 @@ def _load_via_raw_json(
     """Fallback path that reads the DrugOOD JSON directly.
 
     Used when the ``drugood`` library is not importable in the current
-    Python environment (e.g. when running under ``.venv-vlm``).  The
+    Python environment (e.g. when running under the repo-local
+    ``.venv``, which does not bundle ``drugood``).  The
     JSON layout is identical to what ``DrugOODDataset.load_annotations``
     consumes — ``{"split": {"train": [...], "ood_val": [...], ...}}``
     where each list element is the same

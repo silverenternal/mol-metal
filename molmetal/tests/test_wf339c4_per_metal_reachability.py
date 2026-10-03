@@ -33,7 +33,7 @@ Per-party-twenty-spirit §3.5 (MEASURED-vs-PROJECTED tag discipline):
 Run with::
 
     PYTHONPATH=/home/hugo/codes/mol-metal \
-    /home/hugo/cades/CadButEaas/.venv-vlm/bin/python -m pytest \
+    /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \
         molmetal/tests/test_wf339c4_per_metal_reachability.py -v
 """
 from __future__ import annotations

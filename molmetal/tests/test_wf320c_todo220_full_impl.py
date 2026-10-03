@@ -61,7 +61,7 @@ NCI60_SMOKE = ROOT / "molmetal/reports/wf310c_nci60_9cell/sweep_summary_smoke.js
 GPU_WRAPPER = ROOT / "molmetal/scripts/launch_wf310c_todo220_gpu.sh"
 SEC_6_3_DOC = ROOT / "TODO/completed/220_wf220_temporal_split_acceptance.md"
 SEC_6_4_DOC = ROOT / "TODO/completed/220_wf219_nci60_9cell_acceptance.md"
-PYTHON_BIN = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+PYTHON_BIN = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 
 # ---------------------------------------------------------------------------

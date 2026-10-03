@@ -215,9 +215,9 @@ FOR each Tier-1 metric m_i:
 - `molmetal/scripts/install_vina_binary.py` — Vina 1.2.7 install path
 - `molmetal/molmetal_lam/sbdd_env/meko_metal_atom_extension.py` — Meeko SMARTS rules for Pt/Au/Ru ship per Wf-121 P1
 - `molmetal/molmetal_lam/sbdd_env/metal_coord_term.py:635` — kcal sign audit (per Wf-426-A1 retroactive)
-- `/home/hugo/codes/CadButEaas/.venv-vlm/lib/python3.12/site-packages/meeko` — meeko 0.8.0 INSTALLED
-- `/home/hugo/codes/CadButEaas/.venv-vlm/lib/python3.12/site-packages/vina` — vina 1.2.7 INSTALLED (Python wrapper only — CLI binary separate)
-- `/home/hugo/codes/CadButEaas/.venv-vlm/lib/python3.12/site-packages/rdkit` — RDKit 2026.03.6 INSTALLED
+- `/home/hugo/codes/mol-metal/.venv/lib/python3.12/site-packages/meeko` — meeko 0.8.0 INSTALLED
+- `/home/hugo/codes/mol-metal/.venv/lib/python3.12/site-packages/vina` — vina 1.2.7 INSTALLED (Python wrapper only — CLI binary separate)
+- `/home/hugo/codes/mol-metal/.venv/lib/python3.12/site-packages/rdkit` — RDKit 2026.03.6 INSTALLED
 
 **CPU-only path (~5-10 min)**:
 
@@ -341,22 +341,22 @@ USER_OK=1 python molmetal/scripts/train_cfm_yuelbond_wasserstein.py \
 - `metrics/by_metric/wf32_pb_valid_summary.json` — `overall_pb_pass_rate={mol: 0.0, dock: 0.0}`
 - `metrics/by_metric/steric_clash_pb_dock.json` — `status=DEFERRED, deferred_reason='deferred_posebusters_unavailable'`
 - `molmetal/molmetal_lam/sbdd_env/posebusters_adapter.py` — wired-in path SHIPPED
-- `/home/hugo/codes/CadButEaas/.venv-vlm/lib/python3.12/site-packages/posebusters` — MISSING (verified via `import posebusters` fails)
-- `/home/hugo/codes/CadButEaas/.venv-vlm/lib/python3.12/site-packages/rdkit` — 2026.03.6 INSTALLED
+- `/home/hugo/codes/mol-metal/.venv/lib/python3.12/site-packages/posebusters` — MISSING (verified via `import posebusters` fails)
+- `/home/hugo/codes/mol-metal/.venv/lib/python3.12/site-packages/rdkit` — 2026.03.6 INSTALLED
 - `pyproject.toml:posebusters>=0.6.5` — declared dep
 
 **CPU-only path (~5-10 min)**:
 
 ```bash
 # Step 1: install posebusters in the project venv
-PYTHONPATH=/home/hugo/codes/CadButEaas/.venv-vlm/lib/python3.12/site-packages \
+PYTHONPATH=/home/hugo/codes/mol-metal/.venv/lib/python3.12/site-packages \
   /home/hugo/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/bin/python3.12 \
-  -c "import sys; sys.path.insert(0, '/home/hugo/codes/CadButEaas/.venv-vlm/lib/python3.12/site-packages'); import posebusters; print('pb:', posebusters.__version__)"
+  -c "import sys; sys.path.insert(0, '/home/hugo/codes/mol-metal/.venv/lib/python3.12/site-packages'); import posebusters; print('pb:', posebusters.__version__)"
 # If import fails: install posebusters in the vlm venv via uv
 # pip install posebusters>=0.6.5 (per pyproject.toml)
 
 # Step 2: verify posebusters module loadable from project venv
-/home/hugo/.venv/bin/python3 -c "import sys; sys.path.insert(0, '/home/hugo/codes/CadButEaas/.venv-vlm/lib/python3.12/site-packages'); import posebusters; print('OK')"
+/home/hugo/.venv/bin/python3 -c "import sys; sys.path.insert(0, '/home/hugo/codes/mol-metal/.venv/lib/python3.12/site-packages'); import posebusters; print('OK')"
 
 # Step 3: re-run Wf-32 PB validation on existing 5-pocket docked poses
 python molmetal/scripts/wf32_pb_valid.py --pockets 1h36 3eml 3ny8 4aaw 4rlu

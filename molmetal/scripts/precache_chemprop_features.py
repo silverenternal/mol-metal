@@ -63,7 +63,7 @@ BD-4 honest framing
 
 Usage::
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         /home/hugo/codes/mol-metal/molmetal/scripts/precache_chemprop_features.py \\
         --seeds 0 1 2
 

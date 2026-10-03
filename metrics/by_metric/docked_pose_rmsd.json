@@ -1,6 +1,6 @@
 {
   "metric": "docked_pose_rmsd",
-  "description": "Median best heavy-atom RMSD (Kabsch+Hungarian, adaptive centroid pre-alignment) of Vina redocked poses vs crystal ligand pose across 5 pockets x 3 seeds x exhaustiveness=16. BD-9 m15 RMSD Phase 2 Vina redocking (canonical script).",
+  "description": "Median best heavy-atom RMSD (Kabsch+Hungarian, adaptive centroid pre-alignment) of Vina redocked poses vs crystal ligand pose across 5 pockets x 3 seeds x exhaustiveness=16. BD-9 m15 RMSD Phase 2 Vina redocking (canonical script). 13 of 15 grid runs MEASURED (3ny8 1/3 seeds).",
   "unit": "angstrom",
   "scope": "pocket-bound redocking benchmark (m15 redesigned per TODO-134)",
   "source": "TODO-134 (m15 redesign spec) + Wf-139 P1 (ref ligand SMILES extraction) + BD-9 m15 RMSD Phase 2 (this script)",
@@ -107,7 +107,7 @@
       "date_utc": "2026-09-28T02:42:18.857973+00:00"
     }
   ],
-  "note": "Wf-246-B redesign: per-pocket std reporting (15 runs = 5 pockets x 3 seeds) + cross-pocket aggregate (median, std, min, max) + per-pocket difficulty flag (EASY <0.5A, MEDIUM 0.5-1.0A, HARD >=1.0A). Backward-compatible with Wf-179 ship schema.",
+  "note": "Wf-246-B redesign: per-pocket std reporting (13 MEASURED runs of the planned 15-run grid = 5 pockets x 3 seeds; 3ny8 succeeded on 1/3 seeds, all other pockets 3/3) + cross-pocket aggregate (median, std, min, max) + per-pocket difficulty flag (EASY <0.5A, MEDIUM 0.5-1.0A, HARD >=1.0A). Backward-compatible with Wf-179 ship schema.",
   "redesign_wf246b": {
     "date": "2026-09-28",
     "workflow": "Wf-246-B TODO-130 m15 REDESIGN",
@@ -248,5 +248,26 @@
     "current_status": "MEASURED median RMSD 0.6578 \u00c5 across 5 pockets (Wf-341-T1 \u00a73 verdict); Wf-380-A5 SCAFFOLD surrogate aggregate_median 0.6015 \u00c5 across 5 templates \u00d7 9 poses (closed-form synthetic, NOT real Vina); 5/5 pockets PASS 2.0 \u00c5 SOTA gate",
     "projected_lift": "-0.05 to -0.10 \u00c5 on 5-pocket organic-cofactor set (PROJECTED 0.6578 \u00c5 \u2192 ~0.55-0.60 \u00c5 at 20 templates \u00d7 20 poses); MEASURED end-to-end pending GPU retrain + meeko install",
     "honest_framing": "SURROGATE bench (synthetic closed-form per Wf-380-A5 brief); real Vina + MM-GBSA binaries deferred to TODO-207 (Wf-299 launch USER_OK-gated); PoseBusters validity SKIPPED graceful (preserved as honest-negative on validity NOT on accuracy)"
-  }
+  },
+  "n_runs_measured": 13,
+  "n_runs_planned": 15,
+  "runs_missing": {
+    "3ny8": "2 of 3 seeds (n_seeds_succeeded=1)"
+  },
+  "corrections": [
+    {
+      "field": "note",
+      "old_value": "Wf-246-B redesign: per-pocket std reporting (15 runs = 5 pockets x 3 seeds) + cross-pocket aggregate (median, std, min, max) + per-pocket difficulty flag (EASY <0.5A, MEDIUM 0.5-1.0A, HARD >=1.0A). Backward-compatible with Wf-179 ship schema.",
+      "new_value": "Wf-246-B redesign: per-pocket std reporting (13 MEASURED runs of the planned 15-run grid = 5 pockets x 3 seeds; 3ny8 succeeded on 1/3 seeds, all other pockets 3/3) + cross-pocket aggregate (median, std, min, max) + per-pocket difficulty flag (EASY <0.5A, MEDIUM 0.5-1.0A, HARD >=1.0A). Backward-compatible with Wf-179 ship schema.",
+      "reason": "old note claimed 15 runs = 5 pockets x 3 seeds; summing per_seed_best_rmsd_angstrom arrays (3+3+1+3+3) and n_seeds_succeeded gives 13 MEASURED runs, not 15 \u2014 3ny8 completed 1/3 seeds. Aggregates recompute unchanged over the 5 pocket medians (median 0.6578; std 0.254592, ddof=1).",
+      "date": "2026-10-03"
+    },
+    {
+      "field": "description",
+      "old_value": "described the 5x3 grid without disclosing the 13/15 measured count",
+      "new_value": "added '13 of 15 grid runs MEASURED (3ny8 1/3 seeds)'",
+      "reason": "same run-count correction",
+      "date": "2026-10-03"
+    }
+  ]
 }

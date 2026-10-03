@@ -23,7 +23,7 @@ full root-cause trace.  This script fixes that by:
 
 Run end-to-end via:
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf261_regenerate_scaffold_split.py
 """
 
@@ -82,7 +82,7 @@ def _import_rdkit():
         return Chem, MurckoScaffold
     except ImportError as exc:  # pragma: no cover — exercised only in non-rdkit env
         raise RuntimeError(
-            "RDKit unavailable; abort. Use /home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+            "RDKit unavailable; abort. Use /home/hugo/codes/mol-metal/.venv/bin/python"
         ) from exc
 
 

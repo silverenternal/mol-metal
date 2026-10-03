@@ -522,6 +522,8 @@ exec /home/hugo/.venvs/kanzi_venv/bin/python ...
 
 **Audit surface**: `wf437a1_single_venv_audit.py` (~30 LOC) scans `scripts/launch_*.sh` for `python` invocations; flags wrappers that use bare/python3/CadButEaas/kanzi_venv; returns non-zero if violations > 0.
 
+**Enforcement on disk (2026-10-03)**: `scripts/_wrapper_audit.py` is the shipped §5.9 gate — its REAL-wrapper marker set requires the canonical `PY=/home/hugo/codes/mol-metal/.venv/bin/python`; the `wf437a1_single_venv_audit.py` cited above is NOT on disk.
+
 **Cross-ref**: Wf-421-A2 §0 (YuelBond decoder env SKIP closed via venv) + Wf-427-B1 §22.123 (CLEAN pre-flight 113/0/4/117 via venv).
 
 ### §5.10 OmegaFold-gap-fill rule (NEW 2026-10-02 per Wf-442)

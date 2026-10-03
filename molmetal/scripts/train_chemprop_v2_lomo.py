@@ -60,13 +60,13 @@ Usage
 -----
 Default (5 metal x 5 seed x 50 epoch, 3600s budget)::
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/train_chemprop_v2_lomo.py \\
         --out molmetal/reports/wf156_chemprop_v2_lomo.json
 
 Smoke (1 metal x 1 seed x 2 epochs, 60s budget)::
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/train_chemprop_v2_lomo.py --quick
 
 Outputs ``molmetal/reports/wf156_chemprop_v2_lomo.json`` with the

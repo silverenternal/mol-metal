@@ -116,10 +116,11 @@ echo "[run_ablation_smoke] uv run --no-sync python ${PYTHON_ARGS[*]}" >&2
 # ---------------------------------------------------------------------------
 # 3. Run the ablation harness.  We use ``uv run --no-sync`` (mirrors
 #    ``metallo_drug_smoke_retrain.py`` docstring) so we land in the
-#    shared CadButEaas .venv-vlm that has torch 2.14.0+cu130, rdkit,
-#    openbabel, etc.  UV_PROJECT_ENVIRONMENT is already wired by
-#    env.sh; ``--no-sync`` skips uv's dependency resolver because
-#    we've already installed everything in the shared env.
+#    canonical repo-local .venv that has torch 2.14.1+cu130, rdkit,
+#    posebusters, etc. (AGENTS.md §5.9).  UV_PROJECT_ENVIRONMENT is
+#    wired by env.sh to that same .venv; ``--no-sync`` skips uv's
+#    dependency resolver because we've already installed everything
+#    in the canonical env.
 # ---------------------------------------------------------------------------
 T_START=$(date +%s)
 uv run --no-sync python "${PYTHON_ARGS[@]}"

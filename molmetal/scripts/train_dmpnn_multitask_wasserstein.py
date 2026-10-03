@@ -21,8 +21,16 @@ The loss for one training step is::
       + (1 - α) · Σ_m MSE(pic50_pred[m], pic50_target[m])
       + w_w · W₂(predicted_pIC50_all, ref_pIC50_all)
 
-A L2 (gradient-norm) guard is applied each step (max_norm=5.0) — this is
-the "L2 guard" flag and follows the same convention as Wf-44 / Wf-49.
+A L2 (gradient-norm) guard is ARMED each step (max_norm=5.0, per the
+"L2 guard" flag, same convention as Wf-44 / Wf-49). Note the wording: it is
+a safety net, not an active constraint — MEASURED on the CFM sibling trainer
+(results/cfm_per_innovation_ablation_p1.4/events.jsonl, 14 epoch records) the
+gradient norm sits at min 2.37 / median 2.83 / max 3.58, i.e. it never
+approaches 5.0 and the clip never fires. The guard therefore does not
+currently shape training; it exists to catch an exploding-gradient step.
+Do not lower max_norm to "make it do something" — at 1.0 it would bind on
+every step and silently rescale the effective learning rate. See
+TODO/completed/config_dead_key_remediation.md.
 
 **Inputs**
   * ``.data/molmetal/metalcytotox_5metal_multitask.csv`` — split definitions

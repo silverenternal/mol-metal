@@ -56,7 +56,7 @@ References
 Run::
 
     PYTHONPATH=/home/hugo/codes/mol-metal \\
-        /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+        /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf371a1_m6_kappa_degenerate_chain.py \\
         --epochs 5 --out-dir molmetal/reports/wf371a1_degenerate_chain/
 """

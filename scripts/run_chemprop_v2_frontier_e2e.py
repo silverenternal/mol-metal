@@ -18,7 +18,7 @@ report is written to ``TODO/completed/189_frontier_math_integration.md``.
 Usage
 -----
 
-    PY=/home/hugo/codes/CadButEaas/.venv-vlm/bin/python
+    PY=/home/hugo/codes/mol-metal/.venv/bin/python
     $PY scripts/run_chemprop_v2_frontier_e2e.py \\
         --epochs 3 --hidden 64 --depth 2 --out-dir \\
         molmetal/reports/wf237_frontier_integration/

@@ -81,7 +81,7 @@ Honest framing (party-twenty-spirit §3.5)
 
 CLI::
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf323c_m8_full_cpu_fix.py \\
         --input-pool molmetal/reports/wf319b_uff_min_pt_pool/pool.json \\
         --pocket-id 1h36 \\

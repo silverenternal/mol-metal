@@ -66,15 +66,15 @@ LAUNCHER_PATH = REPO_ROOT / "molmetal" / "scripts" / "launch_wf299_cfm_main.sh"
 def _resolve_python() -> str:
     """Resolve a usable python interpreter for the wrapper's USER_OK gate.
 
-    The wrapper sets ``PY`` to ``/home/hugo/codes/CadButEaas/.venv-vlm/bin/python``
+    The wrapper sets ``PY`` to ``/home/hugo/codes/mol-metal/.venv/bin/python``
     but for subprocess tests we allow override via env var or fall back to
     ``sys.executable`` if the canonical path is unavailable.
     """
     override = os.environ.get("WF415_PY") or os.environ.get("PY")
     if override and Path(override).is_file():
         return override
-    if Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin/python").is_file():
-        return "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+    if Path("/home/hugo/codes/mol-metal/.venv/bin/python").is_file():
+        return "/home/hugo/codes/mol-metal/.venv/bin/python"
     import sys
     return sys.executable
 

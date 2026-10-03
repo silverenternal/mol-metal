@@ -39,7 +39,7 @@ that concatenates every row (336,556 rows total).
 
 Usage
 -----
-    .venv-vlm/bin/python molmetal/scripts/pre_featurize_dmpnn.py
+    .venv/bin/python molmetal/scripts/pre_featurize_dmpnn.py
 """
 
 from __future__ import annotations
@@ -112,7 +112,7 @@ _METAL_TO_IDX: Dict[str, int] = {m: i for i, m in enumerate(CANONICAL_METALS)}
 # To re-featurize with the canonical mapping, run::
 #
 #     rm -rf molmetal/data/pre_featurized/*.pt
-#     /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+#     /home/hugo/codes/mol-metal/.venv/bin/python \
 #         molmetal/scripts/pre_featurize_dmpnn.py
 #
 # Downstream training (``train_dmpnn_multitask.py --data-config

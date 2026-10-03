@@ -23,7 +23,7 @@ Run via::
 
     cd /home/hugo/codes/mol-metal
     PYTHONPATH=/home/hugo/codes/mol-metal \
-        /home/hugo/cades/CadButEaas/.venv-vlm/bin/python -m pytest \
+        /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \
         molmetal/tests/test_wf327f9_skill_stubs.py -v
 """
 from __future__ import annotations

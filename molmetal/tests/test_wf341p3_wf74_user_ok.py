@@ -65,7 +65,7 @@ LAUNCHER = PROJECT_ROOT / "scripts" / "launch_wf74_v2_drugood_dann.sh"
 DRUGOOD_TRAINER = (
     PROJECT_ROOT / "molmetal" / "scripts" / "wf305d_drugood_dann_train.py"
 )
-PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 
 # ---------------------------------------------------------------------------

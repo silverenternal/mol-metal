@@ -17,14 +17,14 @@ Usage examples
 --------------
 
     # default (dry-run): write diff_report.md and stop
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/paper_auto_update.py \\
         --collect-json molmetal/reports/wf265_collect/all_results.json \\
         --paper-doc TODO/completed/188_paper_4_krasnov_protocol_aligned.md \\
         --out-diff molmetal/reports/wf265_update/diff_report.md
 
     # explicit apply (atomic)
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/paper_auto_update.py \\
         --collect-json molmetal/reports/wf265_collect/all_results.json \\
         --paper-doc TODO/completed/188_paper_4_krasnov_protocol_aligned.md \\

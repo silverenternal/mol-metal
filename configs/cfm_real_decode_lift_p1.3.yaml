@@ -3,8 +3,7 @@
 # Cross-links: TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/decisions/0002-tier2-scope.md
 # Cross-links: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md + COMPARISON_BASELINES.md
 # Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
-dry_run: true
-user_ok_required: true
+# Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: removed 'dry_run: true' + 'user_ok_required: true' (no consumer anywhere).
 data:
   dataset: metalcytotox_5metal  # Wf-A8c FIX: rename per Tier-1 allowed list (PROTOCOL_ALIGNMENT_MATRIX.md §2)
   csv: .data/molmetal/metalcytotox_5metal_multitask_v2.csv
@@ -28,7 +27,7 @@ data:
     - Re
     scaffold_split: true
 model:
-  backbone: chemprop_v2_mt
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'backbone' removed (no --backbone dest).
   hidden_dim: 128
   n_layers: 3
   atom_vocab_size: 14
@@ -43,17 +42,28 @@ flow:
   method: rk4
   ot_solver: w_flow
 protocol:
-  n_seeds: 1
-  seeds:
-  - 0
+  n_seeds: 1  # Wf-A11: seed list removed — CFM dest is singular --seed (enumerated by entry.command_template); n_seeds read by scripts/start.sh
   epochs: 3
   batch_size: 16
   lr: 0.0001
-  warmup_steps: 50
-  grad_clip_norm: 1.0
+  warmup_steps: 50  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: now wired via loader alias -> --lr-warmup-steps; inactive unless --use-lr-warmup is set (CFM default False).
+  # Wf-A11 (2026-10-03): 'grad_clip_norm: 1.0' REMOVED — dead key (real dest is --max-norm,
+  # declared 5.0 below); it never reached the trainer in any run.
+  # RESOLVED 2026-10-03 by MEASUREMENT, not preference. 5.0 is correct and stays:
+  #   grad norms from the real CFM run in results/cfm_per_innovation_ablation_p1.4/
+  #   events.jsonl (14 epoch records): min 2.37 / median 2.83 / max 3.58.
+  #     -> at max_norm=5.0 clipping binds 0/14 steps: a real safety net, never throttling a
+  #        healthy run, which is what gradient clipping is for.
+  #     -> at max_norm=1.0 it would bind 14/14, converting every update into a ~2.9x
+  #        constant-magnitude rescale and silently changing the effective learning rate.
+  #   Corroboration: chemprop v1.5.2 and v2.3.1 both default grad_clip to None (no clipping),
+  #   so 5.0 is already MORE conservative than the reference framework.
+  #   Reproducibility: every shipped CFM number was produced at 5.0; the trainer docstring
+  #   pins 5.0 to preserve the Wf-124 P2 + Wf-148 baseline bit-for-bit.
+  #   See TODO/completed/config_dead_key_remediation.md.
   ema_decay: 0.999
   edge_cutoff: 6.0
-  bf16: true
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16' removed (zero bf16/autocast in either trainer).
   scheduler:
     type: cosine
     warmup_epochs: 5
@@ -84,8 +94,8 @@ waves:
     wall_time_estimate: 0.5
 compute:
   gpu: cuda:0
-  cpu_workers: 4
-  bf16: true
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'cpu_workers: 4' removed (CFM trainer has no --cpu-num-workers dest; only D-MPNN does).
+  # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16' removed (zero bf16/autocast in either trainer).
 directives:
   kill_then_adapt: true
   time_budget: 10h
@@ -99,9 +109,7 @@ directives:
   - p3_wf343c2_per_wave_runtime_check
 entry:
   script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
-  command_template: "CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\\\\n  molmetal/scripts/train_cfm_yuelbond_wasserstein.py\
-    \ \\\\\n  --epochs {epochs} \\\\\n  --use-yuelbond \\\\\n  --pocket-id {pocket_id} \\\\\n  --seed {seed} \\\\\n  --out-dir\
-    \ {out_dir}\n"
+  command_template: "CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/mol-metal/.venv/bin/python \\\\\n  molmetal/scripts/train_cfm_yuelbond_wasserstein.py \\\\\n  --epochs {epochs} \\\\\n  --use-yuelbond \\\\\n  --pocket-id {pocket_id} \\\\\n  --seed {seed} \\\\\n  --out-dir {out_dir}\n"
   warm_start_checkpoint: molmetal/checkpoints/cfm_yuelbond_wasserstein.pt
 honest_framing:
   claims:

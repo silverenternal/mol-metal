@@ -70,7 +70,7 @@ Standard invocation (per Wf-294B + Wf-300C + Wf-355 pattern):
 ```bash
 # Pre-flight check (mandatory; §5.1 + §1.4)
 PYTHONPATH=/home/hugo/codes/mol-metal \
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+    /home/hugo/codes/mol-metal/.venv/bin/python \
     molmetal/scripts/pre_flight_check.py
 
 # Dry-run verification (no GPU)

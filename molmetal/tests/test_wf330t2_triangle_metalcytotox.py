@@ -21,7 +21,7 @@ with an honest-negative message (cf. AGENTS.md §5.2).
 CLI::
 
     PYTHONPATH=/home/hugo/codes/mol-metal \\
-        /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+        /home/hugo/codes/mol-metal/.venv/bin/python \\
         -m pytest molmetal/tests/test_wf330t2_triangle_metalcytotox.py \\
         -v
 

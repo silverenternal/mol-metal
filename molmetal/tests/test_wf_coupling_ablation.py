@@ -131,7 +131,7 @@ def test_lambda_astsr_beats_f5_on_centered_target() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Use the canonical venv (has RDKit + sklearn + numpy + pandas).
-    venv_python = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+    venv_python = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
     proc = subprocess.run(
         [

@@ -41,7 +41,7 @@ Pre-featurized .pt files written before this fix are mis-labelled
 swapped slots). To regenerate::
 
     rm -rf molmetal/data/pre_featurized/*.pt
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/pre_featurize_dmpnn.py
 
 ``test_pre_featurize_uses_canonical`` below documents the OLD labels

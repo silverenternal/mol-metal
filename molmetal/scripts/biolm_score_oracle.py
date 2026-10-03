@@ -35,7 +35,7 @@ affinity predictor.  Per the upstream README:
   one) with the published ``model_state_dict`` key.
 * The upstream torch stack depends on ``torch_scatter`` and
   ``torch_geometric`` — these are NOT in the local
-  ``.venv-vlm`` environment (verified empirically), so a real
+  ``.venv`` environment (verified empirically), so a real
   GPU/CPU inference path cannot be wired here.
 * ESM / Chemformer pretrained weights must be downloaded
   separately (~2 GB each); the wrapper does NOT auto-fetch

@@ -23,7 +23,23 @@ API endpoints discovered (2026-09-29):
   POST https://api.mb-finder.org/api/v2/get-tissues      -> tissue taxonomy
   POST https://api.mb-finder.org/api/v2/get-cell-lines   -> per-substance cell coverage
   POST https://api.mb-finder.org/api/v2/get-references   -> per-substance refs
-  (per-cell-line IC50 endpoint NOT publicly exposed - honest-negative below)
+  POST https://api.mb-finder.org/api/v2/get-ceil-line-bio-data
+        -> REAL per-cell-line measured values (numeric value string + DOI
+           + method + incubationTime), no auth, per_page server-capped at 5
+
+  CORRECTION (2026-10-03 - "kill the false honest-negative"):
+    The line that stood here read:
+      "(per-cell-line IC50 endpoint NOT publicly exposed - honest-negative below)"
+    It was WRONG, and it was wrong from the day it was written (2026-09-29).
+    It was inferred from Wf-292D's Cloudflare-blocked ChemRxiv scraping and
+    from probing only get-cell-lines (a coverage COUNT matrix), without ever
+    probing get-ceil-line-bio-data. That endpoint is public, needs no auth,
+    and returns real measured numeric values, e.g. (verified live 2026-10-03):
+      cell_line="A2780cis"  MB-Pt-000017  value="1.2"      doi=10.1021/ic8012359
+      cell_line="A2780cis"  MB-Pt-000132  value="0.6 ± 0.1"
+      cell_line="A2780"     MB-Pt-000092  value="0.0046 ± 0.0023"
+    The old text is kept here on purpose (audit trail); repo-wide copies of
+    the false claim are catalogued in TODO/completed/pt_data_route_correction.md.
 
 Aggregate counts confirm scope:
   Pt compounds: 3,616   (target cohort)
@@ -32,27 +48,51 @@ Aggregate counts confirm scope:
 
 Rate limit: ~1 request / 2-3 s (429 Throttle after burst).
 
-Output schema (.data/molmetal/platinai_4cell_mbfinder.csv):
+Output schema, coverage mode (.data/molmetal/platinai_4cell_mbfinder.csv):
   mb_id, imageId, smiles, mw, ceilLineCount, bioDataCount,
   has_a2780cis, has_a2780, has_a549, has_mcf7,
   n_cell_lines_with_data, n_biodata_total,
   total_cell_lines_listed, total_cell_lines_covered
 
-Honest framing (per Wf-292D §3 R1):
+Output schema, REAL-numeric mode (--biodata-cell-line, NEW 2026-10-03):
+  compound_code, cell_line, value_raw, value_mean, value_sd, smiles, mw,
+  substance_id, casNumber, doi, method, incubation_time, biodata_row_id,
+  n_measurements, title
+
+Honest framing (corrected 2026-10-03):
 - Compound IDs + SMILES are REAL Rusanov 2025 data (via MB-Finder)
 - `bioDataCount` and per-cell-line `bioDataCount` are REAL counts
-- Per-cell-line IC50 NUMERIC VALUES are NOT exposed by the public API
-  (only the per-cell-line coverage MATRIX).  We therefore emit
-  `has_<line>` boolean flags (real coverage) instead of synthetic pIC50.
-- This REPLACES the SYNTHETIC pIC50 loader (Wf-278B) as the closest-to-
-  real PlatinAI dataset we can ship without academic outreach (Wf-292D §6).
+- CORRECTION: the text here used to claim "Per-cell-line IC50 NUMERIC
+  VALUES are NOT exposed by the public API (only the per-cell-line coverage
+  MATRIX). We therefore emit has_<line> boolean flags (real coverage)
+  instead of synthetic pIC50." The first sentence was FALSE (endpoint
+  get-ceil-line-bio-data exposes them; see module docstring CORRECTION).
+  The second sentence described a real, retained coverage-matrix mode, but
+  it had been used to justify a false conclusion. Two modes now exist:
+    (a) coverage mode (Wf-295B / Wf-301C, backwards-compatible): has_<line>
+        booleans + counts from get-cell-lines;
+    (b) REAL-numeric mode (NEW 2026-10-03): fetch_cell_line_biodata_pages()
+        + build_structure_index() + join_structures(), exposed via
+        --biodata-cell-line, emits the real measured value + SMILES join.
+- The old "closest-to-real ... without academic outreach" framing is
+  superseded: mode (b) reaches real per-cell-line numeric labels from the
+  public API, no outreach required.
 
 Usage
 -----
 ::
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    # coverage mode (single-venv rule, AGENTS.md §5.9):
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/platinai_real_label_loader.py \\
         --out .data --n-target 100 --start-page 850
+
+    # REAL per-cell-line numeric labels (NEW 2026-10-03):
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
+        molmetal/scripts/platinai_real_label_loader.py \\
+        --biodata-cell-line A2780cis \\
+        --biodata-max-pages 60 \\
+        --substances-start-page 1400 --substances-max-pages 147 \\
+        --out .data/molmetal --csv-basename platinai_a2780cis_biodata
 """
 from __future__ import annotations
 
@@ -139,6 +179,208 @@ def fetch_cell_lines(substance_id: int) -> List[dict]:
 def fetch_count() -> dict:
     """Aggregate counts."""
     return _post("get-count", {}) or {}
+
+
+# ---------------------------------------------------------------------------
+# REAL per-cell-line numeric bio-data mode (NEW 2026-10-03 — corrects the
+# false honest-negative that per-cell-line IC50 values were not exposed).
+# ---------------------------------------------------------------------------
+
+BIODATA_ENDPOINT = "get-ceil-line-bio-data"  # server spelling is "ceil"
+
+
+def compound_code_from_image_url(image_url: str) -> str:
+    """Extract the compound code from an MB-Finder image URL.
+
+    Endpoint C returns ``compounds.imageUrl`` such as
+    ``https://api.mb-finder.org/storage/images/MB-Pt-000017.svg?v=1770252062``.
+    The join key is basename minus ``.svg`` with the query stripped ->
+    ``MB-Pt-000017``.  Endpoint B carries the same code as ``imageId``
+    (verified live 2026-10-03: MB-Pt-000017 joins to substance id 13,
+    smiles containing ``[Pt]``).
+    """
+    if not image_url:
+        return ""
+    base = str(image_url).split("/")[-1].split("?")[0]
+    if base.endswith(".svg"):
+        base = base[:-4]
+    return base
+
+
+def parse_measurement_value(value) -> tuple:
+    """Parse MB-Finder value strings -> (mean: float|None, sd: float|None).
+
+    Both live forms (verified 2026-10-03):
+      "1.2"        -> (1.2, None)
+      "0.6 ± 0.1"  -> (0.6, 0.1)
+    Unparseable input -> (None, None); callers count these as honest
+    parse_failures instead of dropping rows silently.
+    """
+    if value is None:
+        return None, None
+    s = str(value).strip()
+    if not s:
+        return None, None
+    for sep in ("±", "+/-"):
+        if sep in s:
+            mean_s, _, sd_s = s.partition(sep)
+            try:
+                return float(mean_s.strip()), float(sd_s.strip())
+            except ValueError:
+                return None, None
+    try:
+        return float(s), None
+    except ValueError:
+        return None, None
+
+
+def fetch_cell_line_biodata(cell_line: str, page: int = 1, per_page: int = 5) -> List[dict]:
+    """Fetch ONE page of per-cell-line REAL measured bio-data.
+
+    Endpoint: POST /api/v2/get-ceil-line-bio-data (public, no auth; the
+    server caps per_page at 5 — verified live 2026-10-03).  Each ``data``
+    row carries a ``compounds`` object (numeric_value / doi / method /
+    incubationTime / imageUrl) plus a top-level ``value`` string in the
+    form "1.2" or "0.6 ± 0.1".
+    """
+    payload = _post(
+        BIODATA_ENDPOINT,
+        {"cell_line": cell_line, "per_page": per_page, "page": page},
+    )
+    if not payload:
+        return []
+    return payload.get("data", [])
+
+
+def flatten_biodata_row(row: dict, cell_line: str) -> dict:
+    """Flatten one endpoint-C row into a loader record (no SMILES yet).
+
+    NOTE: the top-level ``id`` on these rows is the BIODATA row id, NOT the
+    substance id — the substance id arrives only via the structure join.
+    """
+    comp = row.get("compounds") or {}
+    value_raw = row.get("value")
+    if value_raw is None:
+        value_raw = comp.get("numeric_value")
+    mean, sd = parse_measurement_value(value_raw)
+    return {
+        "compound_code": compound_code_from_image_url(comp.get("imageUrl", "")),
+        "cell_line": cell_line,
+        "value_raw": "" if value_raw is None else str(value_raw),
+        "value_mean": mean,
+        "value_sd": sd,
+        "doi": comp.get("doi", "") or "",
+        "title": comp.get("title", "") or "",
+        "method": comp.get("method", "") or "",
+        "incubation_time": comp.get("incubationTime", "") or "",
+        "biodata_row_id": row.get("id"),
+        "n_measurements": len(row.get("measurements") or []),
+    }
+
+
+def fetch_cell_line_biodata_pages(
+    cell_line: str,
+    max_pages: int = 300,
+    per_request_delay: float = 2.5,
+    per_page: int = 5,
+    progress_every: int = 25,
+) -> tuple:
+    """Paginate get-ceil-line-bio-data and flatten every row.
+
+    Returns (records, total_requests).  Stops on: empty page, soft
+    rate-limit (``_post`` -> None), ``meta.last_page`` reached, or
+    max_pages.  Reuses ``_post`` so the existing retry/429 backoff and
+    soft-rate-limit detection apply unchanged.
+    """
+    records: List[dict] = []
+    page = 1
+    total_requests = 0
+    last_page: Optional[int] = None
+    while page <= max_pages:
+        payload = _post(
+            BIODATA_ENDPOINT,
+            {"cell_line": cell_line, "per_page": per_page, "page": page},
+        )
+        total_requests += 1
+        if not payload:
+            break
+        data = payload.get("data", [])
+        if not data:
+            break
+        for row in data:
+            records.append(flatten_biodata_row(row, cell_line))
+        last_page = (payload.get("meta") or {}).get("last_page") or last_page
+        if progress_every and total_requests % progress_every == 0:
+            print(f"      [progress] biodata page={page} rows={len(records)} "
+                  f"reqs={total_requests} last_page={last_page}", flush=True)
+        if last_page and page >= int(last_page):
+            break
+        page += 1
+        time.sleep(per_request_delay)
+    return records, total_requests
+
+
+def build_structure_index(
+    start_page: int,
+    max_pages: int,
+    per_request_delay: float,
+    per_page: int = 5,
+) -> tuple:
+    """Page get-substances (reusing fetch_pt_compound_page) -> structure map.
+
+    Returns ({compound_code -> {"substance_id", "smiles", "mw", "casNumber"}},
+    total_requests).  The full corpus spans 1547 pages of 5 rows; Pt codes
+    sit in the high pages (descending order; ~828..1547).  Callers pass a
+    bounded window and must treat unmatched codes as honestly unmatched
+    (see join_structures).
+    """
+    index: Dict[str, dict] = {}
+    total_requests = 0
+    for i in range(max_pages):
+        page = start_page + i
+        items = fetch_pt_compound_page(page=page, per_page=per_page)
+        total_requests += 1
+        if not items:
+            break
+        for item in items:
+            code = item.get("imageId") or compound_code_from_image_url(item.get("imageUrl", ""))
+            if not code:
+                continue
+            index[code] = {
+                "substance_id": item.get("id"),
+                "smiles": item.get("smiles", "") or "",
+                "mw": item.get("mw", "") or "",
+                "casNumber": item.get("casNumber"),
+            }
+        time.sleep(per_request_delay)
+    return index, total_requests
+
+
+def join_structures(records: List[dict], structure_index: Dict[str, dict]) -> tuple:
+    """Attach structure fields to bio-data records via the compound code.
+
+    Returns (joined_records, n_matched, n_unmatched).  Unmatched records are
+    KEPT (empty smiles, empty substance_id) and counted — a partial index
+    window must surface as an honest unmatched count, never as dropped rows.
+    """
+    joined: List[dict] = []
+    n_matched = 0
+    for rec in records:
+        new = dict(rec)
+        struct = structure_index.get(rec.get("compound_code", ""))
+        if struct:
+            new["substance_id"] = struct.get("substance_id")
+            new["smiles"] = struct.get("smiles", "")
+            new["mw"] = struct.get("mw", "")
+            new["casNumber"] = struct.get("casNumber")
+            n_matched += 1
+        else:
+            new["substance_id"] = ""
+            new["smiles"] = ""
+            new["mw"] = ""
+            new["casNumber"] = None
+        joined.append(new)
+    return joined, n_matched, len(records) - n_matched
 
 
 def _build_row(item: dict, cell_lines_data: List[dict]) -> dict:
@@ -325,11 +567,14 @@ def write_outputs(rows: List[dict], out_dir: Path, total_requests: int,
         ],
         "framing": (
             "REAL MB-Finder-hosted Rusanov 2025 Pt compounds + REAL per-cell-line "
-            "bio-data COVERAGE MATRIX. Per-cell-line IC50 NUMERIC VALUES are NOT "
-            "exposed by the public MB-Finder API (only presence/absence + count). "
-            "We emit has_<line> boolean flags (real coverage) instead of synthetic pIC50. "
-            "This replaces the SYNTHETIC pIC50 loader (Wf-278B) as the closest-to-real "
-            "PlatinAI dataset without academic outreach."
+            "bio-data COVERAGE MATRIX. CORRECTION (2026-10-03): earlier versions "
+            "of this meta claimed per-cell-line IC50 NUMERIC VALUES are NOT "
+            "exposed by the public API — that was WRONG. Endpoint "
+            "get-ceil-line-bio-data returns real numeric values (see "
+            "--biodata-cell-line mode / TODO/completed/pt_data_route_correction.md). "
+            "This coverage mode emits has_<line> boolean flags (real coverage) "
+            "and is retained for backwards compatibility; for numeric labels "
+            "use the biodata mode."
         ),
         "target_cell_lines": target_cell_lines or TARGET_CELL_LINES,
         "coverage": coverage,
@@ -346,6 +591,102 @@ def write_outputs(rows: List[dict], out_dir: Path, total_requests: int,
     with open(meta_path, "w") as fh:
         json.dump(meta, fh, indent=2)
     return {"csv": str(csv_path), "meta": str(meta_path)}
+
+
+BIODATA_FIELDNAMES = [
+    "compound_code", "cell_line", "value_raw", "value_mean", "value_sd",
+    "smiles", "mw", "substance_id", "casNumber", "doi", "method",
+    "incubation_time", "biodata_row_id", "n_measurements", "title",
+]
+
+
+def write_biodata_outputs(joined: List[dict], out_dir: Path, csv_basename: str,
+                          meta_extra: dict) -> Dict[str, str]:
+    """Write the REAL-numeric-mode CSV + meta (joined bio-data + structures)."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = out_dir / f"{csv_basename}.csv"
+    meta_path = out_dir / f"{csv_basename}.meta.json"
+    with open(csv_path, "w", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=BIODATA_FIELDNAMES, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(joined)
+    n_with_value = sum(1 for r in joined if r["value_mean"] is not None)
+    meta = dict(meta_extra)
+    meta.update({
+        "n_rows": len(joined),
+        "n_rows_with_numeric_value": n_with_value,
+        "n_rows_parse_failed": len(joined) - n_with_value,
+        "n_rows_with_smiles": sum(1 for r in joined if r["smiles"]),
+        "source": "MB-Finder portal (https://www.mb-finder.org)",
+        "underlying_paper": "Rusanov 2025 PlatinAI (DOI 10.26434/chemrxiv-2025-pp32k)",
+        "endpoints_used": [
+            "POST /api/v2/get-ceil-line-bio-data",
+            "POST /api/v2/get-substances",
+        ],
+        "framing": (
+            "REAL per-cell-line measured values from the public MB-Finder API "
+            "(get-ceil-line-bio-data) joined to REAL compound SMILES from "
+            "get-substances. This corrects the earlier false honest-negative "
+            "('per-cell-line IC50 NUMERIC not exposed'); see "
+            "TODO/completed/pt_data_route_correction.md. Rows whose code is "
+            "outside the indexed page window keep empty SMILES and are counted "
+            "as unmatched (n_matched_structures / n_unmatched_structures)."
+        ),
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    })
+    with open(meta_path, "w") as fh:
+        json.dump(meta, fh, indent=2)
+    return {"csv": str(csv_path), "meta": str(meta_path)}
+
+
+def _run_biodata_mode(args) -> int:
+    """REAL per-cell-line numeric mode (NEW 2026-10-03)."""
+    cell_line = args.biodata_cell_line
+    print("=== MB-Finder REAL per-cell-line bio-data mode (corrects the false "
+          "honest-negative, 2026-10-03) ===")
+    print(f"Source: {MB_API_BASE}")
+    print(f"cell_line: {cell_line}   biodata_max_pages: {args.biodata_max_pages}   "
+          f"delay: {args.delay}s")
+    print()
+    print(f"[1/4] Paginating {BIODATA_ENDPOINT} for {cell_line}...")
+    records, bio_requests = fetch_cell_line_biodata_pages(
+        cell_line, max_pages=args.biodata_max_pages, per_request_delay=args.delay,
+    )
+    n_parsed = sum(1 for r in records if r["value_mean"] is not None)
+    print(f"      rows={len(records)} reqs={bio_requests} parsed_numeric={n_parsed} "
+          f"parse_failures={len(records) - n_parsed}")
+    print(f"[2/4] Building substance structure index (pages "
+          f"{args.substances_start_page}.."
+          f"{args.substances_start_page + args.substances_max_pages - 1})...")
+    index, index_requests = build_structure_index(
+        args.substances_start_page, args.substances_max_pages, args.delay,
+    )
+    print(f"      index_size={len(index)} substance codes reqs={index_requests}")
+    print("[3/4] Joining compound_code -> SMILES...")
+    joined, n_matched, n_unmatched = join_structures(records, index)
+    print(f"      matched={n_matched} unmatched={n_unmatched} "
+          f"(unmatched rows kept with empty smiles)")
+    print(f"[4/4] Writing outputs to {args.out_dir}...")
+    meta_extra = {
+        "cell_line": cell_line,
+        "biodata_max_pages": args.biodata_max_pages,
+        "substances_start_page": args.substances_start_page,
+        "substances_max_pages": args.substances_max_pages,
+        "per_request_delay": args.delay,
+        "biodata_api_requests": bio_requests,
+        "substances_api_requests": index_requests,
+        "total_api_requests": bio_requests + index_requests,
+        "n_matched_structures": n_matched,
+        "n_unmatched_structures": n_unmatched,
+        "coverage_note": (
+            "structure index covers a bounded page window; unmatched codes "
+            "require a wider --substances-start-page/--substances-max-pages range"
+        ),
+    }
+    paths = write_biodata_outputs(joined, args.out_dir, args.csv_basename, meta_extra)
+    print(f"      CSV:  {paths['csv']}")
+    print(f"      Meta: {paths['meta']}")
+    return 0
 
 
 def main() -> int:
@@ -369,6 +710,22 @@ def main() -> int:
     parser.add_argument("--max-pages", type=int, default=1547,
                         help="Maximum pages to scan before stopping "
                              "(stratified mode; default 1547 = full Pt corpus)")
+    parser.add_argument("--biodata-cell-line", type=str, default=None,
+                        help="NEW 2026-10-03: fetch REAL per-cell-line numeric "
+                             "bio-data (get-ceil-line-bio-data) for this cell line, "
+                             "join compound SMILES via get-substances, write "
+                             "CSV+meta. Corrects the earlier false claim that "
+                             "these values were not public.")
+    parser.add_argument("--biodata-max-pages", type=int, default=60,
+                        help="Max bio-data pages in --biodata-cell-line mode "
+                             "(server caps 5 rows/page; default 60 = 300 rows)")
+    parser.add_argument("--substances-start-page", type=int, default=1400,
+                        help="First get-substances page for the structure index "
+                             "in --biodata-cell-line mode (Pt codes live in the "
+                             "high, descending pages ~828..1547)")
+    parser.add_argument("--substances-max-pages", type=int, default=147,
+                        help="Max get-substances pages for the structure index "
+                             "(default 147 covers pages 1400..1546)")
     args = parser.parse_args()
     out_arg = args.out
     # If --out is a .csv path, derive basename + directory from it
@@ -381,6 +738,10 @@ def main() -> int:
             args.csv_basename = out_path.stem
     else:
         out_dir = PROJECT_ROOT / out_arg if not out_arg.startswith("/") else Path(out_arg)
+
+    if args.biodata_cell_line:
+        args.out_dir = out_dir
+        return _run_biodata_mode(args)
 
     stratified = bool(args.n_target_per_cell and args.cell_lines)
     if args.n_target_per_cell and not args.cell_lines:

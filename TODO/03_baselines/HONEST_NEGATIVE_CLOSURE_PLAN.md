@@ -706,7 +706,7 @@ Per §3.1 + §3.2 + §3.3 + §3.4 sequential timeline:
 ```bash
 # 1. Pre-flight check (mandatory per AGENTS.md §5.1 + §1.4)
 PYTHONPATH=/home/hugo/codes/mol-metal \
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+    /home/hugo/codes/mol-metal/.venv/bin/python \
     molmetal/scripts/pre_flight_check.py --pipeline all
 
 # 2. Dry-run verification (no GPU)
@@ -714,7 +714,7 @@ bash scripts/launch_<wrapper>.sh --dry-run
 
 # 3. §5.7 50-step CPU smoke (REQUIRED per Wf-399-A1 NEW rule)
 PYTHONPATH=/home/hugo/codes/mol-metal \
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+    /home/hugo/codes/mol-metal/.venv/bin/python \
     molmetal/scripts/wf399a1_smoke_protocol.py \
         --trainer-path molmetal/scripts/train_<trainer>.py \
         --flags-list <flags> \
@@ -734,7 +734,7 @@ watch -n 300 'nvidia-smi --query-gpu=index,utilization.gpu,memory.used,memory.fr
 
 # 8. Post-hoc property panel evaluation (per Wf-432-A4)
 PYTHONPATH=/home/hugo/codes/mol-metal \
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+    /home/hugo/codes/mol-metal/.venv/bin/python \
     molmetal/scripts/cfm_property_panel.py \
         --smiles-path <output_smiles> \
         --out-dir metrics/by_metrics/m7_diversity.json

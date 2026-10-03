@@ -97,8 +97,8 @@ ALTERNATE_VINA_BINS: Tuple[Path, ...] = (
     Path("/home/hugo/.mamba/bin/vina"),
     Path("/home/hugo/codes/pocket/.eval_envs/pocket2mol311/bin/vina"),
 )
-ALT_PREPARE_LIGAND_PY = Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin/mk_prepare_ligand.py")
-ALT_PREPARE_LIGAND_VENV = Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin/python")
+ALT_PREPARE_LIGAND_PY = Path("/home/hugo/codes/mol-metal/.venv/bin/mk_prepare_ligand.py")
+ALT_PREPARE_LIGAND_VENV = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 
 # ---------------------------------------------------------------------------
 # Phase 2 scope (same as Wf-179 — ship continuity)
@@ -397,7 +397,7 @@ def smiles_to_pdbqt_3d(
     mk_prepare_ligand.py (meeko) → PDBQT.
 
     Uses the project's ``.venv/bin/python`` for RDKit (consistent
-    version) and the CadButEaas venv-vlm for meeko (because that's
+    version) and the project .venv for meeko (because that's
     where the Wf-179 staging has been verified to work).
     """
     rdkit_py = rdkit_py or DEFAULT_RDKIT_PY
@@ -456,7 +456,7 @@ print("OK")
             f"stderr={embed_proc.stderr[:300]}"
         )
 
-    # meeko PDBQT conversion (CadButEaas venv)
+    # meeko PDBQT conversion (project venv)
     if not prepare_lig_py.exists():
         raise RuntimeError(
             f"mk_prepare_ligand.py not found at {prepare_lig_py} — "

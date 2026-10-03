@@ -41,7 +41,7 @@ Honest framing per AGENTS.md §5.2:
 Run on the metallo cohort by default::
 
     PYTHONPATH=/home/hugo/codes/mol-metal \\
-        /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+        /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf331r3_m6_kappa_multiph_pll.py \\
         --output-dir molmetal/reports/wf331r3_m6_kappa
 

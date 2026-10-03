@@ -18,7 +18,7 @@ The aggregator writes:
 
 Usage::
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \\
+    /home/hugo/codes/mol-metal/.venv/bin/python -u \\
         molmetal/scripts/run_mtl_ablation_grid.py \\
         --configs mtl_baseline mtl_structured mtl_gradproj single_task \\
         --metals Ru Ir Os Rh Re --seeds 0 1 2 \\

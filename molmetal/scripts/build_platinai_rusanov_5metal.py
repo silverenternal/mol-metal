@@ -15,7 +15,7 @@ pIC50; no synthetic extrapolation).
 Usage::
 
     # After downloading the xlsx from MBFinder:
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \\
+    /home/hugo/codes/mol-metal/.venv/bin/python -u \\
         molmetal/scripts/build_platinai_rusanov_5metal.py \\
         --xlsx-path /path/to/rusanov_2025_platinai.xlsx \\
         --out-csv molmetal/data/platinai_rusanov_5metal.csv \\

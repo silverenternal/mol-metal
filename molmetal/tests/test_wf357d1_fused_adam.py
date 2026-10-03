@@ -118,7 +118,7 @@ def test_fused_adam_cli_flag_wired() -> None:
     import subprocess
     cfm_probe = subprocess.run(
         [
-            "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python",
+            "/home/hugo/codes/mol-metal/.venv/bin/python",
             "-c",
             (
                 "import sys, argparse\n"

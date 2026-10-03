@@ -10,7 +10,7 @@
 Per the Wf-320D task brief: WRITE-ONLY tests, no production-grade
 verification. CPU-only. Run via::
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -m pytest \\
+    /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
             molmetal/tests/test_wf320d_chemprop_featurization_fix.py -v
 
 Honest framing per ``party-twenty-spirit`` §3.5:

@@ -202,7 +202,7 @@ def _find_mk_prepare_receptor() -> str:
     if not found:
         raise FileNotFoundError(
             "mk_prepare_receptor.py not on PATH; source env.sh so that "
-            "uv routes to the shared CadButEaas venv that ships meeko."
+            "uv routes to the project-local .venv that ships meeko."
         )
     return found
 

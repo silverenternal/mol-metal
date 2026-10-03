@@ -169,7 +169,7 @@ def test_blocker_3_ref_repo_path_cli_flag_passed_to_adapter():
         pytest.skip(f"missing retrain script: {script}")
     proc = subprocess.run(
         [
-            "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python",
+            "/home/hugo/codes/mol-metal/.venv/bin/python",
             str(script),
             "--steps", "1",
             "--n-train", "8",

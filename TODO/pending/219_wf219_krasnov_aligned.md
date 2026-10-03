@@ -131,7 +131,7 @@ The 1-hr subagent budget did not have room to launch Ru + Ir after Re/Os/Rh comp
 ```bash
 cd /home/hugo/codes/mol-metal
 CUDA_VISIBLE_DEVICES=1 \
-/home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+/home/hugo/codes/mol-metal/.venv/bin/python \
     molmetal/scripts/wf219_krasnov_aligned.py \
     --metals Ru Ir --seeds 0 1 2 \
     --epochs 50 --hidden 64 --depth 2 \
@@ -149,7 +149,7 @@ For paper-grade numbers matching Krasnov 2026 comparison, the sweep should be re
 ```bash
 cd /home/hugo/codes/mol-metal
 CUDA_VISIBLE_DEVICES=1 \
-/home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+/home/hugo/codes/mol-metal/.venv/bin/python \
     molmetal/scripts/wf219_krasnov_aligned.py \
     --metals Ru Ir Os Rh Re --seeds 0 1 2 \
     --epochs 50 --hidden 300 --depth 3 \

@@ -461,7 +461,7 @@ def test_cli_flags_present() -> None:
     import subprocess
     result = subprocess.run(
         [
-            "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python",
+            "/home/hugo/codes/mol-metal/.venv/bin/python",
             str(_REPO_ROOT / "molmetal/scripts/train_hilbert_astsr_end_to_end.py"),
             "--help",
         ],

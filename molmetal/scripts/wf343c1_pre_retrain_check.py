@@ -68,7 +68,7 @@ SCRIPT_DIR = MOLMETAL_ROOT / "scripts"
 TESTS_DIR = MOLMETAL_ROOT / "tests"
 DOC_ROOT = REPO_ROOT
 
-VENV_PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"  # AGENTS.md §5.9 canonical repo-local venv
 
 # Parent doc + key paths referenced by every gate.
 PARENT_DOC = REPO_ROOT / "科研进展_pre_retrain_checklist_2026-09-28.md"

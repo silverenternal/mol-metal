@@ -792,7 +792,7 @@ Cross-references: TODO/completed/A8_m17_yaml_rewrite.md §0 + TODO/decisions/000
 **§5.7 floor-1 yaml.safe_load verified for all 3 smoke yamls**: ckpt_dir + events_jsonl + gates + scheduler all PASS for m17 + default + Wf-124 G5.
 
 **Honest framing caveats**:
-- CadButEaas venv reference in Wf-124 G5 yaml's entry.command preserved intentionally per AGENTS.md §5.5 filesystem-truth rule (backward compat)
+- project venv reference in Wf-124 G5 yaml's entry.command preserved intentionally per AGENTS.md §5.5 filesystem-truth rule (backward compat)
 - $PYTHON literal in TRAINER_CMD preserved in dry-run display (actual launch uses eval which expands correctly)
 - Floors 2-4 of §5.7 deferred to USER_OK-gated Blackwell sm_120 retrain (CPU smoke >2 min wall on this CPU host)
 

@@ -48,7 +48,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 WRAPPER = PROJECT_ROOT / "scripts" / "launch_wf125_p1_controlled_pair.sh"
 REPORTS_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf125_p1_controlled_pair"
 
-PY_BIN = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+PY_BIN = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 
 # -----------------------------------------------------------------------------

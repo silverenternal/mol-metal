@@ -19,7 +19,7 @@ union of train metals, no OOD-specific tricks).  GroupDRO / CORAL / IRM /
 MixUp / DANN are intentionally NOT used here — that's the DrugOOD ultracode
 scope (TODO 22c), not this one.
 
-Env: requires ``dgl`` + ``dgllife``.  The user-specified venv-vlm lacks both,
+Env: requires ``dgl`` + ``dgllife``.  The user-specified .venv lacks both,
 so this script MUST be launched via ``/home/hugo/.conda_envs/drugood/bin/python``
 which has dgl 2.5.0 + dgllife 0.3.1 + torch 2.14.0+cu130 + CUDA.  That env
 choice is documented in the honest_framing_note of the per-summary JSON.
@@ -522,7 +522,7 @@ def main() -> int:
             "atom_feat_size": ATOM_FEAT_SIZE,
             "bond_feat_size": BOND_FEAT_SIZE,
             "python_env_used": "/home/hugo/.conda_envs/drugood/bin/python (constraint asked for "
-                              "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python but that venv lacks "
+                              "/home/hugo/codes/mol-metal/.venv/bin/python but that venv lacks "
                               "dgl+dgllife; drugood env has dgl 2.5.0 + dgllife 0.3.1 + torch 2.14.0+cu130)",
         },
         "split_protocol": "LOMO (leave-one-metal-out): train on {Ru, Ir, Os, Re}\\Rh, test on Rh. "
@@ -536,8 +536,8 @@ def main() -> int:
         "honest_framing_note": (
             "Wf-146 DGL-LifeSci GCN+ERM baseline executed in the /home/hugo/.conda_envs/drugood/bin/python env "
             "(dgl 2.5.0 + dgllife 0.3.1 + torch 2.14.0+cu130 + CUDA 13.4). The CONSTRAINT requested "
-            "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python but that venv is missing dgl and dgllife "
-            "(verified: ModuleNotFoundError on import). Trying to pip-install dgl+dgllife into venv-vlm "
+            "/home/hugo/codes/mol-metal/.venv/bin/python but that venv is missing dgl and dgllife "
+            "(verified: ModuleNotFoundError on import). Trying to pip-install dgl+dgllife into .venv "
             "would take 30+ min and risk CUDA version mismatch; switching to the drugood env is the "
             "honest, pre-deployed, GPU-ready path and matches the recommendation in the input "
             "honest_framing_note. Backbone: GCNPredictor (3 layers, hidden=64, dropout=0.2, residual=True, "

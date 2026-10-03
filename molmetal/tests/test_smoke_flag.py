@@ -48,7 +48,7 @@ pytestmark = pytest.mark.skipif(
 # Locate a python that has rdkit + torch installed.  We honour the
 # UV_PROJECT_ENVIRONMENT convention used by env.sh (CadButEaas shared
 # venv with rdkit + torch+cu130 pre-installed).
-_SHARED_VENV = Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin/python")
+_SHARED_VENV = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 _DEFAULT_PY = _SHARED_VENV if _SHARED_VENV.exists() else Path(sys.executable)
 
 

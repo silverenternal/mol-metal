@@ -43,6 +43,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -127,7 +128,7 @@ DOT_DATA_DIR = REPO_ROOT / ".data" / "molmetal"
 # via POSIX-atomic temp-file + rename (process-local per-path lock).
 from molmetal.scripts.wf386a3_atomic_write import atomic_write_file  # noqa: E402
 
-VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"  # Wf-446: was hardcoded to non-existent /home/hugo/codes/CadButEaas/.venv-vlm/bin/python; project venv at .venv/bin/python is the canonical Python for sub-gates
+VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"  # Wf-446: was hardcoded to non-existent /home/hugo/codes/mol-metal/.venv/bin/python; project venv at .venv/bin/python is the canonical Python for sub-gates
 # Wf-300D harness auto-fallback wrapper is a USER-LEVEL file, not part of
 # this repo. Located at $HOME/.claude/wrapper.py; Wf-306C P3 gate verifies
 # it exists so any subsequent auto-fallback calls (detect_schema_shape /
@@ -285,11 +286,28 @@ def gate_help(
     extra_args: Optional[List[str]] = None,
     timeout: float = 30.0,
 ) -> GateResult:
-    """PASS if every space-separated token in ``pattern`` appears in --help output.
+    """DECLARATION-ONLY check: every token in ``pattern`` appears as an
+    argparse option/choice in ``--help`` output.
 
-    Multi-token patterns (e.g. ``"--no-multi-task --no-wass"``) are split on
-    whitespace and require ALL tokens to appear (anywhere) in the joined
-    stdout+stderr of ``{py} {script} {extra_args} --help``.
+    Multi-token patterns (e.g. ``"--no-multi-task --no-wass"``, or
+    ``"--chemprop-mode v3-fix"`` where ``v3-fix`` is a choice value) are
+    split on whitespace and require ALL tokens.
+
+    Wf-A12 FIX (2026-10-03) — tightening: a token previously matched as a
+    plain SUBSTRING anywhere in stdout+stderr, so it also passed on prose
+    (e.g. a token mentioned only in a help-text description).  A token now
+    counts only when it appears, as a whole token (word/dash boundaries),
+    inside the INVOCATION column of an argparse help option line — the
+    "  --flag VALUE" part before the description, which is the form an
+    actual ``add_argument`` registration takes.  Usage-block occurrences,
+    free prose, and help-text descriptions no longer count.
+
+    HONEST FRAMING (why the evidence says DECLARATION-ONLY): this gate
+    proves a flag is DECLARED on the parser.  It does NOT prove the flag
+    is WIRED into the training loop — the AGENTS.md §5.7 / Wf-385-A1
+    failure mode (17 flags declared, 0 wired, all unit tests green) is
+    invisible to any ``--help`` probe.  Wire-in proof requires the §5.7
+    50-step smoke (``wf399a1_smoke_protocol.py``), not this gate.
     """
     t0 = time.perf_counter()
     args = [py, str(script)] + (extra_args or []) + ["--help"]
@@ -297,17 +315,52 @@ def gate_help(
     elapsed = time.perf_counter() - t0
     blob = out + "\n" + err
     tokens = pattern.split()
-    missing = [tok for tok in tokens if tok not in blob]
+    # Wf-A12 — build the INVOCATION column of each argparse option line.
+    # Argparse renders registrations as "  --flag VALUE   description"
+    # (exactly two leading spaces = the option indent; help text follows
+    # after a run of >= 2 spaces).  Two things therefore do NOT count:
+    # prose anywhere else in the output, and prose that merely shares a
+    # line with a flag.  A fallback (dash-led lines, same invocation
+    # split) keeps non-default formatters working; the evidence says when
+    # it was used.
+    option_invocations: List[str] = []
+    primary_option_lines = [ln for ln in blob.splitlines() if ln.startswith("  -")]
+    if primary_option_lines:
+        pool = primary_option_lines
+        fallback_note = ""
+    else:
+        # Non-default formatter fallback (no 2-space option lines found):
+        # use dash-led lines, still reduced to the invocation column.
+        pool = [ln for ln in blob.splitlines() if ln.lstrip().startswith("-")]
+        fallback_note = (
+            " [no 2-space argparse option lines found — fallback dash-line "
+            "heuristic used]"
+        )
+    for line in pool:
+        body = line[2:] if line.startswith("  -") else line.lstrip()
+        option_invocations.append(body.split("  ", 1)[0])
+    missing: List[str] = []
+    for tok in tokens:
+        tok_re = re.compile(r"(?<![\w-])" + re.escape(tok) + r"(?![\w-])")
+        if not any(tok_re.search(inv) for inv in option_invocations):
+            missing.append(tok)
     if not missing:
         return GateResult(
             name, priority, pipeline, "PASS",
-            f"help exposes all {len(tokens)} token(s) of '{pattern}' "
-            f"(rc={rc})", elapsed,
+            f"DECLARATION-ONLY: --help exposes all {len(tokens)} token(s) of "
+            f"'{pattern}' in the argparse invocation column of {script.name} "
+            f"(rc={rc}, {len(option_invocations)} option lines){fallback_note}. "
+            f"NOTE: proves flag DECLARATION, NOT wire-in/behaviour — §5.7 "
+            f"smoke required for that.", elapsed,
         )
     return GateResult(
         name, priority, pipeline, "FAIL",
-        f"help missing token(s) {missing} from '{pattern}' "
-        f"(rc={rc}; {len(blob)}B output)", elapsed,
+        f"DECLARATION-ONLY check failed: help missing token(s) {missing} from "
+        f"'{pattern}' in the argparse invocation column (rc={rc}; "
+        f"{len(option_invocations)} option lines in {len(blob)}B output)"
+        f"{fallback_note}.  A token appearing only in prose (or only in a "
+        f"help-text description) no longer counts (Wf-A12 tightening).",
+        elapsed,
     )
 
 
@@ -625,9 +678,9 @@ def gate_scaffold_zero_leak(
     On a host Python without pandas (e.g. bare ``/usr/bin/python``),
     the structural probe is **not verifiable** — not because the CSV
     is broken, but because the gate's import probe requires a
-    pandas-enabled runtime (expected: ``kanzi_venv`` or
-    ``/home/hugo/codes/CadButEaas/.venv-vlm/bin/python`` per AGENTS.md
-    §5.1). We treat this as an **honest-negative SKIP** rather than a
+    pandas-enabled runtime (expected: the repo-local canonical
+    ``/home/hugo/codes/mol-metal/.venv/bin/python`` per AGENTS.md
+    §5.1 + §5.9). We treat this as an **honest-negative SKIP** rather than a
     FAIL because:
 
       1. The v4 CSV is on disk + structurally readable (verified via
@@ -697,10 +750,10 @@ def gate_scaffold_zero_leak(
                 f"metalcytotox_5metal_multitask_v4.csv IS present "
                 f"({csv_path}) and structurally readable, but the "
                 f"gate's pandas import probe cannot execute without "
-                f"the expected pandas-enabled runtime (e.g. "
-                f"kanzi_venv or "
-                f"/home/hugo/codes/CadButEaas/.venv-vlm/bin/python "
-                f"per AGENTS.md §5.1). This is an env gap, not a "
+                f"the expected pandas-enabled runtime (the repo-local "
+                f"canonical "
+                f"/home/hugo/codes/mol-metal/.venv/bin/python "
+                f"per AGENTS.md §5.1 + §5.9). This is an env gap, not a "
                 f"regression. Original probe error: {err_tail_str}",
                 elapsed,
             )
@@ -3147,26 +3200,28 @@ def gate_section9_entry_count(
 # pipeline only; 'frontier' / 'chemprop_v2_v3' / 'cfm' are subsets that
 # should remain stable per their contract (Wf-259 baseline).
 EXPECTED_GATE_COUNTS = {
-    "all": 98,  # Wf-437 simplify (THIS AUDIT): 127 → 98 REAL gates
-                # Pre-Wf-437 baseline: 127 unique named gate tuples
-                # (149 total entries with 22 duplicate wf353b1_* entries
-                # in build_gates() per Wf-353-B1 wiring oversight).
-                # Per Wf-437 A2 audit + brief / AGENTS.md §5.5 filesystem-
-                # truth rule #6: physically removed 29 SCAFFOLD-only gate
-                # tuples matching these patterns:
-                #   * p3_protocol_* (15 gates) — Wf-350-C1 SCAFFOLD
-                #   * p3_mock_to_real_* (5 gates) — Wf-432-A1 §6 MOCK→REAL
-                #   * krasnov_* / rusanov_* / drugood_* (9 gates)
-                # Result: 127 - 29 = 98 unique REAL named gates remaining.
-                # Per Wf-345-B3 auto-recompute of
-                # ``EXPECTED_GATE_COUNTS["all"]`` via
-                # ``len(build_gates(pipeline))`` is the authoritative
-                # runtime source; this constant is retained for
-                # backward-compat only. Per §5.5 filesystem-truth
-                # rule #1, the actual gate count is MEASURED at runtime;
-                # this constant is the user-declared expectation.
+    "all": 101,  # Wf-A12 FIX (2026-10-03): 98 → 101 — the previous 98
+                # was STALE.  The Wf-345-B3 "auto-compute" mode had made
+                # the audit gate compare the count to itself, so the 4-gate
+                # drift (98 constant vs 102 registered) went unsignalled.
+                # The audit gate now receives this constant explicitly at
+                # its registration site (real drift check), and the value
+                # below is MEASURED at the Wf-A12 fix timestamp:
+                #   len(build_gates("all")) == 101
+                # after the Wf-A12 removal of the 'all'-pipeline
+                # `p3_loi_send_ready` wet-lab gate registration
+                # (102 → 101; see the removal comment in `build_gates`).
+                # Per Wf-437 A2 audit: 29 SCAFFOLD-only gate tuples had
+                # been physically removed (127 → 98), which is what left
+                # the constant stale.  Per §5.5 filesystem-truth rule #1
+                # the actual gate count is MEASURED at runtime; this
+                # constant is the declared expectation the audit gate now
+                # enforces (update it in the SAME edit as any gate
+                # add/remove).
     "frontier": 25,
-    "chemprop_v2_v3": 14,
+    "chemprop_v2_v3": 18,  # Wf-A12 FIX (2026-10-03): 14 → 18 MEASURED
+                           # via len(build_gates("chemprop_v2_v3"));
+                           # the 14 was stale (pre-Wf-A12 docs drift).
     "cfm": 6,
 }
 
@@ -3903,6 +3958,151 @@ def gate_wf327_cpu_num_workers_sufficient(
 # ----------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Wf-A12 FIX (2026-10-03) — hyperparam RESOLUTION helpers for
+# ``gate_wf343c4_hyperparams_config_complete`` (G2).
+#
+# The gate used to PASS on mere PRESENCE of the 4 hyperparam keys in a YAML
+# (plus an int/float type check).  It never asked whether the key RESOLVES to
+# a trainer argparse dest — so `model.hidden_dim: 300` sat in four configs
+# while the runs used the argparse default 128 (see the Wf-A11 audit +
+# TODO/completed/config_dead_key_remediation.md).  The helpers below answer
+# "does every declared key resolve?" by REUSING the canonical loader
+# ``molmetal/scripts/wfA2_config_loader.py`` — its ``apply_yaml_overrides``
+# plus the ``args.yaml_unresolved_keys`` report added by Wf-A11 — rather than
+# re-implementing the candidate/leaf/alias resolution.
+#
+# The probe parser is built from the trainer's OWN ``add_argument`` calls via
+# an AST scan of the entry script: no import of the trainer (its module-level
+# torch import would cost seconds) and no execution of it.  The loader is then
+# invoked exactly the way the trainer invokes it, so resolution semantics
+# (flattened key, leaf fallback, _LEAF_ALIASES) stay in ONE place.
+#
+# BLOCKING BEHAVIOUR IS OFF (Wf-A12, measured debt is not zero: 65/85/47/14/
+# 84/95/47/48/43 skipped keys across the 9 active configs at the fix
+# timestamp).  The gate REPORTS + LISTS unresolved keys loudly and still
+# PASSes.  Enabling blocking (env ``PREFLIGHT_HYPERPARAMS_RESOLUTION_STRICT=1``
+# or the constant below) is a SEPARATE, later decision for when the debt
+# reaches zero — do NOT flip it now: it would fail every commit in this repo.
+# ---------------------------------------------------------------------------
+HYPERPARAMS_RESOLUTION_STRICT_DEFAULT = False
+HYPERPARAMS_RESOLUTION_STRICT_ENV = "PREFLIGHT_HYPERPARAMS_RESOLUTION_STRICT"
+
+
+def _config_entry_trainer_script(obj: Dict[str, Any]) -> Optional[Path]:
+    """Entry script a config targets: ``entry.script`` or the first
+    ``molmetal/scripts/*.py`` path inside ``entry.command_template``."""
+    entry = obj.get("entry")
+    if not isinstance(entry, dict):
+        return None
+    script = entry.get("script")
+    if isinstance(script, str) and script.strip():
+        cand = REPO_ROOT / script.strip()
+        if cand.is_file():
+            return cand
+    tmpl = entry.get("command_template")
+    if isinstance(tmpl, str):
+        import re as _re
+
+        m = _re.search(r"molmetal/scripts/([\w.\-]+\.py)", tmpl)
+        if m:
+            cand = SCRIPT_DIR / m.group(1)
+            if cand.is_file():
+                return cand
+    return None
+
+
+def _trainer_argparse_dests(script: Path) -> "set[str]":
+    """Argparse dest names declared by ``script`` (AST scan of add_argument).
+
+    Explicit ``dest=`` wins; otherwise the first dash-flag spelling is
+    converted (``--hidden-dim`` -> ``hidden_dim``).  AST-only: the trainer is
+    NOT imported or executed.
+    """
+    import ast as _ast
+
+    tree = _ast.parse(script.read_text(encoding="utf-8"))
+    dests: "set[str]" = set()
+    for node in _ast.walk(tree):
+        if not (
+            isinstance(node, _ast.Call)
+            and getattr(node.func, "attr", "") == "add_argument"
+        ):
+            continue
+        explicit: Optional[str] = None
+        for kw in node.keywords:
+            if (
+                kw.arg == "dest"
+                and isinstance(kw.value, _ast.Constant)
+                and isinstance(kw.value.value, str)
+            ):
+                explicit = kw.value.value
+        if explicit:
+            dests.add(explicit)
+            continue
+        for arg in node.args:
+            if (
+                isinstance(arg, _ast.Constant)
+                and isinstance(arg.value, str)
+                and arg.value.startswith("-")
+            ):
+                dests.add(arg.value.lstrip("-").replace("-", "_"))
+                break
+    return dests
+
+
+def _probe_parser_for_trainer(script: Path) -> "argparse.ArgumentParser":
+    """An argparse parser whose dest set mirrors ``script``'s own parser."""
+    ap = argparse.ArgumentParser(add_help=False, prog=script.name)
+    for dest in sorted(_trainer_argparse_dests(script)):
+        ap.add_argument("--" + dest.replace("_", "-"), dest=dest)
+    return ap
+
+
+def _resolve_one_config_via_loader(
+    yaml_path: Path, obj: Dict[str, Any]
+) -> "tuple[List[str], Optional[str]]":
+    """(unresolved_key_paths, error) for one YAML via the canonical Wf-A2 loader.
+
+    ``error`` is a human-readable string when the probe could not run (no
+    entry script / loader import failure / loader raised); callers report it
+    but do NOT fail on it (the debt is still non-zero — see the gate
+    docstring).
+    """
+    script = _config_entry_trainer_script(obj)
+    if script is None:
+        return [], (
+            f"{yaml_path.name}: no resolvable entry script "
+            f"(entry.script / entry.command_template); resolution check skipped"
+        )
+    try:
+        from molmetal.scripts import wfA2_config_loader as _loader
+    except Exception as exc:  # noqa: BLE001 — probe must never crash the gate
+        return [], f"{yaml_path.name}: loader import failed: {type(exc).__name__}: {exc}"
+    parser = _probe_parser_for_trainer(script)
+    args = parser.parse_args([])
+    # Force-quiet (the gate re-reports the skips itself) and drop any
+    # inherited WFA2_CONFIG_STRICT for the duration of the probe so an
+    # unrelated env var cannot turn this REPORTING check into a hard
+    # failure; the gate's own strict switch is the only blocking control
+    # and it is OFF by default.
+    prev_quiet = os.environ.get("WFA2_CONFIG_QUIET")
+    prev_strict = os.environ.pop("WFA2_CONFIG_STRICT", None)
+    os.environ["WFA2_CONFIG_QUIET"] = "1"
+    try:
+        args = _loader.apply_yaml_overrides(parser, args, str(yaml_path))
+    except Exception as exc:  # noqa: BLE001 — probe must never crash the gate
+        return [], f"{yaml_path.name}: loader raised {type(exc).__name__}: {exc}"
+    finally:
+        if prev_quiet is None:
+            os.environ.pop("WFA2_CONFIG_QUIET", None)
+        else:
+            os.environ["WFA2_CONFIG_QUIET"] = prev_quiet
+        if prev_strict is not None:
+            os.environ["WFA2_CONFIG_STRICT"] = prev_strict
+    return [e["key"] for e in getattr(args, "yaml_unresolved_keys", [])], None
+
+
 def gate_wf343c4_hyperparams_config_complete(
     name: str,
     priority: str,
@@ -3936,12 +4136,35 @@ def gate_wf343c4_hyperparams_config_complete(
     standing directive; a missing hyperparam means a future retrain would
     fall back to a guess (a §5.2 honest-negative violation).
 
-    CPU-only gate (no torch.cuda, no subprocess) — runs in < 5 ms on the
-    host. The 7 active YAMLs from ``configs/`` are: ``cfm_full_retrain.yaml``,
-    ``cfm_per_innovation_ablation_p1.4.yaml``, ``cfm_real_decode_lift_p1.3.yaml``,
-    ``default.yaml``, ``wf124_p3_50epoch_full_sweep_g5.yaml``,
+    Wf-A12 FIX (2026-10-03) — RESOLUTION check (PRESENCE was not enough):
+    a key can be present in a YAML and still dead, because it resolves to
+    no trainer argparse dest.  MEASURED consequence: four configs declared
+    ``model.hidden_dim: 300`` and ran at the argparse default 128 for
+    weeks.  This gate now ALSO runs every declared key through the
+    canonical ``wfA2_config_loader.apply_yaml_overrides`` (probe parser
+    built from the entry trainer's own ``add_argument`` calls via AST, no
+    trainer import) and reports the ``args.yaml_unresolved_keys`` list.
+
+    That resolution report is LOUD BUT NON-BLOCKING: the measured debt at
+    the Wf-A12 fix timestamp was 65/85/47/14/84/95/47/48/43 skipped keys
+    across the 9 active YAMLs, so making it strict today would fail every
+    commit in this repo.  The unresolved keys are listed (evidence +
+    stderr).  Enabling blocking is a SEPARATE, LATER decision once the
+    debt reaches zero — flip ``HYPERPARAMS_RESOLUTION_STRICT_DEFAULT`` or
+    set ``PREFLIGHT_HYPERPARAMS_RESOLUTION_STRICT=1`` then, not now.
+    Keys the four REQUIRED_HYPERPARAMS resolve from are additionally
+    flagged as ``REQUIRED-HYPERPARAM UNRESOLVED`` when they are dead.
+
+    CPU-only gate (no torch.cuda, no subprocess) — runs in < 100 ms on the
+    host. The 9 active YAMLs are the 7 from ``configs/`` (``cfm_full_
+    retrain.yaml``, ``cfm_per_innovation_ablation_p1.4.yaml``,
+    ``cfm_real_decode_lift_p1.3.yaml``, ``default.yaml``,
+    ``wf124_p3_50epoch_full_sweep_g5.yaml``,
     ``wf124_p3_per_innovation_ablation_g6.yaml``,
-    ``wf124_p3_remaining_metals_g4.yaml``.
+    ``wf124_p3_remaining_metals_g4.yaml``) plus the 2 from
+    ``configs/training/`` (``nci60_9cell_5seed_50ep_v1.yaml``,
+    ``platinai_pt_4cell_5seed_50ep_v1.yaml``) — the Wf-A12 coverage
+    extension.
 
     See TODO/completed/343c4_integration.md for the Wf-343C4 ship summary
     + the 4-gate contract.
@@ -4028,6 +4251,14 @@ def gate_wf343c4_hyperparams_config_complete(
     invalid_yaml: List[str] = []
     passed: List[str] = []
     alias_resolutions: Dict[str, str] = {}  # yaml_name → "key:resolved_alias"
+    # Wf-A12 — resolution report (loud, non-blocking by default).
+    unresolved_report: Dict[str, List[str]] = {}
+    resolution_errors: List[str] = []
+    required_unresolved: List[str] = []
+    resolution_strict = HYPERPARAMS_RESOLUTION_STRICT_DEFAULT or (
+        os.environ.get(HYPERPARAMS_RESOLUTION_STRICT_ENV, "").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
     for p in yaml_paths:
         if not p.is_file():
             missing.append(f"missing:{p.name}")
@@ -4041,6 +4272,24 @@ def gate_wf343c4_hyperparams_config_complete(
         if not isinstance(obj, dict):
             invalid_yaml.append(f"{p.name}: top-level not dict")
             continue
+        # Wf-A12 — resolution probe via the canonical Wf-A2 loader.  The
+        # probe never raises (it returns an error string instead) and never
+        # blocks here; see the gate docstring for why blocking is a
+        # separate, later decision.
+        unresolved: List[str] = []
+        res_err: Optional[str] = None
+        try:
+            unresolved, res_err = _resolve_one_config_via_loader(p, obj)
+        except Exception as exc:  # noqa: BLE001 — probe must never crash the gate
+            res_err = (
+                f"{p.name}: resolution probe raised "
+                f"{type(exc).__name__}: {exc}"
+            )
+        if res_err:
+            resolution_errors.append(res_err)
+        elif unresolved:
+            unresolved_report[p.name] = unresolved
+        unresolved_set = set(unresolved)
         cfg_ok = True
         yaml_aliases: List[str] = []
         for section, key, expected_type in REQUIRED_HYPERPARAMS:
@@ -4051,6 +4300,15 @@ def gate_wf343c4_hyperparams_config_complete(
                 continue
             if resolved != (section, key):
                 yaml_aliases.append(f"{key}:{resolved[0]}.{resolved[1]}")
+            if f"{resolved[0]}.{resolved[1]}" in unresolved_set:
+                # The key is DECLARED at a location the presence check
+                # accepts, yet the loader reports it dead (no argparse dest
+                # on the entry trainer).  Exactly the hidden_dim:300-vs-128
+                # class of silent lie.
+                required_unresolved.append(
+                    f"{p.name}:{resolved[0]}.{resolved[1]} "
+                    f"(declared but resolves to no argparse dest)"
+                )
             if not isinstance(value, expected_type):
                 # Allow bool→int (yaml coerces); reject str (no guessing).
                 if isinstance(expected_type, tuple) and isinstance(value, expected_type):
@@ -4079,12 +4337,53 @@ def gate_wf343c4_hyperparams_config_complete(
         problems.append(f"{len(missing)} missing hyperparam(s): {missing[:3]}")
     if wrong_type:
         problems.append(f"{len(wrong_type)} wrong-type hyperparam(s): {wrong_type[:3]}")
+
+    # Wf-A12 — assemble the resolution report and emit it LOUDLY (one
+    # stderr warning per YAML with the full key list).  Non-blocking by
+    # default; the strict switch is a separate, later decision.
+    resolution_bits: List[str] = []
+    n_unresolved = sum(len(v) for v in unresolved_report.values())
+    for yname, keys in unresolved_report.items():
+        shown = ", ".join(keys[:6])
+        more = f", …(+{len(keys) - 6} more)" if len(keys) > 6 else ""
+        resolution_bits.append(f"{yname}: {len(keys)} unresolved [{shown}{more}]")
+        print(
+            f"[pre_flight_check] WARNING {name}: {yname}: {len(keys)} declared "
+            f"key(s) resolve to no trainer argparse dest (non-blocking; "
+            f"blocking switch OFF): {', '.join(keys)}",
+            file=sys.stderr,
+        )
+    if required_unresolved:
+        resolution_bits.append(
+            "REQUIRED-HYPERPARAM UNRESOLVED: " + "; ".join(required_unresolved)
+        )
+    if resolution_errors:
+        resolution_bits.append(
+            "resolution-check skips: " + "; ".join(resolution_errors)
+        )
+    resolution_suffix = ""
+    if resolution_bits:
+        resolution_suffix = (
+            " | Wf-A12 RESOLUTION REPORT (non-blocking — blocking switch "
+            f"OFF; {n_unresolved} unresolved key(s) total; full lists on "
+            "stderr): " + " ; ".join(resolution_bits)
+        )
+
     if problems:
         return GateResult(
             name, priority, pipeline, "FAIL",
             f"{len(yaml_paths) - len(passed)}/{len(yaml_paths)} YAMLs missing "
             f"AGENTS.md §5.1 standing GPU grant hyperparam contract: "
-            f"{'; '.join(problems)}",
+            f"{'; '.join(problems)}" + resolution_suffix,
+            elapsed,
+        )
+    if resolution_strict and (unresolved_report or required_unresolved):
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"STRICT RESOLUTION MODE ({HYPERPARAMS_RESOLUTION_STRICT_ENV}=1): "
+            f"{n_unresolved} declared key(s) resolve to no trainer argparse "
+            f"dest.  This mode is OFF by default on purpose (measured debt "
+            f"is still non-zero); flip it only after " + resolution_suffix,
             elapsed,
         )
     return GateResult(
@@ -4097,7 +4396,8 @@ def gate_wf343c4_hyperparams_config_complete(
             f" (alias-resolved: {alias_resolutions})"
             if alias_resolutions
             else ""
-        ),
+        )
+        + resolution_suffix,
         elapsed,
     )
 
@@ -4137,8 +4437,8 @@ def gate_wf343c4_yuelbond_decoder_env(
     because the gate's import probe requires the runtime that the
     canonical CFM retrain runs in (per AGENTS.md §5.1 standing GPU
     grant + §5.2 honest-framing; expected runtime = the
-    torch-enabled venv, e.g. ``kanzi_venv`` /
-    ``/home/hugo/codes/CadButEaas/.venv-vlm/bin/python``). We treat
+    torch-enabled venv, e.g. the repo-local canonical
+    ``/home/hugo/codes/mol-metal/.venv/bin/python``). We treat
     this as an **honest-negative SKIP** rather than a FAIL because:
 
       1. The decoder module is on disk + syntactically loadable.
@@ -4207,9 +4507,9 @@ def gate_wf343c4_yuelbond_decoder_env(
             f"decoder module requires {missing_name!r} (env gap on "
             f"host Python); cfm_decoder_yuelbond.py CANNOT be "
             f"loaded without the expected torch-enabled runtime "
-            f"(e.g. kanzi_venv or "
-            f"/home/hugo/codes/CadButEaas/.venv-vlm/bin/python per "
-            f"AGENTS.md §5.1). Module is on disk "
+            f"(the repo-local canonical "
+            f"/home/hugo/codes/mol-metal/.venv/bin/python per "
+            f"AGENTS.md §5.1 + §5.9). Module is on disk "
             f"({decoder_module}, {decoder_module.stat().st_size}B) "
             f"and structurally loadable — this is an env gap, not a "
             f"regression. Original probe error: "
@@ -4815,9 +5115,9 @@ def gate_wf385_scaffold_loss_wire_in_verified(
     torch, the module-export probe raises ModuleNotFoundError on every
     SCAFFOLD module — the script emits a SKIP-verdict JSON with a
     per-module error trace naming the missing dependency + the
-    expected torch-enabled runtime (e.g. kanzi_venv or
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python per AGENTS.md
-    §5.1). The gate propagates the SKIP up so the operator can see
+    expected torch-enabled runtime (the repo-local canonical
+    /home/hugo/codes/mol-metal/.venv/bin/python per AGENTS.md
+    §5.1 + §5.9). The gate propagates the SKIP up so the operator can see
     the env gap without blocking the upstream pre-flight cascade.
 
     CPU-only by design: the subprocess invokes ``train_cfm_yuelbond_
@@ -5006,14 +5306,19 @@ def gate_gate_count_consistency_audit(
     in :data:`EXPECTED_GATE_COUNTS`.
 
     Wf-345-B3 (per wx63q8fwe ultracode review): ``expected_total`` is
-    now optional.  When ``None`` (the new default), the gate
+    now optional.  When ``None`` (a NON-DEFAULT escape hatch), the gate
     auto-computes ``expected_total = len(build_gates(pipeline))`` at
-    runtime — eliminating the maintenance trap of the previously
-    hardcoded ``EXPECTED_GATE_COUNTS["all"]`` constant that required
-    manual updates on every gate addition.  Callers that still pass
-    an explicit value retain the original drift-detection behavior
-    (used by tests in ``test_wf345b3_dynamic_count.py`` to verify
-    the dynamic mode).
+    runtime.  Wf-A12 FIX (2026-10-03): that auto-compute path is
+    TAUTOLOGICAL — it compares the actual count to itself, so it can
+    never FAIL — and it is therefore explicitly labelled in the PASS
+    evidence as "NOT A DRIFT CHECK".  The commit-path registration in
+    ``build_gates("all")`` now passes ``expected_total=``
+    ``EXPECTED_GATE_COUNTS["all"]`` EXPLICITLY, so the 'all' pipeline
+    exercises the real drift check (this is what surfaced the 98-vs-102
+    drift the auto-compute mode had been hiding).  Only the unit tests
+    in ``test_wf345b3_dynamic_count.py`` use the auto-compute mode, to
+    pin that the escape hatch still works.  Callers that pass an
+    explicit value get the original drift-detection behavior.
 
     Design note: the audit gate is appended LAST to the 'all'
     pipeline runners list, so when the gate runs it sees the final
@@ -5039,10 +5344,14 @@ def gate_gate_count_consistency_audit(
     surfaces as INVALID_PIPELINE which is a config bug (the gate's
     caller passed an unsupported pipeline arg).
 
-    Auto-compute mode (the new default): PASS iff ``build_gates``
-    succeeds and the audit gate itself is present in the resulting
-    list (sanity invariant — the gate is the LAST entry registered
-    in the 'all' pipeline per the Wf-321D append-last design).
+    Wf-A12 FIX (2026-10-03): the commit-path registration in
+    ``build_gates("all")`` now passes an EXPLICIT ``expected_total``
+    (``EXPECTED_GATE_COUNTS["all"]``), so the audit gate on the commit
+    path performs a REAL drift check.  The auto-compute mode is a
+    non-default escape hatch kept only so the Wf-345-B3 unit tests can
+    pin it: it PASSes iff ``build_gates`` succeeds, and its evidence is
+    explicitly labelled "NOT A DRIFT CHECK" so no reader can mistake it
+    for one.
     """
     t0 = time.perf_counter()
     # Wf-344-B3 — invalid pipeline guard (regression for Wf-338-A3
@@ -5070,15 +5379,27 @@ def gate_gate_count_consistency_audit(
             time.perf_counter() - t0,
         )
     actual_total = len(actual_runners)
-    # Wf-345-B3 — auto-compute expected_total when not provided
-    # (default mode).  Eliminates the hardcoded
-    # ``EXPECTED_GATE_COUNTS["all"] = 71`` maintenance trap.
+    # Wf-345-B3 — auto-compute expected_total when not provided.
+    # Wf-A12 FIX (2026-10-03): this mode is TAUTOLOGICAL (compares the
+    # count to itself) and can never FAIL, so it is NOT a drift check.
+    # It is kept only as a non-default escape hatch; the commit-path
+    # registration passes EXPECTED_GATE_COUNTS["all"] explicitly.  The
+    # evidence string says so out loud (the "(auto-computed via
+    # Wf-345-B3)" substring is pinned by test_wf345b3_dynamic_count.py).
     auto_computed = expected_total is None
     if auto_computed:
         expected_total = actual_total
     elapsed = time.perf_counter() - t0
     if actual_total == expected_total:
-        suffix = " (auto-computed via Wf-345-B3)" if auto_computed else ""
+        if auto_computed:
+            suffix = (
+                " (auto-computed via Wf-345-B3) — NOT A DRIFT CHECK: "
+                "expected_total was omitted, so this compares the count "
+                "to itself; pass expected_total=EXPECTED_GATE_COUNTS"
+                "[pipeline] to enable real drift detection"
+            )
+        else:
+            suffix = " (explicit expected_total — drift check active)"
         return GateResult(
             name, priority, pipeline, "PASS",
             f"gate count consistent for pipeline={pipeline!r}: "
@@ -6503,7 +6824,9 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
     wf323c_metric_json = METRICS_DIR / "steric_clash_pb_dock_1h36.json"
     wf323c_pool_json = wf319b_pool_json
     wf315d_pb_venv_python = (
-        "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+        # Wf-A1: canonical repo-local venv per AGENTS.md §5.9 (was the
+        # project .venv; .venv carries posebusters + meeko + vina).
+        "/home/hugo/codes/mol-metal/.venv/bin/python"
     )
 
     # Wf-319C — PB packages status documented gate (companion to
@@ -7443,22 +7766,21 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                     REPO_ROOT / "metrics" / "by_metric" / "nci60_precious_9cell_auc.json",
                 ),
             ),
-            # ---- Wf-312E — 4-LOI send-ready gate (TODO-308D PART 2
-            # integration). Per Wf-308D PART 2 consolidation review
-            # (TODO/pending/wetlab_loi_consolidation_review.md) the 4
-            # wetlab LOI drafts are structurally ready-to-send. PASS ==
-            # all 4 LOI files present + status header present + ≥4
-            # checklist boxes each + review helper present.
-            # Actual cold-email SEND is user's responsibility per
-            # TODO/pending/84_no_paper_task_without_authorization.md.
-            (
-                "p3_loi_send_ready",
-                lambda: gate_loi_send_ready(
-                    "p3_loi_send_ready", "P3", "loi_send_ready",
-                    loi_send_files,
-                    loi_send_review_doc,
-                ),
-            ),
+            # ---- Wf-A12 FIX (2026-10-03) — `p3_loi_send_ready` REMOVED
+            # from the 'all' (commit-path) pipeline registration.
+            # Why: it is a wet-lab gate — its PASS condition is that the
+            # 4 wet-lab Letters-of-Intent are structurally send-ready.
+            # That directly contradicts the HARD MANDATE in AGENTS.md
+            # §5.4 + §10 ("DO NOT PLAN, EXECUTE, OR SEND ANY WET-LAB
+            # WORK"; the 4 LOI drafts are explicitly DO NOT SEND and are
+            # retained as historical templates per §10.5).  A gate that
+            # enforces send-readiness on the commit path would re-open a
+            # deprecated workstream every time someone runs pre-flight.
+            # Scope of this removal: ONLY this 'all'-pipeline
+            # registration.  The `gate_loi_send_ready` FUNCTION is kept
+            # (grep: `def gate_loi_send_ready`) and the frontier-pipeline
+            # registration is kept for paper-rule parity; the 4 LOI
+            # templates stay in TODO/pending/ as historical artifacts.
             # ---- Wf-313H — R20 Phase 0 loader closeout gate ----
             # (TODO-313 / R20_BIG_DATASET_FULL_RETRAIN_PLAN.md §1.1).
             # Per Wf-313H: the 3 P0 CRITICAL loaders (binding_db /
@@ -7653,22 +7975,24 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                     min_workers=4,
                 ),
             ),
-            # ---- Wf-321D — gate-count consistency audit (last
-            # gate in 'all' pipeline; runs as the final verifier
-            # so its own append doesn't perturb any other gate's
-            # count).  Wf-345-B3: expected_total is now
-            # auto-computed at runtime via
-            # ``expected_total = len(build_gates(pipeline))`` —
-            # see ``gate_gate_count_consistency_audit`` docstring.
-            # The previous hardcoded ``EXPECTED_GATE_COUNTS["all"]``
-            # constant is retained for backward compatibility but
-            # no longer consulted by this audit (eliminating the
-            # drift surface surfaced by wx63q8fwe ultracode
-            # review).
+            # ---- Wf-321D / Wf-A12 — gate-count consistency audit.
+            # Wf-A12 FIX (2026-10-03): this registration now passes the
+            # REAL expected count explicitly
+            # (``expected_total=EXPECTED_GATE_COUNTS["all"]``), so the
+            # commit-path audit performs an actual drift check.  The
+            # previous registration omitted expected_total, and the
+            # Wf-345-B3 auto-compute mode then compared the registered
+            # count to itself — the gate could not FAIL, and the
+            # 98-constant-vs-102-registered drift went unsignalled.
+            # When you add/remove a gate in the 'all' pipeline you MUST
+            # update EXPECTED_GATE_COUNTS["all"] in the same edit; the
+            # gate will now tell you loudly if you forget (both
+            # directions: +DRIFT = bloat, -DRIFT = silent loss).
             (
                 "p3_gate_count_consistency_audit",
                 lambda: gate_gate_count_consistency_audit(
                     "p3_gate_count_consistency_audit", "P3", "all",
+                    expected_total=EXPECTED_GATE_COUNTS["all"],
                 ),
             ),
             # ---- Wf-343C4 — pre-retrain internal check metric gates
@@ -7714,6 +8038,13 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                         CONFIGS_DIR / "wf124_p3_50epoch_full_sweep_g5.yaml",
                         CONFIGS_DIR / "wf124_p3_per_innovation_ablation_g6.yaml",
                         CONFIGS_DIR / "wf124_p3_remaining_metals_g4.yaml",
+                        # Wf-A12 coverage extension: configs/training/ was
+                        # never scanned by this gate, so its 2 active YAMLs
+                        # (the NCI-60 + PlatinAI 5-seed runs) were outside
+                        # the "config files > guessing" contract entirely.
+                        # (.bak / archive files are deliberately excluded.)
+                        CONFIGS_DIR / "training" / "nci60_9cell_5seed_50ep_v1.yaml",
+                        CONFIGS_DIR / "training" / "platinai_pt_4cell_5seed_50ep_v1.yaml",
                     ),
                 ),
             ),

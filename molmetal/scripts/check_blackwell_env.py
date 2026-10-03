@@ -15,7 +15,7 @@ from pathlib import Path
 REPORT_DIR = Path("/home/hugo/codes/mol-metal/molmetal/reports/wf_blackwell_retrain")
 CANDIDATE_VENVS = [
     Path("/home/hugo/codes/mol-metal/.venv/bin/python"),
-    Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"),
+    Path("/home/hugo/codes/mol-metal/.venv/bin/python"),
     Path("/home/hugo/.venv-flowmol311/bin/python"),
 ]
 KANZI_NEEDLES = ("kanzi_venv/bin/python", "sweep_kanzi")
@@ -111,7 +111,7 @@ def _actions(gpus, kanzi, kanzi_vram, tp):
         a.append("WARN: no Blackwell GPU visible")
     if not tp.get("ok"):
         a.append("ERROR: no torch+CUDA+sm_120 venv — source env.sh "
-                 "(routes uv to /home/hugo/codes/CadButEaas/.venv-vlm)")
+                 "(routes uv to /home/hugo/codes/mol-metal/.venv)")
     else:
         a.append(f"OK: torch {tp['torch']} + CUDA {tp['cuda_runtime']} "
                  f"+ sm_120 on {tp['device_name']}")

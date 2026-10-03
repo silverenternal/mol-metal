@@ -83,7 +83,7 @@
 set -uo pipefail
 
 REPO_ROOT="/home/hugo/codes/mol-metal"
-VENV_PY="/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+VENV_PY="/home/hugo/codes/mol-metal/.venv/bin/python"  # AGENTS.md §5.9 canonical repo-local venv
 LOG_DIR="${REPO_ROOT}/molmetal/reports/pre_flight_gpu_ready"
 mkdir -p "${LOG_DIR}"
 RUN_TS="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -250,7 +250,7 @@ PYTHONPATH="${REPO_ROOT}" "${VENV_PY}" "${REPO_ROOT}/molmetal/scripts/pre_flight
   --json "${RUN_PREFLIGHT_JSON}" \
   >"${PF_OUT}" 2>&1 || PF_RC=$?
 if [[ ${PF_RC} -eq 0 ]]; then
-  N_GATES=$(/home/hugo/codes/CadButEaas/.venv-vlm/bin/python -c "
+  N_GATES=$("${VENV_PY}" -c "
 import json
 with open('${RUN_PREFLIGHT_JSON}') as f:
     d = json.load(f)
@@ -261,7 +261,7 @@ print(f'n_gates={len(gates)} PASS={c.get(\"PASS\",0)} FAIL={c.get(\"FAIL\",0)} S
 ")
   gate_result "pre_flight_all" "PASS" "preflight v3 ${N_GATES} (informative; pre-existing FAILs per Wf-350-A2 §5 are honest-negatives)"
 else
-  N_GATES=$(/home/hugo/codes/CadButEaas/.venv-vlm/bin/python -c "
+  N_GATES=$("${VENV_PY}" -c "
 import json, sys
 try:
     with open('${RUN_PREFLIGHT_JSON}') as f:
@@ -380,7 +380,7 @@ PWC_TAIL=$(tail -10 "${PWC_OUT}")
 # the failure cascades from the pre-existing pre-flight FAILs.
 PWC_BLOCKER=0
 if [[ ${PWC_RC} -ne 0 ]]; then
-  if /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -c "
+  if "${VENV_PY}" -c "
 import json, sys
 try:
     with open('${LOG_DIR}/wf343c2_${RUN_TS}.json') as f:

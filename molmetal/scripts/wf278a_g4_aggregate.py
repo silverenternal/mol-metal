@@ -14,7 +14,7 @@ nested tree, collects all 14 OK seeds, and emits:
   - <output>/training_summary.json — per-metal mean ± std + 5-metal aggregate
 
 Usage:
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \\
+    /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf278a_g4_aggregate.py \\
         --input-dir results/wf124_p3_remaining_metals_g4 \\
         --output   results/wf124_p3_remaining_metals_g4/training_summary.json

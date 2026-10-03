@@ -79,7 +79,7 @@ TRAINER_PATH = (
 )
 G6_RESULTS_DIR = ROOT / "results" / "wf124_p3_per_innovation_ablation_g6"
 MANIFEST_PATH = G6_RESULTS_DIR / "recovery_manifest.tsv"
-DEFAULT_VENV = Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin/python")
+DEFAULT_VENV = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))

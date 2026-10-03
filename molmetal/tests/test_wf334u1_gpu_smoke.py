@@ -71,7 +71,7 @@ DEFAULT_CSV = (
     / "molmetal"
     / "metalcytotox_5metal_multitask_v4.csv"
 )
-DEFAULT_VENV = Path("/home/hugo/cades/CadButEaas/.venv-vlm/bin/python")
+DEFAULT_VENV = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 SMOKE_OUT_DIR = Path("/tmp/wf334u1_cpu_smoke")
 SMOKE_LOG = Path("/tmp/wf334u1_cpu_smoke.log")
 

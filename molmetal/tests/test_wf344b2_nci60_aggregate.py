@@ -69,7 +69,7 @@ def _ensure_repo_on_path() -> None:
     """Pin ``PROJECT_ROOT`` on ``sys.path`` for direct pytest invocation.
 
     The harness path used elsewhere in the project is
-    ``/home/hugo/cades/CadButEaas/.venv-vlm/bin/python``; this test
+    ``/home/hugo/codes/mol-metal/.venv/bin/python``; this test
     is venv-agnostic so it runs against any python with molmetal
     importable.  We insert PROJECT_ROOT first so a checkout-level
     install beats any stale system copy.

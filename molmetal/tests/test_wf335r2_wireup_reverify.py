@@ -64,7 +64,7 @@ TRAINER_PATH = (
 DEFAULT_CSV = (
     PROJECT_ROOT / ".data" / "molmetal" / "MetalCytoToxDB.csv"
 )
-DEFAULT_VENV = Path("/home/hugo/codes/CadButEaas/.venv-vlm/bin/python")
+DEFAULT_VENV = Path("/home/hugo/codes/mol-metal/.venv/bin/python")
 SMOKE_OUT_DIR = Path("/tmp/wf335r2_smoke")
 SMOKE_OUT_DIR.mkdir(parents=True, exist_ok=True)
 

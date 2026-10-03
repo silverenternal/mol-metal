@@ -49,7 +49,7 @@ Recovery candidates (per WEAK_TO_STRONG §3.5):
 Run::
 
     PYTHONPATH=/home/hugo/codes/mol-metal \\
-        /home/hugo/cades/CadButEaas/.venv-vlm/bin/python \\
+        /home/hugo/codes/mol-metal/.venv/bin/python \\
         molmetal/scripts/wf333v4_m6_kappa_alt.py \\
         --output-dir molmetal/reports/wf333v4_m6_kappa
 """

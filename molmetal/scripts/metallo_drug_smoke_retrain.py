@@ -226,13 +226,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     # --resume-from-path so start.sh can pass yaml-driven flags without argparse errors.
     # Per AGENTS.md §5.5 filesystem-truth rule: smoke trainer must accept the
     # same flags as main trainer so yaml-managed launches are uniform.
+    # FLAG-WIRE FIX (2026-10-03, AGENTS.md §5.7 audit): --config was previously
+    # parsed and DISCARDED (FLAG_ONLY) while this help text promised overrides.
+    # It is now actually applied below via wfA2_config_loader.apply_yaml_overrides
+    # (same integration as train_dmpnn_multitask_wasserstein.py).
     parser.add_argument(
         "--config",
         type=Path,
         default=None,
         help=(
-            "Path to YAML config (applies overrides via wfA2_config_loader). "
-            "Default None = no YAML overrides; CLI flags alone."
+            "Path to YAML config; overrides are applied via "
+            "wfA2_config_loader.apply_yaml_overrides (a CLI flag explicitly "
+            "passed wins over its YAML value). Default None = no YAML "
+            "overrides; CLI flags alone."
         ),
     )
     parser.add_argument(
@@ -293,7 +299,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                         help="Run a 16-sample decode smoke every N steps")
     parser.add_argument("--decode-smoke-samples", type=int, default=16)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--out-dir", type=Path, required=True,
+    # NOTE: NOT argparse-required because wfA2_config_loader re-parses with
+    # ``parse_args([])`` to capture defaults, which SystemExits on required
+    # args. The required contract is enforced manually right after the YAML
+    # overrides are applied (CLI value, else YAML 'out_dir', else the same
+    # argparse error users saw before).
+    parser.add_argument("--out-dir", type=Path, default=None,
                         help="Where to dump ckpt + final.json + final.md")
     parser.add_argument("--embed-cache", type=Path, default=None,
                         help="Optional path to a torch.save cache of the "
@@ -301,6 +312,21 @@ def main(argv: Sequence[str] | None = None) -> int:
                              "otherwise we build the cache fresh from the "
                              "CSV and save it for reuse on subsequent runs.")
     args = parser.parse_args(argv)
+
+    # FLAG-WIRE FIX (2026-10-03): actually apply --config via the shared
+    # wfA2_config_loader (no-op when --config is None → CLI-only path is
+    # bit-for-bit unchanged). Mirrors the call in
+    # train_dmpnn_multitask_wasserstein.py::parse_args.
+    from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
+    args = apply_yaml_overrides(parser, args, args.config)
+    if args.config is not None:
+        print(f"[metallo_smoke] config: {args.config} "
+              f"(YAML overrides applied via wfA2_config_loader; "
+              f"{len(getattr(args, 'yaml_unresolved_keys', []))} key(s) skipped)")
+    # --out-dir required contract (CLI or YAML), enforced after YAML
+    # application so the loader's internal parse_args([]) cannot SystemExit.
+    if args.out_dir is None:
+        parser.error("the following arguments are required: --out-dir")
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -449,7 +475,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     # Compute summary stats
     def _summary(xs: List[float]) -> dict:
         if not xs:
-            return {"n": 0, "first": None, "last": None, "min": None, "max": None}
+            # Keep the same key set as the non-empty branch: the final.md
+            # writer indexes ``delta_first_to_last`` unconditionally, so a
+            # missing key turned a 0-step run (e.g. a step-1 training error)
+            # into a KeyError that masked the real failure.
+            return {"n": 0, "first": None, "last": None, "min": None,
+                    "max": None, "delta_first_to_last": None}
         return {
             "n": len(xs),
             "first": float(xs[0]),

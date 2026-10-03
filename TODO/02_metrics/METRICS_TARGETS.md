@@ -70,7 +70,7 @@ See `TODO/03_baselines/COMPARISON_BASELINES.md` §2 for full list + rationale. B
 
 **Test protocol**:
 ```bash
-source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
+source env.sh && /home/hugo/codes/mol-metal/.venv/bin/python -u \
   molmetal/scripts/train_metal_cytotox.py --metal Ru --seeds 0 1 2 \
   --scaffold-split --eval-auc
 ```
@@ -98,7 +98,7 @@ source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
 
 **Test protocol**:
 ```bash
-source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
+source env.sh && /home/hugo/codes/mol-metal/.venv/bin/python -u \
   molmetal/scripts/train_platinai.py --pocket-agnostic --seeds 0 1 2 \
   --eval-per-cell-line
 ```
@@ -131,7 +131,7 @@ source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
 
 **Test protocol**:
 ```bash
-source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
+source env.sh && /home/hugo/codes/mol-metal/.venv/bin/python -u \
   molmetal/scripts/r17_gpu_retrain.py --steps 10000 \
   --eval-100-pocket-crossdocked \
   --seeds 0 1 2 \
@@ -441,7 +441,7 @@ We benchmark on MetalCytoToxDB precious-metal subset restricted to the 9 most-st
 
 **Test protocol**:
 ```bash
-source env.sh && /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -u \
+source env.sh && /home/hugo/codes/mol-metal/.venv/bin/python -u \
   molmetal/scripts/train_nci60_10cell.py \
   --cells MCF7 A549 A2780 A2780cis HCT116 PC3 HL60 SKOV3 DU145 \
   --seeds 0 1 2 --scaffold-split --epochs 50 \

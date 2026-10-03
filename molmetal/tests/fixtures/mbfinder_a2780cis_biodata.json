@@ -1,0 +1,520 @@
+{
+ "recorded_at": "2026-10-03",
+ "api_base": "https://api.mb-finder.org/api/v2",
+ "note": "Trimmed live responses recorded 2026-10-03 for OFFLINE regression tests of platinai_real_label_loader biodata mode. Do not edit to make tests pass; re-record from the live API if the schema changes.",
+ "biodata": {
+  "cell_line": "A2780cis",
+  "last_page": 256,
+  "pages": {
+   "1": [
+    {
+     "compounds": {
+      "incubationTime": "48.0",
+      "numeric_value": "1.2",
+      "title": "Acetonimine and 4-Imino-2-methylpentan-2-amino Platinum(II) Complexes: Synthesis and in Vitro Antitumor Activity",
+      "doi": "10.1021/ic8012359",
+      "method": "Сrystal Violet",
+      "stability": null,
+      "in_vivo": null,
+      "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000017.svg?v=1770252062"
+     },
+     "measurements": [
+      {
+       "id": 2000,
+       "incubationTime": "48.0",
+       "numeric_value": "1.2",
+       "method": "Сrystal Violet",
+       "stability": null,
+       "in_vivo": null
+      }
+     ],
+     "name": "A2780cis",
+     "id": 2000,
+     "value": "1.2",
+     "referenceCount": 1,
+     "bioDataCount": 1
+    },
+    {
+     "compounds": {
+      "incubationTime": "48.0",
+      "numeric_value": "1",
+      "title": "Acetonimine and 4-Imino-2-methylpentan-2-amino Platinum(II) Complexes: Synthesis and in Vitro Antitumor Activity",
+      "doi": "10.1021/ic8012359",
+      "method": "Сrystal Violet",
+      "stability": null,
+      "in_vivo": null,
+      "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000018.svg?v=1770252062"
+     },
+     "measurements": [
+      {
+       "id": 2001,
+       "incubationTime": "48.0",
+       "numeric_value": "1",
+       "method": "Сrystal Violet",
+       "stability": null,
+       "in_vivo": null
+      }
+     ],
+     "name": "A2780cis",
+     "id": 2001,
+     "value": "1",
+     "referenceCount": 1,
+     "bioDataCount": 1
+    },
+    {
+     "compounds": {
+      "incubationTime": "48.0",
+      "numeric_value": "2",
+      "title": "Acetonimine and 4-Imino-2-methylpentan-2-amino Platinum(II) Complexes: Synthesis and in Vitro Antitumor Activity",
+      "doi": "10.1021/ic8012359",
+      "method": "Сrystal Violet",
+      "stability": null,
+      "in_vivo": null,
+      "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000019.svg?v=1770252062"
+     },
+     "measurements": [
+      {
+       "id": 2002,
+       "incubationTime": "48.0",
+       "numeric_value": "2",
+       "method": "Сrystal Violet",
+       "stability": null,
+       "in_vivo": null
+      }
+     ],
+     "name": "A2780cis",
+     "id": 2002,
+     "value": "2",
+     "referenceCount": 1,
+     "bioDataCount": 1
+    },
+    {
+     "compounds": {
+      "incubationTime": "72.0",
+      "numeric_value": "0.6 ± 0.1",
+      "title": "Cellular Response to Antitumor cis-Dichlorido Platinum(II) Complexes of CDK Inhibitor Bohemine and Its Analogues",
+      "doi": "10.1021/tx200525n",
+      "method": "MTT",
+      "stability": null,
+      "in_vivo": null,
+      "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000132.svg?v=1770252062"
+     },
+     "measurements": [
+      {
+       "id": 2003,
+       "incubationTime": "72.0",
+       "numeric_value": "0.6 ± 0.1",
+       "method": "MTT",
+       "stability": null,
+       "in_vivo": null
+      }
+     ],
+     "name": "A2780cis",
+     "id": 2003,
+     "value": "0.6 ± 0.1",
+     "referenceCount": 1,
+     "bioDataCount": 1
+    },
+    {
+     "compounds": {
+      "incubationTime": "72.0",
+      "numeric_value": "1.7 ± 0.6",
+      "title": "Cellular Response to Antitumor cis-Dichlorido Platinum(II) Complexes of CDK Inhibitor Bohemine and Its Analogues",
+      "doi": "10.1021/tx200525n",
+      "method": "MTT",
+      "stability": null,
+      "in_vivo": null,
+      "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000133.svg?v=1770252062"
+     },
+     "measurements": [
+      {
+       "id": 2004,
+       "incubationTime": "72.0",
+       "numeric_value": "1.7 ± 0.6",
+       "method": "MTT",
+       "stability": null,
+       "in_vivo": null
+      }
+     ],
+     "name": "A2780cis",
+     "id": 2004,
+     "value": "1.7 ± 0.6",
+     "referenceCount": 1,
+     "bioDataCount": 1
+    }
+   ],
+   "2": [
+    {
+     "compounds": {
+      "incubationTime": "48.0",
+      "numeric_value": "1.7 ± 0.3",
+      "title": "Macrocyclic NHC complexes of group 10 elements with enlarged aromaticity for biological studies",
+      "doi": "10.1039/d0dt02598d",
+      "method": "MTT",
+      "stability": "Stable [ESI-MS (RPMI1640 cell culture medium, 37 degree celsius). Measured after 48h] \n",
+      "in_vivo": null,
+      "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000163.svg?v=1770252062"
+     },
+     "measurements": [
+      {
+       "id": 2005,
+       "incubationTime": "48.0",
+       "numeric_value": "1.7 ± 0.3",
+       "method": "MTT",
+       "stability": "Stable [ESI-MS (RPMI1640 cell culture medium, 37 degree celsius). Measured after 48h] \n",
+       "in_vivo": null
+      }
+     ],
+     "name": "A2780cis",
+     "id": 2005,
+     "value": "1.7 ± 0.3",
+     "referenceCount": 1,
+     "bioDataCount": 1
+    },
+    {
+     "compounds": {
+      "incubationTime": "48.0",
+      "numeric_value": "0.2 ± 0.2",
+      "title": "Macrocyclic NHC complexes of group 10 elements with enlarged aromaticity for biological studies",
+      "doi": "10.1039/d0dt02598d",
+      "method": "MTT",
+      "stability": "Stable [ESI-MS (RPMI1640 cell culture medium, 37 degree celsius). Measured after 48h] ",
+      "in_vivo": null,
+      "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000164.svg?v=1770252062"
+     },
+     "measurements": [
+      {
+       "id": 2006,
+       "incubationTime": "48.0",
+       "numeric_value": "0.2 ± 0.2",
+       "method": "MTT",
+       "stability": "Stable [ESI-MS (RPMI1640 cell culture medium, 37 degree celsius). Measured after 48h] ",
+       "in_vivo": null
+      }
+     ],
+     "name": "A2780cis",
+     "id": 2006,
+     "value": "0.2 ± 0.2",
+     "referenceCount": 1,
+     "bioDataCount": 1
+    },
+    {
+     "compounds": {
+      "incubationTime": "96.0",
+      "numeric_value": "70 ± 10",
+      "title": "Platinum Complexes Can Inhibit Matrix Metalloproteinase Activity:  Platinum−Diethyl[(methylsulfinyl)methyl]phosphonate Complexes as Inhibitors of Matrix Metalloproteinases 2, 3, 9, and 12",
+      "doi": "10.1021/jm061435l",
+      "method": "SRB",
+      "stability": null,
+      "in_vivo": null,
+      "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000169.svg?v=1770252062"
+     },
+     "measurements": [
+      {
+       "id": 2007,
+       "incubationTime": "96.0",
+       "numeric_value": "70 ± 10",
+       "method": "SRB",
+       "stability": null,
+       "in_vivo": null
+      }
+     ],
+     "name": "A2780cis",
+     "id": 2007,
+     "value": "70 ± 10",
+     "referenceCount": 1,
+     "bioDataCount": 1
+    },
+    {
+     "compounds": {
+      "incubationTime": "96.0",
+      "numeric_value": "35 ± 5",
+      "title": "Platinum Complexes Can Inhibit Matrix Metalloproteinase Activity:  Platinum−Diethyl[(methylsulfinyl)methyl]phosphonate Complexes as Inhibitors of Matrix Metalloproteinases 2, 3, 9, and 12",
+      "doi": "10.1021/jm061435l",
+      "method": "SRB",
+      "stability": null,
+      "in_vivo": null,
+      "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000170.svg?v=1770252062"
+     },
+     "measurements": [
+      {
+       "id": 2008,
+       "incubationTime": "96.0",
+       "numeric_value": "35 ± 5",
+       "method": "SRB",
+       "stability": null,
+       "in_vivo": null
+      }
+     ],
+     "name": "A2780cis",
+     "id": 2008,
+     "value": "35 ± 5",
+     "referenceCount": 1,
+     "bioDataCount": 1
+    },
+    {
+     "compounds": {
+      "incubationTime": "96.0",
+      "numeric_value": "0.24 ± 0.08",
+      "title": "In vitroAntitumor Activity of 2-Acetyl Pyridine 4N-Ethyl Thiosemicarbazone and Its Platinum(II) and Palladium(II) Complexes",
+      "doi": "10.1159/000099986",
+      "method": "SRB",
+      "stability": null,
+      "in_vivo": null,
+      "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000293.svg?v=1770252062"
+     },
+     "measurements": [
+      {
+       "id": 2009,
+       "incubationTime": "96.0",
+       "numeric_value": "0.24 ± 0.08",
+       "method": "SRB",
+       "stability": null,
+       "in_vivo": null
+      }
+     ],
+     "name": "A2780cis",
+     "id": 2009,
+     "value": "0.24 ± 0.08",
+     "referenceCount": 1,
+     "bioDataCount": 1
+    }
+   ]
+  }
+ },
+ "substances": {
+  "pages": {
+   "1545": [
+    {
+     "id": 15,
+     "imageId": "MB-Pt-000019",
+     "casNumber": null,
+     "weight": 443.45,
+     "mw": "443.45",
+     "cLogP": 2.25276,
+     "time": null,
+     "smiles": "CC(=O)[CH][Pt]1([NH]=C(C)C)[C]2=C(C=CC=C2)CN1(C)C",
+     "name": null,
+     "referenceCount": 1,
+     "ceilLineCount": 3,
+     "bioDataCount": 3,
+     "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000019.svg?v=1770252062"
+    },
+    {
+     "id": 14,
+     "imageId": "MB-Pt-000018",
+     "casNumber": null,
+     "weight": 465.52,
+     "mw": "465.52",
+     "cLogP": 1.69327,
+     "time": null,
+     "smiles": "CC(C)=[NH][Pt]1([SH](C)(C)=O)[C]2=C(C=CC=C2)CN1(C)C",
+     "name": null,
+     "referenceCount": 1,
+     "ceilLineCount": 3,
+     "bioDataCount": 3,
+     "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000018.svg?v=1770252062"
+    },
+    {
+     "id": 13,
+     "imageId": "MB-Pt-000017",
+     "casNumber": null,
+     "weight": 648.67,
+     "mw": "648.67",
+     "cLogP": 5.41107,
+     "time": null,
+     "smiles": "CC(C)=[NH][Pt]1([P](c2ccccc2)(c2ccccc2)c2ccccc2)[C]2=C(C=CC=C2)CN1(C)C",
+     "name": null,
+     "referenceCount": 1,
+     "ceilLineCount": 3,
+     "bioDataCount": 3,
+     "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000017.svg?v=1770252062"
+    },
+    {
+     "id": 12,
+     "imageId": "MB-Pt-000016",
+     "casNumber": "1092549-95-5",
+     "weight": 722.06,
+     "mw": "722.06",
+     "cLogP": 2.34607,
+     "time": null,
+     "smiles": "CC/C(=[NH][Pt]1([Cl])[NH2]CC[NH2]1)N(C)CCNC1=c2ccccc2=[NH]c2ccccc21.O=N([O])=O.O=N([O])=O",
+     "name": null,
+     "referenceCount": 1,
+     "ceilLineCount": 1,
+     "bioDataCount": 1,
+     "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000016.svg?v=1770252062"
+    },
+    {
+     "id": 11,
+     "imageId": "MB-Pt-000015",
+     "casNumber": "1314869-38-9",
+     "weight": 708.04,
+     "mw": "708.04",
+     "cLogP": 1.95597,
+     "time": null,
+     "smiles": "C/C(=[NH][Pt]1([Cl])[NH2]CC[NH2]1)N(C)CCNC1=c2ccccc2=[NH]c2ccccc21.O=N([O])=O.O=N([O])=O",
+     "name": null,
+     "referenceCount": 1,
+     "ceilLineCount": 1,
+     "bioDataCount": 1,
+     "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000015.svg?v=1770252062"
+    }
+   ],
+   "1546": [
+    {
+     "id": 10,
+     "imageId": "MB-Pt-000014",
+     "casNumber": "1314869-40-3",
+     "weight": 685.6,
+     "mw": "685.60",
+     "cLogP": 1.65937,
+     "time": null,
+     "smiles": "CCC1=[NH][Pt]2([NH2]CC[NH2]2)N(=c2c3ccccc3[nH]c3ccccc23)CCN1C.O=N([O])=O.O=N([O])=O",
+     "name": null,
+     "referenceCount": 1,
+     "ceilLineCount": 1,
+     "bioDataCount": 1,
+     "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000014.svg?v=1770252062"
+    },
+    {
+     "id": 9,
+     "imageId": "MB-Pt-000013",
+     "casNumber": "1314869-43-6",
+     "weight": 671.58,
+     "mw": "671.58",
+     "cLogP": 1.26927,
+     "time": null,
+     "smiles": "CC1=[NH][Pt]2([NH2]CC[NH2]2)N(=c2c3ccccc3[nH]c3ccccc23)CCN1C.O=N([O])=O.O=N([O])=O",
+     "name": null,
+     "referenceCount": 1,
+     "ceilLineCount": 1,
+     "bioDataCount": 1,
+     "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000013.svg?v=1770252062"
+    },
+    {
+     "id": 8,
+     "imageId": "MB-Pt-000012",
+     "casNumber": "849799-52-6",
+     "weight": 558.52,
+     "mw": "558.52",
+     "cLogP": 3.0274,
+     "time": null,
+     "smiles": "O=C1[O][Pt]2([NH2]C1Cc1c[nH]c3ccccc13)[C]1=C(SC=C1)C1=N2C=CC=C1",
+     "name": null,
+     "referenceCount": 1,
+     "ceilLineCount": 5,
+     "bioDataCount": 5,
+     "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000012.svg?v=1770252062"
+    },
+    {
+     "id": 7,
+     "imageId": "MB-Pt-000011",
+     "casNumber": "849799-50-4",
+     "weight": 519.48,
+     "mw": "519.48",
+     "cLogP": 2.5461,
+     "time": null,
+     "smiles": "O=C1[O][Pt]2([NH2]C1Cc1ccccc1)[C]1=C(SC=C1)C1=N2C=CC=C1",
+     "name": null,
+     "referenceCount": 1,
+     "ceilLineCount": 5,
+     "bioDataCount": 5,
+     "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000011.svg?v=1770252062"
+    },
+    {
+     "id": 6,
+     "imageId": "MB-Pt-000010",
+     "casNumber": "849799-53-7",
+     "weight": 429.36,
+     "mw": "429.36",
+     "cLogP": 0.9348,
+     "time": null,
+     "smiles": "O=C1C[NH2][Pt]2([O]1)[C]1=C(SC=C1)C1=N2C=CC=C1",
+     "name": null,
+     "referenceCount": 1,
+     "ceilLineCount": 5,
+     "bioDataCount": 5,
+     "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000010.svg?v=1770252062"
+    }
+   ],
+   "1547": [
+    {
+     "id": 5,
+     "imageId": "MB-Pt-000009",
+     "casNumber": "2229756-87-8",
+     "weight": 794,
+     "mw": "794.00",
+     "cLogP": 9.09918,
+     "time": null,
+     "smiles": "[F][P]([F])([F])([F])([F])[F].[Cl][Pt]1([C]2N3C=CC=CC3=C(C)N2C4=[N]1C=CC=C4)[C]5N6C=CC=CC6=C(C)N5C7=NC=CC=C7",
+     "name": null,
+     "referenceCount": 1,
+     "ceilLineCount": 3,
+     "bioDataCount": 3,
+     "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000009.svg?v=1770252062"
+    },
+    {
+     "id": 4,
+     "imageId": "MB-Pt-000008",
+     "casNumber": "2699955-06-9",
+     "weight": 730.23,
+     "mw": "730.23",
+     "cLogP": 7.70514,
+     "time": null,
+     "smiles": "CCCCN(CCCC)C1=[S][Pt]2(O=C(c3ccccc3)[N]1)N1=c3c(c(C)c(C)c4c3=N2C=CC=4)=CC=C1.[Cl]",
+     "name": null,
+     "referenceCount": 1,
+     "ceilLineCount": 3,
+     "bioDataCount": 3,
+     "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000008.svg?v=1770252062"
+    },
+    {
+     "id": 3,
+     "imageId": "MB-Pt-000007",
+     "casNumber": "2699955-08-1",
+     "weight": 668.16,
+     "mw": "668.16",
+     "cLogP": 6.41124,
+     "time": null,
+     "smiles": "CCCCN(CCCC)C1=[S][Pt]2(O=C(C)[N]1)N1=c3c(c(C)c(C)c4c3=N2C=CC=4)=CC=C1.[Cl]",
+     "name": null,
+     "referenceCount": 1,
+     "ceilLineCount": 3,
+     "bioDataCount": 3,
+     "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000007.svg?v=1770252062"
+    },
+    {
+     "id": 2,
+     "imageId": "MB-Pt-000006",
+     "casNumber": "2699955-15-0",
+     "weight": 682.19,
+     "mw": "682.19",
+     "cLogP": 6.8206,
+     "time": null,
+     "smiles": "CCCCN(CCCC)C1=[S][Pt]2(O=C(C(C)(C)C)[N]1)N1=c3c(ccc4c3=N2C=CC=4)=CC=C1.[Cl]",
+     "name": null,
+     "referenceCount": 1,
+     "ceilLineCount": 3,
+     "bioDataCount": 3,
+     "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000006.svg?v=1770252062"
+    },
+    {
+     "id": 1,
+     "imageId": "MB-Pt-000005",
+     "casNumber": "1884297-91-9",
+     "weight": 2418.5,
+     "mw": "2418.50",
+     "cLogP": 1.0623,
+     "time": null,
+     "smiles": "CC(CCC(=O)[O][Pt]([NH3])([NH3])([Cl])([Cl])[O]C(=O)CCC(C)C1CCC2C3C(O)CC4CC(O)CCC4(C)C3CC(O)C12C)C1CCC2C3C(O)CC4CC(O)CCC4(C)C3CC(O)C12C.COC1C(O)C2C(CO)OC1OC3C(CO)OC(OC4C(CO)OC(OC5C(CO)OC(OC6C(CO)OC(OC7C(CO)OC(OC8C(CO)OC(C(OC)C8O)O2)C(OC)C7OC)C(OC)C6OC)C(OC",
+     "name": null,
+     "referenceCount": 1,
+     "ceilLineCount": 1,
+     "bioDataCount": 1,
+     "imageUrl": "https://api.mb-finder.org/storage/images/MB-Pt-000005.svg?v=1770252062"
+    }
+   ]
+  }
+ }
+}

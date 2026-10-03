@@ -31,7 +31,7 @@ Honest framing
 
 Run via::
 
-    /home/hugo/codes/CadButEaas/.venv-vlm/bin/python -m pytest \\
+    /home/hugo/codes/mol-metal/.venv/bin/python -m pytest \\
         molmetal/tests/test_vina_replay_pool.py -v --tb=short
 """
 

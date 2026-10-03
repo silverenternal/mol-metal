@@ -75,11 +75,24 @@ FILE_TO_CANONICAL_ID = {
 # Helpers
 # ---------------------------------------------------------------------------
 def _load_pt(filename: str) -> dict:
-    """Load a pre-featurized .pt file with weights_only=False."""
+    """Load a pre-featurized .pt file with weights_only=False, MEMORY-MAPPED.
+
+    Wf-A12 FIX (2026-10-03).  Without ``mmap=True`` this reads the WHOLE file
+    into RAM, and the parametrised lists below include ``all_pretrain.pt``
+    (43 GB) and ``drugood.pt`` (38 GB).  On this 94 GB host that puts a full
+    ``pytest molmetal/tests/`` run one background job away from the global OOM
+    that killed the tmux session (and three in-flight workflows) on 2026-10-03:
+    a runaway python reached 67.7 GB and the kernel took the whole scope down.
+
+    The tests only ever read the small ``domain`` tensor, so memory-mapping
+    pages in just those pages instead of the entire archive.  This is a pure
+    resource change — every assertion below is untouched, and the file is
+    opened read-only (the tests never write through the mapping).
+    """
     path = PRE_FEATURIZED_DIR / filename
     if not path.exists():
         pytest.skip(f"{filename} not present — pre_featurize_dmpnn never ran")
-    return torch.load(path, map_location="cpu", weights_only=False)
+    return torch.load(path, map_location="cpu", weights_only=False, mmap=True)
 
 
 # ---------------------------------------------------------------------------

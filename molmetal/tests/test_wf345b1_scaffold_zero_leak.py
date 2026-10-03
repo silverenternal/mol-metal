@@ -42,7 +42,7 @@ Tests (2 NEW)
 
 Why monkeypatch (and not a real subprocess with hidden pandas):
   The host Python on this dev box has pandas installed (via the
-  CadButEaas venv). Trying to launch a real subprocess that hides
+  project venv). Trying to launch a real subprocess that hides
   pandas requires either ``sys.path`` mutation in the subprocess
   (brittle + conda/venv-specific) or a sidecar interpreter without
   pandas (none available on this host). The monkeypatch approach
@@ -194,7 +194,7 @@ def test_gate_scaffold_zero_leak_pass_on_valid_csv(preflight, tmp_path) -> None:
 
     Pre-condition: writes a tmp_path CSV with 3 disjoint scaffold sets
     across the train/val/test splits (the Wf-261 v2 contract).
-    Subprocess imports pandas (already in the venv-vlm runtime) and
+    Subprocess imports pandas (already in the .venv runtime) and
     emits ``OK 0 scaffold leak`` to stdout.
 
     Contract: the gate emits ``status == "PASS"`` with
@@ -237,7 +237,7 @@ def test_gate_scaffold_zero_leak_skip_when_pandas_missing(
     Contract: the gate emits ``status == "SKIP"`` (NOT FAIL) with
     ``"pandas"`` named as the missing dep + a pointer to the expected
     pandas-enabled runtime per AGENTS.md §5.1 (kanzi_venv or
-    venv-vlm). The Wf-345B1 explicit honest-negative contract is:
+    .venv). The Wf-345B1 explicit honest-negative contract is:
     env gap MUST emit SKIP, never FAIL — the gate cannot PASS but is
     also not regressing.
 
@@ -288,12 +288,11 @@ def test_gate_scaffold_zero_leak_skip_when_pandas_missing(
         f"SKIP evidence must name 'pandas' as the missing dep so the "
         f"operator can resolve the env gap; got: {result.evidence}"
     )
-    # The expected runtime per AGENTS.md §5.1 standing GPU grant:
-    # either kanzi_venv (canonical CFM-retrain venv) or
-    # venv-vlm (the observed pandas-enabled runtime).
+    # The expected runtime per AGENTS.md §5.1 standing GPU grant +
+    # §5.9 single-venv rule: the repo-local canonical .venv is THE
+    # pandas-enabled runtime.
     assert (
-        "kanzi_venv" in result.evidence
-        or "venv-vlm" in result.evidence
+        "/home/hugo/codes/mol-metal/.venv/bin/python" in result.evidence
     ), (
         f"SKIP evidence must name the expected pandas-enabled "
         f"runtime per AGENTS.md §5.1; got: {result.evidence}"

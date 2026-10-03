@@ -1,16 +1,17 @@
-# Mol-Metal — local-host env wiring (NVIDIA Blackwell, 2026-09-25)
+# Mol-Metal — local-host env wiring (NVIDIA Blackwell, 2026-10-03)
 #
 # Source this file in your interactive shell BEFORE running anything:
 #
-#     source env.sh           # adds CUDA env vars, routes uv to shared env
-#     uv run python ...       # now uses /home/hugo/codes/CadButEaas/.venv-vlm
+#     source env.sh           # adds CUDA env vars, routes uv to the repo-local .venv
+#     uv run python ...       # now uses /home/hugo/codes/mol-metal/.venv
 #
 # What this does:
-#   1. UV_PROJECT_ENVIRONMENT — points uv at the pre-existing
-#      /home/hugo/codes/CadButEaas/.venv-vlm so uv sync / uv run install
-#      and execute in the shared env (torch 2.14.0+cu130, triton 3.8.0,
-#      rdkit, openbabel, openmm, posebusters, meeko, all chemistry libs
-#      are already installed). Avoids re-downloading torch+cu130 (~3GB).
+#   1. UV_PROJECT_ENVIRONMENT — points uv at the repo-local CANONICAL venv
+#      /home/hugo/codes/mol-metal/.venv (AGENTS.md §5.9 single-venv rule;
+#      torch 2.14.1+cu130, rdkit, posebusters, meeko, vina are installed).
+#      The legacy CadButEaas / kanzi environments are FORBIDDEN —
+#      molmetal/scripts/check_no_stale_venv.sh fails if the repo is pointed
+#      at any interpreter other than this .venv.
 #   1b. MOLMETAL_DATA_DIR / MOLMETAL_TMQM_DIR — point loaders at the
 #      project-local .data/molmetal/ tree (the loaders honour these since
 #      the 2026-09-25 patch; see molmetal/data/cytotox.py,
@@ -25,19 +26,17 @@
 #   5. CUDA_VISIBLE_DEVICES=0 — pin to the RTX PRO 6000 (device 1 is the
 #      RTX 5090; we don't want it stealing VRAM by default).
 
-# --- 0. Stale-venv guard. If mol-metal/.venv exists, warn loudly so it does
-#     not silently shadow the shared CadButEaas env (which we route uv to via
-#     UV_PROJECT_ENVIRONMENT below). Run molmetal/scripts/check_no_stale_venv.sh
-#     in CI / pre-commit to fail if the stale venv reappears.
-STALE_VENV="/home/hugo/codes/mol-metal/.venv"
-if [ -d "$STALE_VENV" ]; then
-    echo "[mol-metal env] WARNING: stale $STALE_VENV exists." >&2
-    echo "[mol-metal env]          uv would auto-activate it and shadow the shared env." >&2
-    echo "[mol-metal env]          Remove it: rm -rf $STALE_VENV" >&2
+# --- 0. Canonical-venv sanity. .venv IS canonical (AGENTS.md §5.9); there is
+#     no "stale venv" concept — check_no_stale_venv.sh now fails when the
+#     repo is pointed at ANY interpreter other than $REPO_ROOT/.venv.
+CANONICAL_VENV=/home/hugo/codes/mol-metal/.venv
+if [ ! -x "$CANONICAL_VENV/bin/python" ]; then
+    echo "[mol-metal env] WARNING: canonical venv python missing at $CANONICAL_VENV/bin/python" >&2
+    echo "[mol-metal env]          Run: uv sync (creates/reinstates the repo-local .venv)" >&2
 fi
 
-# --- 1. uv: install into the shared env instead of creating mol-metal/.venv
-export UV_PROJECT_ENVIRONMENT=/home/hugo/codes/CadButEaas/.venv-vlm
+# --- 1. uv: use the repo-local canonical venv (AGENTS.md §5.9)
+export UV_PROJECT_ENVIRONMENT="$CANONICAL_VENV"
 
 # --- 1b. Data dir — points loaders at .data/molmetal/ (project-local)
 #     instead of the default /mnt/storage/data/molmetal (not writable on
@@ -69,7 +68,7 @@ echo "[mol-metal env] python (uv) =$(uv run --no-sync python -c 'import sys; pri
 #     ignores UV_PROJECT_ENVIRONMENT for unmanaged projects unless the
 #     VIRTUAL_ENV var also points at the same venv; without this, `uv run`
 #     falls back to the managed Python interpreter and the chemistry
-#     deps (rdkit, openbabel, torch+cu130) are absent, which surfaces as
+#     deps (rdkit, posebusters, torch+cu130) are absent, which surfaces as
 #     `[beta_reductions] SyntheMol registration failed: No module named
 #     'rdkit'` and a "122 failed" pytest outcome in
 #     molmetal/tests/test_f2a_metal_ligand_exchange.py.

@@ -43,7 +43,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import wf343c2_per_wave_check as wf343c2  # noqa: E402
 
-VENV_PY = "/home/hugo/codes/CadButEaas/.venv-vlm/bin/python"
+VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 
 EXPECTED_CHECK_IDS = frozenset(
     {
