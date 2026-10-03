@@ -155,7 +155,6 @@ REPORTS_DIR = PROJECT_ROOT / "molmetal" / "reports"
 # ---------------------------------------------------------------------------
 # Dataset — pivot to (N_complexes × N_cells) with NaN/-1 missing labels
 # ---------------------------------------------------------------------------
-@dataclass
 def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
     """Wf-416-A1 atomic-write-protocol wrapper around direct write_text.
 
@@ -184,6 +183,8 @@ def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
 
+
+@dataclass
 class NCIPreciousDataset:
     smiles: np.ndarray                # (N,) canonical SMILES
     pic50: np.ndarray                 # (N, n_cells) pIC50; NaN where untested

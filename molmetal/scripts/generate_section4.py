@@ -83,7 +83,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # ---------------------------------------------------------------------------
 
 
-@dataclass(frozen=True)
 def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
     """Wf-416-A1 atomic-write-protocol wrapper around direct write_text.
 
@@ -112,6 +111,8 @@ def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
 
+
+@dataclass(frozen=True)
 class MetricSpec:
     """One row of paper Table 2 (Section 4)."""
 

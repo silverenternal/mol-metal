@@ -378,19 +378,6 @@ def dock_in_process(
     """
     import vina  # type: ignore
 
-try:
-    from molmetal.scripts.wf386a3_atomic_write import (
-        atomic_write_file,
-        safe_overwrite_check,
-        detect_truncation,
-    )
-    _WF416_HAS_ATOMIC = True
-except ImportError:  # pragma: no cover — fallback when running as standalone
-    _WF416_HAS_ATOMIC = False
-    atomic_write_file = None  # type: ignore[assignment]
-    safe_overwrite_check = None  # type: ignore[assignment]
-    detect_truncation = None  # type: ignore[assignment]
-
     v = vina.Vina(sf_name="vina", verbosity=0)
     # set_receptor / set_ligand_from_file need file paths (not strings)
     with tempfile.TemporaryDirectory(prefix="wf320h_") as tmp:
@@ -414,6 +401,32 @@ except ImportError:  # pragma: no cover — fallback when running as standalone
         energies = [float(row[0]) for row in energies_arr.tolist()]
         poses_text = v.poses(n_poses=int(n_poses))
     return energies, poses_text, elapsed
+
+
+# ---------------------------------------------------------------------------
+# Wf-416-A1 atomic-write-protocol import (module level).
+#
+# Wf-A10 FIX (2026-10-03): the Wf-416-A1 migration inserted this block in
+# the middle of ``dock_in_process``'s body — between the ``import vina``
+# line and the rest of the function — which both orphaned the tail of the
+# function into the ``except ImportError:`` clause (``SyntaxError:
+# 'return' outside function``) and made the whole module unimportable.
+# Moved to module level, after the function that uses it.
+# ``_wf416_atomic_write_text`` (defined above) resolves ``_WF416_HAS_ATOMIC``
+# as a global at *call* time, so definition order between the two is free.
+# ---------------------------------------------------------------------------
+try:
+    from molmetal.scripts.wf386a3_atomic_write import (
+        atomic_write_file,
+        safe_overwrite_check,
+        detect_truncation,
+    )
+    _WF416_HAS_ATOMIC = True
+except ImportError:  # pragma: no cover — fallback when running as standalone
+    _WF416_HAS_ATOMIC = False
+    atomic_write_file = None  # type: ignore[assignment]
+    safe_overwrite_check = None  # type: ignore[assignment]
+    detect_truncation = None  # type: ignore[assignment]
 
 
 # ---------------------------------------------------------------------------

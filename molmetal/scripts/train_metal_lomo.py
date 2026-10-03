@@ -94,7 +94,6 @@ GATE_AUC = 0.70  # TODO/METRICS_TARGETS.md §2 / Metric 19
 # test on metal == M.  We pick val from the same train pool (random subset
 # of the 4 held-in metals) so we never leak the test metal into validation.
 # ---------------------------------------------------------------------------
-@dataclass
 def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
     """Wf-416-A1 atomic-write-protocol wrapper around direct write_text.
 
@@ -123,6 +122,8 @@ def _wf416_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
 
+
+@dataclass
 class LOMOSplitter:
     held_out_metal: str
     val_fraction: float = 0.10
