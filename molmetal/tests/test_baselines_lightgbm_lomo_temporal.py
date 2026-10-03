@@ -74,8 +74,11 @@ def test_lightgbm_quick_smoke_json_shape() -> None:
     ds = MetalCytotoxDataset.from_csv(filters=flt)
     small_df = ds.df.head(120).copy()
 
-    # Monkey-patch via a small wrapper class to feed the mini cohort
-    class _MiniLGB(MorganLightGBMBaseline if False else object):  # type: ignore[misc]
+    # Monkey-patch via a small wrapper class to feed the mini cohort.
+    # The base was previously written ``MorganLightGBMBaseline if False else
+    # object`` — a dead branch whose name is never bound (F821).  ``object`` is
+    # what it always evaluated to, so say that.
+    class _MiniLGB(object):
         pass
 
     # Build a small instance and reuse the dataset directly

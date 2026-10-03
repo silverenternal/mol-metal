@@ -221,6 +221,42 @@ ANCHOR_FROZEN_PATHS: Tuple[Tuple[str, str], ...] = (
 )
 
 PIPELINES = ("chemprop_v2_v3", "cfm", "all", "frontier", "launch")
+
+
+class WaveDeclaration:
+    """What a launch declares about the wave it is about to run.
+
+    Threaded from the CLI into :func:`build_gates` so that
+    ``p3_wf343c2_per_wave_runtime_check`` can check a REAL grid against a REAL
+    budget instead of skipping.
+
+    Why this exists: the gate accepted ``pairs_metals`` / ``pairs_seeds`` /
+    ``budget_hr`` from the day it was written, but ``build_gates`` had no way
+    to receive them — so the registered gate always ran with all three ``None``
+    and could only ever emit "grid not declared by caller -> loud SKIP".  The
+    launchers meanwhile ran the same script per-tuple WITH real declarations.
+    The gate was therefore honest but vacuous on the one path (pre-flight) where
+    it was registered, which reads as a gap and invites bypass.
+
+    Every field is optional: an undeclared wave still SKIPs loudly rather than
+    PASSing, exactly as before.
+    """
+
+    __slots__ = ("wave", "pairs_metals", "pairs_seeds", "budget_hr")
+
+    def __init__(
+        self,
+        wave: Optional[str] = None,
+        pairs_metals: Optional[str] = None,
+        pairs_seeds: Optional[str] = None,
+        budget_hr: Optional[float] = None,
+    ) -> None:
+        self.wave = wave
+        self.pairs_metals = pairs_metals
+        self.pairs_seeds = pairs_seeds
+        self.budget_hr = budget_hr
+
+
 # "launch" = everything in "all" PLUS the gates that only make sense before a
 # TRAINING LAUNCH (anchor freshness, per-wave runtime smoke). They are split out
 # because "all" is what the commit hook runs, and a commit is not a launch: a
@@ -9907,8 +9943,17 @@ def gate_p2_data_leakage_diag(
     )
 
 
-def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
+def build_gates(
+    pipeline: str,
+    declaration: Optional["WaveDeclaration"] = None,
+) -> List[Tuple[str, Callable[[], GateResult]]]:
     """Return [(name, runner)] for the requested pipeline filter.
+
+    ``declaration`` carries what the caller declared about the wave it intends
+    to run (grid + budget).  It is optional and defaults to ``None`` so every
+    existing caller — including the gate-count audit — keeps its behaviour; a
+    ``None`` declaration leaves ``p3_wf343c2_per_wave_runtime_check`` emitting
+    its loud SKIP rather than a fabricated PASS.
 
     ``"launch"`` is normalised to ``"all"`` here and the launch-only gates are
     appended at the end. Normalising at the TOP means every existing
@@ -12240,12 +12285,26 @@ def build_gates(pipeline: str) -> List[Tuple[str, Callable[[], GateResult]]]:
                 ),
             ),
             (
+                # 2026-10-03: the caller's declaration is threaded in here.
+                # Without it this registration could only ever SKIP — it
+                # invoked a checker that needs a grid + budget while passing
+                # neither (see WaveDeclaration).  An undeclared caller is
+                # unchanged: every field stays None and the gate still SKIPs
+                # loudly rather than fabricating a PASS.
                 "p3_wf343c2_per_wave_runtime_check",
                 lambda: gate_wf343c2_per_wave_runtime_check(
                     "p3_wf343c2_per_wave_runtime_check",
                     "P3",
                     "wf347a1",
                     SCRIPT_DIR / "wf343c2_per_wave_check.py",
+                    wave=(
+                        declaration.wave
+                        if declaration and declaration.wave
+                        else "Wf-347A1 pre-retrain smoke"
+                    ),
+                    pairs_metals=declaration.pairs_metals if declaration else None,
+                    pairs_seeds=declaration.pairs_seeds if declaration else None,
+                    budget_hr=declaration.budget_hr if declaration else None,
                 ),
             ),
         ]
@@ -12611,6 +12670,45 @@ def parse_argv(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "zero gates). Exit codes are as for --pipeline."
         ),
     )
+    # --- wave declaration (2026-10-03) -------------------------------------
+    # These feed WaveDeclaration -> build_gates -> the
+    # p3_wf343c2_per_wave_runtime_check gate.  Before they existed, that gate
+    # could only ever SKIP on the pre-flight path (it needs a grid and a budget
+    # and had no way to receive either), even though the launchers were already
+    # binding real values to the same checker per-tuple.  Declaring here lets
+    # the gate validate the WHOLE planned wave before anything launches.
+    p.add_argument(
+        "--pairs-metals",
+        default=None,
+        metavar="M1,M2,...",
+        help=(
+            "Comma-separated metals in the wave you intend to launch. Feeds the "
+            "per-wave budget/VRAM gate. Unset -> that gate SKIPs loudly (it "
+            "never fabricates a PASS from an undeclared grid)."
+        ),
+    )
+    p.add_argument(
+        "--pairs-seeds",
+        default=None,
+        metavar="S1,S2,...",
+        help="Comma-separated seeds in the wave you intend to launch.",
+    )
+    p.add_argument(
+        "--budget-hr",
+        type=float,
+        default=None,
+        metavar="HOURS",
+        help=(
+            "Wall-clock budget for the declared wave. Compared against "
+            "n_pairs x per-pair cost; an over-budget declaration FAILs."
+        ),
+    )
+    p.add_argument(
+        "--declared-wave",
+        default=None,
+        metavar="NAME",
+        help="Human-readable name of the wave being declared (appears in gate evidence).",
+    )
     p.add_argument(
         "--json",
         type=Path,
@@ -12764,7 +12862,15 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 1
         runners = [(n, available[n]) for n in wanted]
     else:
-        runners = build_gates(args.pipeline)
+        runners = build_gates(
+            args.pipeline,
+            WaveDeclaration(
+                wave=getattr(args, "declared_wave", None),
+                pairs_metals=getattr(args, "pairs_metals", None),
+                pairs_seeds=getattr(args, "pairs_seeds", None),
+                budget_hr=getattr(args, "budget_hr", None),
+            ),
+        )
 
     if args.verbose:
         label = (

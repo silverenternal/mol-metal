@@ -339,8 +339,8 @@ run_tuple() {
     --pairs-metals "${metal}" --pairs-seeds "${seed}" \
     --skip-live \
     || { echo "=== $(date '+%H:%M:%S') FAIL ${cfg}/${metal}/seed=${seed} (per-wave check) ===" | tee -a "${LOG}"; return 1; }
-  # Deliberate GPU-1 (RTX 5090) route — pairs with --cuda-visible-devices 1
-  # above; keep as-is (do not flip to the GPU-0 resolver default).
+  # GPU 0 (RTX PRO 6000 Blackwell) per the 2026-10-03 all-GPU-0
+  # directive; this call site is serial with every other job.
   CUDA_VISIBLE_DEVICES=0 ${PY} ${SCRIPT} \
     --metals "${metal}" \
     --seeds "${seed}" \
