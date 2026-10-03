@@ -680,6 +680,7 @@ class CFMJointModel(nn.Module):
         hidden_dim: int = DEFAULT_HIDDEN_DIM,
         n_layers: int = DEFAULT_N_LAYERS,
         cutoff: float = DEFAULT_EDGE_CUTOFF,
+        fm_objective: bool = False,
         z_table: Sequence[int] = (
             0,
             1,
@@ -713,6 +714,66 @@ class CFMJointModel(nn.Module):
             nn.GELU(),
             nn.Linear(hidden_dim, 3),
         )
+        # 2026-10-04 — optional flow-matching velocity head.
+        #
+        # `vel_probe` above cannot serve the flow-matching objective: it takes
+        # (z_onehot, x) with no time input, and a time-independent field cannot
+        # represent the conditional mean of `x1 - x0`, which moves with t.  So
+        # the FM objective gets its own head with one extra input channel.
+        #
+        # Built LAZILY, and that is load-bearing: when `--use-fm-objective` is
+        # off this attribute never exists, so the module's `state_dict` keys
+        # are exactly what they were before this change and every existing
+        # checkpoint still loads through `--resume-from`.  Constructing the
+        # head unconditionally would silently break checkpoint resume for all
+        # shipped runs.
+        self.fm_objective = bool(fm_objective)
+        if self.fm_objective:
+            self.fm_vel_head = nn.Sequential(
+                nn.Linear(self.z_dim + 3 + 1, hidden_dim),
+                nn.GELU(),
+                nn.Linear(hidden_dim, 3),
+            )
+
+    def fm_velocity(
+        self,
+        x_t: torch.Tensor,
+        t: torch.Tensor,
+        atomic_numbers: torch.Tensor,
+    ) -> torch.Tensor:
+        """Time-conditioned velocity field ``v(x_t, t, z)`` for the FM objective.
+
+        Parameters
+        ----------
+        x_t : (N, 3)
+            Flow-interpolated coordinates ``(1 - t) * x0 + t * x1``.
+        t : () or (N,) or (N, 1)
+            Flow time in ``[0, 1]``.
+        atomic_numbers : (N,)
+            Atomic numbers of the same atoms as ``x_t``.
+
+        Returns
+        -------
+        (N, 3) predicted velocity, trained against ``x1 - x0``.
+        """
+        if not self.fm_objective:
+            raise RuntimeError(
+                "fm_velocity() called on a model built without "
+                "fm_objective=True — the head does not exist.  Pass "
+                "--use-fm-objective (or fm_objective=True) to build it."
+            )
+        idx = torch.tensor(
+            [self.z_to_idx.get(int(zi), 0) for zi in atomic_numbers.tolist()],
+            dtype=torch.long,
+            device=x_t.device,
+        )
+        z_oh = F.one_hot(idx, num_classes=self.z_dim).float()
+        if t.dim() == 0:
+            t_col = t.reshape(1, 1).expand(x_t.shape[0], 1)
+        else:
+            t_col = t.reshape(-1, 1).to(dtype=x_t.dtype, device=x_t.device)
+        feats = torch.cat([z_oh, x_t.float(), t_col], dim=-1)
+        return self.fm_vel_head(feats)
 
     def forward(self, cloud: AtomCloud) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return (bond_logits, predicted_velocities) for a single cloud.
@@ -966,6 +1027,16 @@ def train_one_epoch(
     # per-batch lookup with epoch_idx=0 (smoke-grade).  Loss contribution
     # stays 0 (cache lives outside the loss cascade).
     cfm_chemprop_v3_cache: bool = False,  # False = no CFM-side cache
+    # 2026-10-04 NEW — flow-matching objective kwargs.  Default OFF so every
+    # existing config and checkpoint is untouched until a caller opts in via
+    # --use-fm-objective.  See the FM block in the loss cascade for why this
+    # exists (the trainer had no (x0, x1, x_t, t) path and no time-conditioned
+    # velocity field, which is the shared root cause of 5 of the 11 dead terms).
+    fm_objective: bool = False,  # False = no FM objective (legacy signal only)
+    fm_weight: float = 1.0,  # multiplier on the FM MSE
+    fm_t_dist: str = "uniform",  # {"uniform", "log_normal"}
+    fm_log_normal_mu: float = -0.5,  # only used when fm_t_dist="log_normal"
+    fm_log_normal_sigma: float = 1.0,  # only used when fm_t_dist="log_normal"
     # Wf-A9 FIX (2026-10-03) — gradient-clip threshold threaded as a
     # kwarg.  The Wf-A8 patch referenced ``args`` inside this function,
     # but ``args`` is ``main()``-scoped → NameError at the first
@@ -1634,6 +1705,47 @@ def train_one_epoch(
                 # degrades to no-op, loss contribution stays at 0,
                 # bit-for-bit backward compat preserved.
                 pass
+        # 2026-10-04 NEW — flow-matching objective (default OFF).
+        #
+        # Why this exists: this trainer's original velocity signal regresses
+        # `vel_probe` toward `build_reference_positions()` — a HARD-CODED
+        # literal Pt-square geometry (Pt at origin + 4 donors at 2.05 A).  That
+        # is fitting one constant geometry, not learning a distribution, and it
+        # is why every flow-matching-family regulariser in this file had
+        # nowhere to attach: shortcut-consistency, EDM consistency,
+        # log-normal-t and SO(3)-averaged FM all need an `(x0, x1, x_t, t)`
+        # path and a time-conditioned velocity field.  Neither existed.
+        #
+        # This branch supplies both, and it is deliberately DYNAMIC — every
+        # quantity that could collapse into a constant is resampled per batch:
+        #   * x1   — the batch's own coordinates (fresh every step)
+        #   * x0   — Gaussian noise, redrawn every step
+        #   * t    — redrawn every step, from a configurable law
+        # Nothing here is read off a fixed tensor, which is exactly the failure
+        # shape the 2026-10-04 audit found in 11 of the 13 other loss terms.
+        fm_term = torch.zeros((), device=device)
+        if fm_objective and batch_clouds:
+            x1 = torch.cat([c.positions.float().to(device) for c in batch_clouds], dim=0)
+            z_all = torch.cat(
+                [c.atomic_numbers.long().to(device) for c in batch_clouds], dim=0
+            )
+            n_atoms = int(x1.shape[0])
+            x0 = torch.randn_like(x1)
+            if fm_t_dist == "log_normal":
+                # Karras 2022 arXiv:2206.00364 §3.4: p(t) = sigmoid(N(mu, sigma)).
+                # The sigmoid maps the normal onto (0, 1), concentrating t near
+                # the mid-range where the FM regression is hardest.
+                t = torch.sigmoid(
+                    float(fm_log_normal_mu)
+                    + float(fm_log_normal_sigma) * torch.randn(n_atoms, device=device)
+                )
+            else:
+                t = torch.rand(n_atoms, device=device)
+            t_col = t.reshape(-1, 1)
+            x_t = (1.0 - t_col) * x0 + t_col * x1
+            target_dx = x1 - x0
+            _pred_dx = model.fm_velocity(x_t, t, z_all)
+            fm_term = float(fm_weight) * F.mse_loss(_pred_dx, target_dx)
         loss = (
             bond_ce
             + wasserstein_weight * w2_val
@@ -1653,6 +1765,7 @@ def train_one_epoch(
             + log_normal_t_term  # Wf-408-A2 log_normal_t
             + edm_term  # Wf-408-A2 edm_preconditioning
             + chemprop_v3_cache_term  # Wf-408-A2 chemprop_v3_cache
+            + fm_term  # 2026-10-04 NEW — flow-matching objective (default OFF)
         )
         # 2026-10-04 — refresh the per-term side-channel read by
         # tests/test_cfm_loss_gradient_liveness.py.  Each value is the exact
@@ -1676,6 +1789,7 @@ def train_one_epoch(
                 "log_normal_t_term": log_normal_t_term,
                 "edm_term": edm_term,
                 "chemprop_v3_cache_term": chemprop_v3_cache_term,
+                "fm_term": fm_term,
             }
         )
         # Wf-406-A2 — TODO-21 Lambda × CFM reward-weighting wiring
@@ -2029,6 +2143,41 @@ def parse_args() -> argparse.Namespace:
             "yaml `edge_cutoff` / `protocol.edge_cutoff` key."
         ),
     )
+    p.add_argument(
+        "--use-fm-objective",
+        dest="use_fm_objective",
+        action="store_true",
+        default=False,
+        help=(
+            "2026-10-04 NEW: add a real flow-matching objective — x1 = the "
+            "batch's coordinates, x0 ~ N(0,I), x_t = (1-t)*x0 + t*x1, target "
+            "dx = x1 - x0, loss = MSE(v(x_t, t, z), dx) — trained through a "
+            "separate time-conditioned head (fm_vel_head).  Default OFF, so "
+            "the legacy fixed-reference Wasserstein signal is unchanged.  "
+            "Prerequisite for the shortcut/consistency/EDM/log-normal-t/"
+            "SO(3)-FM regularisers, none of which had an (x0,x1,x_t,t) path "
+            "to attach to before this."
+        ),
+    )
+    p.add_argument(
+        "--fm-weight",
+        type=float,
+        default=1.0,
+        help="Multiplier on the flow-matching MSE term (only with --use-fm-objective).",
+    )
+    p.add_argument(
+        "--fm-t-dist",
+        type=str,
+        default="uniform",
+        choices=["uniform", "log_normal"],
+        help=(
+            "Law for the flow time t.  'uniform' draws t ~ U(0,1); "
+            "'log_normal' draws t = sigmoid(N(mu, sigma)) per Karras 2022 "
+            "arXiv:2206.00364 section 3.4."
+        ),
+    )
+    p.add_argument("--fm-log-normal-mu", type=float, default=-0.5)
+    p.add_argument("--fm-log-normal-sigma", type=float, default=1.0)
     p.add_argument("--lr", type=float, default=DEFAULT_LR)
     # Wf-A6 A2 BLOCKER C fix — LR scheduler (cosine/onecycle) + warmup + weight decay
     # per user voice 2026-10-03 verbatim '学习率的控制至少得用余弦退火或者更加高级的方案'.
@@ -3082,6 +3231,7 @@ def main() -> int:
         hidden_dim=args.hidden_dim,
         n_layers=args.n_layers,
         cutoff=args.edge_cutoff,
+        fm_objective=bool(getattr(args, "use_fm_objective", False)),
     ).to(device)
     # Wf-431-B1 NEW — GPU utilization optimization wire-in (default OFF,
     # bit-for-bit backward compat with Wf-380-B1 + Wf-388 + Wf-418).
@@ -3339,6 +3489,13 @@ def main() -> int:
             # backward compat with Wf-388-A3 / Wf-405-A2 / Wf-406-A2 /
             # Wf-407-A2 / Wf-408-A2 / Wf-409-A1 baseline.
             cfm_chemprop_v3_cache=bool(getattr(args, "cfm_chemprop_v3_cache", False)),
+            # 2026-10-04 NEW — flow-matching objective kwargs.  Defaults keep
+            # the legacy signal bit-for-bit until --use-fm-objective is passed.
+            fm_objective=bool(getattr(args, "use_fm_objective", False)),
+            fm_weight=float(getattr(args, "fm_weight", 1.0)),
+            fm_t_dist=str(getattr(args, "fm_t_dist", "uniform")),
+            fm_log_normal_mu=float(getattr(args, "fm_log_normal_mu", -0.5)),
+            fm_log_normal_sigma=float(getattr(args, "fm_log_normal_sigma", 1.0)),
             # Wf-A9 FIX (2026-10-03) — thread the gradient-clip threshold
             # from the yaml-driven ``args.max_norm`` (start.sh passes
             # ``--max-norm "$MAX_NORM"`` sourced from ``protocol.max_norm``).

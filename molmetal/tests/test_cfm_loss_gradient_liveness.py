@@ -73,6 +73,7 @@ ALL_TERMS = frozenset(
         "log_normal_t_term",
         "edm_term",
         "chemprop_v3_cache_term",
+        "fm_term",
     }
 )
 
@@ -87,6 +88,15 @@ EXPECTED_LIVE = frozenset(
         # cfm_full_retrain.yaml + cfm_real_decode_lift_p1.3.yaml, so it was
         # live-but-inert in 2 of the 3 CFM configs.
         "0.05*cb_loss",
+        # NEW 2026-10-04: the flow-matching objective.  Unlike every other
+        # entry in this test, this one was never a placeholder -- it did not
+        # exist before today.  It is the (x0, x1, x_t, t) path that the
+        # shortcut/consistency/EDM/log-normal-t/SO(3)-FM regularisers need in
+        # order to be wireable at all.  Its inputs are resampled every batch
+        # (x1 = batch coords, x0 ~ N(0,I), t ~ uniform or log-normal), so it
+        # cannot collapse into a constant the way the fixed-reference
+        # regression it sits beside can.
+        "fm_term",
     }
 )
 
@@ -177,6 +187,7 @@ _SMOKE_ARGS = [
     "--use-log-normal-t",
     "--edm-preconditioning",
     "--chemprop-v3-cache",
+    "--use-fm-objective",
 ]
 
 _PROBE = """
