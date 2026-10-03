@@ -10,7 +10,7 @@ recipe in ``TODO/03_plans/R17_AUC_RECOVERY_PLAN.md`` §2 Stage 1.
 
 Inputs
 ------
-* ``.data/molmetal/metalcytotox_5metal_multitask.csv`` (26 801 rows)
+* ``.data/molmetal/metalcytotox_5metal_multitask_v4.csv`` (26 801 rows)
   columns: ``smiles,metal,scaffold_id,split,activity`` — scaffold-split
   ``train/val/test`` (Bemis-Murcko) per Krasnov 2026 protocol.
 
@@ -72,7 +72,7 @@ Usage
 
     source env.sh
     uv run --no-sync python -u molmetal/scripts/train_ru_multitask.py \\
-        --data .data/molmetal/metalcytotox_5metal_multitask.csv \\
+        --data .data/molmetal/metalcytotox_5metal_multitask_v4.csv \\
         --encoder-ckpt models/tmqm_pretrained/tmqm_pretrained_encoder.pt \\
         --out-dir .ckpt \\
         --metrics-path metrics/by_metric/ru_5metal_multitask.json \\
@@ -153,7 +153,7 @@ RECIPE_METAL_EMBED_DIM: int = 64
 RECIPE_DROPOUT: float = 0.2
 
 # --- Output paths (overridable via CLI) ---
-DEFAULT_DATA = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+DEFAULT_DATA = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 DEFAULT_ENCODER_CKPT = PROJECT_ROOT / "models" / "tmqm_pretrained" / "tmqm_pretrained_encoder.pt"
 DEFAULT_OUT_DIR = PROJECT_ROOT / ".ckpt"
 DEFAULT_METRICS_PATH = PROJECT_ROOT / "metrics" / "by_metric" / "ru_5metal_multitask.json"

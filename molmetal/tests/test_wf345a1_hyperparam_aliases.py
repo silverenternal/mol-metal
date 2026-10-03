@@ -290,7 +290,13 @@ def test_all_7_active_yamls_pass_after_alias_resolution(preflight) -> None:
     # The alias-resolutions dict MUST name the 5 YAMLs that resolved
     # via alias (default.yaml + cfm_full_retrain.yaml are fully
     # canonical, so they should NOT appear in alias_resolutions).
-    assert "default.yaml" not in result.evidence.split("alias-resolved")[-1], (
+    # Wf-A13 (2026-10-03): scope the check to the alias-resolutions DICT
+    # itself (text between "alias-resolved" and its closing paren).  The
+    # evidence tail also carries the Wf-A12/Wf-A13 resolution report, which
+    # names default.yaml by design — the previous whole-tail split tripped
+    # on that report instead of on alias resolution (stale since Wf-A12).
+    _alias_segment = result.evidence.split("alias-resolved")[-1].split(")")[0]
+    assert "default.yaml" not in _alias_segment, (
         f"default.yaml should be canonical, not alias-resolved; "
         f"evidence={result.evidence}"
     )

@@ -70,7 +70,7 @@ LEAKAGE_PATH = REPORT_DIR / "leakage_check.json"
 
 PLATINAI_CSV = _REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
 METALCYTOTOX_CSV = (
-    _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+    _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
 
 
@@ -79,7 +79,7 @@ METALCYTOTOX_CSV = (
 # ---------------------------------------------------------------------------
 @pytest.mark.skipif(
     not PLATINAI_CSV.exists() and not METALCYTOTOX_CSV.exists(),
-    reason="Neither platinai_5k.csv nor metalcytotox_5metal_multitask.csv is available",
+    reason="Neither platinai_5k.csv nor metalcytotox_5metal_multitask_v4.csv is available",
 )
 def test_leakage_check_json_exists() -> None:
     """The leakage_check.json artefact exists after a CLI run."""
@@ -302,7 +302,7 @@ def test_random_split_shows_some_scaffold_overlap_on_platinai() -> None:
 
 @pytest.mark.skipif(
     not METALCYTOTOX_CSV.exists(),
-    reason="metalcytotox_5metal_multitask.csv not available",
+    reason="metalcytotox_5metal_multitask_v4.csv not available",
 )
 def test_metalcytotox_scaffold_split_strict() -> None:
     """The scaffold split on the metalcytotox 5-metal dataset is
@@ -315,7 +315,7 @@ def test_metalcytotox_scaffold_split_strict() -> None:
 
 @pytest.mark.skipif(
     not METALCYTOTOX_CSV.exists(),
-    reason="metalcytotox_5metal_multitask.csv not available",
+    reason="metalcytotox_5metal_multitask_v4.csv not available",
 )
 def test_metalcytotox_random_split_shows_heavy_overlap() -> None:
     """The metalcytotox 5-metal dataset has heavy SMILES duplication

@@ -89,7 +89,7 @@ from molmetal.molmetal_lam.reward.wasserstein_transfer import (
 # ---------------------------------------------------------------------------
 
 DEFAULT_CSV = (
-    PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+    PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
 DEFAULT_OUT_DIR = (
     PROJECT_ROOT / "molmetal" / "reports" / "wf131_p2_rh_oversample"
@@ -478,7 +478,7 @@ def _build_synthesis_markdown(
     lines.append(
         "We applied the Wasserstein transfer loss to the per-metal synthetic "
         "embeddings derived from the MetalCytoToxDB 5-metal cohort "
-        "(`metalcytotox_5metal_multitask.csv`, train split only):"
+        "(`metalcytotox_5metal_multitask_v4.csv`, train split only):"
     )
     lines.append("")
     lines.append("| Metal | n_train (sampled) |")

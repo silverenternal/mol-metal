@@ -108,7 +108,7 @@ from chemprop.nn import AtomMessagePassing, SumAggregation  # noqa: E402
 # ---------------------------------------------------------------------------
 DEFAULT_DATA_DIR = Path("/home/hugo/codes/mol-metal/molmetal/data")
 DEFAULT_CSV = Path(
-    "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask.csv"
+    "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 )
 DEFAULT_OUT_DIR = DEFAULT_DATA_DIR / "chemprop_features"
 

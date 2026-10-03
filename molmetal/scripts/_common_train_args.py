@@ -120,7 +120,7 @@ CV_STRATEGY_DEFAULT: str = "scaffold"
 # ---------------------------------------------------------------------------
 # Defaults for paths — overridable on every CLI
 # ---------------------------------------------------------------------------
-DEFAULT_DATA: Path = Path(".data/molmetal/metalcytotox_5metal_multitask.csv")
+DEFAULT_DATA: Path = Path(".data/molmetal/metalcytotox_5metal_multitask_v4.csv")
 DEFAULT_ENCODER_CKPT: Path = Path("models/tmqm_pretrained/tmqm_pretrained_encoder.pt")
 DEFAULT_OUT_DIR: Path = Path(".ckpt")
 DEFAULT_METRICS_PATH: Path = Path("metrics/by_metric/r18_train.json")

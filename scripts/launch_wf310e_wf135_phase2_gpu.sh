@@ -49,7 +49,7 @@
 #
 # Pre-launch checks (BLOCKER before any GPU work):
 #   1. Phase 1 cohort on disk (Wf-309A complete)
-#   2. pre_flight_check.py --pipeline all (24/24 PASS target)
+#   2. pre_flight_check.py --pipeline launch (24/24 PASS target)
 #   3. wave_budget_tracker.py --budget-hr 14 --chemprop-not-required
 #   4. USER_OK env gate
 

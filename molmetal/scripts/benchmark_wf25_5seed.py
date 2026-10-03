@@ -118,7 +118,7 @@ DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2, 3, 4)
 DEFAULT_N_SAMPLES: int = 500
 DEFAULT_N_FOLDS: int = 5
 DEFAULT_PLATINAI_CSV: Path = _REPO_ROOT / "molmetal" / "data" / "platinai_5k.csv"
-DEFAULT_METALCYTOX_CSV: Path = _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+DEFAULT_METALCYTOX_CSV: Path = _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 DEFAULT_OUT_DIR: Path = _REPO_ROOT / "molmetal" / "reports" / "wf25_5seed_bench"
 
 

@@ -30,7 +30,7 @@ script measures it at **fine per-metal resolution** with:
 
 Inputs
 ------
-* ``.data/molmetal/metalcytotox_5metal_multitask.csv`` (Wf-21 ship,
+* ``.data/molmetal/metalcytotox_5metal_multitask_v4.csv`` (Wf-21 ship,
   26801 rows × 5 metals).
 * ``molmetal/data/tmqm_dblock_subset.csv`` (Wf-28 ship, 30 d-block
   metals — the OOD train pool).
@@ -97,7 +97,7 @@ METALCYTOTOX_METALS: Tuple[str, ...] = (
 )
 
 DEFAULT_METALCYTOTOX_CSV: Path = (
-    _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+    _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
 DEFAULT_TMQM_CSV: Path = (
     _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"

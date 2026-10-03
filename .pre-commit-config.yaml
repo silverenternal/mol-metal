@@ -1,4 +1,46 @@
+# =============================================================================
+# .pre-commit-config.yaml — Mol-Metal commit hooks
+#
+# HONEST-STAGING NOTE (H1 / HOLE-3 audit, 2026-10-03). MEASURED state:
+#   * The pre-commit FRAMEWORK IS NOT INSTALLED in the project venv:
+#     `/home/hugo/codes/mol-metal/.venv/bin/python -c "import pre_commit"`
+#     exits 1 with ModuleNotFoundError, and `pre-commit install` has never
+#     run (.git/hooks/pre-commit carries ZERO framework markers — grep -c
+#     "INSTALL_PYTHON|hook-impl" = 0). Installing the framework + pinning a
+#     version is a USER DECISION: it changes the user environment and
+#     downloads hook envs into ~/.cache/pre-commit on first run.
+#   * WHAT IS ENFORCED TODAY: only the hand-written gate chain
+#     (pre_flight_check.py --pipeline all / scripts/_validate_metrics.py /
+#     molmetal/scripts/check_no_stale_venv.sh), tracked at
+#     scripts/git_hooks/pre-commit and installed per clone by
+#     scripts/install_git_hooks.sh (H2, TODO/completed/h2_git_hook_installer.md).
+#   * WHAT ENFORCES ONCE `pre-commit install` RUNS: the 5 cheap hygiene
+#     hooks (trailing-whitespace, end-of-file-fixer, check-yaml, check-json,
+#     detect-private-key; staged files only) plus the repo: local
+#     no-stale-venv guard. Nothing else below runs at commit time.
+#   * DECLARED BUT MANUAL (`stages: [manual]`; run via
+#     `pre-commit run --hook-stage manual --all-files`): ruff, ruff-format,
+#     mypy, mdformat, codespell. They fail or are unmeasured on this tree
+#     today: system ruff 0.16.8 (NOT the pinned v0.6.9 — counts PROJECTED
+#     for the pin) reports `ruff check molmetal/scripts` -> 18,369 findings
+#     and `ruff format --check` -> 540 files would be reformatted; mypy and
+#     codespell are ABSENT from every environment probed (no census yet);
+#     mdformat --wrap 100 would rewrite the docs corpus. Promote to
+#     enforcing only after a scoped, directory-limited cleanup.
+# =============================================================================
 repos:
+  # Sibling wiring for the hand-written gate chain tracked at
+  # scripts/git_hooks/pre-commit (installed into .git/hooks by
+  # scripts/install_git_hooks.sh). Version-controlled so the single-venv
+  # guard (AGENTS.md §5.9) is covered on the framework path too.
+  - repo: local
+    hooks:
+      - id: no-stale-venv
+        name: no-stale-venv (AGENTS.md §5.9 single-venv rule)
+        entry: bash molmetal/scripts/check_no_stale_venv.sh
+        language: system
+        always_run: true
+        pass_filenames: false
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
@@ -12,12 +54,15 @@ repos:
     hooks:
       - id: ruff
         args: ["--fix"]
+        stages: [manual]
       - id: ruff-format
+        stages: [manual]
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.11.2
     hooks:
       - id: mypy
         args: ["--ignore-missing-imports", "--strict-equality"]
+        stages: [manual]
   - repo: https://github.com/executablebooks/mdformat
     rev: 0.7.17
     hooks:
@@ -26,8 +71,10 @@ repos:
         additional_dependencies:
           - mdformat-myst
           - mdformat-toc
+        stages: [manual]
   - repo: https://github.com/codespell-project/codespell
     rev: v2.2.6
     hooks:
       - id: codespell
         args: ["--ignore-words-list=nd,te,ect"]
+        stages: [manual]

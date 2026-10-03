@@ -31,7 +31,7 @@ Inputs
 * :mod:`molmetal_lam.lam_chem.ood_protocol` (Wf-7 ship) —
   ``TanimotoOODProtocol`` (CPU Morgan-ECFP4, threshold 0.4).
 * ``molmetal/data/platinai_5k.csv`` (R17 ship, 5K real Pt-group).
-* ``.data/molmetal/metalcytotox_5metal_multitask.csv`` (Wf-21 ship,
+* ``.data/molmetal/metalcytotox_5metal_multitask_v4.csv`` (Wf-21 ship,
   26 801 rows across 5 metals: Ru / Ir / Rh / Os / Re).
 * ``molmetal/data/tmqm_dblock_subset.csv`` (Wf-28 ship, 5K subset
   used as the **train pool** for OOD detection).
@@ -168,7 +168,7 @@ DEFAULT_PLATINAI_CSV: Path = (
 )
 #: Path to the MetalCytoToxDB 5-metal CSV (Wf-21 ship).
 DEFAULT_METALCYTO_CSV: Path = Path(
-    "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask.csv"
+    "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 )
 FALLBACK_METALCYTO_CSV: Path = (
     _REPO_ROOT / "molmetal" / "data" / "metalcytotox_5metal.csv"

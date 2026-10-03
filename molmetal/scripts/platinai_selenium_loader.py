@@ -8,8 +8,26 @@ from Wf-292D, Cloudflare bypass via undetected-chromedriver).
 Background
 ----------
 Wf-295B (Strategy S7) harvests compound IDs + per-cell-line COVERAGE flags
-from the MB-Finder portal API, but the API does NOT expose per-cell-line
-IC50 NUMERIC values — only a presence/absence matrix.
+from the MB-Finder portal API.
+
+CORRECTION 2026-10-03 (Wf-A13). The sentence that stood here read: "but the
+API does NOT expose per-cell-line IC50 NUMERIC values — only a
+presence/absence matrix." THAT IS FALSE and has been removed. The API
+endpoint ``get-ceil-line-bio-data`` returns per-cell-line NUMERIC IC50 with
+DOI and method — MEASURED live:
+    A2780cis MB-Pt-000017 value "1.2"         doi 10.1021/ic8012359
+    A2780cis MB-Pt-000132 value "0.6 ± 0.1"   doi 10.1021/tx200525n
+    A2780    MB-Pt-000092 value "0.0046 ± 0.0023" doi 10.1039/d0dt04135a
+The false claim was reachable because the Wf-295B probe list simply never
+included that endpoint; the conclusion was drawn from a Cloudflare-blocked
+ChemRxiv page plus coverage-matrix-only probing. Working API route now lives
+in ``molmetal/scripts/platinai_real_label_loader.py`` (see
+TODO/completed/pt_data_route_correction.md).
+
+NOTE ON THIS SCRIPT: its whole premise — solving a Cloudflare challenge to
+scrape ChemRxiv — is now obsolete for obtaining these numbers, because the
+API route needs no browser and no Cloudflare bypass. The script is retained
+(§5.5: do not delete history) but should not be the first route attempted.
 
 This script (Wf-304B / Strategy S1) attempts to harvest the actual NUMERIC
 per-cell-line pIC50 values directly from the Rusanov 2025 ChemRxiv
@@ -474,7 +492,10 @@ def main() -> int:
         "framing": (
             "Wf-304B attempts Wf-292D Strategy S1 (Selenium UC Cloudflare bypass) "
             "to harvest per-cell-line IC50 NUMERIC values from Rusanov 2025 Table S4-S5. "
-            "Wf-295B Strategy S7 (MB-Finder portal) only exposes coverage matrix, not IC50 NUMERIC. "
+            "CORRECTION 2026-10-03 (Wf-A13): the claim that the MB-Finder portal API "
+            "'only exposes coverage matrix, not IC50 NUMERIC' was FALSE and is removed. "
+            "get-ceil-line-bio-data returns numeric per-cell-line IC50 with DOI; use "
+            "platinai_real_label_loader.py instead of this browser route. "
             "If cf_solved=False: Cloudflare blocked, no NUMERIC values emitted. "
             "If cf_solved=True + n_per_cell_ic50=0: xlsx link not found / download failed."
         ),

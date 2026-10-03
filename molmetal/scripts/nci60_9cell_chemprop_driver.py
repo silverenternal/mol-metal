@@ -141,6 +141,11 @@ class Nci60CellRun:
     epoch_count: int
     status: str
     split: str = "temporal_random_80_10_20"
+    # T2-FIX: actual split path taken by this run — "scaffold_ood" (test
+    # partition is a held-out Bemis-Murcko group), "random_fallback"
+    # (scaffold requested but no group was large enough), or
+    # "random_temporal" (random 80/10/20 by design).
+    path_taken: str = "unknown"
     error: Optional[str] = None
 
 
@@ -154,8 +159,13 @@ class Nci60CellRun:
 # compatibility with the Wf-315F public API.
 try:
     from molmetal.scripts._nci60_scaffold_helpers import (  # noqa: E402
+        SPLIT_PATH_RANDOM_FALLBACK,
+        SPLIT_PATH_RANDOM_TEMPORAL,
+        SPLIT_PATH_SCAFFOLD_OOD,
+        SPLIT_PATH_UNKNOWN,
         _scaffold_split_indices_nci60,
         compute_per_cell_n_test_min,
+        write_split_manifest,
     )
 except Exception:  # noqa: BLE001
     # Defensive: if the helper module fails to import for any reason,
@@ -257,6 +267,7 @@ def run_one_per_cell(
     test_idx_random = np.asarray(idx_test_random, dtype=np.int64)
 
     chosen_split_label = ""
+    path_taken = SPLIT_PATH_UNKNOWN  # T2-FIX: actual path, not the plan
     train_idx: np.ndarray
     val_idx: np.ndarray
     test_idx_final: np.ndarray
@@ -266,6 +277,7 @@ def run_one_per_cell(
         val_idx = val_idx_random
         test_idx_final = test_idx_random
         chosen_split_label = "temporal_random_80_10_20"
+        path_taken = SPLIT_PATH_RANDOM_TEMPORAL
     elif split_mode == "scaffold":
         out = _scaffold_split_indices_nci60(
             smiles_subset=smiles_subset,
@@ -274,14 +286,22 @@ def run_one_per_cell(
             n_test_min=n_test_min,
         )
         if out is None:
-            # Fall back to random 80/10/20.
+            # Fall back to random 80/10/20. T2-FIX: loud, not silent.
             train_idx = train_idx_random
             val_idx = val_idx_random
             test_idx_final = test_idx_random
             chosen_split_label = "random_80_10_20_fallback_no_scaffold_group"
+            path_taken = SPLIT_PATH_RANDOM_FALLBACK
+            logger.warning(
+                "SPLIT FALLBACK (seed=%d): scaffold split requested but no "
+                "Bemis-Murcko group has >= n_test_min=%d rows; using random "
+                "80/10/20 — this run's test AUC is NOT scaffold-OOD.",
+                seed, n_test_min,
+            )
         else:
             train_idx, val_idx, test_idx_final, _lbl = out
             chosen_split_label = f"scaffold_ood_seed{seed}"
+            path_taken = SPLIT_PATH_SCAFFOLD_OOD
     elif split_mode == "auto":
         # Wf-315F extension: try temporal (random) first; if n_test < n_test_min,
         # fall back to scaffold. For the current 7823-row 9-cell CSV all
@@ -293,6 +313,7 @@ def run_one_per_cell(
             val_idx = val_idx_random
             test_idx_final = test_idx_random
             chosen_split_label = "temporal_random_80_10_20"
+            path_taken = SPLIT_PATH_RANDOM_TEMPORAL
         else:
             out = _scaffold_split_indices_nci60(
                 smiles_subset=smiles_subset,
@@ -303,13 +324,23 @@ def run_one_per_cell(
             if out is not None:
                 train_idx, val_idx, test_idx_final, _lbl = out
                 chosen_split_label = f"scaffold_fallback_seed{seed}"
+                path_taken = SPLIT_PATH_SCAFFOLD_OOD
             else:
                 # Both temporal n_test and scaffold group are too small;
                 # use the random split anyway and label honestly.
+                # T2-FIX: this is the auto-mode silent fallback — warn.
                 train_idx = train_idx_random
                 val_idx = val_idx_random
                 test_idx_final = test_idx_random
                 chosen_split_label = "auto_no_scaffold_group_random_fallback"
+                path_taken = SPLIT_PATH_RANDOM_FALLBACK
+                logger.warning(
+                    "SPLIT FALLBACK (auto, seed=%d): neither temporal "
+                    "(n_test=%d) nor any scaffold group reaches "
+                    "n_test_min=%d; using random 80/10/20 — this run's "
+                    "test AUC is NOT scaffold-OOD.",
+                    seed, len(test_idx_random), n_test_min,
+                )
     else:
         raise ValueError(
             f"unknown split_mode {split_mode!r}; use temporal | scaffold | auto"
@@ -423,6 +454,7 @@ def run_one_per_cell(
         epoch_count=int(epoch_done),
         status=status,
         split=chosen_split_label,
+        path_taken=path_taken,
     )
 
 
@@ -528,6 +560,20 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
         # per-cell threshold from max scaffold size so the 3 largest
         # cells (A549/MCF7/A2780) actually use scaffold-OOD in auto
         # mode. Users can disable with --no-n-test-min-auto.
+        #
+        # T2-FIX MEASURED CORRECTION (2026-10-03). The sentence above
+        # describes the Wf-319E INTENT and is not what the code does today.
+        # Measured on molmetal/data/nci60_precious_9cell.csv:
+        #   * --split scaffold (default n_test_min=50): the fallback fires for
+        #     9/9 cells, INCLUDING the two largest (A549 2647 rows, MCF7 1964).
+        #     No cell has a scaffold group ≥50, so none is scaffold-OOD.
+        #   * --split auto WITH --n-test-min-auto: this helper is never reached
+        #     at all — every cell's n_test_random_est exceeds its computed
+        #     threshold, so all 9 take the temporal path. The claim that the
+        #     three largest cells "actually use scaffold-OOD in auto mode" is
+        #     therefore contradicted by measurement.
+        #   * --no-n-test-min-auto: thresholds fall back to 50 → 9/9 fallback.
+        # per_cell_split_actual (the OUTCOME, not the PLAN) now records this.
         if args.split == "auto":
             if args.n_test_min_auto:
                 effective_n_test_min = compute_per_cell_n_test_min(
@@ -649,6 +695,29 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
         if v["status"] == "ok"
     )
 
+    # T2-FIX: per-cell ACTUAL split path (the outcome, as opposed to
+    # ``per_cell_split_choice`` which is the PLAN and said "scaffold" for
+    # every cell even when every run fell back to random 80/10/20).
+    per_cell_split_actual: Dict[str, str] = {}
+    for cell in matched:
+        paths = {
+            r.path_taken for r in summary_records
+            if r.cell == cell and r.status == "ok"
+        }
+        if len(paths) == 1:
+            per_cell_split_actual[cell] = next(iter(paths))
+        elif paths:
+            per_cell_split_actual[cell] = "mixed:" + ",".join(sorted(paths))
+        else:
+            per_cell_split_actual[cell] = "unknown"
+        if per_cell_split_actual[cell] == SPLIT_PATH_RANDOM_FALLBACK:
+            logger.warning(
+                "cell=%s ACTUAL split path=random_fallback (planned=%s): "
+                "all ok seeds use random 80/10/20 — NOT scaffold-OOD. "
+                "AUCs for this cell must not be reported as scaffold-OOD.",
+                cell, per_cell_split_choice.get(cell),
+            )
+
     per_cell_summary: Dict[str, dict] = {}
     aucs_across_cells: List[float] = []
     for cell in matched:
@@ -671,6 +740,9 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
                 "n_train": n_train_c,
                 "n_val": n_val_c,
                 "n_test": n_test_c,
+                # T2-FIX: plan vs actual split path per cell.
+                "split_planned": per_cell_split_choice.get(cell, args.split),
+                "path_taken": per_cell_split_actual.get(cell, "unknown"),
                 "per_seed_auc": {s: per_seed[s]["auc"] for s in per_seed},
             }
             aucs_across_cells.append(mean_auc)
@@ -682,6 +754,8 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
                 "n_train": n_train_c,
                 "n_val": n_val_c,
                 "n_test": n_test_c,
+                "split_planned": per_cell_split_choice.get(cell, args.split),
+                "path_taken": per_cell_split_actual.get(cell, "unknown"),
                 "per_seed_auc": {},
             }
 
@@ -696,32 +770,35 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
         f"(temporal = random 80/10/20 since NCI-60 has no temporal Year "
         f"column; scaffold = Bemis-Murcko scaffold-OOD; auto = temporal "
         f"when n_test_random_est>=per_cell_n_test_min, else scaffold "
-        f"fallback). per_cell_split_choice={per_cell_split_choice}. "
+        f"fallback). per_cell_split_choice (PLAN)={per_cell_split_choice}; "
+        f"per_cell_split_actual (OUTCOME)={per_cell_split_actual}. "
         f"per_cell_n_test_min={per_cell_n_test_min}. "
         f"hidden_dim={args.hidden}, depth={args.depth}; Adam(lr={args.lr}); "
         f"{args.epochs} epochs. Per-cell independent encoders (no shared "
         f"multi-task scaffolding in the smoke driver; future P2 wires the "
-        f"MultiTaskLoss head per TODO-130 G3). Wf-315F honest framing: "
-        f"with default --n-test-min=50 the auto branch flips HL60/"
-        f"SKOV3/DU145 (n_test_random_est 32-45 < 50) to scaffold_fallback; "
-        f"however NO NCI-60 cell has a Bemis-Murcko scaffold group with "
-        f">=50 rows (max sizes: A549=37, MCF7=34, A2780=37, A2780cis=30, "
-        f"HCT116=20, SKOV3=18, HL60=18, DU145=10, PC3=9), so the "
-        f"scaffold helper returns None -> random 80/10/20 fallback. "
-        f"Wf-319E per-cell n_test_min auto-tuning "
-        f"(--n-test-min-auto={args.n_test_min_auto}, headroom={args.n_test_min_headroom}, "
-        f"floor={args.n_test_min_floor}) computes per-cell thresholds from "
-        f"max scaffold size: A549=31, MCF7=28, A2780=31, A2780cis=26, "
-        f"HCT116=17, SKOV3=15, HL60=15, DU145=9, PC3=8. With auto-tuning "
-        f"ON (default), --split auto now actually triggers scaffold-OOD "
-        f"for the 3 largest cells where it is meaningful (A549/MCF7/A2780), "
-        f"preserves temporal for the 3 mid-size cells (A2780cis/HCT116/"
-        f"PC3 n_test_random_est > per_cell threshold), and falls back "
-        f"to random 80/10/20 for the 3 small cells (SKOV3/HL60/DU145) "
-        f"where the per_cell threshold is still >= n_test_random_est. "
-        f"This is INTEGRATION work, NOT a new measurement; no AUC values "
-        f"are reported."
+        f"MultiTaskLoss head per TODO-130 G3). T2-FIX MEASURED path audit "
+        f"(2026-10-03 on nci60_precious_9cell.csv): at the default "
+        f"--n-test-min=50 NO NCI-60 cell has a Bemis-Murcko scaffold group "
+        f"that large (max sizes: A549=37, MCF7=34, A2780=37, A2780cis=30, "
+        f"HCT116=20, SKOV3=18, HL60=18, DU145=10, PC3=9), so --split "
+        f"scaffold falls back to random 80/10/20 for 9/9 cells. With "
+        f"auto-tuning ON (default; --n-test-min-auto={args.n_test_min_auto}, "
+        f"headroom={args.n_test_min_headroom}, floor={args.n_test_min_floor}) "
+        f"every cell's n_test_random_est >= its per-cell threshold, so "
+        f"--split auto resolves to temporal for 9/9 cells and the scaffold "
+        f"helper is not consulted (auto-tuning applies only in auto mode; "
+        f"--split scaffold uses --n-test-min). With --no-n-test-min-auto "
+        f"the auto branch plans scaffold_fallback for HL60/SKOV3/DU145 "
+        f"(n_test_random_est 45/38/32 < 50) and the helper returns None at "
+        f"threshold 50, so those runs are ALSO random 80/10/20. Per-run "
+        f"truth: per_seed_records[].path_taken + split_manifest_path; a "
+        f"gate asserting scaffold-OOD must check path_taken=="
+        f"{SPLIT_PATH_SCAFFOLD_OOD!r}. This is INTEGRATION work, NOT a new "
+        f"measurement; no AUC values are reported."
     )
+
+    out_path = Path(args.out)
+    manifest_path = out_path.parent / (out_path.stem + ".split_manifest.json")
 
     aggregate = {
         "ran": n_runs_completed == n_runs,
@@ -740,10 +817,13 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
         "cells_available": available_cells,
         "per_seed_records": [asdict(r) for r in summary_records],
         "per_cell_split_choice": per_cell_split_choice,
+        "per_cell_split_actual": per_cell_split_actual,
+        "split_manifest_path": str(manifest_path),
         "per_cell_n_test_min": per_cell_n_test_min,
         "split_protocol": (
-            f"per_cell_split_choice drives --split={args.split!r} "
-            f"resolved per cell. Wf-319E per-cell n_test_min "
+            f"per_cell_split_choice (PLAN) drives --split={args.split!r} "
+            f"resolved per cell; per_cell_split_actual (OUTCOME)="
+            f"{per_cell_split_actual}. Wf-319E per-cell n_test_min "
             f"auto-tuning (--n-test-min-auto={args.n_test_min_auto}) "
             f"computes per-cell n_test_min from max scaffold size "
             f"(headroom={args.n_test_min_headroom}, "
@@ -778,10 +858,44 @@ def execute_sweep(args: argparse.Namespace) -> Dict[str, Any]:
         },
     }
 
-    out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(aggregate, indent=2))
     logger.info("wrote %s", out_path)
+
+    # T2-FIX: machine-readable per-(cell, seed) split-path trace. A gate can
+    # load this and assert path_taken == "scaffold_ood" for every record
+    # when a scaffold-OOD run was requested.
+    manifest_records = [
+        {
+            "cell": r.cell,
+            "seed": int(r.seed),
+            "path_taken": r.path_taken,
+            "split_label": r.split,
+            "status": r.status,
+            "n_train": int(r.n_train),
+            "n_val": int(r.n_val),
+            "n_test": int(r.n_test),
+            "in_domain_test_auc": (
+                float(r.in_domain_test_auc)
+                if r.in_domain_test_auc == r.in_domain_test_auc
+                else None
+            ),
+            "requested_split_mode": args.split,
+            "n_test_min": int(per_cell_n_test_min.get(r.cell, args.n_test_min)),
+        }
+        for r in summary_records
+    ]
+    write_split_manifest(
+        manifest_path,
+        manifest_records,
+        extra={
+            "requested_split": args.split,
+            "n_runs_planned": n_runs,
+            "n_runs_completed": n_runs_completed,
+            "per_cell_split_actual": per_cell_split_actual,
+        },
+    )
+    logger.info("wrote split manifest %s", manifest_path)
     return aggregate
 
 

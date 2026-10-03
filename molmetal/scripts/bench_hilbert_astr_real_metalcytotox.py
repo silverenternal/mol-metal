@@ -160,9 +160,9 @@ FEATURE_COLUMNS: Tuple[str, ...] = (
 
 # MetalCytoToxDB 5-metal multitask CSV candidate paths (in priority order).
 METALCSV_CANDIDATES: Tuple[Path, ...] = (
-    _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv",
-    _REPO_ROOT / "data" / "metalcytotox_5metal_multitask.csv",
-    _REPO_ROOT / "molmetal" / "data" / "metalcytotox_5metal_multitask.csv",
+    _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv",
+    _REPO_ROOT / "data" / "metalcytotox_5metal_multitask_v4.csv",
+    _REPO_ROOT / "molmetal" / "data" / "metalcytotox_5metal_multitask_v4.csv",
 )
 
 # Default 5-metal cohort (Wf-49 PARTIAL SHIP row coverage).
@@ -270,7 +270,7 @@ def _resolve_metalcsv_path() -> Path:
         if c.exists():
             return c
     raise FileNotFoundError(
-        "metalcytotox_5metal_multitask.csv not found in "
+        "metalcytotox_5metal_multitask_v4.csv not found in "
         + ", ".join(str(c) for c in METALCSV_CANDIDATES)
     )
 
@@ -987,7 +987,7 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
         "**Hardware**: CPU fp32 (default); `--device cuda` accepted but no Blackwell acceleration",
         "  required for Wf-86 P1 production anchor.",
         f"**Split**: 5-fold CV with **{strict_str}** scaffold assignment per metal.",
-        "**Inputs**: `.data/molmetal/metalcytotox_5metal_multitask.csv`",
+        "**Inputs**: `.data/molmetal/metalcytotox_5metal_multitask_v4.csv`",
         "  (26 801 rows × 5 metals: Ru 19 135 / Ir 4 546 / Os 1 118 / Rh 1 134 / Re 868).",
         "",
         "## Cross-metal summary (5-seed × 5-fold CV)",

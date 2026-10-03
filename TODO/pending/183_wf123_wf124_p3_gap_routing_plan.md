@@ -22,7 +22,7 @@ This file is the single TODO entry that converts the 6 filed gap TODOs into a **
 
 | ID | Title | File | Wall (est) | GPU? | Status |
 |---|---|---|---:|---|---|
-| **G2** | metalcytotox CSV on disk | `pending/178_*.md` | 0.5-1 day | ❌ NO | 🟢 **PARTIAL** — CSV exists on disk at `.data/molmetal/metalcytotox_5metal_multitask.csv` (26801 rows, 5 metals: Ru 19135 / Ir 4546 / Os 1118 / Rh 1134 / Re 868); schema is `smiles, metal, scaffold_id, split, activity` (5 cols — **MISSING `pic50`, `cell_line`, `source`**); smoke test currently SKIPs (graceful) instead of FAILs — needs FAIL-on-missing + audit JSON |
+| **G2** | metalcytotox CSV on disk | `pending/178_*.md` | 0.5-1 day | ❌ NO | 🟢 **PARTIAL** — CSV exists on disk at `.data/molmetal/metalcytotox_5metal_multitask_v4.csv` (26801 rows, 5 metals: Ru 19135 / Ir 4546 / Os 1118 / Rh 1134 / Re 868); schema is `smiles, metal, scaffold_id, split, activity` (5 cols — **MISSING `pic50`, `cell_line`, `source`**); smoke test currently SKIPs (graceful) instead of FAILs — needs FAIL-on-missing + audit JSON |
 | **G4** | 14/15 (metal,seed) PENDING | `pending/180_*.md` | 1.8 hr wall + 0.5 day overhead | ✅ RTX 5090 GPU-1 | 🔴 **OPEN** — only Ru seed=0 complete (0.7613 +0.049 lift); 14 PENDING need run |
 | **G5** | 50-epoch full sweep | `pending/181_*.md` | 5 hr wall + 0.5 day overhead | ✅ RTX 5090 GPU-1 | 🔴 **OPEN** — current 30-epoch undertraining; W₂ trajectory still decreasing at epoch 30 (final 0.3906) |
 | **G6** | Per-innovation ablation | `pending/182_*.md` | 7.5 hr wall + 1 day overhead | ✅ RTX 5090 GPU-1 | 🔴 **OPEN** — 4 configs × 5 metals × 3 seeds = 60 runs needed for attribution |

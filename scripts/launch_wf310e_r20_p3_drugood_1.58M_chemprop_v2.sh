@@ -187,10 +187,10 @@ log "Wf-355-A1 launch begin — mode=${MODE} dry-run=${DRY_RUN}"
 user_ok_gate "${MODE}"
 
 # -----------------------------------------------------------------------------
-# Pre-launch check #1 — pre_flight_check.py --pipeline all
+# Pre-launch check #1 — pre_flight_check.py --pipeline launch
 # -----------------------------------------------------------------------------
 pre_flight_gate() {
-    log "pre_flight_check.py --pipeline all (TODO-207 v3 gate)"
+    log "pre_flight_check.py --pipeline launch (TODO-207 v3 gate)"
     if [ "${DRY_RUN}" -eq 1 ]; then
         warn "DRY-RUN: skipping pre_flight GPU/live gates"
         return 0

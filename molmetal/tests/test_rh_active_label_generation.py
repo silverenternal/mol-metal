@@ -30,7 +30,7 @@ import pytest
 
 # Project paths
 SCRIPT_PATH = "/home/hugo/codes/mol-metal/molmetal/scripts/rh_active_label_generation.py"
-REAL_CSV = "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask.csv"
+REAL_CSV = "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 SYNTH_JSON = "/home/hugo/codes/mol-metal/molmetal/reports/wf131_p2_rh_oversample/synthetic_rh_cohort.json"
 OUTPUT_DIR = "/home/hugo/codes/mol-metal/molmetal/reports/wf139_p7_rh_active_cohort"
 OUTPUT_JSON = f"{OUTPUT_DIR}/synthetic_rh_pos_neg.json"

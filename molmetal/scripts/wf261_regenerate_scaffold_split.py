@@ -6,7 +6,7 @@ with a *strict* Bemis-Murcko scaffold-grouped split that guarantees
 
 History
 -------
-The on-disk v1 CSV (``metalcytotox_5metal_multitask.csv``) has a 70/10/20
+The on-disk v1 CSV (``metalcytotox_5metal_multitask_v4.csv``) has a 70/10/20
 ``split`` column that was applied **per-metal** rather than globally
 scaffold-grouped.  See ``molmetal/reports/wf261_audit/split_audit.md`` for the
 full root-cause trace.  This script fixes that by:
@@ -47,7 +47,7 @@ import numpy as np
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / ".data" / "molmetal"
-V1_CSV = DATA_DIR / "metalcytotox_5metal_multitask.csv"
+V1_CSV = DATA_DIR / "metalcytotox_5metal_multitask_v4.csv"
 V1_BACKUP = DATA_DIR / "metalcytotox_5metal_multitask_v1.csv"
 V2_CSV = DATA_DIR / "metalcytotox_5metal_multitask_v2.csv"
 MANIFEST = DATA_DIR / "metalcytotox_5metal_multitask_v2_split_manifest.json"

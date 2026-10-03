@@ -253,7 +253,7 @@ fi
 # internally: load_binding_db, load_nci60, load_drugood, metalcytotox_v4,
 # platinai_4cell). Does NOT accept --data-csv; only --out-dir.
 # Use launcher-specific out-dir so each launcher's report is preserved.
-PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/pre_flight_check.py --pipeline all || { echo "FAIL: pre_flight_check"; exit 1; }
+PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/pre_flight_check.py --pipeline launch || { echo "FAIL: pre_flight_check"; exit 1; }
 PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/wf343c3_data_quality_check.py \
   --out-dir molmetal/reports/wf124_p3_g5_data_quality \
   || { echo "FAIL: wf343c3_data_quality_check"; exit 1; }

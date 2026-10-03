@@ -50,7 +50,7 @@
 #
 # Pre-launch checks (BLOCKER before any GPU work):
 #   1. PAPER_OK env gate (TODO-84 lift)
-#   2. pre_flight_check.py --pipeline all (24/24 PASS target)
+#   2. pre_flight_check.py --pipeline launch (24/24 PASS target)
 #   3. wave_budget_tracker.py --budget-hr 2 --cfm-not-required
 #   4. USER_OK env gate
 

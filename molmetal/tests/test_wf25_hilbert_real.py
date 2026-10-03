@@ -183,7 +183,7 @@ def test_helpers_deterministic_small_problem() -> None:
     )
 
     platinai_csv = _REPO_ROOT / "molmetal/data/platinai_5k.csv"
-    metalcytotox_csv = _REPO_ROOT / ".data/molmetal/metalcytotox_5metal_multitask.csv"
+    metalcytotox_csv = _REPO_ROOT / ".data/molmetal/metalcytotox_5metal_multitask_v4.csv"
     if not platinai_csv.exists() or not metalcytotox_csv.exists():
         pytest.skip("PlatinAI 5K or MetalCytoToxDB CSV missing")
 

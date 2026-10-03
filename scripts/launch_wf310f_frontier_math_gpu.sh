@@ -39,7 +39,7 @@
 #
 # Pre-launch checks (BLOCKER before any wave)
 # -------------------------------------------
-#   1. pre_flight_check.py --pipeline all (target 36/36 PASS).
+#   1. pre_flight_check.py --pipeline launch (target 36/36 PASS).
 #   2. Wave-specific budget tracker call.
 #   3. Wave-specific per-wave checklist call.
 #
@@ -153,10 +153,10 @@ done
 log "Wf-310F Day 7 launch begin — wave target = ${WAVE_TARGET} — dry-run = ${DRY_RUN}"
 
 # -----------------------------------------------------------------------------
-# Pre-launch check — pre_flight_check.py --pipeline all
+# Pre-launch check — pre_flight_check.py --pipeline launch
 # -----------------------------------------------------------------------------
 pre_flight_gate() {
-    log "pre_flight_check.py --pipeline all  (TODO-207 v2 §1 + §3 + §4)"
+    log "pre_flight_check.py --pipeline launch  (TODO-207 v2 §1 + §3 + §4)"
     if [ "${DRY_RUN}" -eq 1 ]; then
         warn "DRY-RUN: skipping pre_flight_check.py GPU/live gates"
         return 0

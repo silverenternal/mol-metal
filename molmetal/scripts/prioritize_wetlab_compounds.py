@@ -30,7 +30,7 @@ The script:
 * Loads 5,000 candidates from ``platinai_5k.csv``.
 * Loads 26,802 MetalCytoToxDB samples from
   ``metalcytotox_rdkit_features.csv`` (used here in place of the
-  unavailable ``metalcytotox_5metal_multitask.csv`` — see §HONEST).
+  unavailable ``metalcytotox_5metal_multitask_v4.csv`` — see §HONEST).
 * Trains an RDKit-fingerprint RandomForestRegressor pIC50 model on
   MetalCytoToxDB.
 * Scores all 5,000 candidates on the 5 axes.
@@ -62,7 +62,7 @@ Honest framing (per party-twenty-spirit §3.5)
 * The Vina kcal/mol is **NOT real AutoDock Vina** — it is a
   deterministic RDKit descriptor proxy. Treat as rank-only signal;
   absolute kcal/mol numbers carry no physical meaning.
-* ``metalcytotox_5metal_multitask.csv`` (referenced by the task
+* ``metalcytotox_5metal_multitask_v4.csv`` (referenced by the task
   description) is **NOT on disk** at the time of Wf-58 P1. We
   substitute ``metalcytotox_rdkit_features.csv`` (26,802 rows × 5
   metals with activity labels).
@@ -623,7 +623,7 @@ def write_outputs(
         f.write("* `platinai_5k.csv` (5,000 generated candidates)\n")
         f.write(
             "* `metalcytotox_rdkit_features.csv` (26,802 rows × 5 metals) "
-            "— substitute for `metalcytotox_5metal_multitask.csv` "
+            "— substitute for `metalcytotox_5metal_multitask_v4.csv` "
             "(the latter is **NOT on disk**).\n\n"
         )
         f.write("## Outputs\n\n")
@@ -672,7 +672,7 @@ def write_outputs(
             "2009) is not used here for dependency footprint.\n"
         )
         f.write(
-            "* `metalcytotox_5metal_multitask.csv` (referenced by the "
+            "* `metalcytotox_5metal_multitask_v4.csv` (referenced by the "
             "task description) is **NOT on disk** at the time of Wf-58 "
             "P1; `metalcytotox_rdkit_features.csv` is used in its place.\n"
         )

@@ -31,7 +31,7 @@ to claim beating Krasnov 0.81).
 
 Inputs
 ------
-* ``.data/molmetal/metalcytotox_5metal_multitask.csv`` (26 801 rows)
+* ``.data/molmetal/metalcytotox_5metal_multitask_v4.csv`` (26 801 rows)
   columns: ``smiles,metal,scaffold_id,split,activity`` — scaffold-split
   ``train/val/test`` (Bemis-Murcko) per Krasnov 2026 protocol.
 
@@ -91,7 +91,7 @@ Usage
 
     source env.sh
     uv run --no-sync python -u molmetal/scripts/train_ru_5metal_se3sb.py \\
-        --data .data/molmetal/metalcytotox_5metal_multitask.csv \\
+        --data .data/molmetal/metalcytotox_5metal_multitask_v4.csv \\
         --encoder-ckpt models/tmqm_pretrained/tmqm_pretrained_encoder.pt \\
         --out-dir .ckpt \\
         --metrics-path metrics/by_metric/ru_5metal_se3sb.json \\
@@ -198,7 +198,7 @@ COORD_BY_METAL: Dict[str, int] = {
 
 # --- Output paths (overridable via CLI) ---
 DEFAULT_DATA = (
-    PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+    PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
 DEFAULT_ENCODER_CKPT = (
     PROJECT_ROOT / "models" / "tmqm_pretrained" / "tmqm_pretrained_encoder.pt"

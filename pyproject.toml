@@ -75,6 +75,11 @@ markers = [
     "gpu_blocked: marks tests whose real path is BLOCKED on this CUDA host (placeholder for AMD-only tests; currently unused on pure-CUDA nodes per AGENTS.md §5.1)",
 ]
 
+[dependency-groups]
+dev = [
+    "pre-commit>=4.6.2",
+]
+
 # Download PyTorch's CUDA 13.0 build for cp312.  Default PyPI is still
 # consulted for everything else (numpy, etc.).
 [[tool.uv.index]]

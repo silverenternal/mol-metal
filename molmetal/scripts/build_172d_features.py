@@ -47,7 +47,7 @@ Usage
 ::
 
     uv run --no-sync python -u molmetal/scripts/build_172d_features.py \\
-        --data .data/molmetal/metalcytotox_5metal_multitask.csv \\
+        --data .data/molmetal/metalcytotox_5metal_multitask_v4.csv \\
         --out molmetal/data/features_172d_5metal.npz \\
         --max-rows 5000 --seed 0
 """
@@ -586,8 +586,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p.add_argument(
         "--data",
         type=Path,
-        default=Path(".data/molmetal/metalcytotox_5metal_multitask.csv"),
-        help="Path to metalcytotox_5metal_multitask.csv",
+        default=Path(".data/molmetal/metalcytotox_5metal_multitask_v4.csv"),
+        help="Path to metalcytotox_5metal_multitask_v4.csv",
     )
     p.add_argument(
         "--out",

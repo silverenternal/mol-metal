@@ -66,7 +66,7 @@ Three recent workflows produced concrete honest-framing lessons that **must not 
 
 | # | Dataset | Path | Status | Verification |
 |---|---|---|---|---|
-| **2.1.1** | MetalCytoToxDB 5-metal CSV (extended schema) | `.data/molmetal/metalcytotox_5metal_multitask.csv` | ✅ EXIST (8 cols after Wf-244-A) | `wc -l` = 26801, schema = `[smiles, metal, scaffold_id, split, activity, pic50, cell_line, source]` |
+| **2.1.1** | MetalCytoToxDB 5-metal CSV (extended schema) | `.data/molmetal/metalcytotox_5metal_multitask_v4.csv` | ✅ EXIST (8 cols after Wf-244-A) | `wc -l` = 26801, schema = `[smiles, metal, scaffold_id, split, activity, pic50, cell_line, source]` |
 | **2.1.2** | MetalCytoToxDB raw source (for pic50 backfill) | `MetalCytoToxDB.csv` | ✅ EXIST | `pic50 = 6 - log10(IC50_Dark_value_uM)` for 100% rows |
 | **2.1.3** | DrugOOD IC50 95K + 53K | `molmetal/data/drugood/` | ✅ EXIST | 3 splits (assay/scaffold/size) |
 | **2.1.4** | NCI-60 9-cell precious-metal | `molmetal/data/nci60/` | ✅ EXIST | 9 cell lines × metal_id |

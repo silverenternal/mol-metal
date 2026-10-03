@@ -211,7 +211,7 @@ def _load_platinai_5k(repo_root: Path) -> List[str]:
 def _load_metalcytotox_5metal(repo_root: Path) -> List[str]:
     """Read the 5-metal multi-task SMILES column."""
     candidates = [
-        repo_root / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv",
+        repo_root / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv",
         repo_root / "data" / "MetalCytoToxDB.csv",
         repo_root / "molmetal" / "data" / "MetalCytoToxDB.csv",
     ]

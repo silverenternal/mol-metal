@@ -27,7 +27,7 @@ Wf-129 P3 closes the L7 Multi-PH + PLL R² gap. The head-claim is a five-seed
 
 **Inputs** (paths relative to repo root)
     ``molmetal/data/platinai_4cell.csv`` — synthetic 4-cell pIC50 from KULGUU/HILLUL
-    ``molmetal/data/metalcytotox_5metal_multitask.csv`` — 5-metal activity table
+    ``molmetal/data/metalcytotox_5metal_multitask_v4.csv`` — 5-metal activity table
     ``molmetal/data/platinai_4cell_rdkit_features.csv`` — 12-d F5_RDKIT_2D for ASTSR
 
 **Outputs** (paths relative to ``--out-dir``)
@@ -939,7 +939,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--platinai-csv", type=str,
                         default=str(_REPO_ROOT / "molmetal" / "data" / "platinai_4cell.csv"))
     parser.add_argument("--metalcytotox-csv", type=str,
-                        default=str(_REPO_ROOT / "molmetal" / "data" / "metalcytotox_5metal_multitask.csv"))
+                        default=str(_REPO_ROOT / "molmetal" / "data" / "metalcytotox_5metal_multitask_v4.csv"))
     args = parser.parse_args(argv)
 
     use_l2_guard = not args.no_l2_guard

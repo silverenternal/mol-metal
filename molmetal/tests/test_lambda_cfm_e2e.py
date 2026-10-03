@@ -158,7 +158,7 @@ def platinai_csv_path() -> Path:
 
 @pytest.fixture
 def metalcyto_csv_path() -> Path:
-    p = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+    p = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
     if not p.exists():
         pytest.skip(f"MetalCytoToxDB CSV missing at {p}")
     return p

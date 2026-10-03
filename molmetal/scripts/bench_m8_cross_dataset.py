@@ -19,7 +19,7 @@ Wf-64 Phase 3 widens the m8 candidate pool to *real* dataset SMILES:
 
 * **PlatinAI 4-cell**     — ``molmetal/data/platinai_4cell.csv``
   (4 078 Pt complexes × 4 cell lines)
-* **MetalCytoToxDB 5-metal** — ``.data/molmetal/metalcytotox_5metal_multitask.csv``
+* **MetalCytoToxDB 5-metal** — ``.data/molmetal/metalcytotox_5metal_multitask_v4.csv``
   (Ru/Ir/Rh/Os/Re organometallics)
 * **tmQM d-block**        — ``.data/molmetal/tmQM/tmqm_parsed.csv``
   (d-block metal-organic complexes; we filter to the 25 d-block
@@ -40,7 +40,7 @@ datasets.  Target ``>= 0.7`` (lit: TargetDiff 0.94, Uni-Mol v2 0.75).
 Inputs
 ------
 * ``molmetal/data/platinai_4cell.csv``         (4 078 rows; SMILES column ``smiles``)
-* ``.data/molmetal/metalcytotox_5metal_multitask.csv`` (~26 800 rows; ``smiles`` + ``metal``)
+* ``.data/molmetal/metalcytotox_5metal_multitask_v4.csv`` (~26 800 rows; ``smiles`` + ``metal``)
 * ``.data/molmetal/tmQM/tmqm_parsed.csv``     (~108 500 rows; ``smiles`` + ``metal``)
 
 Outputs (under :file:`molmetal/reports/wf64_m8_cross/`):
@@ -103,7 +103,7 @@ DEFAULT_N_SAMPLES_PER_DATASET: int = 50
 
 # Repo paths
 PLATINAI_CSV = _REPO_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
-METALCYTOTOX_CSV = _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+METALCYTOTOX_CSV = _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 TMQM_CSV = _REPO_ROOT / ".data" / "molmetal" / "tmQM" / "tmqm_parsed.csv"
 
 # MetalCytoToxDB 5-metal whitelist (per R17 Rusanov 2025 anchor)

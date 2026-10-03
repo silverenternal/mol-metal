@@ -137,10 +137,10 @@ parse_vram_for_index() {
 }
 
 # -----------------------------------------------------------------------------
-# Pre-flight check (pre_flight_check.py --pipeline all)
+# Pre-flight check (pre_flight_check.py --pipeline launch)
 # -----------------------------------------------------------------------------
 run_pre_flight() {
-  log "Running pre_flight_check.py --pipeline all"
+  log "Running pre_flight_check.py --pipeline launch"
   if "${PY}" "${SCRIPTS_DIR}/pre_flight_check.py" --pipeline all >/dev/null 2>&1; then
     log "PRE_FLIGHT PASS"
     return 0

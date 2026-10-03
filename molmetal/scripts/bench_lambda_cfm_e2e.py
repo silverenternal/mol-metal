@@ -102,7 +102,7 @@ CLI args
 ``--platinai-csv``  path to PlatinAI 5K CSV
                     (default ``molmetal/data/platinai_5k.csv``).
 ``--metalcyto-csv`` path to MetalCytoToxDB 5-metal multi-task CSV
-                    (default ``.data/molmetal/metalcytotox_5metal_multitask.csv``).
+                    (default ``.data/molmetal/metalcytotox_5metal_multitask_v4.csv``).
 ``--output``     output directory for the JSON report
                 (default ``molmetal/reports/wf40_lambda_cfm``).
 ``--markdown``   also write a markdown summary.
@@ -144,7 +144,7 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
 # ---------------------------------------------------------------------------
 METHODS_ALL: Tuple[str, ...] = ("lambda_to_cfm", "cfm_to_lambda", "bidirectional")
 DEFAULT_PLATINAI_CSV: str = "molmetal/data/platinai_5k.csv"
-DEFAULT_METALCYTO_CSV: str = ".data/molmetal/metalcytotox_5metal_multitask.csv"
+DEFAULT_METALCYTO_CSV: str = ".data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 DEFAULT_OUTPUT_DIR: str = "molmetal/reports/wf40_lambda_cfm"
 DEFAULT_N_SAMPLES: int = 200
 DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2, 3, 4)
@@ -239,7 +239,7 @@ def _load_metalcytotox_smiles(
     """Return up to ``n`` ``{smiles, metal, activity}`` rows from
     MetalCytoToxDB 5-metal multi-task CSV.
 
-    The CSV ships at ``.data/molmetal/metalcytotox_5metal_multitask.csv``
+    The CSV ships at ``.data/molmetal/metalcytotox_5metal_multitask_v4.csv``
     with columns ``smiles, metal, scaffold_id, split, activity``.
     We keep the first ``.``-delimited fragment of each SMILES so
     the lambda pipeline receives a single ligand (the counter-ions

@@ -88,7 +88,7 @@ DEFAULT_LR: float = 0.05
 DEFAULT_MAX_ROWS: int = 1000
 DEFAULT_NPZ_PATH: Path = _REPO_ROOT / "molmetal" / "data" / "features_172d_5metal.npz"
 DEFAULT_METALCSV_PATH: Path = (
-    _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+    _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
 DEFAULT_OUT_DIR: Path = _REPO_ROOT / "molmetal" / "reports" / "wf128_p2_3way_real"
 DEFAULT_BACKBONE_ARCH_PATH: Path = (

@@ -14,7 +14,7 @@ renamed.
 W2.3 / R18 ultracode dispatch (2026-09-26).
 
 This script benchmarks the **32 R18 ship-modules** end-to-end on the
-multi-metal MetalCytoToxDB split (``metalcytotox_5metal_multitask.csv``,
+multi-metal MetalCytoToxDB split (``metalcytotox_5metal_multitask_v4.csv``,
 R17 ship).  It is the *real-data counterpart* of
 :file:`verify_r18_all_imports.py` and the *metal-aware counterpart* of
 :file:`benchmark_r18_platinai.py`.
@@ -96,7 +96,7 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
 
 REPORT_DIR = _REPO_ROOT / "molmetal" / "reports" / "wf_metalcytotox_bench"
 REPORT_FILE = REPORT_DIR / "results.json"
-DEFAULT_CSV = _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+DEFAULT_CSV = _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 DEFAULT_METALS = ["Ru", "Ir", "Rh", "Re", "Os"]
 
 

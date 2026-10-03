@@ -33,7 +33,7 @@ every step and silently rescale the effective learning rate. See
 TODO/completed/config_dead_key_remediation.md.
 
 **Inputs**
-  * ``.data/molmetal/metalcytotox_5metal_multitask.csv`` — split definitions
+  * ``.data/molmetal/metalcytotox_5metal_multitask_v4.csv`` — split definitions
   * ``molmetal/checkpoints/dmpnn_pic50_{ru,ir,os,rh,re}_seed{0..4}.pt`` (25
     ckpts from Wf-120 P2 — used as backbones for optional warm-start;
     default = random init)
@@ -143,7 +143,7 @@ except Exception:
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-DEFAULT_5METAL_CSV = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+DEFAULT_5METAL_CSV = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 DEFAULT_PLATINAI_4CELL_CSV = PROJECT_ROOT / ".data" / "molmetal" / "platinai_4cell.csv"
 PLATINAI_4CELL_METALS: Tuple[str, ...] = ("Pt",)
 PLATINAI_4CELL_CELL_LINES: Tuple[str, ...] = ("mcf7", "a549", "a2780", "a2780cis")
@@ -381,7 +381,7 @@ def _resolve_default_csv_path(dataset_name: str) -> Path:
     """Resolve the default CSV path for a given ``--dataset`` choice.
 
     Wf-A8 PlatinAI 4-cell loader (audit gap #1 fix):
-        ``metalcytotox_5metal`` -> ``.data/molmetal/metalcytotox_5metal_multitask.csv``
+        ``metalcytotox_5metal`` -> ``.data/molmetal/metalcytotox_5metal_multitask_v4.csv``
         ``platinai_4cell`` -> ``.data/molmetal/platinai_4cell.csv``
     Raises ``FileNotFoundError`` with a clear "Available datasets" message
     if the resolved CSV does not exist on disk.
@@ -1376,6 +1376,13 @@ def train_one_metal_one_seed(
     # the resolved list so non-5-metal cohorts (e.g. platinai_4cell = Pt)
     # build a correctly sized metal-embedding table.
     metals_pool: Optional[Tuple[str, ...]] = None,
+    # T1-FIX (2026-10-03) — AGENTS.md §5.7 FLAG_ONLY wire-in.  The
+    # ``--max-joint-rows`` CLI flag was declared in the argparse block
+    # but never read; this kwarg threads its value into the live joint
+    # pool assembly below.  ``None`` / ``0`` = full pool (historical
+    # behaviour bit-for-bit); a positive value below the pool size
+    # applies a seeded random subsample.
+    max_joint_rows: Optional[int] = None,
 ) -> MetalSeedResult:
     """Train a 5-metal multi-task D-MPNN for one (metal, seed).
 
@@ -1447,6 +1454,21 @@ def train_one_metal_one_seed(
         raise RuntimeError(
             f"joint train pool too small: {len(train_pool_idx)} rows (< 50)"
         )
+    # T1-FIX (2026-10-03) — apply --max-joint-rows to the LIVE pool.
+    # Placed after the <50 floor check (which measures the true pool)
+    # and before train_pool_mids / featurisation, so the cap shrinks the
+    # featurised union AND the joint batch pool — not just a recorded
+    # number.  Seeded permutation (NOT head-truncation): the pool is a
+    # metal-blocked concatenate in FIVE_METALS order, so a head cap
+    # would keep only the first metal's rows and make the smoke
+    # silently single-metal.  When the cap binds, n_joint_train in the
+    # checkpoint reflects the capped count while n_train/n_val/n_test
+    # remain the target-metal split sizes (see --max-joint-rows help).
+    if max_joint_rows and 0 < max_joint_rows < len(train_pool_idx):
+        _cap_rng = np.random.default_rng(seed)
+        train_pool_idx = train_pool_idx[
+            _cap_rng.permutation(len(train_pool_idx))[:max_joint_rows]
+        ]
     # Per-row metal id (mapped to FIVE_METALS index)
     train_pool_mids = np.array(
         [metal_to_idx[str(metals_all[i])] for i in train_pool_idx],
@@ -2470,7 +2492,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help=(
             "Override CSV path. Default resolved from --dataset via "
             "_resolve_default_csv_path(): metalcytotox_5metal -> "
-            ".data/molmetal/metalcytotox_5metal_multitask.csv; "
+            ".data/molmetal/metalcytotox_5metal_multitask_v4.csv; "
             "platinai_4cell -> .data/molmetal/platinai_4cell.csv."
         ),
     )
@@ -2512,7 +2534,10 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=None,
         help=(
             "Optional cap on the joint train pool (smoke-test scaling; "
-            "0 = full pool)."
+            "0/None = full pool). Applied as a seeded random subsample "
+            "after the <50-row floor check; when it binds, n_joint_train "
+            "in the checkpoint reflects the capped count while "
+            "n_train/n_val/n_test remain target-metal split sizes."
         ),
     )
     # ---- Wf-196 50-epoch CPU sweep additions ----
@@ -3029,6 +3054,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                     # model's metal-embedding table matches the cohort
                     # (Pt-only for platinai_4cell, the canonical 5 otherwise).
                     metals_pool=tuple(args.metals),
+                    # T1-FIX (2026-10-03) — thread --max-joint-rows so
+                    # the cap actually reaches the live pool assembly
+                    # (was FLAG_ONLY: declared, never read; §5.7).
+                    max_joint_rows=getattr(args, "max_joint_rows", None),
                     batch_size=args.batch_size,
                     w_w=args.wasserstein_weight,
                     use_l2_guard=args.use_l2_guard,

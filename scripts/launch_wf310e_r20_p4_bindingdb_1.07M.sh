@@ -17,7 +17,7 @@
 #
 # Pre-launch checks (BEFORE any GPU work)
 # --------------------------------------
-#   1. pre_flight_check.py --pipeline all (TODO-207 v3 62/62 PASS gate)
+#   1. pre_flight_check.py --pipeline launch (TODO-207 v3 62/62 PASS gate)
 #   2. wave_budget_tracker.py (advisory; cfm-yuelbond not required)
 #   3. per_wave_checklist.py --wave Wf-355-A2-1 (gate before launch)
 #   4. USER_OK gate (per Wf-294B kill_then_adapt + AGENTS.md §5.1)
@@ -191,10 +191,10 @@ log "Wf-355-A2 launch begin — mode=${MODE} dry-run=${DRY_RUN} strict_data=${ST
 user_ok_gate "${MODE}"
 
 # -----------------------------------------------------------------------------
-# Pre-launch check #1 — pre_flight_check.py --pipeline all
+# Pre-launch check #1 — pre_flight_check.py --pipeline launch
 # -----------------------------------------------------------------------------
 pre_flight_gate() {
-    log "pre_flight_check.py --pipeline all (TODO-207 v3 gate)"
+    log "pre_flight_check.py --pipeline launch (TODO-207 v3 gate)"
     if [ "${DRY_RUN}" -eq 1 ]; then
         warn "DRY-RUN: skipping pre_flight GPU/live gates"
         return 0

@@ -55,7 +55,7 @@
 #              (binding regression alarm = honest-negative close trigger)
 #
 # Pre-launch checks (BLOCKER before any GPU work):
-#   1. pre_flight_check.py --pipeline all (62/62 PASS target per Wf-328-SYN)
+#   1. pre_flight_check.py --pipeline launch (62/62 PASS target per Wf-328-SYN)
 #   2. wave_budget_tracker.py --budget-hr 12 (PROJECTED 12 GPU-hr for 5-seed sweep)
 #   3. per_wave_checklist.py --wave tmqm_plat (per Wf-262 §10.1)
 #   4. tmQM d-block on disk (.data/molmetal/tmQM/tmqm_parsed.csv)
@@ -197,7 +197,7 @@ fi
 # -----------------------------------------------------------------------------
 # Pre-flight v3 62/62 PASS gate (TODO-207; Wf-328-SYN baseline PRESERVED)
 # -----------------------------------------------------------------------------
-log "STEP 2/4: pre_flight_check.py --pipeline all (62/62 PASS target per Wf-328-SYN)"
+log "STEP 2/4: pre_flight_check.py --pipeline launch (62/62 PASS target per Wf-328-SYN)"
 if [ -f "${PROJECT_ROOT}/molmetal/scripts/pre_flight_check.py" ]; then
     if "${PY}" "${PROJECT_ROOT}/molmetal/scripts/pre_flight_check.py" \
             --pipeline all --skip-anchor-guard 2>&1 | tee -a "${REPORTS_DIR}/launch.log" \

@@ -53,7 +53,7 @@ Inputs
 * ``molmetal/data/platinai_5k.csv`` (R17 ship, 5K real Pt-group).
 * ``molmetal/data/tmqm_dblock_subset.csv`` (Wf-28 ship, 30-metal
   tmQM subset — used as the **train pool** for OOD detection).
-* ``.data/molmetal/metalcytotox_5metal_multitask.csv`` (Wf-21 ship,
+* ``.data/molmetal/metalcytotox_5metal_multitask_v4.csv`` (Wf-21 ship,
   26,801 rows across 5 metals: Ru / Ir / Rh / Os / Re).
 
 Outputs
@@ -167,7 +167,7 @@ DEFAULT_TMQM_CSV: Path = (
     _REPO_ROOT / "molmetal" / "data" / "tmqm_dblock_subset.csv"
 )
 DEFAULT_METALCYTO_CSV: Path = (
-    _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+    _REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
 DEFAULT_METHOD: str = "closure"  # 'closure' | 'closure+ood_filter'
 

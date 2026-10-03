@@ -30,7 +30,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / ".data" / "molmetal"
 
-V1_CSV = DATA_DIR / "metalcytotox_5metal_multitask.csv"
+V1_CSV = DATA_DIR / "metalcytotox_5metal_multitask_v4.csv"
 V1_BACKUP = DATA_DIR / "metalcytotox_5metal_multitask_v1.csv"
 V2_CSV = DATA_DIR / "metalcytotox_5metal_multitask_v2.csv"
 MANIFEST = DATA_DIR / "metalcytotox_5metal_multitask_v2_split_manifest.json"

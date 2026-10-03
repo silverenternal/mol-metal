@@ -83,7 +83,7 @@ PATH_A_COHORT_CONFIGS: List[Dict[str, object]] = [
         "cohort_id": "metalcytotox_combined",
         "n_smiles": 2000,
         "csv_path": str(
-            PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+            PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
         ),
         "metals": list(PATH_A_METALS),
         "seeds": [0, 1, 2, 3, 4],

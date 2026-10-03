@@ -52,7 +52,7 @@ Supported datasets (selected via ``--dataset``):
   * ``platinai`` — ``platinai_5k.csv`` (5,000 rows, 4 cell lines).
     Target = pIC50 = ``9 - log10(IC50_nM)`` from the ``ic50_nm`` column
     (selectivity column carried for PlatinAI 5K tier-1 only).
-  * ``metalcytotox`` — ``metalcytotox_5metal_multitask.csv``
+  * ``metalcytotox`` — ``metalcytotox_5metal_multitask_v4.csv``
     (~26,800 rows × 5 metals). Target = activity (binary 0/1) +
     per-metal scaffold-group split. Reuses the existing
     :class:`molmetal.data.cytotox.CytotoxFilter` defaults
@@ -595,7 +595,7 @@ def load_platinai_4cell(
 # MetalCytoToxDB 5-metal loader
 # ---------------------------------------------------------------------------
 METALCYTO_5METAL_DEFAULT = (
-    PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+    PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
 METALCYTO_OUT_DEFAULT = (
     PROJECT_ROOT / "molmetal" / "data" / "metalcytotox_rdkit_features.csv"
@@ -1045,7 +1045,7 @@ def run_metalcytotox(out_csv: Path, summary_path: Path) -> Dict[str, object]:
     t0 = time.time()
     if not METALCYTO_5METAL_DEFAULT.exists():
         # Fallback: legacy /mnt/storage path
-        legacy = Path("/mnt/storage/data/molmetal/metalcytotox_5metal_multitask.csv")
+        legacy = Path("/mnt/storage/data/molmetal/metalcytotox_5metal_multitask_v4.csv")
         if legacy.exists():
             rows, load_stats = load_metalcytotox_5metal(legacy)
             source_csv = str(legacy)
@@ -1135,7 +1135,7 @@ def run_metalcytotox(out_csv: Path, summary_path: Path) -> Dict[str, object]:
 DATASET_CHOICES: Tuple[str, ...] = (
     "platinai",         # = platinai_5k.csv (SMILES-only structural subset)
     "platinai_4cell",   # = platinai_4cell.csv (labelled regression cohort)
-    "metalcytotox",     # = metalcytotox_5metal_multitask.csv (binary activity)
+    "metalcytotox",     # = metalcytotox_5metal_multitask_v4.csv (binary activity)
     "all",              # = platinai_5k + platinai_4cell + metalcytotox
 )
 

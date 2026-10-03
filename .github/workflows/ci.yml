@@ -369,18 +369,77 @@ jobs:
           retention-days: 14
 
   # ----------------------------------------------------------------------
+  # Job 4c — git-hook installer gate (clone-survivable commit gate)
+  #   Proves the commit gate survives a fresh clone: installs hooks from
+  #   the TRACKED source (scripts/git_hooks/) via scripts/install_git_hooks.sh,
+  #   asserts the installed hook is executable + byte-identical to the
+  #   tracked source, proves the installer is idempotent (second run
+  #   changes nothing), and runs the single-venv guard directly
+  #   (AGENTS.md §5.9).  Deliberately does NOT run
+  #   `pre_flight_check.py --pipeline all` here — that is the hook's
+  #   commit-time job and needs a full local env (50-step smoke).
+  #   LFS payload not needed — this job only touches bash scripts.
+  # ----------------------------------------------------------------------
+  hook-install-gate:
+    name: "[4c] git-hook installer (clone-survivable)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Assert fresh checkout has no hook, then install from tracked source
+        run: |
+          set -euo pipefail
+          if [ -e .git/hooks/pre-commit ]; then
+            echo "ERROR: a pre-existing hook was checked out — .git/hooks must not be tracked" >&2
+            exit 1
+          fi
+          bash scripts/install_git_hooks.sh | tee hook_install_run1.log
+
+      - name: Assert hook executable + byte-identical to tracked source
+        run: |
+          set -euo pipefail
+          test -x .git/hooks/pre-commit
+          cmp scripts/git_hooks/pre-commit .git/hooks/pre-commit
+          grep -q "pre-flight v3 gate" .git/hooks/pre-commit
+          echo "hook-install gate: PASS"
+
+      - name: Assert installer idempotency (second run is a no-op)
+        run: |
+          set -euo pipefail
+          before=$(sha256sum .git/hooks/pre-commit | awk '{print $1}')
+          bash scripts/install_git_hooks.sh | tee hook_install_run2.log
+          after=$(sha256sum .git/hooks/pre-commit | awk '{print $1}')
+          test "$before" = "$after"
+          grep -q "already installed and identical" hook_install_run2.log
+
+      - name: Single-venv guard (direct, AGENTS.md §5.9)
+        run: bash molmetal/scripts/check_no_stale_venv.sh
+
+      - name: Upload hook-install logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hook-install-logs
+          path: |
+            hook_install_run1.log
+            hook_install_run2.log
+          retention-days: 14
+
+  # ----------------------------------------------------------------------
   # Job 5 — summary (always succeeds; surfaces a single badge-style status)
   # ----------------------------------------------------------------------
   ci-summary:
     name: "ci-summary"
     runs-on: [self-hosted, linux, x64, mol-metal]
-    needs: [evaluator-sanity, pitfall-runner, pitfall-pytest, mechanism-smoke, r18-train-scripts-master-verify]
+    needs: [evaluator-sanity, pitfall-runner, pitfall-pytest, mechanism-smoke, r18-train-scripts-master-verify, hook-install-gate]
     if: always()
     steps:
       - name: Emit summary
         run: |
           echo "## Mol-Metal CI summary" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          for job in evaluator-sanity pitfall-runner pitfall-pytest mechanism-smoke r18-train-scripts-master-verify; do
+          for job in evaluator-sanity pitfall-runner pitfall-pytest mechanism-smoke r18-train-scripts-master-verify hook-install-gate; do
             echo "- $job: ${{ needs.$job.result }}" >> "$GITHUB_STEP_SUMMARY"
           done

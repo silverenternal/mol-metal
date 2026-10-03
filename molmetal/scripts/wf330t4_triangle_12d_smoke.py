@@ -73,7 +73,7 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
 # Defaults — CLI flags + module-level constants.
 # ---------------------------------------------------------------------------
 DEFAULT_PLATINAI_4CELL_CSV: str = "molmetal/data/platinai_4cell.csv"
-DEFAULT_METALCYTO_CSV: str = ".data/molmetal/metalcytotox_5metal_multitask.csv"
+DEFAULT_METALCYTO_CSV: str = ".data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 
 #: Reduced smoke wall budget (CPU-only, deterministic).
 DEFAULT_N_TRAJECTORIES: int = 100

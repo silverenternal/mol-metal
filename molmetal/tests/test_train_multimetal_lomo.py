@@ -60,7 +60,7 @@ VERIFY_SCRIPT = (
     PROJECT_ROOT / "molmetal" / "scripts" / "verify_train_multimetal_lomo.py"
 )
 DEFAULT_DATA = (
-    PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+    PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
 VENV_PY = (
     PROJECT_ROOT / "molmetal" / ".venvs" / "mol-metal-venv" / "bin" / "python"

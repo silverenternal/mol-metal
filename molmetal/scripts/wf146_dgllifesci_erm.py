@@ -353,7 +353,7 @@ def run_lomo(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--csv", type=Path,
-                        default=Path("/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask.csv"))
+                        default=Path("/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"))
     parser.add_argument("--metals", nargs="+", default=["Rh", "Ru", "Ir", "Os", "Re"])
     parser.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
     parser.add_argument("--epochs", type=int, default=30)
@@ -542,7 +542,7 @@ def main() -> int:
             "honest, pre-deployed, GPU-ready path and matches the recommendation in the input "
             "honest_framing_note. Backbone: GCNPredictor (3 layers, hidden=64, dropout=0.2, residual=True, "
             "batchnorm=True, readout=mean+max, BCE+pos_weight=neg/pos). Apples-to-apples with chemprop v2 "
-            "sweep: same data CSV (metalcytotox_5metal_multitask.csv, 26801 rows), same 5-fold LOMO "
+            "sweep: same data CSV (metalcytotox_5metal_multitask_v4.csv, 26801 rows), same 5-fold LOMO "
             "protocol (hold out 1 metal, train on the other 4), same 5 seeds (0-4), same per-(metal, seed) "
             "JSON output schema. Difference vs chemprop v2: GNN message-passing is DGL-LifeSci GCN (vs "
             "chemprop directed message passing), backbone hidden=64/3 layers (vs chemprop hidden=64/2 "

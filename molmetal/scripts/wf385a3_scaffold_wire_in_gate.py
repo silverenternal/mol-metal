@@ -158,8 +158,19 @@ DEFAULT_SMOKE_FLAGS: Tuple[str, ...] = (
     "--triton-ot",
     "--shortcut-distill",
     "--pocket-id", "smoke_wf385a3",
-    "--out-dir", "molmetal/reports/wf385a3_scaffold_wire_in/train",
-    "--ckpt-dir", "molmetal/reports/wf385a3_scaffold_wire_in/ckpt",
+    # Wf-A13 FIX (2026-10-03): `--out-dir` and `--ckpt-dir` used to be
+    # hardcoded HERE, pointing into the git-tracked reports tree. That was
+    # not merely untidy — it silently defeated the caller's redirect.
+    # `run_smoke_training` builds `[python, trainer, "--out-dir", <dynamic>,
+    # *smoke_flags]`, and argparse is LAST-WINS, so these two hardcoded values
+    # overwrote the dynamic one and the smoke kept writing into
+    # molmetal/reports/wf385a3_scaffold_wire_in/.
+    # MEASURED before this fix: running the gate bumped
+    # reports/wf385a3_scaffold_wire_in/train/per_epoch_metrics.json from
+    # 15:30:31 to 15:32:28 while results/gate_scratch/ stayed EMPTY — i.e. a
+    # redirect that looked implemented and did nothing.
+    # They are now injected dynamically (after *smoke_flags, so the dynamic
+    # value still wins if a caller passes its own).
     "--seed", "0",
     # Disable CUDA Graphs (Blackwell cudagraphs retune per Wf-335-R3
     # SAFETY lever) + fused-adam (CUDA-only per Wf-357-D1).
@@ -278,11 +289,18 @@ def run_smoke_training(
     # Without this, the gate can't find the metrics JSON and reports
     # "loss did not decrease" because `loss_first=None loss_last=None`.
     trainer_out_dir = out_dir / "train"
+    trainer_ckpt_dir = out_dir / "ckpt"
     trainer_out_dir.mkdir(parents=True, exist_ok=True)
+    trainer_ckpt_dir.mkdir(parents=True, exist_ok=True)
+    # The two dir flags go AFTER *smoke_flags on purpose: argparse is
+    # last-wins, and DEFAULT_SMOKE_FLAGS historically carried its own copies
+    # that silently overrode the dynamic path (see the note on
+    # DEFAULT_SMOKE_FLAGS). Keeping them last means this caller always wins.
     cmd: List[str] = [
         python_bin, str(trainer),
-        "--out-dir", str(trainer_out_dir),
         *smoke_flags,
+        "--out-dir", str(trainer_out_dir),
+        "--ckpt-dir", str(trainer_ckpt_dir),
     ]
     try:
         proc = subprocess.run(

@@ -33,7 +33,7 @@ end-to-end on a PlatinAI 4-cell probe.  Concretely it asserts:
 All tests are **CPU-only** and run in < 30 seconds.  The probe data is
 the project-local :file:`molmetal/data/platinai_4cell.csv` (4,078 Pt
 complexes × 4 cell lines).  The cross-metal test re-uses
-:file:`.data/molmetal/metalcytotox_5metal_multitask.csv` (5 d-block
+:file:`.data/molmetal/metalcytotox_5metal_multitask_v4.csv` (5 d-block
 metals × binary activity).
 
 The tests are intentionally **integration-only** — they exercise the
@@ -107,8 +107,8 @@ def _platinai_csv_path() -> Path:
 def _metalcytotox_csv_path() -> Optional[Path]:
     """Resolve the metalcytotox 5-metal CSV path.  Skip the test if absent."""
     candidates = [
-        PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv",
-        PROJECT_ROOT / "molmetal" / "data" / "metalcytotox_5metal_multitask.csv",
+        PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv",
+        PROJECT_ROOT / "molmetal" / "data" / "metalcytotox_5metal_multitask_v4.csv",
     ]
     for p in candidates:
         if p.exists():
@@ -593,8 +593,8 @@ def _metalcytotox_preflight() -> Tuple[Path, Dict[str, int]]:
         raise FileNotFoundError(
             "metalcytotox CSV missing; per party-twenty-spirit §3.5 "
             "silent skip is not measured.  Expected at "
-            "`.data/molmetal/metalcytotox_5metal_multitask.csv` "
-            "(or fallback `molmetal/data/metalcytotox_5metal_multitask.csv`). "
+            "`.data/molmetal/metalcytotox_5metal_multitask_v4.csv` "
+            "(or fallback `molmetal/data/metalcytotox_5metal_multitask_v4.csv`). "
             "See TODO/pending/178_wf123_p3_metalcytotox_csv_ondisk.md §3.1."
         )
     per_metal: Dict[str, int] = {}
@@ -726,7 +726,7 @@ class TestCrossMetalTransfer:
         # with ≥ 2 metals, ≥ 32 rows per metal, and ≥ 1500 total.
         path, audit_counts = _metalcytotox_preflight()
 
-        # The metalcytotox_5metal_multitask.csv has a binary "activity"
+        # The metalcytotox_5metal_multitask_v4.csv has a binary "activity"
         # column (0/1) — we treat it as a 1-DOF signal and verify the
         # transfer loss is computable on the per-metal grouping.
         per_metal: Dict[str, List[float]] = {}

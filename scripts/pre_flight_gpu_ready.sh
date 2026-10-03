@@ -35,7 +35,7 @@
 #   0. USER_OK hard entry gate (Wf-378-A1 NEW; fires ONLY when not
 #      --dry-run; exit 64 if USER_OK != 1; SKIP on --dry-run — mirrors
 #      scripts/launch_wf124_p3_g5.sh:60-67 Wf-294B / Wf-366-A1 pattern)
-#   1. pre_flight_check.py --pipeline all            (informative; pre-
+#   1. pre_flight_check.py --pipeline launch            (informative; pre-
 #                                                    existing FAILs are
 #                                                    HONEST-NEGATIVES,
 #                                                    NOT blockers)
@@ -238,11 +238,11 @@ log "  STRICT=${STRICT}"
 emit_dry_run_header
 
 # ============================================================================
-# Gate 1: pre_flight_check.py --pipeline all (INFORMATIVE; pre-existing FAILs
+# Gate 1: pre_flight_check.py --pipeline launch (INFORMATIVE; pre-existing FAILs
 #         are honest-negatives per AGENTS.md §5.2 — NOT blockers here)
 # ============================================================================
 log ""
-log "===== Gate 1/5: pre_flight_check.py --pipeline all (informative) ====="
+log "===== Gate 1/5: pre_flight_check.py --pipeline launch (informative) ====="
 PF_OUT=$(mktemp)
 PF_RC=0
 PYTHONPATH="${REPO_ROOT}" "${VENV_PY}" "${REPO_ROOT}/molmetal/scripts/pre_flight_check.py" \

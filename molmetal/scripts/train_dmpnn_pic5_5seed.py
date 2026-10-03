@@ -10,7 +10,7 @@ honest per-metal mean ± std estimates.
 
 **Inputs** (already on disk from Wf-120 P1 + Wf-84 P3):
   * ``molmetal/checkpoints/dmpnn_pic50_{metal}_seed{0,1}.pt`` (10 ckpts)
-  * ``.data/molmetal/metalcytotox_5metal_multitask.csv`` (split defs)
+  * ``.data/molmetal/metalcytotox_5metal_multitask_v4.csv`` (split defs)
 
 **Outputs**:
   * ``molmetal/checkpoints/dmpnn_pic50_{metal}_seed{2,3,4}.pt`` (15 NEW)

@@ -672,7 +672,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--metalcytotox", type=str,
-        default=".data/molmetal/metalcytotox_5metal_multitask.csv",
+        default=".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
         help="MetalCytoToxDB CSV path (target source).",
     )
     parser.add_argument(

@@ -45,7 +45,7 @@
 #
 # Pre-launch checks (BLOCKER before any wave)
 # ------------------------------------------
-#   1. pre_flight_check.py --pipeline all
+#   1. pre_flight_check.py --pipeline launch
 #        (24/24 gates PASS target; 0 FAIL — TODO-207 v2 §0.2 Wf-260 24/24 PASS
 #         is the calibration anchor)
 #   2. per_wave_checklist.py --wave Wave-A (then -B, -C as we advance)
@@ -315,10 +315,10 @@ ok "plan.json emitted at ${PLAN_JSON} (Wf-363-A1 schema + Wf-431-A4 fix)"
 log "Wf-299C launch begin — wave target = ${WAVE_TARGET} — dry-run = ${DRY_RUN}"
 
 # -----------------------------------------------------------------------------
-# Pre-launch check #1 — pre_flight_check.py --pipeline all
+# Pre-launch check #1 — pre_flight_check.py --pipeline launch
 # -----------------------------------------------------------------------------
 pre_flight_gate() {
-    log "pre_flight_check.py --pipeline all  (TODO-207 v2 §1 + §3 + §4)"
+    log "pre_flight_check.py --pipeline launch  (TODO-207 v2 §1 + §3 + §4)"
     if [ "${DRY_RUN}" -eq 1 ]; then
         warn "DRY-RUN: skipping pre_flight_check.py GPU/live gates"
     else

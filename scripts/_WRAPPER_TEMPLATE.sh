@@ -60,7 +60,7 @@ source "${DRY_RUN_LOG_HELPER}"
 
 # --- Pre-flight gate (per Wf-415-A3 + Wf-427-B1) -----------------------
 echo "[$(date -Iseconds)] ${WRAPPER_NAME} pre-flight check begin"
-PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/pre_flight_check.py --pipeline all >"${OUT_DIR}/preflight.json" 2>&1 \
+PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/pre_flight_check.py --pipeline launch >"${OUT_DIR}/preflight.json" 2>&1 \
     || die "pre_flight_check FAIL — see ${OUT_DIR}/preflight.json"
 grep -q '"fail": 0' "${OUT_DIR}/preflight.json" \
     || die "pre_flight_check has FAILs (not 0) — see ${OUT_DIR}/preflight.json"

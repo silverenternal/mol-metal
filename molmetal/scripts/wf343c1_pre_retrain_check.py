@@ -84,7 +84,7 @@ DOT_DATA_DIR = REPO_ROOT / ".data" / "molmetal"
 # DOT_DATA_DIR).  Both paths are checked so any drift between the
 # parent doc and the actual on-disk layout fails loudly.
 DATA_PATHS: Dict[str, Path] = {
-    "2.1.1_metalcytotox_5metal": DOT_DATA_DIR / "metalcytotox_5metal_multitask.csv",
+    "2.1.1_metalcytotox_5metal": DOT_DATA_DIR / "metalcytotox_5metal_multitask_v4.csv",
     "2.1.2_metalcytotox_raw": DOT_DATA_DIR / "MetalCytoToxDB.csv",
     "2.1.3_drugood": DOT_DATA_DIR / "drugood",
     "2.1.4_nci60": DOT_DATA_DIR / "NCI60_GI50",

@@ -12,12 +12,12 @@
 
 **Wf-123 P3 §7 honest framing** explicitly states:
 
-> "The metalcytotox 5-metal CSV integration smoke test (`TestCrossMetalTransfer::test_metalcytotox_csv_integration_smoke`) is **conditional on the CSV existing** in the project tree (`.data/molmetal/metalcytotox_5metal_multitask.csv`). It skips gracefully if the CSV is absent — no hard dependency on the cross-metal test data."
+> "The metalcytotox 5-metal CSV integration smoke test (`TestCrossMetalTransfer::test_metalcytotox_csv_integration_smoke`) is **conditional on the CSV existing** in the project tree (`.data/molmetal/metalcytotox_5metal_multitask_v4.csv`). It skips gracefully if the CSV is absent — no hard dependency on the cross-metal test data."
 
 The CSV is referenced but not guaranteed on disk. The integration test currently **silently skips** rather than fail, which is a hygiene problem (per `party-twenty-spirit` §3.5 self-revolution — silent skip ≠ measured). The CSV is the cross-metal transfer cohort needed for the M1 `wasserstein_transfer_loss` smoke test on real cross-metal data (not synthetic).
 
 **Root cause**:
-- Wf-120 P2 (TODO-120, m1 Ru strengthen) built the 5-metal joint cohort, but the on-disk CSV is keyed on `.data/molmetal/metalcytotox_5metal_multitask.csv` and depends on the CytotoxFilter pipeline being run end-to-end
+- Wf-120 P2 (TODO-120, m1 Ru strengthen) built the 5-metal joint cohort, but the on-disk CSV is keyed on `.data/molmetal/metalcytotox_5metal_multitask_v4.csv` and depends on the CytotoxFilter pipeline being run end-to-end
 - Wf-124 P3 (5-metal multi-task D-MPNN) uses the same cohort for training but the on-disk CSV path is **not** verified by `verify_shared_modules.py`
 - The integration smoke test `test_metalcytotox_csv_integration_smoke` is the only verification
 
@@ -27,7 +27,7 @@ The CSV is referenced but not guaranteed on disk. The integration test currently
 
 | Item | Status | Source |
 |---|---|---|
-| metalcytotox 5-metal CSV on disk | UNKNOWN (not verified at Wf-123 P3 ship time) | `.data/molmetal/metalcytotox_5metal_multitask.csv` |
+| metalcytotox 5-metal CSV on disk | UNKNOWN (not verified at Wf-123 P3 ship time) | `.data/molmetal/metalcytotox_5metal_multitask_v4.csv` |
 | `TestCrossMetalTransfer::test_metalcytotox_csv_integration_smoke` | SKIP (graceful) | `molmetal/tests/test_wasserstein_closure_integration.py` |
 | CytotoxFilter pipeline execution | PROBABLY executed (Wf-120 P2 ran end-to-end on RTX 5090) | `molmetal/reports/wf120_p2_5seed_dmpnn/` |
 | n_metal rows | 5 metals × ~1.2-2.5k each = ~5-8k total PROJECTED | TODO-120 P1.2 |
@@ -43,7 +43,7 @@ The CSV is referenced but not guaranteed on disk. The integration test currently
 
 ### §3.1 CSV on-disk verification
 
-1. **Check existence**: `ls -la .data/molmetal/metalcytotox_5metal_multitask.csv` — if absent, run the CytotoxFilter pipeline to materialize it
+1. **Check existence**: `ls -la .data/molmetal/metalcytotox_5metal_multitask_v4.csv` — if absent, run the CytotoxFilter pipeline to materialize it
 2. **Schema validation**: at minimum the columns are `smiles`, `metal`, `pic50`, `active`, `cell_line`, `split` (train/val/test), `source` (cytotox/platinai/etc.)
 3. **Row-count audit**: 5 metals × ≥ 1.0k rows each (≥ 5k total); if any metal < 1k, the per-metal Wasserstein transfer loss is degenerate (per Wf-124 P3 §5 honest caveat about smaller metals)
 
@@ -62,7 +62,7 @@ Write a JSON report at `molmetal/reports/wf123_p3_integration/metalcytotox_csv_a
 
 ```json
 {
-  "csv_path": ".data/molmetal/metalcytotox_5metal_multitask.csv",
+  "csv_path": ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
   "exists": true|false,
   "schema_valid": true|false,
   "row_counts_per_metal": {"Ru": ..., "Ir": ..., "Os": ..., "Rh": ..., "Re": ...},
@@ -78,7 +78,7 @@ Write a JSON report at `molmetal/reports/wf123_p3_integration/metalcytotox_csv_a
 
 ## §4 Acceptance gate
 
-- [G2.1] CSV exists on disk at `.data/molmetal/metalcytotox_5metal_multitask.csv`
+- [G2.1] CSV exists on disk at `.data/molmetal/metalcytotox_5metal_multitask_v4.csv`
 - [G2.2] Schema is valid (all required columns present, dtypes correct)
 - [G2.3] At least 1 metal ≥ 1.5k rows AND total ≥ 5k rows
 - [G2.4] `TestCrossMetalTransfer::test_metalcytotox_csv_integration_smoke` updated to FAIL (not SKIP) when CSV is missing or schema invalid
@@ -92,7 +92,7 @@ Write a JSON report at `molmetal/reports/wf123_p3_integration/metalcytotox_csv_a
 **ETA**: 0.5 - 1 day (CSV materialization is fast; CytotoxFilter is the Wf-120 P2 pipeline)
 
 **Dependencies**:
-- Wf-120 P2 CytotoxFilter pipeline (already executed; outputs at `.data/molmetal/metalcytotox_5metal_multitask.csv` if materialization completed)
+- Wf-120 P2 CytotoxFilter pipeline (already executed; outputs at `.data/molmetal/metalcytotox_5metal_multitask_v4.csv` if materialization completed)
 - `molmetal/scripts/cytotox_filter.py` (CytotoxFilter — Wf-120 P2 ship)
 - `pytest` for integration smoke test
 - `molmetal/reports/wf123_p3_integration/` directory

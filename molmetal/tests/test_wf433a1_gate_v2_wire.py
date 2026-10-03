@@ -146,7 +146,7 @@ def test_wf432a1_all_32_new_gate_functions_callable():
     """§5.7 — every NEW gate function returns a GateResult when called
     with valid args (smoke = callable + verdict logic)."""
     # Build canonical arg sets per gate
-    mc_csv = REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+    mc_csv = REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
     pl_csv = MOLMETAL_ROOT / "data" / "platinai_4cell.csv"
     cd_csv = MOLMETAL_ROOT / "data" / "crossdocked100_manifest.csv"
     nc_csv = MOLMETAL_ROOT / "data" / "nci60_precious_9cell.csv"

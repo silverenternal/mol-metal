@@ -73,7 +73,7 @@ from molmetal.scripts.benchmark_r18_metalcytotox import (  # noqa: E402
 )
 
 CSV_PATH = (
-    PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+    PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 )
 N_RUNS_SMOKE = 2
 SMOKE_SAMPLES = 16

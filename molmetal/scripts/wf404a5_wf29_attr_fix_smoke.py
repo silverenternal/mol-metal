@@ -544,7 +544,7 @@ def _build_argparse() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--data", type=Path,
-        default=PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv",
+        default=PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv",
         help=(
             "Optional 5-metal CSV; if missing the subprocess smoke "
             "is SKIPPED (argparse + forward invariants still run). "

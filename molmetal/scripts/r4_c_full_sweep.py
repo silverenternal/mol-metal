@@ -56,9 +56,19 @@ log = logging.getLogger("r4_c_full_sweep")
 
 
 # ---------------------------------------------------------------------------
-# Result dataclass — one row per pocket
+# Wf-424-A4 atomic-write helper (spliced in by that wave's migration)
+#
+# Wf-A15 FIX (2026-10-03): this helper was inserted BETWEEN the `@dataclass`
+# decorator and `class PocketResult` that it decorated, so the decorator landed
+# on the helper (a function — `AttributeError: 'function' object has no
+# attribute '__mro__'` at import) and PocketResult silently lost its generated
+# __init__. Same defect as the five scripts repaired in Wf-A10, but from a
+# different migration wave (Wf-424-A4, not Wf-416-A1), which is why the guard
+# built in Wf-A10 did not catch it — that guard keys on Wf-416 markers only.
+# MEASURED effect: molmetal/tests/test_protocol_alignment.py,
+# test_r4c_pair_execution.py and test_lambda_measured_reward_dispatch.py all
+# failed at COLLECTION (21 modules total) and so contributed zero coverage.
 # ---------------------------------------------------------------------------
-@dataclass
 def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_min_length: int = 200) -> None:
     """Wf-424-A4 atomic-write-protocol wrapper around direct write_text.
 
@@ -87,6 +97,7 @@ def _wf424_atomic_write_text(path, content: str, min_lines: int = 50, expected_m
     else:  # pragma: no cover — fallback when atomic primitive unavailable
         Path(path).write_text(content, encoding="utf-8")
 
+@dataclass  # Wf-A15: restored — the migration above had displaced it onto the helper
 class PocketResult:
     pocket_id: str
     status: str = "ok"

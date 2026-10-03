@@ -31,7 +31,7 @@ seeds = 25 runs), to be compared against the R17 baseline
 
 Inputs
 ------
-* ``.data/molmetal/metalcytotox_5metal_multitask.csv`` (26 802 rows)
+* ``.data/molmetal/metalcytotox_5metal_multitask_v4.csv`` (26 802 rows)
   columns: ``smiles,metal,scaffold_id,split,activity`` — already
   scaffold-split train/val/test per Krasnov 2026 protocol.
 
@@ -86,7 +86,7 @@ Usage
 
     source env.sh
     uv run --no-sync python -u molmetal/scripts/train_multimetal_lomo.py \\
-        --data .data/molmetal/metalcytotox_5metal_multitask.csv \\
+        --data .data/molmetal/metalcytotox_5metal_multitask_v4.csv \\
         --encoder-ckpt models/tmqm_pretrained/tmqm_pretrained_encoder.pt \\
         --out-dir .ckpt \\
         --metrics-path metrics/by_metric/multimetal_lomo_auc.json \\
@@ -787,7 +787,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p = add_common_args(
         p,
         data_default=(
-            PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+            PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
         ),
         encoder_ckpt_default=(
             PROJECT_ROOT / "models" / "tmqm_pretrained" / "tmqm_pretrained_encoder.pt"

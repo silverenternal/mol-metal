@@ -52,7 +52,7 @@ if str(PROJECT_ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 
 
-CANONICAL_CSV = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+CANONICAL_CSV = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 V4_CSV = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 V3_CSV = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v3.csv"
 

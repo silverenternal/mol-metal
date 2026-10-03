@@ -92,7 +92,7 @@ if [[ "${1:-}" == "--dry-run" ]]; then
   echo "DATA_CSV: ${DATA_CSV}"
   echo "GPU: ${GPU}"
   echo "USER_OK gate: present (kill_then_adapt standing directive)"
-  echo "Pre-flight: pre_flight_check.py --pipeline all (32/32 v3 PASS required)"
+  echo "Pre-flight: pre_flight_check.py --pipeline launch (32/32 v3 PASS required)"
   echo "Wave budget tracker: --no-enforce-budget --cfm-yuelbond-required"
   echo "Per-wave checklist: per_wave_checklist.py --wave Wf-124-P3-G6-{a..h}"
   echo "Abort recovery: abort_recovery.py wired on unexpected abort"
@@ -148,7 +148,7 @@ echo "[Wf-310B] USER_OK set — proceeding with 60-tuple G6 launch (wall ~7.5 hr
 
 # ---- Pre-flight check (Wf-306C PART 1: 32/32 v3 PASS required) ----
 echo "=== Pre-flight check START $(date) ===" | tee -a "${LOG}"
-${PY} molmetal/scripts/pre_flight_check.py --pipeline all || {
+${PY} molmetal/scripts/pre_flight_check.py --pipeline launch || {
   echo "FAIL: pre_flight_check --pipeline all (32/32 v3 PASS required per Wf-306C)"
   exit 1
 }

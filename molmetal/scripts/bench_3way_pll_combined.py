@@ -427,7 +427,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             args.data_csv = str(
                 PROJ_ROOT / "molmetal" / "data" /
-                "metalcytotox_5metal_multitask.csv"
+                "metalcytotox_5metal_multitask_v4.csv"
             )
     LOGGER.info(
         "Loading %s from %s (n=%d, seed=42)…",

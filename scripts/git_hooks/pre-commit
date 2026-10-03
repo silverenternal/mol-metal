@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# .git/hooks/pre-commit — Mol-Metal commit gate (per AGENTS.md §1.4 pre-flight v2 25/25 PASS gate + §5.6 atomic write protocol)
+#
+# Runs three checks:
+#   (a) Pre-flight v3 gate via molmetal/scripts/pre_flight_check.py --pipeline all
+#   (b) Metric schema validation via scripts/_validate_metrics.py
+#   (c) Single-venv guard via molmetal/scripts/check_no_stale_venv.sh (AGENTS.md §5.9)
+#
+# If any check fails, commit is aborted with non-zero exit.
+#
+# To skip: `git commit --no-verify` (use sparingly — AGENTS.md §1.4)
+# To bypass only the metric check: `SKIP_METRICS=1 git commit`
+# To bypass only the pre-flight check: `SKIP_PREFLIGHT=1 git commit`
+# To bypass only the venv guard: `SKIP_VENV_GUARD=1 git commit`
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+PRE_FLIGHT="${REPO_ROOT}/molmetal/scripts/pre_flight_check.py"
+VALIDATOR="${REPO_ROOT}/scripts/_validate_metrics.py"
+
+# Color codes for readability (no-op when piped)
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo "[pre-commit] Mol-Metal commit gate v1 (AGENTS.md §1.4 + §5.6)"
+
+# (a) Pre-flight v3 check
+if [[ "${SKIP_PREFLIGHT:-0}" != "1" ]]; then
+    if [[ -f "${PRE_FLIGHT}" ]]; then
+        echo "[pre-commit] (1/3) pre-flight v3 gate..."
+        if ! "${REPO_ROOT}/.venv/bin/python" "${PRE_FLIGHT}" --pipeline all; then
+            echo -e "${RED}[pre-commit] FAIL${NC}: pre-flight v3 gate FAILED — see AGENTS.md §1.4"
+            echo "  bypass with: SKIP_PREFLIGHT=1 git commit (NOT recommended)"
+            exit 1
+        fi
+        echo -e "${GREEN}[pre-commit] (1/3) pre-flight v3 gate PASS${NC}"
+    else
+        echo -e "${YELLOW}[pre-commit] (1/3) pre-flight v3 gate SKIPPED — script missing at ${PRE_FLIGHT}${NC}"
+    fi
+fi
+
+# (b) Metric schema validation
+if [[ "${SKIP_METRICS:-0}" != "1" ]]; then
+    if [[ -f "${VALIDATOR}" ]]; then
+        echo "[pre-commit] (2/3) metric schema validation..."
+        if ! "${REPO_ROOT}/.venv/bin/python" "${VALIDATOR}"; then
+            echo -e "${RED}[pre-commit] FAIL${NC}: metric schema validation FAILED — see schemas/metric_v1.schema.json"
+            echo "  bypass with: SKIP_METRICS=1 git commit (NOT recommended)"
+            exit 1
+        fi
+        echo -e "${GREEN}[pre-commit] (2/3) metric schema validation PASS${NC}"
+    else
+        echo -e "${YELLOW}[pre-commit] (2/3) metric schema validation SKIPPED — script missing at ${VALIDATOR}${NC}"
+    fi
+fi
+
+# (c) Single-venv guard (AGENTS.md §5.9)
+#
+# `check_no_stale_venv.sh` existed for months but was wired to NOTHING — it
+# appeared 0 times in this hook and 0 times in .pre-commit-config.yaml, and its
+# only "wiring" was a comment in env.sh telling the reader to run it. Meanwhile
+# it was INVERTED: it failed when the canonical repo-local .venv existed and
+# printed "Remove it: rm -rf /home/hugo/codes/mol-metal/.venv" — i.e. it told
+# people to delete the venv §5.9 designates as canonical.
+#
+# It has since been rewritten to the correct polarity (fail if either
+# UV_PROJECT_ENVIRONMENT or VIRTUAL_ENV resolves anywhere but the repo-local
+# .venv; never suggest deleting it). This wires it in, which is what makes it
+# a check rather than a decoration.
+if [[ "${SKIP_VENV_GUARD:-0}" != "1" ]]; then
+    VENV_GUARD="${REPO_ROOT}/molmetal/scripts/check_no_stale_venv.sh"
+    if [[ -f "${VENV_GUARD}" ]]; then
+        echo "[pre-commit] (3/3) single-venv guard..."
+        if ! bash "${VENV_GUARD}"; then
+            echo -e "${RED}[pre-commit] FAIL${NC}: single-venv guard FAILED — see AGENTS.md §5.9"
+            echo "  bypass with: SKIP_VENV_GUARD=1 git commit (NOT recommended)"
+            exit 1
+        fi
+        echo -e "${GREEN}[pre-commit] (3/3) single-venv guard PASS${NC}"
+    else
+        echo -e "${YELLOW}[pre-commit] (3/3) single-venv guard SKIPPED — script missing at ${VENV_GUARD}${NC}"
+    fi
+fi
+
+echo -e "${GREEN}[pre-commit] ALL CHECKS PASS — committing${NC}"
+exit 0

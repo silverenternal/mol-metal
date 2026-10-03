@@ -253,7 +253,7 @@ def _load_platinai_smiles(n: int, seed: int) -> List[str]:
 
 def _load_metalcytotox_smiles(n: int, seed: int) -> List[str]:
     """Pull up to ``n`` MetalCytoToxDB SMILES from the local multitask CSV."""
-    csv_path = Path(".data/molmetal/metalcytotox_5metal_multitask.csv")
+    csv_path = Path(".data/molmetal/metalcytotox_5metal_multitask_v4.csv")
     if not csv_path.exists():
         return []
     out: List[str] = []

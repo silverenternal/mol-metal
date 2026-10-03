@@ -188,7 +188,7 @@ def test_smoke_subset_metal(tmp_path: Path) -> None:
 def _ensure_rdkit_and_data() -> bool:
     if not _have_rdkit():
         return False
-    csv_path = Path("/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask.csv")
+    csv_path = Path("/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv")
     return csv_path.is_file()
 
 

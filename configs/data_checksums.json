@@ -1,0 +1,43 @@
+{
+  "files": {
+    ".data/molmetal/metalcytotox_5metal_multitask.csv": {
+      "frozen_at": "2026-10-03T03:04:13+0000",
+      "min_lines": 26633,
+      "n_lines": 26802,
+      "path": ".data/molmetal/metalcytotox_5metal_multitask.csv",
+      "sha256": "f167c11931ecf221ea31f1fa99107a1dfcc5543e517f918597c837bee82ee131"
+    },
+    ".data/molmetal/metalcytotox_5metal_multitask_v2.csv": {
+      "frozen_at": "2026-10-03T03:04:13+0000",
+      "min_lines": 26633,
+      "n_lines": 26633,
+      "path": ".data/molmetal/metalcytotox_5metal_multitask_v2.csv",
+      "sha256": "cc3ea24755f1b14a69c8c3acd827db0bc1dd123301479c9ca490920725adf063"
+    },
+    ".data/molmetal/metalcytotox_5metal_multitask_v3.csv": {
+      "frozen_at": "2026-10-03T03:04:13+0000",
+      "min_lines": 26633,
+      "n_lines": 26633,
+      "path": ".data/molmetal/metalcytotox_5metal_multitask_v3.csv",
+      "sha256": "e42e79915830c85218ac162651bb6f743a2d995faac25626818650e833192ead"
+    },
+    ".data/molmetal/metalcytotox_5metal_multitask_v4.csv": {
+      "frozen_at": "2026-10-03T03:04:13+0000",
+      "min_lines": 26633,
+      "n_lines": 26633,
+      "path": ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+      "sha256": "5a2550c83b631169feb3175d610478c3861d7b71e7bac20ba9087120e2b6a93d"
+    },
+    "molmetal/data/metallo_drugs_500_train.csv": {
+      "frozen_at": "2026-10-03T03:04:13+0000",
+      "min_lines": 450,
+      "n_lines": 450,
+      "path": "molmetal/data/metallo_drugs_500_train.csv",
+      "sha256": "b44e3b809ecc4567dc1aa613aa8d2f13c9b5f1170bfa7e958c8a29c8bb268f9f"
+    }
+  },
+  "generated_at": "2026-10-03T03:04:13+0000",
+  "generator": "python -m molmetal.scripts.pre_flight_check --freeze-csv-hashes",
+  "note": "Frozen SHA-256 of the CSVs gated by p0_csv_hash_verify.  The gated data live under .data/** (gitignored), so this digest record lives in git under configs/.  Re-run the generator after any legitimate upstream regeneration; until then a digest change is reported (loudly, non-blocking unless PREFLIGHT_CSV_HASH_STRICT=1).",
+  "schema": "molmetal-data-checksums-v1"
+}

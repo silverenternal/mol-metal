@@ -417,7 +417,7 @@ def run_lomo(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--csv", type=Path,
-                        default=Path("/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask.csv"))
+                        default=Path("/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"))
     parser.add_argument("--metals", nargs="+", default=["Rh", "Ru", "Ir", "Os", "Re"])
     parser.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
     parser.add_argument("--epochs", type=int, default=30)
@@ -614,7 +614,7 @@ def main() -> int:
             "batchnorm=True, readout=mean+max). Algorithm: GroupDRO (Sagawa et al. ICLR 2020) — per-minibatch "
             "per-metal BCE, group weights q_g updated via q_g *= exp(step_size * L_g) and renormalised each "
             "step, q clamped to [1e-3, 1.0] before renormalisation to prevent any group from collapsing to 0. "
-            "step_size=0.01 (Sagawa default for small n_groups). Same data CSV (metalcytotox_5metal_multitask.csv, "
+            "step_size=0.01 (Sagawa default for small n_groups). Same data CSV (metalcytotox_5metal_multitask_v4.csv, "
             "26801 rows), same 5-fold LOMO protocol (hold out 1 metal, train on the other 4), same 5 seeds "
             "(0-4), same per-(metal, seed) JSON output schema as ERM. SMILES pre-processing identical: "
             "SaltRemover strips counterions ([Cl-], [Br-], etc.), then largest organic fragment kept (drops "

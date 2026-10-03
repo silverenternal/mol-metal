@@ -79,7 +79,7 @@ def test_yaml_schema_fails_on_malformed_yaml(tmp_path):
 
 def test_csv_hash_passes_on_real_metalcytotox():
     """The real MetalCytoToxDB CSV has 26802 lines, well over the 26800 floor."""
-    cytox = REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+    cytox = REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
     assert cytox.is_file()
     res = gate_csv_hash(
         "test_csv_hash_cytox", "P0", "data", [(cytox, 26800)]
@@ -133,8 +133,10 @@ def test_scaffold_zero_leak_passes_on_v2():
     """
     v2 = REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v2.csv"
     assert v2.is_file()
+    # HOLE-5 (Wf-446): gate signature changed to List[Tuple[Path, label]];
+    # this call site adapted to the new list form (assertions unchanged).
     res = gate_scaffold_zero_leak(
-        "test_scaffold_zero_leak_v2", "P0", "data", v2
+        "test_scaffold_zero_leak_v2", "P0", "data", [(v2, "metalcytotox_v2")]
     )
     assert res.status == "PASS"
     assert "0 scaffold leak" in res.evidence
@@ -148,10 +150,10 @@ def test_scaffold_zero_leak_fails_on_v1():
     spans leak through. This test confirms the gate correctly identifies
     the leak.
     """
-    v1 = REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+    v1 = REPO_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
     assert v1.is_file()
     res = gate_scaffold_zero_leak(
-        "test_scaffold_zero_leak_v1", "P0", "data", v1
+        "test_scaffold_zero_leak_v1", "P0", "data", [(v1, "metalcytotox_v1")]
     )
     assert res.status == "FAIL"
     assert "leaks=" in res.evidence
@@ -161,7 +163,8 @@ def test_scaffold_zero_leak_fails_on_missing(tmp_path):
     """A missing CSV surfaces as FAIL."""
     ghost = tmp_path / "ghost_v2.csv"
     res = gate_scaffold_zero_leak(
-        "test_scaffold_zero_leak_missing", "P0", "data", ghost
+        "test_scaffold_zero_leak_missing", "P0", "data",
+        [(ghost, "metalcytotox_missing")],
     )
     assert res.status == "FAIL"
     assert "missing" in res.evidence.lower()

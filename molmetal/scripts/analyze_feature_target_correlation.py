@@ -579,10 +579,10 @@ def _build_default_datasets() -> List[DatasetSpec]:
             metal_filter=None,
             max_rows=2000,
         ))
-    if (data_root / "metalcytotox_5metal_multitask.csv").exists():
+    if (data_root / "metalcytotox_5metal_multitask_v4.csv").exists():
         specs.append(DatasetSpec(
             name="metalcytotox_5metal",
-            path=data_root / "metalcytotox_5metal_multitask.csv",
+            path=data_root / "metalcytotox_5metal_multitask_v4.csv",
             smiles_col="smiles",
             target_cols=("activity",),
             transform="binary",

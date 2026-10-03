@@ -91,7 +91,7 @@
 #   - collapse: per-cohort R² drop > 0.20 vs Wf-335-M2 CEILING_BREAK
 #
 # Pre-launch checks (BLOCKER before any GPU work):
-#   1. pre_flight_check.py --pipeline all (per AGENTS.md §1.4; 117/117
+#   1. pre_flight_check.py --pipeline launch (per AGENTS.md §1.4; 117/117
 #      PASS target; 0 FAIL — Wf-411-A1 baseline is 113/0/4/117)
 #   2. wave_budget_tracker.py --budget-hr 7.5 (per session cap; USER_OK
 #      to extend on per-wave basis)

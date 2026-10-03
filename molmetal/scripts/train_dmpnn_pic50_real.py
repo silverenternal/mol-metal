@@ -10,7 +10,7 @@ regression on the pIC50 head, BCE term zeroed out — see
 documentation) on the MetalCytoToxDB **5-metal** subset (Ru/Ir/Rh/Os/Re).
 
 Per the wf84 brief:
-  * **dataset** = ``metalcytotox_5metal_multitask.csv`` (split definitions)
+  * **dataset** = ``metalcytotox_5metal_multitask_v4.csv`` (split definitions)
   * **source**   = ``MetalCytoToxDB.csv`` (IC50 → pIC50 via ``_add_pic50``)
   * **splitting** = reuse the scaffold_id-derived train/val/test partitioning
                     encoded in the 5-metal CSV (so m16/m20/m22 downstream
@@ -106,7 +106,7 @@ except Exception:
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-DEFAULT_5METAL_CSV = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv"
+DEFAULT_5METAL_CSV = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv"
 DEFAULT_OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf84_dmpnn_ckpt"
 DEFAULT_CKPT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints"
 

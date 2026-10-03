@@ -39,7 +39,7 @@
 #   - --status is exempt from USER_OK (read-only state query)
 #
 # Pre-launch checks (BLOCKER before any bench work):
-#   1. pre_flight_check.py --pipeline all (24/24 PASS target)
+#   1. pre_flight_check.py --pipeline launch (24/24 PASS target)
 #   2. wave_budget_tracker.py --budget-hr 1 --chemprop-not-required
 #   3. USER_OK env gate
 

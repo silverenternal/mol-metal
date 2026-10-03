@@ -298,7 +298,7 @@ def test_load_metal_cohort_ru_smoke() -> None:
     try:
         X, y, smiles, scaffolds = load_metal_cohort("Ru", n_max=50)
     except FileNotFoundError:
-        pytest.skip("metalcytotox_5metal_multitask.csv not present")
+        pytest.skip("metalcytotox_5metal_multitask_v4.csv not present")
     assert X.shape[1] == 12
     assert y.size == X.shape[0]
     # Binary activity.
@@ -320,7 +320,7 @@ def test_combined_baseline_smoke() -> None:
             csv_path = c
             break
     if csv_path is None:
-        pytest.skip("metalcytotox_5metal_multitask.csv not present")
+        pytest.skip("metalcytotox_5metal_multitask_v4.csv not present")
     with tempfile.TemporaryDirectory() as tmp:
         out_dir = Path(tmp) / "wf86_smoke"
         cmd = [

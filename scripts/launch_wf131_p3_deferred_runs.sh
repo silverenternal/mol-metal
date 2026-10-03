@@ -67,7 +67,7 @@
 #   - collapse: Rh fold AUC < 0.10 on 2+ seeds (binding regression alarm)
 #
 # Pre-launch checks (BLOCKER before any GPU work):
-#   1. pre_flight_check.py --pipeline all (62/62 PASS target)
+#   1. pre_flight_check.py --pipeline launch (62/62 PASS target)
 #   2. wave_budget_tracker.py --budget-hr 5
 #   3. USER_OK env gate
 #   4. Trainer + cohort + CSV existence

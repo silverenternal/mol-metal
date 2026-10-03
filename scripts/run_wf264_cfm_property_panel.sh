@@ -23,7 +23,7 @@
 #     dry-run, use the full launcher).
 #   - It enforces USER_OK=1 unconditionally (kill_then_adapt standing
 #     directive).
-#   - It invokes pre_flight_check.py --pipeline all (TODO-207 §1 gate).
+#   - It invokes pre_flight_check.py --pipeline launch (TODO-207 §1 gate).
 #   - It surfaces a deterministic exit code (0=PASS, 1=FAIL, 2=SKIP,
 #     3=USER_OK_GATE_DENIED) for pipeline orchestration.
 #
@@ -125,7 +125,7 @@ log "  out_base=${OUT_BASE}"
 # -----------------------------------------------------------------------------
 # Pre-flight check (TODO-207 §1 gate)
 # -----------------------------------------------------------------------------
-log "Running pre_flight_check.py --pipeline all"
+log "Running pre_flight_check.py --pipeline launch"
 if ! "${PY}" "${SCRIPTS_DIR}/pre_flight_check.py" --pipeline all >/dev/null 2>&1; then
   log "PRE_FLIGHT FAIL — aborting (TODO-207 §1.4 standing rule)"
   cat > "${STATE_FILE}" <<EOF

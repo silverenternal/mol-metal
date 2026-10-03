@@ -259,9 +259,9 @@ def _platinai_4cell_spec(repo_root: Path) -> DatasetSpec:
 
 def _metalcytotox_5metal_spec(repo_root: Path) -> DatasetSpec:
     candidates = [
-        repo_root / ".data" / "molmetal" / "metalcytotox_5metal_multitask.csv",
-        repo_root / "data" / "metalcytotox_5metal_multitask.csv",
-        repo_root / "molmetal" / "data" / "metalcytotox_5metal_multitask.csv",
+        repo_root / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv",
+        repo_root / "data" / "metalcytotox_5metal_multitask_v4.csv",
+        repo_root / "molmetal" / "data" / "metalcytotox_5metal_multitask_v4.csv",
     ]
     for c in candidates:
         if c.exists():
@@ -275,7 +275,7 @@ def _metalcytotox_5metal_spec(repo_root: Path) -> DatasetSpec:
                 n_max=20000,
             )
     raise FileNotFoundError(
-        "metalcytotox_5metal_multitask.csv not found in "
+        "metalcytotox_5metal_multitask_v4.csv not found in "
         + ", ".join(str(c) for c in candidates)
     )
 
