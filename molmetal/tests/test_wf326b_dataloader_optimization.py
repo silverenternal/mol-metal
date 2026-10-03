@@ -31,14 +31,12 @@ Honest framing (AGENTS.md §5.2):
 
 from __future__ import annotations
 
-import math
 import sys
 import time
 from pathlib import Path
 
 import numpy as np
 import psutil
-import pytest
 import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent

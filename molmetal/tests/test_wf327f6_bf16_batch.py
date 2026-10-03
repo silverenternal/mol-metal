@@ -310,7 +310,6 @@ def test_bf16_batch_cli_integration():
     step — we just confirm the flags parse and the resulting Namespace has
     the expected shape so the trainer can wire them through.
     """
-    import torch
 
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
         DEFAULT_BATCH_SIZE,
@@ -376,7 +375,6 @@ def test_memory_utilization_higher_batch(torch_device):
     RTX 5090 with BF16 autocast.  Also probes batch=2048 on the
     available GPU and reports whether it fits (graceful overflow OK).
     """
-    import torch
 
     from molmetal.scripts.wf326d_amp_batch_optimized import run_sweep
 

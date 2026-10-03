@@ -14,8 +14,8 @@ BEFORE any actual launch:
 
   (b) **3-wave split (smoke / full / ablation)** — per Wf-299 brief +
       TODO-207 §3.2..§3.4: Wave A = P1.4 smoke (~2 hr cuda:0), Wave B
-      = G6 no_wass smoke (~10 min cuda:1), Wave C = G6 full sweep
-      (~7.5 hr cuda:1). Each wave has its own GPU + budget + scope.
+      = G6 no_wass smoke (~10 min cuda:0), Wave C = G6 full sweep
+      (~7.5 hr cuda:0). Waves run SERIALLY on GPU 0 (2026-10-03 directive).
 
   (c) **Wf-388 + Wf-380 flags pass through** — per Wf-392-A3: the
       Wave A smoke invocation must include the 16 NEW trainer flags
@@ -40,13 +40,11 @@ CPU-only by design. 0 GPU launches per AGENTS.md §5.1 + kill_then_adapt §0.
 from __future__ import annotations
 
 import json
-import os
 import re
-import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict
 
 # --- Canonical paths ---------------------------------------------------------
 PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
@@ -194,8 +192,8 @@ def verify_wf299_3_wave_separation(launcher_path: Path = LAUNCHER) -> Dict[str, 
     """Verify the launcher separates 3 waves (smoke / full / ablation).
 
     Per Wf-299 brief + TODO-207 §3.2..§3.4: Wave A = P1.4 smoke
-    (~2 hr cuda:0), Wave B = G6 no_wass smoke (~10 min cuda:1),
-    Wave C = G6 full sweep (~7.5 hr cuda:1).
+    (~2 hr cuda:0), Wave B = G6 no_wass smoke (~10 min cuda:0),
+    Wave C = G6 full sweep (~7.5 hr cuda:0).
 
     Checks:
       - CFM_NEW_FLAGS array only fires in Wave A invocations (smoke path)

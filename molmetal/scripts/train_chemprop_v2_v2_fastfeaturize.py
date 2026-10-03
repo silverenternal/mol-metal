@@ -34,12 +34,13 @@ if str(PROJECT_ROOT) not in sys.path:
 
 # Pin to CPU by default; this script is CPU-only per the Wf-320D
 # honest-framing constraint. Override with --device cuda if needed.
+# DO-NOT-MIGRATE: "" = CPU-only by design (not subject to the GPU-0 default).
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 
 import numpy as np
 import pandas as pd
 import torch
-from rdkit import Chem, RDLogger
+from rdkit import RDLogger
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 
@@ -71,7 +72,7 @@ def main() -> int:
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"== Wf-320D featurization fix smoke ==")
+    print("== Wf-320D featurization fix smoke ==")
     print(f"metals={args.metals} seeds={args.seeds} epochs={args.epochs}")
     print(f"hidden={args.hidden} depth={args.depth} device={args.device}")
     print(f"out_dir={out_dir}")
@@ -83,12 +84,9 @@ def main() -> int:
 
     # Lazy import — keep the dry-run path light.
     from molmetal.scripts.wf320d_featurization_fix import (
-        FastAtomFeaturizer,
-        FastBondFeaturizer,
         PerEpochFeatureCache,
     )
     from chemprop.data import BatchMolGraph
-    from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer
     from chemprop.nn import AtomMessagePassing, BinaryClassificationFFN, SumAggregation
 
     torch.manual_seed(args.seeds[0])

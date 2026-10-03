@@ -29,7 +29,6 @@ import pytest
 import torch
 
 from molmetal_lam.sbdd_env.typed_dispatch_triton import (
-    DEFAULT_THRESHOLD,
     FEAT_DIM,
     HIDDEN_DIM,
     DispatchResult,

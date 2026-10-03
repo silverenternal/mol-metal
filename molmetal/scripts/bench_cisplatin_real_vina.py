@@ -63,7 +63,6 @@ import argparse
 import json
 import logging
 import math
-import statistics
 import subprocess
 import sys
 import time
@@ -1196,9 +1195,9 @@ def run_full_sweep(
     md_lines.append("# Wf-121 Phase 3 — Real Vina dock on cisplatin × 10 pockets")
     md_lines.append("")
     md_lines.append(f"_Generated: {_utc_now_iso()}_  ")
-    md_lines.append(f"_Hardware: CPU (Vina Python binding) + GPU-0 Blackwell_  ")
+    md_lines.append("_Hardware: CPU (Vina Python binding) + GPU-0 Blackwell_  ")
     md_lines.append(f"_Ligand SMILES_: `{smiles}` (= cisplatin).  ")
-    md_lines.append(f"_Engine_: Vina 1.2.7 (Python binding preferred, CLI fallback).  ")
+    md_lines.append("_Engine_: Vina 1.2.7 (Python binding preferred, CLI fallback).  ")
     md_lines.append(
         f"_Exhaustiveness_: {exhaustiveness}; _n_poses_: {n_poses}; "
         f"_seeds_: {list(seeds)}."

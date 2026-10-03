@@ -52,17 +52,15 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Iterable, List
+from typing import List
 
 import pytest
 
 from molmetal.scoring import (
     AdapterUnavailable,
     REGISTRY,
-    ROUTING_POLICY,
     available_metrics,
     score_any,
-    tool_for_metric,
 )
 
 # ``molmetal.scoring.score_any`` is BOTH a module and a function name in

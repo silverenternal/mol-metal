@@ -335,6 +335,7 @@ def run_smoke_training(
             capture_output=True,
             text=True,
             timeout=timeout,
+            # DO-NOT-MIGRATE: "" = CPU-only by design (not subject to the GPU-0 default).
             env={**os.environ, "CUDA_VISIBLE_DEVICES": ""},
         )
     except subprocess.TimeoutExpired as exc:

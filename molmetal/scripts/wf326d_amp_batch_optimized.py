@@ -54,8 +54,8 @@ Usage
     # CPU-only proxy timings (safe under any GPU contention):
     python molmetal/scripts/wf326d_amp_batch_optimized.py --cpu-only
 
-    # GPU sweep on RTX 5090 (CUDA_VISIBLE_DEVICES=1):
-    CUDA_VISIBLE_DEVICES=1 \\
+    # GPU sweep on RTX 5090 (CUDA_VISIBLE_DEVICES=0):
+    \\
     python molmetal/scripts/wf326d_amp_batch_optimized.py
 
 Outputs
@@ -69,10 +69,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 

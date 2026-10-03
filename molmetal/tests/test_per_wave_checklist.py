@@ -38,7 +38,6 @@ so the real ``molmetal/reports/wf259_run/pre_flight.json`` and the real
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path

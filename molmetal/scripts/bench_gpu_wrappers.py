@@ -39,7 +39,7 @@ Usage
 ::
 
     # single wrapper, both datasets, all batch sizes
-    CUDA_VISIBLE_DEVICES=1 python -m molmetal.scripts.bench_gpu_wrappers \\
+    python -m molmetal.scripts.bench_gpu_wrappers \\
         --wrapper vina_gpu \\
         --datasets platinai_5k metalcytotox_5metal \\
         --batch-sizes 1 16 64 256 1024 \\
@@ -47,7 +47,7 @@ Usage
 
     # all 5 wrappers × 2 datasets × 5 batch sizes (full sweep)
     for wrapper in vina_gpu diffdock_batch boltz_batch pb_batch hilbert_astsr_cuda; do
-        CUDA_VISIBLE_DEVICES=1 python -m molmetal.scripts.bench_gpu_wrappers \\
+        python -m molmetal.scripts.bench_gpu_wrappers \\
             --wrapper $wrapper \\
             --datasets platinai_5k metalcytotox_5metal \\
             --batch-sizes 1 16 64 256 1024 \\
@@ -63,7 +63,8 @@ Outputs (per wrapper, in ``--out-dir``):
 
 Constraints
 -----------
-* GPU-1 (RTX 5090) preferred (use ``CUDA_VISIBLE_DEVICES=1``); the
+* GPU 0 (RTX PRO 6000 Blackwell) is the target (``CUDA_VISIBLE_DEVICES=0``,
+    the default since 2026-10-03); the
   script records which device it landed on so the audit trail is
   reproducible.
 * The CPU path is the existing ``molmetal.scoring.score_any``
@@ -86,12 +87,10 @@ import os
 import statistics
 import sys
 import time
-import traceback
-from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 # ---------------------------------------------------------------------------
 # Path bootstrap — mirror every Wf-3x / Wf-4x / Wf-50 bench.
@@ -814,7 +813,7 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help=(
             "Index of the GPU visible to the process (after "
             "CUDA_VISIBLE_DEVICES remap). Default 0 — typically the "
-            "RTX 5090 when CUDA_VISIBLE_DEVICES=1, or Blackwell when "
+            "RTX 5090 when CUDA_VISIBLE_DEVICES=0, or Blackwell when "
             "CUDA_VISIBLE_DEVICES=0."
         ),
     )

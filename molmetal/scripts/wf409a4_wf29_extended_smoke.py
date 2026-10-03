@@ -89,6 +89,7 @@ from __future__ import annotations
 # default simply keeps the smoke import-safe on a CUDA host.
 import os as _wf130_os
 
+# DO-NOT-MIGRATE: "" = CPU-only by design (not subject to the GPU-0 default).
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -100,7 +101,7 @@ import random
 import sys
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:

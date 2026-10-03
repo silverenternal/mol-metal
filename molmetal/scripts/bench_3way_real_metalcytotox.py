@@ -43,7 +43,7 @@ Outputs
 
 Usage::
 
-    CUDA_VISIBLE_DEVICES=1 molmetal/.venvs/mol-metal-venv/bin/python \
+    molmetal/.venv/bin/python \
       molmetal/scripts/bench_3way_real_metalcytotox.py \
       --metals Ru Ir Os Rh Re --seeds 0 1 2 3 4 --epochs 50 \
       --features-172d --multitask-backbone --wasserstein-weight 0.05 \
@@ -57,11 +57,10 @@ import argparse
 import csv
 import json
 import math
-import os
 import sys
 import time
 import tracemalloc
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -1015,7 +1014,7 @@ def write_synthesis(out_dir: Path, all_records: List[FitRecord]) -> None:
     )
     lines.append(
         "- **CPU + GPU-1**: CPU is default; GPU-1 is selected when "
-        "``CUDA_VISIBLE_DEVICES=1`` is set and ``--device cuda``."
+        "``CUDA_VISIBLE_DEVICES=0`` is set and ``--device cuda``."
     )
     lines.append(
         "- **Collapse detector**: ``pred_std / y_test_std < 0.10`` "
@@ -1123,7 +1122,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     if args.device == "cuda" and _HAS_TORCH and torch.cuda.is_available():
-        os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
+        # Canonical CUDA default (GPU 0; "" = CPU-only still wins).
+        # Loaded via the sibling shim so no molmetal package import is
+        # needed (see molmetal/scripts/_cuda_default.py).
+        import os as _co
+        import sys as _cs
+
+        _cdir = _co.path.dirname(_co.path.abspath(__file__))
+        if _cdir not in _cs.path:
+            _cs.path.append(_cdir)
+        from _cuda_default import ensure_cuda_visible_devices_default as _ensure_cvd
+
+        _ensure_cvd()
+        del _ensure_cvd, _cdir, _co, _cs
         device = "cuda"
     else:
         device = "cpu"

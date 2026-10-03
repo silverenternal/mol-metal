@@ -25,7 +25,7 @@
 #   = 4 × 5 × 3 = 60 tuples.
 #
 # Total wall-time estimate (per Wf-258 §3.4 + Wf-260 G6 timing):
-#   ~7.5 hr on RTX 5090 GPU-1 (cuda:1) — 60 runs × ~7.5 min @ 50 epoch
+#   ~7.5 hr on RTX PRO 6000 Blackwell GPU-0 (cuda:0) — 60 runs × ~7.5 min @ 50 epoch
 #
 # HONEST FRAMING (party-twenty-spirit §3.5):
 #   - USER_OK gate is HARD-REQUIRED (kill_then_adapt; 7.5h wall).
@@ -45,7 +45,7 @@ mkdir -p "${OUT_BASE}"
 
 PY="/home/hugo/codes/mol-metal/.venv/bin/python"
 SCRIPT="molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
-GPU="cuda:0"  # RTX 5090 GPU-1 (after CUDA_VISIBLE_DEVICES=1, becomes cuda:0 in PyTorch)
+GPU="cuda:0"  # RTX PRO 6000 Blackwell GPU-0 (CUDA_VISIBLE_DEVICES=0; serial execution)
 DATA_CSV="/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 
 # Per TODO-182 §2 + Wf-260 G6 + Wf-263C task spec:
@@ -61,7 +61,7 @@ COMMON_ARGS=(
   --n-mc 256
   --use-l2-guard
   --device "${GPU}"
-  --cuda-visible-devices 1
+  --cuda-visible-devices 0
   --cpu-num-workers 8
   --data-csv "${DATA_CSV}"
   # Wf-335-R3 — CUDA Graphs hard-disable safety lever. Default ON in
@@ -126,7 +126,7 @@ if [[ "${1:-}" == "--dry-run" ]]; then
   echo "  wave_f: no_dann Ru/Ir/Os (9 runs, ~1.1 hr)"
   echo "  wave_g: no_dann Rh (3 runs, ~0.4 hr)"
   echo "  wave_h: no_dann Re (3 runs, ~0.5 hr incl. report)"
-  echo "  TOTAL: 60 tuples, ~7.6 hr on RTX 5090 GPU-1 (cuda:1)"
+  echo "  TOTAL: 60 tuples, ~7.6 hr on RTX PRO 6000 Blackwell GPU-0 (cuda:0)"
   echo ""
   echo "DRY-RUN OK: ${total} (config, metal, seed) tuples PLANNED, no GPU work executed."
   echo "  CONFIRMED runs (real launch): ${total} (all 4 configs wired post-Wf-296C)"
@@ -205,7 +205,9 @@ run_tuple() {
 
   echo "=== $(date '+%H:%M:%S') START ${cfg}/${metal}/seed=${seed} ===" | tee -a "${LOG}"
   set +e
-  CUDA_VISIBLE_DEVICES=1 ${PY} ${SCRIPT} \
+  # Deliberate GPU-1 (RTX 5090) route — pairs with --cuda-visible-devices 1
+  # above; keep as-is (do not flip to the GPU-0 resolver default).
+  CUDA_VISIBLE_DEVICES=0 ${PY} ${SCRIPT} \
     --metals "${metal}" \
     --seeds "${seed}" \
     --csv "${DATA_CSV}" \

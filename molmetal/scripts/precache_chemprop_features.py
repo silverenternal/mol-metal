@@ -609,7 +609,7 @@ def main() -> Tuple[int, float, float, bool]:
             assert (
                 len(obj["row_indices"]) == obj["pooled"].size(0)
             ), f"row_indices {len(obj['row_indices'])} != pooled B={obj['pooled'].size(0)}"
-        print(f"[precache] Smoke load OK: 3 random batches verified", flush=True)
+        print("[precache] Smoke load OK: 3 random batches verified", flush=True)
     except Exception as e:
         print(f"[precache] Smoke load FAILED: {e}", flush=True)
         smoke_load_works = False

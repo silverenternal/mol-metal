@@ -27,7 +27,7 @@ Verify (after run completes)
 ----------------------------
 ::
 
-    CUDA_VISIBLE_DEVICES=1 molmetal/.venvs/mol-metal-venv/bin/python -u \\
+    molmetal/.venv/bin/python -u \\
         molmetal/scripts/bench_weak_real_multi_seed.py \\
         --metrics m1 m2 m19 --seeds 0 1 2 --strict-scaffold \\
         --out-dir molmetal/reports/wf60_multi_seed
@@ -50,7 +50,7 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -373,10 +373,10 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     )
     p.add_argument(
         "--cuda-visible-devices",
-        default="1",
+        default="0",
         help=(
             "CUDA_VISIBLE_DEVICES forwarded to subprocess trainers "
-            "(default: 1 — RTX 5090 GPU-1, leaving GPU-0 free)"
+            "(default: 0 — GPU 0, RTX PRO 6000 Blackwell)"
         ),
     )
     p.add_argument(

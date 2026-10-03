@@ -111,7 +111,9 @@ fi
 # ---------------------------------------------------------------------------
 echo "[wf308c-launch] GPU probe ..."
 CUDA_PROBE_OUT=$(
-    CUDA_VISIBLE_DEVICES="${WF308C_CUDA_VISIBLE_DEVICES:-1}" \
+    # GPU 0 (RTX PRO 6000 Blackwell) per the 2026-10-03 all-GPU-0 directive;
+    # override via WF308C_CUDA_VISIBLE_DEVICES if a run genuinely needs another card.
+    CUDA_VISIBLE_DEVICES="${WF308C_CUDA_VISIBLE_DEVICES:-0}" \
     MOLMETAL_ALLOW_CPU=0 \
     "${VENV_PY}" -c "import torch; print(torch.cuda.is_available(), torch.cuda.device_count() if torch.cuda.is_available() else 0)" 2>&1
 ) || true
@@ -128,7 +130,8 @@ mkdir -p "${TEMPORAL_OUT_DIR}" "${NCI60_OUT_DIR}"
 # 4. Stage A — Temporal split, 5-metal × 5-seed × 50-epoch (Krasnov 2026)
 # ---------------------------------------------------------------------------
 echo "[wf308c-launch] === Stage A: temporal-split 5-metal × 5-seed × 50-epoch ==="
-if ! CUDA_VISIBLE_DEVICES="${WF308C_CUDA_VISIBLE_DEVICES:-1}" \
+# WF308C deliberate GPU-1 route — override via WF308C_CUDA_VISIBLE_DEVICES; do not flip.
+if ! CUDA_VISIBLE_DEVICES="${WF308C_CUDA_VISIBLE_DEVICES:-0}" \
      "${VENV_PY}" molmetal/scripts/wf219_temporal_split_driver.py \
         --csv "${TEMPORAL_CSV}" \
         --train-cutoff 2024-01-01 \
@@ -153,7 +156,8 @@ echo "[wf308c-launch] Stage A OK. Summary: ${TEMPORAL_SUMMARY}"
 # 5. Stage B — NCI-60 9-cell, 9 × 3-seed × 50-epoch (TODO-130 G3 prod)
 # ---------------------------------------------------------------------------
 echo "[wf308c-launch] === Stage B: NCI-60 9-cell × 3-seed × 50-epoch ==="
-if ! CUDA_VISIBLE_DEVICES="${WF308C_CUDA_VISIBLE_DEVICES:-1}" \
+# WF308C deliberate GPU-1 route — override via WF308C_CUDA_VISIBLE_DEVICES; do not flip.
+if ! CUDA_VISIBLE_DEVICES="${WF308C_CUDA_VISIBLE_DEVICES:-0}" \
      "${VENV_PY}" molmetal/scripts/nci60_9cell_chemprop_driver.py \
         --csv "${NCI60_CSV}" \
         --cells MCF7 A2780 A549 HCT116 PC3 HL60 HCT-116 A2780cis DU145 \

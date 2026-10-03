@@ -102,7 +102,7 @@ DEFAULT_RUNS=(
 # Wall budget (PROJECTED per Wf-260 G6 timing)
 WALL_BUDGET_HR=5
 EPOCHS=50
-GPU="cuda:1"               # RTX 5090 GPU-1 (per Wf-347-B1 G5/G6 parity)
+GPU="cuda:0"               # RTX PRO 6000 Blackwell GPU-0 (serial execution)
 
 mkdir -p "${REPORTS_DIR}"
 
@@ -233,7 +233,7 @@ ok "plan emitted → ${PLAN_JSON}"
 if [ "${DRY_RUN}" = "1" ]; then
     log "DRY-RUN: skipping GPU launch (USER_OK was still required)"
     log "DRY-RUN: actual invocation per (metal, seed) tuple would be:"
-    log "  CUDA_VISIBLE_DEVICES=1 ${PY} ${TRAINER} \\"
+    log "  CUDA_VISIBLE_DEVICES=0 ${PY} ${TRAINER} \\"
     log "    --metals <METAL> --seeds <SEED> \\"
     log "    --epochs ${EPOCHS} \\"
     log "    --wasserstein-weight 0.05 \\"
@@ -289,7 +289,9 @@ for ((i = 0; i < ${#RUNS[@]}; i += 2)); do
     METAL="${RUNS[$i]}"
     SEED="${RUNS[$((i+1))]}"
     log "=== metal=${METAL} seed=${SEED} on ${GPU} ==="
-    if CUDA_VISIBLE_DEVICES=1 "${PY}" "${TRAINER}" \
+    # GPU 0 (RTX PRO 6000 Blackwell) per the 2026-10-03 all-GPU-0
+    # directive; this call site is serial with every other job.
+    if CUDA_VISIBLE_DEVICES=0 "${PY}" "${TRAINER}" \
             --metals "${METAL}" \
             --seeds "${SEED}" \
             --epochs "${EPOCHS}" \

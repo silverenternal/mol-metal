@@ -30,14 +30,12 @@ Every test runs on CPU and finishes in <30 s.
 
 from __future__ import annotations
 
-import importlib
-import importlib.util
 import re
 import subprocess
 import sys
 import textwrap
 from pathlib import Path
-from typing import List, Tuple
+from typing import Tuple
 
 import pytest
 

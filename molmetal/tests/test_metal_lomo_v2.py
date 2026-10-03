@@ -26,10 +26,8 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from typing import List, Tuple
 
@@ -200,7 +198,6 @@ def test_balanced_cohort_missing_file_raises(tmp_path) -> None:
 # Test 5 — splitter: holds out the named metal only.
 # ---------------------------------------------------------------------------
 def test_lomo_splitter_holds_out_correct_metal(tiny_lomo_csv) -> None:
-    from molmetal.data.cytotox import MetalCytotoxDataset
 
     ds = _make_test_ds(tiny_lomo_csv)
     spl = BalancedLOMOSplitter(held_out_metal="Rh")
@@ -215,7 +212,6 @@ def test_lomo_splitter_holds_out_correct_metal(tiny_lomo_csv) -> None:
 # Test 6 — splitter: val_fraction honoured.
 # ---------------------------------------------------------------------------
 def test_lomo_splitter_val_fraction(tiny_lomo_csv) -> None:
-    from molmetal.data.cytotox import MetalCytotoxDataset
 
     ds = _make_test_ds(tiny_lomo_csv)
     spl = BalancedLOMOSplitter(held_out_metal="Rh", val_fraction=0.2)
@@ -229,7 +225,6 @@ def test_lomo_splitter_val_fraction(tiny_lomo_csv) -> None:
 # Test 7 — BalancedLOMORunner construction.
 # ---------------------------------------------------------------------------
 def test_runner_construction(tiny_lomo_csv, cohort_smiles_labels) -> None:
-    from molmetal.data.cytotox import MetalCytotoxDataset
 
     ds = _make_test_ds(tiny_lomo_csv)
     smis, labels = cohort_smiles_labels
@@ -429,6 +424,7 @@ def test_cli_quick_smoke(tmp_path, cohort_smiles_labels) -> None:
     ]
     env = os.environ.copy()
     # Avoid CUDA initialisation flakiness on CPU smoke.
+    # DO-NOT-MIGRATE: "" = CPU-only by design (not subject to the GPU-0 default).
     env["CUDA_VISIBLE_DEVICES"] = ""
     proc = subprocess.run(
         cmd,
@@ -453,7 +449,6 @@ def test_real_rh_active_extraction(tiny_lomo_csv, cohort_smiles_labels) -> None:
 
     The held-out metal's test rows must NOT be used as the W₂ target.
     """
-    from molmetal.data.cytotox import MetalCytotoxDataset
 
     ds = _make_test_ds(tiny_lomo_csv)
     smis, labels = cohort_smiles_labels
@@ -482,7 +477,6 @@ def test_runner_reports_balanced_cohort_counts(
     tiny_lomo_csv, cohort_smiles_labels
 ) -> None:
     """The result metadata records 250 active + 250 inactive (balanced)."""
-    from molmetal.data.cytotox import MetalCytotoxDataset
 
     ds = _make_test_ds(tiny_lomo_csv)
     smis, labels = cohort_smiles_labels
@@ -756,6 +750,7 @@ def test_cli_task_type_single_smoke(tmp_path, cohort_smiles_labels) -> None:
         str(out_dir),
     ]
     env = os.environ.copy()
+    # DO-NOT-MIGRATE: "" = CPU-only by design (not subject to the GPU-0 default).
     env["CUDA_VISIBLE_DEVICES"] = ""
     proc = subprocess.run(
         cmd,

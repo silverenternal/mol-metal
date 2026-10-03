@@ -307,7 +307,7 @@ def main() -> int:
     parser.add_argument("--hidden", type=int, default=64)
     parser.add_argument("--num-layers", type=int, default=3)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--device", default="cuda:1")
+    parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--time-budget-s", type=int, default=5400)
     parser.add_argument(
         "--prefer-library",
@@ -356,7 +356,7 @@ def main() -> int:
 
     # Resolve device: if CUDA_VISIBLE_DEVICES is set, PyTorch only sees the
     # GPUs listed there reindexed 0..N-1.  Translate the user-supplied
-    # --device (e.g. cuda:1) into the PyTorch-visible index (e.g. cuda:0).
+    # --device (e.g. cuda:0) into the PyTorch-visible index (e.g. cuda:0).
     def _resolve_device(spec: str) -> str:
         if not spec.startswith("cuda:"):
             return spec

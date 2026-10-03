@@ -326,10 +326,16 @@ echo "    epochs=$EPOCHS"
 #
 #   (b) CUDA_VISIBLE_DEVICES — derived from the yaml `compute.gpu` field
 #       so the yaml stays the single source of truth for the device
-#       (per user voice: "这个也得靠yaml决定训练配置").  Without it,
-#       training_utils.apply_default_cuda_visible_devices() falls back to
-#       its DEFAULT of "1" = RTX 5090, contradicting `gpu: cuda:0` in
-#       every training config.
+#       (per user voice: "这个也得靠yaml决定训练配置").
+#
+#       The resolver's own DEFAULT is now also GPU 0
+#       (training_utils.DEFAULT_CUDA_VISIBLE_DEVICES == "0"), so this
+#       export and the code default agree.  That was NOT true before the
+#       2026-10-03 unification: the default was "1" (= RTX 5090) and it
+#       contradicted `gpu: cuda:0` in the training configs, which is why
+#       this export exists at all.  Keep it — it is what makes an explicit
+#       `gpu: cuda:1` in a yaml still win over the default (that is the
+#       case this export exists for; every shipped config now says cuda:0).
 export MOLMETAL_DATA_DIR="${MOLMETAL_DATA_DIR:-$PROJECT_ROOT/.data/molmetal}"
 export MOLMETAL_TMQM_DIR="${MOLMETAL_TMQM_DIR:-$PROJECT_ROOT/.data/molmetal/tmQM}"
 

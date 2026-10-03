@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import time
 import torch
-import torch.nn as nn
 
 import pytest
 

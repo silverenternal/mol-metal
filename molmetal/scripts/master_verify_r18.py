@@ -329,6 +329,7 @@ def _check_smoke(spec: ScriptSpec, tmpdir: Path) -> CheckResult:
 
     # Ensure the script sees a CPU environment.
     env = dict(os.environ)
+    # DO-NOT-MIGRATE: "" = CPU-only by design (not subject to the GPU-0 default).
     env["CUDA_VISIBLE_DEVICES"] = ""
 
     cmd = [
@@ -570,8 +571,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print(f"[master_verify_r18] venv = {VENV_PY}")
     if not VENV_PY.exists():
         print(
-            f"[master_verify_r18] ERROR: venv missing — cannot run "
-            f"subprocess checks."
+            "[master_verify_r18] ERROR: venv missing — cannot run "
+            "subprocess checks."
         )
         return 2
     if not SCRIPTS_DIR.exists():

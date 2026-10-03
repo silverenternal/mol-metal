@@ -12,24 +12,31 @@ Outputs:
 from __future__ import annotations
 
 
-# --- Wf-130 GPU default -----------------------------------------
-# RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
-# BEFORE `import torch` so CUDA init sees the env var.
+# --- CUDA_VISIBLE_DEVICES default (canonical resolver) ----------
+# Default GPU 0 (RTX PRO 6000 Blackwell, 98 GB) unless the env var is
+# already set (incl. "" = CPU-only).  Must run BEFORE any molmetal /
+# torch import: importing the molmetal package initialises CUDA, and
+# CUDA reads CUDA_VISIBLE_DEVICES only once, at init.  Source of
+# truth: molmetal/molmetal_lam/sbdd_env/training_utils.py (loaded
+# package-free via molmetal/scripts/_cuda_default.py).
 import os as _wf130_os
+import sys as _wf130_sys
 
-_wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
-del _wf130_os
-# --- end Wf-130 ------------------------------------------------
+_wf130_dir = _wf130_os.path.dirname(_wf130_os.path.abspath(__file__))
+if _wf130_dir not in _wf130_sys.path:
+    _wf130_sys.path.append(_wf130_dir)
+from _cuda_default import ensure_cuda_visible_devices_default as _wf130_cvd
 
-import sys
+_wf130_cvd()
+del _wf130_cvd, _wf130_dir, _wf130_os, _wf130_sys
+# --- end CUDA default --------------------------------------------
+
 import time
 from pathlib import Path
 
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
 # from tqdm import tqdm  # removed for compatibility
 
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
@@ -565,7 +572,7 @@ def main():
     print(f"TEST ROC-AUC: {test_metrics['roc_auc']:.4f}")
     print(f"TEST pIC50 MAE: {test_metrics.get('pic50_mae', float('nan')):.4f}")
     print(f"Train loss curve (last 5): {train_losses[-5:]}")
-    print(f"Honest baseline (Morgan+XGB, ligand_dedup): ~0.80")
+    print("Honest baseline (Morgan+XGB, ligand_dedup): ~0.80")
     if test_metrics["roc_auc"] > 0.80:
         print("RESULT: D-MPNN+EGNN HYBRID > Morgan+XGB baseline!")
     else:

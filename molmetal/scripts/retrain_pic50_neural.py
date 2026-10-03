@@ -58,7 +58,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "..")))
 
 from molmetal_lam.training.pic50_censored_loader import (
     CensoredPIC50Dataset,
-    FORMULATION_META_COLS,
 )
 from molmetal.baselines.dmpnn_attentive import (
     ATOM_FEATURE_DIM,
@@ -67,8 +66,7 @@ from molmetal.baselines.dmpnn_attentive import (
     featurize_smiles_list,
     collate_graphs,
 )
-from rdkit import Chem, DataStructs, RDLogger
-from rdkit.Chem import rdFingerprintGenerator
+from rdkit import Chem, RDLogger
 from rdkit.Chem.Scaffolds import MurckoScaffold
 from sklearn.model_selection import GroupShuffleSplit
 from scipy.stats import pearsonr, spearmanr

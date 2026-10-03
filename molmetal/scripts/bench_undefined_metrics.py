@@ -108,7 +108,6 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import os
 import subprocess
 import sys
 import time
@@ -517,9 +516,6 @@ def bench_steric_clash(
         return out
 
     # Lazy import — guarded by the availability probe above.
-    from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import (  # type: ignore
-        PoseBustersAdapter,
-    )
 
     for pid in pocket_ids:
         # Without a docked .pdbqt in scope we cannot execute a real PB check;
@@ -884,7 +880,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "test_pocket": args.test_pocket,
     }
 
-    print(f"[wf61] Wf-61 Phase 3 — UNDEFINED metrics close-out")
+    print("[wf61] Wf-61 Phase 3 — UNDEFINED metrics close-out")
     print(f"[wf61] out_dir    = {out_dir}")
     print(f"[wf61] pockets    = {pocket_ids}")
     print(f"[wf61] device     = {args.device}")
@@ -946,7 +942,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     print(f"[wf61] wrote      = {routing_path}")
 
-    print(f"[wf61] DONE")
+    print("[wf61] DONE")
     return 0
 
 

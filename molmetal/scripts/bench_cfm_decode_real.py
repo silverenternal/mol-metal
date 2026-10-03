@@ -89,10 +89,7 @@ try:
     from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
         CFMJointModel,
         YuelBondBondDecoder,
-        _decode_with_rdkit_strict,
         evaluate_decode_ratio,
-        build_reference_positions,
-        NUM_BOND_CLASSES,
         DEFAULT_HIDDEN_DIM,
         DEFAULT_N_LAYERS,
     )
@@ -881,7 +878,7 @@ def main() -> int:
     lines = [
         "# Wf-148 — Real CFM decode benchmark synthesis",
         "",
-        f"**Date**: 2026-09-27",
+        "**Date**: 2026-09-27",
         f"**Checkpoint**: `{report.checkpoint_path}`",
         f"**Data config**: `{args.data_config}`",
         f"**Data**: `{report.data_path}`",

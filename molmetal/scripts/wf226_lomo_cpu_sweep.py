@@ -38,7 +38,6 @@ import argparse
 import json
 import os
 import subprocess
-import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
@@ -108,6 +107,7 @@ def run_one_pair(
     env.setdefault("MKL_NUM_THREADS", "6")
     env.setdefault("TOKENIZERS_PARALLELISM", "false")
     # Force CPU (the LOMO trainer defaults to GPU if available)
+    # DO-NOT-MIGRATE: "" = CPU-only by design (not subject to the GPU-0 default).
     env["CUDA_VISIBLE_DEVICES"] = ""
     t0 = time.time()
     with open(log_path, "w") as f:

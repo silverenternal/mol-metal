@@ -85,20 +85,20 @@ CPU smoke run (small subset, 1 metal x 1 seed x 2 epochs, legacy
 DMPNN baseline — backward compat via ``--model v3``)::
 
     cd /home/hugo/codes/mol-metal && \
-      .venvs/mol-metal-venv/bin/python molmetal/scripts/train_metal_lomo_v2.py \
+      .venv/bin/python molmetal/scripts/train_metal_lomo_v2.py \
         --model v3 --metals Rh --seeds 0 --epochs 2 --quick --device cpu \
         --out-dir molmetal/reports/wf145_p2_lomo_v2
 
 CPU smoke run, single-task LOMO-safe driver (Wf-201)::
 
     cd /home/hugo/codes/mol-metal && \
-      .venvs/mol-metal-venv/bin/python molmetal/scripts/train_metal_lomo_v2.py \
+      .venv/bin/python molmetal/scripts/train_metal_lomo_v2.py \
         --task-type single --metals Rh --seeds 0 --epochs 2 --quick --device cpu \
         --out-dir molmetal/reports/wf201_single_lomo
 
 Full 5-metal x 5-seed x 50-epoch GPU-1 run (legacy baseline)::
 
-    CUDA_VISIBLE_DEVICES=1 .venvs/mol-metal-venv/bin/python \
+    .venv/bin/python \
       molmetal/scripts/train_metal_lomo_v2.py \
         --model v3 --metals Rh Ru Ir Os Re --seeds 0 1 2 3 4 --epochs 50 \
         --device cuda \
@@ -106,7 +106,7 @@ Full 5-metal x 5-seed x 50-epoch GPU-1 run (legacy baseline)::
 
 Full 5-metal x 5-seed x 50-epoch GPU-1 run, single-task LOMO-safe (Wf-201)::
 
-    CUDA_VISIBLE_DEVICES=1 .venvs/mol-metal-venv/bin/python \
+    .venv/bin/python \
       molmetal/scripts/train_metal_lomo_v2.py \
         --task-type single --metals Rh Ru Ir Os Re \
         --seeds 0 1 2 3 4 --epochs 50 --device cuda \
@@ -133,14 +133,24 @@ L2 grad-norm guard.
 from __future__ import annotations
 
 
-# --- Wf-130 GPU default -----------------------------------------
-# RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
-# BEFORE `import torch` so CUDA init sees the env var.
+# --- CUDA_VISIBLE_DEVICES default (canonical resolver) ----------
+# Default GPU 0 (RTX PRO 6000 Blackwell, 98 GB) unless the env var is
+# already set (incl. "" = CPU-only).  Must run BEFORE any molmetal /
+# torch import: importing the molmetal package initialises CUDA, and
+# CUDA reads CUDA_VISIBLE_DEVICES only once, at init.  Source of
+# truth: molmetal/molmetal_lam/sbdd_env/training_utils.py (loaded
+# package-free via molmetal/scripts/_cuda_default.py).
 import os as _wf130_os
+import sys as _wf130_sys
 
-_wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
-del _wf130_os
-# --- end Wf-130 ------------------------------------------------
+_wf130_dir = _wf130_os.path.dirname(_wf130_os.path.abspath(__file__))
+if _wf130_dir not in _wf130_sys.path:
+    _wf130_sys.path.append(_wf130_dir)
+from _cuda_default import ensure_cuda_visible_devices_default as _wf130_cvd
+
+_wf130_cvd()
+del _wf130_cvd, _wf130_dir, _wf130_os, _wf130_sys
+# --- end CUDA default --------------------------------------------
 
 # --- Wf-190 env guard --------------------------------------------
 # Fail fast at import time if --bf16 / CUDA is required but unavailable.
@@ -156,10 +166,9 @@ import argparse
 import json
 import logging
 import os
-import statistics
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -228,20 +237,14 @@ from molmetal.baselines.dmpnn_multitask import (
 # train a per-fold model without the cross-metal information sharing
 # that confuses LOMO evaluation.
 from molmetal.baselines.dmpnn import (
-    DMPNN_HIDDEN,
-    DMPNN_DEPTH,
-    DMPNN_DROPOUT,
     DMPNNModel,
-    train_epoch as dmpnn_train_epoch,
     predict as dmpnn_predict,
 )
 from molmetal.baselines.eval_utils import compute_metrics
 from molmetal.data.cytotox import MetalCytotoxDataset
 from molmetal.data.splits import SplitResult
 from molmetal.models.chemprop_v2_mt_model import (
-    ChempropV2MTLoss,
     ChempropV2MTModel,
-    SUPPORTED_METALS as CPV2_METALS,
 )
 from molmetal.molmetal_lam.reward.wasserstein_loss import (
     wasserstein_transfer_loss,
@@ -635,12 +638,11 @@ class BalancedLOMORunner:
         self.batch_size = int(batch_size)
         self.alpha = float(alpha)
         self.seed = int(seed)
+        # Serial execution on GPU 0 (2026-10-03 directive): the old
+        # ">1 GPU visible -> cuda:1" auto-pick routed multi-GPU hosts
+        # to the second card.
         self.device = device or torch.device(
-            "cuda:1"
-            if torch.cuda.is_available() and torch.cuda.device_count() > 1
-            else "cuda:0"
-            if torch.cuda.is_available()
-            else "cpu"
+            "cuda:0" if torch.cuda.is_available() else "cpu"
         )
         self.splitter = BalancedLOMOSplitter(
             held_out_metal=held_out_metal, seed=self.seed
@@ -854,7 +856,6 @@ class BalancedLOMORunner:
 
         graphs_all = featurize_smiles_list([str(s) for s in smiles_all])
         graphs_train = [graphs_all[i] for i in train_idx]
-        graphs_val = [graphs_val_i] if len(val_idx) else []  # placeholder
         graphs_val = [graphs_all[i] for i in val_idx] if len(val_idx) else []
         graphs_test = [graphs_all[i] for i in test_idx]
         pic50_train = pic50_all[train_idx]

@@ -47,7 +47,7 @@ TODO/completed/config_dead_key_remediation.md.
   * ``molmetal/reports/wf131_p1_ru_auc_multitask/synthesis.md``
 
 **Hardware**: CPU primary; CUDA if available (RTX 5090 GPU-1 when
-invoked with ``CUDA_VISIBLE_DEVICES=1``).
+invoked with ``CUDA_VISIBLE_DEVICES=0``).
 
 **Honest framing** (per ``party-twenty-spirit §3.5``):
   * Smaller metals (Rh/Os/Re < 1.2k rows each) give noisier per-seed
@@ -65,7 +65,7 @@ invoked with ``CUDA_VISIBLE_DEVICES=1``).
 ::
 
     source env.sh
-    CUDA_VISIBLE_DEVICES=1 \\
+    \\
     python molmetal/scripts/train_dmpnn_multitask_wasserstein.py \\
         --metals Ru Ir Os Rh Re --seeds 0 1 2 3 4 --epochs 50 \\
         --wasserstein-weight 0.05 \\
@@ -76,14 +76,24 @@ invoked with ``CUDA_VISIBLE_DEVICES=1``).
 from __future__ import annotations
 
 
-# --- Wf-130 GPU default -----------------------------------------
-# RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
-# BEFORE `import torch` so CUDA init sees the env var.
+# --- CUDA_VISIBLE_DEVICES default (canonical resolver) ----------
+# Default GPU 0 (RTX PRO 6000 Blackwell, 98 GB) unless the env var is
+# already set (incl. "" = CPU-only).  Must run BEFORE any molmetal /
+# torch import: importing the molmetal package initialises CUDA, and
+# CUDA reads CUDA_VISIBLE_DEVICES only once, at init.  Source of
+# truth: molmetal/molmetal_lam/sbdd_env/training_utils.py (loaded
+# package-free via molmetal/scripts/_cuda_default.py).
 import os as _wf130_os
+import sys as _wf130_sys
 
-_wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
-del _wf130_os
-# --- end Wf-130 ------------------------------------------------
+_wf130_dir = _wf130_os.path.dirname(_wf130_os.path.abspath(__file__))
+if _wf130_dir not in _wf130_sys.path:
+    _wf130_sys.path.append(_wf130_dir)
+from _cuda_default import ensure_cuda_visible_devices_default as _wf130_cvd
+
+_wf130_cvd()
+del _wf130_cvd, _wf130_dir, _wf130_os, _wf130_sys
+# --- end CUDA default --------------------------------------------
 
 import argparse
 import hashlib
@@ -92,9 +102,9 @@ import math
 import pickle
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -117,7 +127,6 @@ from molmetal.baselines.dmpnn_multitask import (
     MT_DEPTH,
     MT_DROPOUT,
     MT_HIDDEN,
-    MT_LR,
     MT_PROD_DEPTH,
     MT_PROD_HIDDEN,
     MultiTaskLoss,
@@ -2586,7 +2595,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "Empty '' (the default) = inherit the shell env — "
             "scripts/start.sh exports it from the yaml `compute.gpu` "
             "field.  If neither is set, training_utils falls back to its "
-            "own default ('1').  Pass a non-empty value to force a GPU."
+            "own default ('0' — GPU 0).  Pass a non-empty value to force "
+            "a GPU."
         ),
     )
     # --events-jsonl-path is added at line ~2035 below by the parallel
@@ -2919,11 +2929,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         flush=True,
     )
 
-    # Wf-130 — GPU-first device defaults: cuda:0 (RTX 5090 via
-    # CUDA_VISIBLE_DEVICES=1 on kanzi) when allocatable, else CPU.
+    # Wf-130 — GPU-first device defaults: cuda:0 (GPU 0 — RTX PRO 6000
+    # Blackwell by default) when allocatable, else CPU.
     # Wf-A9 FIX (2026-10-03) — ``args.cuda_visible_devices`` defaults to
     # the empty string, which the argparse help documents as "inherit
-    # shell env or fall back to '1'".  ``apply_default_cuda_visible_devices``
+    # shell env or fall back to '0'".  ``apply_default_cuda_visible_devices``
     # however treats a *non-None* ``""`` as an explicit "force no GPUs"
     # override (Wf-415-A3 SCAFFOLD-gate contract), so passing the default
     # straight through asked every normal launch for CPU.  Coerce empty →
@@ -2947,6 +2957,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     # BEFORE any model init so triton_minibatch_ot_coupling env-var
     # gate picks up the activation.
     if bool(getattr(args, "triton_ot", False)):
+        # Wf-A9 fix: the module-level ``_wf130_os`` alias is deleted after
+        # the CUDA-default bootstrap, so re-bind it for this dispatch.
+        import os as _wf130_os
+
         _wf130_os.environ.setdefault("TRITON_MINIBATCH_OT", "1")
         _wf130_os.environ.setdefault("TRITON_USE_FUSED", "1")
         print(

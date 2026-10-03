@@ -56,10 +56,7 @@ import argparse
 import csv
 import json
 import multiprocessing as mp
-import os
 import pickle
-import platform
-import signal
 import sys
 import time
 from collections import defaultdict
@@ -85,8 +82,6 @@ try:
         CFMJointModel,
         YuelBondBondDecoder,
         _decode_with_rdkit_strict,
-        evaluate_decode_ratio,
-        build_reference_positions,
         NUM_BOND_CLASSES,
         DEFAULT_HIDDEN_DIM,
         DEFAULT_N_LAYERS,
@@ -103,7 +98,6 @@ from molmetal.models.bond_head import AtomCloud  # noqa: E402
 
 try:
     from rdkit import Chem  # noqa: E402
-    from rdkit.Chem import AllChem  # noqa: E402
 
     RDKIT_AVAILABLE = True
 except Exception:  # pragma: no cover
@@ -895,7 +889,7 @@ def main() -> int:
     lines = [
         "# Wf-188 — m14 real CFM FULL MetalCytoToxDB benchmark (per-metal)",
         "",
-        f"**Date**: 2026-09-27",
+        "**Date**: 2026-09-27",
         f"**Checkpoint**: `{report.checkpoint_path}`",
         f"**Data**: `{report.data_path}` " f"(n_total={report.n_total_metalcytotox})",
         f"**Device**: {device}",

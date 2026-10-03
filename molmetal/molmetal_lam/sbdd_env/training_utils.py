@@ -1,4 +1,4 @@
-"""Wf-130 — SBDD training device defaults (GPU-first).
+"""Wf-130 — SBDD training device defaults (GPU-first, GPU 0 default).
 
 This module provides the canonical helpers every ``molmetal`` SBDD
 training script should call before allocating a single tensor:
@@ -6,14 +6,22 @@ training script should call before allocating a single tensor:
 * :func:`resolve_default_device` — pick ``cuda`` if available, else CPU
   with an informative (not silent) warning.  Honours
   ``--cuda-visible-devices`` CLI flag and :envvar:`CUDA_VISIBLE_DEVICES`
-  env var.  When neither is set, defaults to ``"1"`` — the RTX 5090 in
-  the standard kanzi dual-GPU box (GPU 0 is the ``vlm`` venv process).
+  env var.  When neither is set, defaults to ``"0"`` — measured on the
+  current host (``nvidia-smi``, 2026-10-03):
+
+  * GPU 0 — NVIDIA RTX PRO 6000 Blackwell Workstation Edition (98 GB)
+  * GPU 1 — NVIDIA GeForce RTX 5090 (32 GB)
+
+  Owner standing directive (2026-10): default to GPU 0; GPU 1 stays
+  reachable via an explicit ``--cuda-visible-devices=1`` or
+  ``CUDA_VISIBLE_DEVICES=1``.
 * :func:`setup_training_device_env` — apply CUDA visibility + log the
   resolved device at INFO level.  Idempotent: re-running it is a no-op
   apart from the message.
 
-Why this module exists (Wf-130 honest-framing)
-----------------------------------------------
+Why this module exists (Wf-130 honest-framing; hardware note updated
+2026-10-03)
+--------------------------------------------------------------------
 Prior to Wf-130 the training scripts had three failure modes:
 
 1. **Default-to-CPU.**  ``device = torch.device("cpu")`` in a function
@@ -23,20 +31,22 @@ Prior to Wf-130 the training scripts had three failure modes:
    torch.cuda.is_available() else "cpu")`` is fine in isolation but was
    not gated by a log line — silent CPU fallbacks cost us several
    hours of debug time during R19 retrain.
-3. **GPU 0 contention.**  Without ``CUDA_VISIBLE_DEVICES=1`` set, the
-   training scripts collided with the VLM venv on GPU 0 of the kanzi
-   host, dropping effective throughput by ~6× (the VLM process holds
-   the SM scheduler busy even when it is idle).
+3. **GPU 1 default on the retired host.**  Wf-130 defaulted to
+   ``CUDA_VISIBLE_DEVICES="1"`` because GPU 0 on the old kanzi box was
+   held by an unrelated VLM process.  That host is gone; on the
+   current box (RTX PRO 6000 + RTX 5090) the 98 GB Blackwell card is
+   GPU 0 and is the correct default.
 
 Design rules
 ------------
 1. **GPU-first by default.**  If a CUDA device is allocatable, use it.
 2. **No silent fallbacks.**  Every call to :func:`resolve_default_device`
-   emits one log line — either "using cuda:0 / cuda:1 …" or "no GPU
+   emits one log line — either "using cuda:0 …" or "no GPU
    detected, falling back to CPU — this will be slow."
-3. **GPU 1 by default on kanzi.**  ``DEFAULT_CUDA_VISIBLE_DEVICES = "1"``
-   picks the RTX 5090.  Override with ``--cuda-visible-devices=0`` or
-   ``CUDA_VISIBLE_DEVICES=0,1`` if you really mean GPU 0.
+3. **GPU 0 by default.**  ``DEFAULT_CUDA_VISIBLE_DEVICES = "0"`` picks
+   the RTX PRO 6000 Blackwell.  Override with
+   ``--cuda-visible-devices=1`` or ``CUDA_VISIBLE_DEVICES=0,1`` if you
+   deliberately mean another device.
 
 Verify
 ------
@@ -73,21 +83,28 @@ from typing import Any, Dict, Optional
 # ---------------------------------------------------------------------------
 
 #: Default value for ``CUDA_VISIBLE_DEVICES`` when neither the env var
-#: nor the CLI flag overrides it.  ``"1"`` = second GPU = RTX 5090 on
-#: the standard kanzi dual-GPU box (historically GPU 0 was reserved for
-#: the ``vlm`` venv process).
+#: nor the CLI flag overrides it.  ``"0"`` = GPU 0 = the NVIDIA
+#: RTX PRO 6000 Blackwell (98 GB) on the measured host (2026-10-03
+#: ``nvidia-smi``; GPU 1 is the 32 GB RTX 5090).  Owner standing
+#: directive (2026-10): default to GPU 0; GPU 1 stays reachable via an
+#: explicit ``CUDA_VISIBLE_DEVICES=1`` / ``--cuda-visible-devices=1``.
 #:
-#: Wf-A9 (2026-10-03): the launch path no longer relies on this fallback
+#: Wf-A9 (2026-10-03): the launch path does not rely on this fallback
 #: for retrains — ``scripts/start.sh`` exports ``CUDA_VISIBLE_DEVICES``
-#: from the yaml ``compute.gpu`` field, so the yaml decides the device.
-#: The fallback is kept unchanged for direct/standalone invocations that
-#: have their own tests pinning ``"1"``.
-DEFAULT_CUDA_VISIBLE_DEVICES: str = "1"
+#: from the yaml ``compute.gpu`` field, so the yaml decides the device
+#: there.  This fallback governs direct/standalone invocations.
+DEFAULT_CUDA_VISIBLE_DEVICES: str = "0"
 
 
 def ensure_cuda_visible_devices_default() -> str:
     """Set ``CUDA_VISIBLE_DEVICES`` to :data:`DEFAULT_CUDA_VISIBLE_DEVICES`
     IF the env var is not already set — and only via ``os.environ``.
+
+    "Already set" is tested with ``is not None`` (Wf-A9 semantics,
+    matching :func:`apply_default_cuda_visible_devices` branch 2): an
+    explicit ``CUDA_VISIBLE_DEVICES=""`` counts as set and is honoured
+    verbatim (``""`` = no visible devices = CPU-only — the wf385a3
+    SCAFFOLD gate and the §5.7 CPU smokes rely on this).
 
     This is the **module-top safe** form of
     :func:`apply_default_cuda_visible_devices`: it does not import
@@ -103,9 +120,9 @@ def ensure_cuda_visible_devices_default() -> str:
         from molmetal.molmetal_lam.sbdd_env.training_utils import (
             ensure_cuda_visible_devices_default,
         )
-        ensure_cuda_visible_devices_default()  # → CUDA_VISIBLE_DEVICES='1'
+        ensure_cuda_visible_devices_default()  # → CUDA_VISIBLE_DEVICES='0'
 
-        import torch  # ← CUDA init picks up '1' now
+        import torch  # ← CUDA init picks up '0' now
 
     Returns
     -------
@@ -113,9 +130,9 @@ def ensure_cuda_visible_devices_default() -> str:
         The value applied (or already present) in
         :envvar:`CUDA_VISIBLE_DEVICES`.
     """
-    cur = os.environ.get("CUDA_VISIBLE_DEVICES", "").strip()
-    if cur:
-        return cur
+    cur = os.environ.get("CUDA_VISIBLE_DEVICES")
+    if cur is not None:
+        return cur.strip()
     os.environ["CUDA_VISIBLE_DEVICES"] = DEFAULT_CUDA_VISIBLE_DEVICES
     return DEFAULT_CUDA_VISIBLE_DEVICES
 
@@ -150,7 +167,8 @@ def apply_default_cuda_visible_devices(
        override (used by wf385a3 SCAFFOLD wire-in gate to force CPU).
     2. ``os.environ['CUDA_VISIBLE_DEVICES']`` if already set (including
        empty-string "").
-    3. :data:`DEFAULT_CUDA_VISIBLE_DEVICES` (``"1"``).
+    3. :data:`DEFAULT_CUDA_VISIBLE_DEVICES` (``"0"`` — GPU 0, RTX PRO
+       6000 Blackwell).
 
     Parameters
     ----------
@@ -159,7 +177,7 @@ def apply_default_cuda_visible_devices(
         through to env var / default"; ``""`` means "force empty
         CUDA_VISIBLE_DEVICES" (CPU-only mode for wf385a3 SCAFFOLD gate).
     logger :
-        Logger for the "defaulting to GPU 1" message.  Defaults to
+        Logger for the "defaulting to <default>" message.  Defaults to
         the module-level :data:`_LOGGER`.
 
     Returns
@@ -301,8 +319,10 @@ def resolve_default_device(
     ----------
     cuda_visible_devices :
         Value to apply to ``CUDA_VISIBLE_DEVICES`` before probing.
-        ``None`` or ``""`` keeps whatever is already in the environment
-        (or applies :data:`DEFAULT_CUDA_VISIBLE_DEVICES` if unset).
+        ``None`` honours whatever is already in the environment (or
+        applies :data:`DEFAULT_CUDA_VISIBLE_DEVICES` = ``"0"`` if
+        unset).  ``""`` is an explicit force-CPU override (no visible
+        devices) — the wf385a3 SCAFFOLD-gate contract.
     logger :
         Logger for the message.  Defaults to the module logger.
 

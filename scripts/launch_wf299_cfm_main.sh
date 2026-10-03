@@ -22,11 +22,11 @@
 #   Wave A — TODO-119 P1.4 smoke (4 ablation configs × 1 seed × 3 epochs,
 #             ~2 hr on PRO 6000 cuda:0). Reference: configs/cfm_per_innovation_ablation_p1.4.yaml
 #             §waves (wave_a..wave_d, total_wall_time_estimate=2.0).
-#   Wave B — TODO-182 G6 C12 no_wass smoke (~10 min on RTX 5090 cuda:1).
+#   Wave B — TODO-182 G6 C12 no_wass smoke (~10 min on RTX 5090 cuda:0).
 #             Reference: configs/wf124_p3_per_innovation_ablation_g6.yaml §waves
 #             wave_c (12 runs, 1.5 hr wall). Scope-compressed smoke = first 1-2
 #             (Ru, Ir) only, scaled to ~10 min for sanity.
-#   Wave C — TODO-182 G6 full sweep (60 runs, ~7.5 hr on RTX 5090 cuda:1).
+#   Wave C — TODO-182 G6 full sweep (60 runs, ~7.5 hr on RTX 5090 cuda:0).
 #             Reference: same yaml §waves total_wall_time_estimate=12.5;
 #             the user-defined Wave-C is a paper-grade subset at ~7.5 hr (the
 #             60-run full enumeration per §runs.matrix; PROJECTED not yet
@@ -103,7 +103,7 @@ WF394A3_VERIFY="${SCRIPTS_DIR}/wf394a3_wf299_pre_launch_verify.py"
 # AGENTS.md §5.1 + TODO-207 §3.1 + Wf-385-A2 §1: any > 1 hr GPU launcher
 # MUST be gated by USER_OK=1 in env, NOT silently auto-triggered. Wf-299
 # 3-wave wall ~9.5 hr sequential (Wave A ~2 hr cuda:0 + Wave B ~10 min
-# cuda:1 + Wave C ~7.5 hr cuda:1) — gate is CRITICAL SAFETY. Closes the
+# cuda:0 + Wave C ~7.5 hr cuda:0) — gate is CRITICAL SAFETY. Closes the
 # Wf-385-A2 §0 / Wf-394-A3 baseline finding (Wf-299 launcher had no USER_OK
 # gate; only --dry-run switch existed). Fires BEFORE --dry-run block per
 # Wf-378-A2 G6 lesson: --dry-run must NOT bypass USER_OK gate.
@@ -111,8 +111,8 @@ if [ "${USER_OK:-0}" != "1" ]; then
     printf '%s[FATAL]%s USER_OK gate refused: set USER_OK=1 in env to launch.\n' \
         "$(printf '\033[0;31m')" "$(printf '\033[0m')" >&2
     printf '       USER_OK=1 bash %s --dry-run --wave A   # Wave A smoke plan (~2 hr cuda:0)\n' "$0" >&2
-    printf '       USER_OK=1 bash %s --dry-run --wave B   # Wave B no_wass smoke plan (~10 min cuda:1)\n' "$0" >&2
-    printf '       USER_OK=1 bash %s --dry-run --wave C   # Wave C full sweep plan (~7.5 hr cuda:1)\n' "$0" >&2
+    printf '       USER_OK=1 bash %s --dry-run --wave B   # Wave B no_wass smoke plan (~10 min cuda:0)\n' "$0" >&2
+    printf '       USER_OK=1 bash %s --dry-run --wave C   # Wave C full sweep plan (~7.5 hr cuda:0)\n' "$0" >&2
     printf '       USER_OK=1 bash %s --dry-run --wave all # full 3-wave plan (~9.5 hr sequential)\n' "$0" >&2
     exit 64
 fi
@@ -132,8 +132,8 @@ WAVE_C_BUDGET_HR=7.5     # 60 runs × 12.5 min ≈ 12.5 hr full; 7.5 hr paper-gr
 
 # Per-wave GPU assignment
 WAVE_A_GPU="cuda:0"      # PRO 6000 Blackwell
-WAVE_B_GPU="cuda:1"      # RTX 5090
-WAVE_C_GPU="cuda:1"      # RTX 5090
+WAVE_B_GPU="cuda:0"      # RTX PRO 6000 Blackwell GPU-0 (serial execution)
+WAVE_C_GPU="cuda:0"      # RTX PRO 6000 Blackwell GPU-0 (serial execution)
 
 # -----------------------------------------------------------------------------
 # Per Wf-380-B1 §2.2 — 14 NEW CFM CLI flags wired into
@@ -303,8 +303,8 @@ cat > "${PLAN_JSON}.tmp" <<EOF
   "wave_target": "${WAVE_TARGET}",
   "waves": {
     "wave_a": {"gpu": "cuda:0", "budget_hr": 2.0, "config": "${P1_4_CONFIG}", "trainer": "${P1_4_TRAINER}"},
-    "wave_b": {"gpu": "cuda:1", "budget_hr": 0.5, "config": "${P1_4_CONFIG}", "trainer": "${P1_4_TRAINER}"},
-    "wave_c": {"gpu": "cuda:1", "budget_hr": 7.5, "config": "${G6_CONFIG}", "trainer": "${G6_TRAINER}"}
+    "wave_b": {"gpu": "cuda:0", "budget_hr": 0.5, "config": "${P1_4_CONFIG}", "trainer": "${P1_4_TRAINER}"},
+    "wave_c": {"gpu": "cuda:0", "budget_hr": 7.5, "config": "${G6_CONFIG}", "trainer": "${G6_TRAINER}"}
   },
   "ts": "$(date -Iseconds)"
 }
@@ -618,38 +618,38 @@ wave_A() {
 }
 
 # -----------------------------------------------------------------------------
-# Wave B — TODO-182 G6 C12 no_wass smoke (RTX 5090 cuda:1, ~10 min)
+# Wave B — TODO-182 G6 C12 no_wass smoke (RTX 5090 cuda:0, ~10 min)
 #   wf124_p3_per_innovation_ablation_g6.yaml §waves.wave_c
 # -----------------------------------------------------------------------------
 wave_B() {
     local out="${REPORTS_DIR}/wave_b"
-    log "Wave B plan: no_wass × (Ru, Ir) × seed=0 smoke (~10 min, cuda:1)"
+    log "Wave B plan: no_wass × (Ru, Ir) × seed=0 smoke (~10 min, cuda:0)"
     # C12 = wave_c 12-run subset (no_wass Ir/Os/Rh/Re per g6 yaml); smoke
     # further narrows to 2 metals for ~10 min wall-time.
     run_wave "B" "${WAVE_B_BUDGET_HR}" \
         "${G6_TRAINER}" "${G6_CONFIG}" "${WAVE_B_GPU}" "${out}" \
         --metals Ru --seeds 0 --epochs 50 --batch-size 64 --lr 1e-3 \
         --alpha 0.5 --wasserstein-weight 0.0 \
-        --device cuda:1 --no-enforce-budget \
+        --device cuda:0 --no-enforce-budget \
         --out-dir "${out}/no_wass_ru" || true
     run_wave "B" "${WAVE_B_BUDGET_HR}" \
         "${G6_TRAINER}" "${G6_CONFIG}" "${WAVE_B_GPU}" "${out}" \
         --metals Ir --seeds 0 --epochs 50 --batch-size 64 --lr 1e-3 \
         --alpha 0.5 --wasserstein-weight 0.0 \
-        --device cuda:1 --no-enforce-budget \
+        --device cuda:0 --no-enforce-budget \
         --out-dir "${out}/no_wass_ir" || true
     ok "Wave B no_wass smoke complete"
 }
 
 # -----------------------------------------------------------------------------
-# Wave C — TODO-182 G6 full sweep (60 runs × ~7.5 hr on RTX 5090 cuda:1)
+# Wave C — TODO-182 G6 full sweep (60 runs × ~7.5 hr on RTX 5090 cuda:0)
 #   wf124_p3_per_innovation_ablation_g6.yaml §runs.matrix (4 × 5 × 3 = 60)
 #   kill_then_adapt: split into sub-waves of < 2 hr each; per-wave user OK
 #   between sub-waves (TODO-119 P1.4 §directives.per_wave_user_ok_required).
 # -----------------------------------------------------------------------------
 wave_C() {
     local out="${REPORTS_DIR}/wave_c"
-    log "Wave C plan: 60-run enumeration, 8 sub-waves × < 2 hr each (cuda:1)"
+    log "Wave C plan: 60-run enumeration, 8 sub-waves × < 2 hr each (cuda:0)"
 
     # Per g6 yaml §waves:
     #   wave_a no_multi_task Ru/Ir/Os (9 runs, 1.1 hr)

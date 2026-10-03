@@ -471,7 +471,7 @@ def main() -> int:
     parser.add_argument("--hidden", type=int, default=64)
     parser.add_argument("--num-layers", type=int, default=3)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--device", default="cuda:1")
+    parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--time-budget-s", type=int, default=5400)
     parser.add_argument("--step-size", type=float, default=GROUP_STEP_SIZE)
     parser.add_argument(

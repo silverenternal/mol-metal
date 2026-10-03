@@ -26,23 +26,30 @@ Usage
 from __future__ import annotations
 
 
-# --- Wf-130 GPU default -----------------------------------------
-# RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
-# BEFORE `import torch` so CUDA init sees the env var.
+# --- CUDA_VISIBLE_DEVICES default (canonical resolver) ----------
+# Default GPU 0 (RTX PRO 6000 Blackwell, 98 GB) unless the env var is
+# already set (incl. "" = CPU-only).  Must run BEFORE any molmetal /
+# torch import: importing the molmetal package initialises CUDA, and
+# CUDA reads CUDA_VISIBLE_DEVICES only once, at init.  Source of
+# truth: molmetal/molmetal_lam/sbdd_env/training_utils.py (loaded
+# package-free via molmetal/scripts/_cuda_default.py).
 import os as _wf130_os
+import sys as _wf130_sys
 
-_wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
-del _wf130_os
-# --- end Wf-130 ------------------------------------------------
+_wf130_dir = _wf130_os.path.dirname(_wf130_os.path.abspath(__file__))
+if _wf130_dir not in _wf130_sys.path:
+    _wf130_sys.path.append(_wf130_dir)
+from _cuda_default import ensure_cuda_visible_devices_default as _wf130_cvd
+
+_wf130_cvd()
+del _wf130_cvd, _wf130_dir, _wf130_os, _wf130_sys
+# --- end CUDA default --------------------------------------------
 
 import argparse
-import io
 import os
 import struct
 import sys
 import time
-import warnings
-from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -56,14 +63,13 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from molmetal.adapters.flow_matching_lipman import (
     _import_fm_lib,
-    LipmanFlowMatchingAdapter,
 )
 from molmetal.adapters.rdkit_predictor import RDKitPropertyPredictor
 from molmetal.data.crossdocked import CrossDockedDataset
 from molmetal.data.featurize import MorganFingerprinter
 from molmetal.domain import Molecule, Pocket
 from molmetal.models._scatter import scatter_sum_legacy as _scatter_sum
-from molmetal.ports import GenerationConfig, PropertyPrediction
+from molmetal.ports import PropertyPrediction
 from molmetal.utils.device import get_device, verify_rocm_active
 from molmetal.molmetal_lam.sbdd_env.training_utils import (
     apply_default_cuda_visible_devices,
@@ -367,11 +373,8 @@ class PocketDataModule:
         self, archive_path: Path, target_name: str, out_path: Path
     ) -> bool:
         from molmetal.data.crossdocked import (
-            _parse_cd_entry,
             _read_central_directory,
-            _read_first_eocd,
         )
-        import zipfile
 
         cd = _read_central_directory(archive_path)
         match = None
@@ -629,7 +632,7 @@ class PocketDataModule:
             print(f"[pocket_fm] Extracting tarball to {extract_dir.parent} ...")
             with tarfile.open(tarball_path, "r:gz") as tar:
                 tar.extractall(extract_dir.parent)
-            print(f"[pocket_fm] Tarball extracted.")
+            print("[pocket_fm] Tarball extracted.")
 
         # Iterate through dataset and filter for MMP or random
         np.random.seed(self.seed)
@@ -944,8 +947,9 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="",
         help=(
             "Override CUDA_VISIBLE_DEVICES before device resolution.  "
-            "Empty '' → default '1' (RTX 5090 on kanzi, GPU 0 = VLM "
-            "venv)."
+            "Empty '' (the default) = inherit the shell env; if neither "
+            "is set, the canonical default '0' applies (GPU 0 — RTX PRO "
+            "6000 Blackwell)."
         ),
     )
     return p.parse_args(argv)
@@ -990,9 +994,11 @@ def main(argv: list[str] | None = None) -> int:
 
     # --- 2. Build velocity field + FM infrastructure -----------------------
     print("[pocket_fm] Initialising PocketConditionedVelocityField...")
-    # Wf-130 — default CUDA_VISIBLE_DEVICES=1 (RTX 5090 on kanzi)
+    # Wf-130 — canonical GPU default: GPU 0 (RTX PRO 6000 Blackwell).
+    # Flag '' = inherit (coerce to None so the resolver default applies);
+    # env var / non-empty flag still win.
     apply_default_cuda_visible_devices(
-        override=getattr(args, "cuda_visible_devices", ""),
+        override=(getattr(args, "cuda_visible_devices", "") or None),
     )
     device_info = verify_rocm_active()
     device = get_device()

@@ -95,7 +95,7 @@ R3_BUDGET_HR=12.0       # Wf-355-A1 R3 full (3 subsets × 5 seeds × 50 ep on RT
 
 # Per-phase GPU assignment (per Wf-130 default kanzi GPU 1)
 R1_GPU="cpu"
-R3_GPU="cuda:1"
+R3_GPU="cuda:0"
 
 # VRAM budget (per AGENTS.md §5.1 — RTX 5090 32GB or RTX PRO 6000 98GB)
 VRAM_BUDGET_GB=24
@@ -471,7 +471,7 @@ phase_R1() {
 # -----------------------------------------------------------------------------
 phase_R3() {
     local out="${REPORTS_DIR}/r3"
-    log "Wf-355-A1 R3 plan: DrugOOD chemprop v2 full 3 subsets × 5 seeds × 50 epoch (~10 hr cuda:1)"
+    log "Wf-355-A1 R3 plan: DrugOOD chemprop v2 full 3 subsets × 5 seeds × 50 epoch (~10 hr cuda:0)"
     log "  Wf-185 driver: --seeds 0..4 --epochs 50 --hidden 128 --depth 2 --bf16"
     log "  Per-subset time budget: $(( ${R3_BUDGET_HR%.*} * 3600 / 3 ))s (R3_BUDGET_HR/3 split)"
     for subset in "${DRUGOOD_SUBSETS[@]}"; do

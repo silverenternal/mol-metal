@@ -10,7 +10,7 @@
 # ----------------------------------------------------------------------------
 # PHASE 1 — Currently in flight (NOT touched by this script):
 #   - G5 retrain retry (Ru seed=2 + Ir seed=0) — IN-FLIGHT on both GPUs
-#   - Wf-124 G6 60-tuple sweep (7.5 hr cuda:1) — IN-FLIGHT (launched 09:54:31)
+#   - Wf-124 G6 60-tuple sweep (7.5 hr cuda:0) — IN-FLIGHT (launched 09:54:31)
 #   - Wf-310F frontier Wave A (cuda:0) — IN-FLIGHT (launched 09:59:49)
 #
 # PHASE 2 — GPU 0 jobs (run when Wave A finishes):
@@ -18,17 +18,17 @@
 #   2. Wf-119 P1.4 chemprop v3 LOMO (2.0 hr cuda:0)         [NEW per Wf-336-X2]
 #
 # PHASE 3 — GPU 1 jobs (run when G6 finishes, in priority order):
-#   1. Wf-310F frontier Wave B (0.5 hr cuda:1)
-#   2. Wf-219 §4.1 Ru (13.5 min cuda:1)
+#   1. Wf-310F frontier Wave B (0.5 hr cuda:0)
+#   2. Wf-219 §4.1 Ru (13.5 min cuda:0)
 #   3. Wf-333 Vina 4-step (BLOCKED on Vina 1.2.7 install)  [NEW per Wf-334-U2]
-#   4. Wf-310C TODO-220 (3.9 hr cuda:1)
-#   5. Wf-310C TODO-179 (4.5 hr cuda:1)
-#   6. Wf-310D DrugOOD DANN Phase A (3-4 hr cuda:1)
-#   7. DrugOOD Wf-74 v2 (3-4 hr cuda:1)                     [NEW per Wf-336-X3]
-#   8. Wf-135 Phase 2 LOMO 5×5×50 (2 weeks cuda:1)
+#   4. Wf-310C TODO-220 (3.9 hr cuda:0)
+#   5. Wf-310C TODO-179 (4.5 hr cuda:0)
+#   6. Wf-310D DrugOOD DANN Phase A (3-4 hr cuda:0)
+#   7. DrugOOD Wf-74 v2 (3-4 hr cuda:0)                     [NEW per Wf-336-X3]
+#   8. Wf-135 Phase 2 LOMO 5×5×50 (2 weeks cuda:0)
 #   9. Wf-264 CFM property panel (10 min CPU, post-LOMO)    [NEW per Wf-334-U3]
 #  10. Wf-264 CFM property panel RUN-ONCE (10 min CPU)      [NEW per Wf-338-F1]
-#  11. W₂ sliced GPU smoke (5 min GPU cuda:1)               [NEW per Wf-338-F1]
+#  11. W₂ sliced GPU smoke (5 min GPU cuda:0)               [NEW per Wf-338-F1]
 #
 # SKIPPED:
 #   - Wf-219 §4.2 production backbone (PAPER_OK required per TODO-84)
@@ -60,22 +60,18 @@ log() {
   echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] $*" | tee -a "${PIPELINE_LOG}"
 }
 
+# Single GPU-0 wait helper (2026-10-03 all-GPU-0 / serial directive).
+# This replaces the old pair wait_for_gpu0_free / wait_for_gpu1_free: with
+# every wave serialised on GPU 0 there is no second card to wait on, so the
+# match is deliberately device-agnostic — it waits for ANY foreground
+# training process, which is the correct serialisation condition.
 wait_for_gpu0_free() {
-  log "Waiting for GPU 0 free (no cuda:0 processes other than G5 Ir seed=0 + Wave-A done)..."
-  # Wait for any foreground cuda:0 training process to finish
-  while pgrep -af "train_(dmpnn|cfm|chemprop).*cuda:0" >/dev/null 2>&1; do
+  log "Waiting for GPU 0 free (serial execution, 2026-10-03 directive)..."
+  # Wait for any foreground training process to finish
+  while pgrep -af "train_(dmpnn|cfm|chemprop)" >/dev/null 2>&1; do
     sleep 60
   done
   log "GPU 0 free"
-}
-
-wait_for_gpu1_free() {
-  log "Waiting for GPU 1 free (no cuda:1 processes other than G5 Ru seed=2 + G6 done)..."
-  # Wait for any foreground cuda:1 training process to finish
-  while pgrep -af "train_(dmpnn|cfm|chemprop).*cuda:1" >/dev/null 2>&1; do
-    sleep 60
-  done
-  log "GPU 1 free"
 }
 
 # ============================================================================
@@ -197,15 +193,15 @@ phase3_gpu1() {
     wf343c4_gate || return $?
   fi
 
-  wait_for_gpu1_free
+  wait_for_gpu0_free
 
-  # Job 1: Wf-310F frontier Wave B (~0.5 hr cuda:1)
+  # Job 1: Wf-310F frontier Wave B (~0.5 hr cuda:0)
   log "Launching Wf-310F frontier Wave B"
   WF310F_NEXT_WAVE=B nohup bash molmetal/scripts/launch_wf310f_frontier_math_gpu.sh --wave B \
     > "${LOG_DIR}/wf310f_wave_b.log" 2>&1
   log "Wave B done (rc=$?)"
 
-  # Job 2: Wf-219 §4.1 Ru (13.5 min cuda:1)
+  # Job 2: Wf-219 §4.1 Ru (13.5 min cuda:0)
   log "Launching Wf-219 §4.1 Ru"
   USER_OK=1 nohup bash molmetal/scripts/launch_wf306b_wf219_ru_gpu.sh \
     > "${LOG_DIR}/wf219_ru.log" 2>&1
@@ -219,27 +215,27 @@ phase3_gpu1() {
     > "${LOG_DIR}/wf333_vina.log" 2>&1
   log "Wf-333 Vina 4-step done (rc=$?, BLOCKED on Vina install)"
 
-  # Job 4: Wf-310C TODO-220 (3.9 hr cuda:1)
+  # Job 4: Wf-310C TODO-220 (3.9 hr cuda:0)
   log "Launching Wf-310C TODO-220"
   touch /tmp/USER_OK_WF310C_TODO220
   nohup bash molmetal/scripts/launch_wf310c_todo220_gpu.sh \
     > "${LOG_DIR}/wf310c_todo220.log" 2>&1
   log "TODO-220 done (rc=$?)"
 
-  # Job 5: Wf-310C TODO-179 W2 PlatinAI 4-cell (4.5 hr cuda:1)
+  # Job 5: Wf-310C TODO-179 W2 PlatinAI 4-cell (4.5 hr cuda:0)
   log "Launching Wf-310C TODO-179"
   touch /tmp/USER_OK_WF310C_T179
   nohup bash molmetal/scripts/launch_wf310c_t179_w2_gpu.sh \
     > "${LOG_DIR}/wf310c_t179.log" 2>&1
   log "TODO-179 done (rc=$?)"
 
-  # Job 6: Wf-310D DrugOOD DANN Phase A (3-4 hr cuda:1)
+  # Job 6: Wf-310D DrugOOD DANN Phase A (3-4 hr cuda:0)
   log "Launching Wf-310D DrugOOD DANN Phase A"
   WF306A_USER_OK=YES nohup bash molmetal/scripts/launch_wf306a_drugood_vina_gpu.sh --phase A \
     > "${LOG_DIR}/wf310d_drugood.log" 2>&1
   log "DrugOOD DANN done (rc=$?)"
 
-  # Job 7: DrugOOD Wf-74 v2 DANN (3-4 hr cuda:1) — NEW per Wf-336-X3
+  # Job 7: DrugOOD Wf-74 v2 DANN (3-4 hr cuda:0) — NEW per Wf-336-X3
   # Re-launch wrapper that wires Wf-328 (W1-W10) onto the Wf-305D DANN
   # driver; ood_test_auc=0.4574 BELOW field-avg 0.55-0.65 (per Wf-297B +
   # Wf-301A) needs the re-launch wrapper to attempt recovery.
@@ -248,7 +244,7 @@ phase3_gpu1() {
     > "${LOG_DIR}/wf74_v2_drugood.log" 2>&1
   log "Wf-74 v2 DrugOOD done (rc=$?)"
 
-  # Job 8: Wf-135 Phase 2 LOMO (2 weeks cuda:1) — wrapper lives in scripts/ (Wf-310E ship)
+  # Job 8: Wf-135 Phase 2 LOMO (2 weeks cuda:0) — wrapper lives in scripts/ (Wf-310E ship)
   log "Launching Wf-135 Phase 2 LOMO"
   USER_OK=1 nohup bash scripts/launch_wf310e_wf135_phase2_gpu.sh \
     > "${LOG_DIR}/wf135_phase2.log" 2>&1
@@ -273,12 +269,12 @@ phase3_gpu1() {
     > "${LOG_DIR}/wf264_run_once.log" 2>&1
   log "Wf-264 CFM property panel RUN-ONCE done (rc=$?)"
 
-  # Job 11: W₂ sliced GPU smoke (~5 min GPU cuda:1) — NEW per Wf-338-F1
+  # Job 11: W₂ sliced GPU smoke (~5 min GPU cuda:0) — NEW per Wf-338-F1
   # Per Wf-328-W5: --w2-gradient-mode default is "sort" (MEASURED 2-3×
   # speedup).  This smoke exercises the legacy "sliced" mode for paper
   # §6 reproducibility audits.  VRAM-budgeted (>= 24 GB free); USER_OK
   # gate enforced by wrapper itself.
-  log "Launching W₂ sliced GPU smoke on cuda:1"
+  log "Launching W₂ sliced GPU smoke on cuda:0"
   USER_OK=1 nohup bash scripts/gpu_smoke_w2_sliced.sh \
     > "${LOG_DIR}/w2_sliced_smoke.log" 2>&1
   log "W₂ sliced GPU smoke done (rc=$?)"

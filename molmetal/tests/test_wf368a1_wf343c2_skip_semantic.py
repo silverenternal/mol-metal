@@ -34,7 +34,6 @@ Source: Wf-368-A1 closeout + Wf-367-A2 + Wf-364-A1 §4.2 root-cause.
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -49,7 +48,6 @@ REPO_ROOT = PROJECT_ROOT
 # Allow direct module import for helpers + path constants.
 sys.path.insert(0, str(SCRIPT_DIR))
 
-import wf343c2_per_wave_check as wf343c2  # noqa: E402
 
 VENV_PY = "/home/hugo/codes/mol-metal/.venv/bin/python"
 WF343C2_SCRIPT = SCRIPT_DIR / "wf343c2_per_wave_check.py"

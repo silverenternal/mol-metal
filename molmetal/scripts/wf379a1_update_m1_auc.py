@@ -126,7 +126,7 @@ def main() -> int:
         "n_total_runs": len(DEFERRED_PAIRS),
         "n_completed_runs": len(DEFERRED_PAIRS) - len(missing),
         "missing_runs": missing,
-        "gpu": "cuda:1 (RTX 5090 GPU-1, 32 GB)",
+        "gpu": "cuda:0 (RTX PRO 6000 Blackwell, 98 GB)",
         "epochs": 50,
         "krasnov_gate_target": KRASNOV_GATE,
         "per_metal_aggregate": per_metal_agg,

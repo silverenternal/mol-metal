@@ -57,7 +57,6 @@ from __future__ import annotations
 
 import argparse
 import ast
-import importlib
 import json
 import os
 import re
@@ -67,7 +66,7 @@ import time
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -253,6 +252,7 @@ def _run_master_verify(*, skip_smoke: bool) -> CheckResult:
     args = ["--skip-smoke"] if skip_smoke else []
     cmd = [str(VENV_PY), str(SCRIPTS_DIR / "master_verify_r18.py"), *args]
     env = dict(os.environ)
+    # DO-NOT-MIGRATE: "" = CPU-only by design (not subject to the GPU-0 default).
     env["CUDA_VISIBLE_DEVICES"] = ""
     try:
         proc = subprocess.run(
@@ -663,8 +663,8 @@ def _audit_script(name: str) -> CheckResult:
         passed=True,
         seconds=time.time() - t0,
         message=(
-            f"no score_any() redirect required (no-mock / CPU "
-            f"scaffolding / label-text); no forbidden mock defs"
+            "no score_any() redirect required (no-mock / CPU "
+            "scaffolding / label-text); no forbidden mock defs"
         ),
         detail={
             "expected_metrics": list(expected),

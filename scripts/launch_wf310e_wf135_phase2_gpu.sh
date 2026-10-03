@@ -72,7 +72,7 @@ METALS=(Rh Ru Ir Os Re)   # 5-metal LOMO
 SEEDS=(0 1 2 3 4)         # 5 seeds (vs Wf-131 P3 baseline 3)
 EPOCHS=50
 WALL_BUDGET_HR=14          # 2 weeks upper bound
-GPU="cuda:1"               # RTX 5090 GPU-1
+GPU="cuda:0"               # RTX PRO 6000 Blackwell GPU-0 (serial execution)
 
 mkdir -p "${REPORTS_DIR}"
 
@@ -184,7 +184,7 @@ ok "plan emitted → ${PLAN_JSON}"
 if [ "${DRY_RUN}" = "1" ]; then
     log "DRY-RUN: skipping GPU launch (USER_OK was still required)"
     log "DRY-RUN: actual invocation would be:"
-    log "  CUDA_VISIBLE_DEVICES=1 ${PY} ${TRAINER} \\"
+    log "  CUDA_VISIBLE_DEVICES=0 ${PY} ${TRAINER} \\"
     log "    --metals ${METALS[*]} --seeds ${SEEDS[*]} \\"
     log "    --epochs ${EPOCHS} \\"
     log "    --balanced-cohort-json ${PHASE1_COHORT} \\"
@@ -215,7 +215,9 @@ start_ts=$(date +%s)
 for METAL in "${METALS[@]}"; do
     for SEED in "${SEEDS[@]}"; do
         log "=== metal=${METAL} seed=${SEED} on ${GPU} ==="
-        if CUDA_VISIBLE_DEVICES=1 "${PY}" "${TRAINER}" \
+        # GPU 0 (RTX PRO 6000 Blackwell) per the 2026-10-03 all-GPU-0
+        # directive; this call site is serial with every other job.
+        if CUDA_VISIBLE_DEVICES=0 "${PY}" "${TRAINER}" \
                 --metals "${METAL}" \
                 --seeds "${SEED}" \
                 --epochs "${EPOCHS}" \

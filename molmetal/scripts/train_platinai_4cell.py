@@ -41,14 +41,24 @@ Usage
 
 from __future__ import annotations
 
-# --- Wf-130 GPU default -----------------------------------------
-# RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
-# BEFORE `import torch` so CUDA init sees the env var.
+# --- CUDA_VISIBLE_DEVICES default (canonical resolver) ----------
+# Default GPU 0 (RTX PRO 6000 Blackwell, 98 GB) unless the env var is
+# already set (incl. "" = CPU-only).  Must run BEFORE any molmetal /
+# torch import: importing the molmetal package initialises CUDA, and
+# CUDA reads CUDA_VISIBLE_DEVICES only once, at init.  Source of
+# truth: molmetal/molmetal_lam/sbdd_env/training_utils.py (loaded
+# package-free via molmetal/scripts/_cuda_default.py).
 import os as _wf130_os
+import sys as _wf130_sys
 
-_wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
-del _wf130_os
-# --- end Wf-130 ------------------------------------------------
+_wf130_dir = _wf130_os.path.dirname(_wf130_os.path.abspath(__file__))
+if _wf130_dir not in _wf130_sys.path:
+    _wf130_sys.path.append(_wf130_dir)
+from _cuda_default import ensure_cuda_visible_devices_default as _wf130_cvd
+
+_wf130_cvd()
+del _wf130_cvd, _wf130_dir, _wf130_os, _wf130_sys
+# --- end CUDA default --------------------------------------------
 
 # Wf-50 pre-condition: ensure MOLMETAL_DATA_DIR defaults to project-local data dir
 # (overridable via env var; previously hard-coded to /mnt/storage which does not exist
@@ -66,7 +76,6 @@ del _wf50_os, _wf50_Path, _wf50_proj_root, _wf50_default_data
 import argparse
 import csv
 import json
-import statistics
 import sys
 import time
 from dataclasses import dataclass
@@ -87,13 +96,11 @@ from molmetal.baselines.dmpnn import (
     DMPNN_HIDDEN,
     DMPNN_DEPTH,
     DMPNN_DROPOUT,
-    DMPNN_LR,
-    DMPNN_BATCH_SIZE,
     featurize_smiles_list,
     collate_graphs,
     _GRUUpdate,
 )
-from molmetal.baselines.eval_utils import compute_metrics, per_cell_line_auc
+from molmetal.baselines.eval_utils import compute_metrics
 from molmetal.data.splits import ScaffoldSplitter
 
 try:
@@ -758,8 +765,9 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default="",
         help=(
             "Override CUDA_VISIBLE_DEVICES before device resolution.  "
-            "Empty '' → default '1' (RTX 5090 on kanzi, GPU 0 = VLM "
-            "venv)."
+            "Empty '' (the default) = inherit the shell env; if neither "
+            "is set, the canonical default '0' applies (GPU 0 — RTX PRO "
+            "6000 Blackwell)."
         ),
     )
     p.add_argument(
@@ -808,14 +816,15 @@ def _build_splitter(args: argparse.Namespace, seed: int):
 
 
 def _run_one_seed(args: argparse.Namespace, seed: int) -> Dict[str, object]:
-    # Wf-130 — GPU-first device defaults (RTX 5090 via
-    # CUDA_VISIBLE_DEVICES=1 on kanzi) when allocatable.
+    # Wf-130 — GPU-first device defaults (GPU 0 — RTX PRO 6000 Blackwell
+    # by default) when allocatable.  Flag '' = inherit (coerce to None so
+    # the resolver default applies); env var / non-empty flag still win.
     from molmetal.molmetal_lam.sbdd_env.training_utils import (
         apply_default_cuda_visible_devices,
     )
 
     apply_default_cuda_visible_devices(
-        override=getattr(args, "cuda_visible_devices", "")
+        override=(getattr(args, "cuda_visible_devices", "") or None)
     )
     print(
         f"\n[metric2] === seed {seed} (epochs={args.epochs}, bs={args.batch_size}, "
@@ -850,7 +859,7 @@ def _run_one_seed(args: argparse.Namespace, seed: int) -> Dict[str, object]:
     pl_act = eval_out["per_line_active_rate"]
     auc_mean = float(np.mean(list(pl_auc.values()))) if pl_auc else float("nan")
     print(
-        f"[metric2]   test AUC per cell line: "
+        "[metric2]   test AUC per cell line: "
         + ", ".join(f"{l}={pl_auc.get(l, float('nan')):.4f}" for l in CELL_LINES)
         + f"  mean={auc_mean:.4f}  (elapsed={elapsed:.1f}s)",
         flush=True,
@@ -898,7 +907,7 @@ def _write_report(
         "# Metric 2 — PlatinAI Pt 4-cell-line AUC",
         "",
         f"**Date:** {time.strftime('%Y-%m-%d')}",
-        f"**Model:** 4-cell-line multi-task D-MPNN (4 cls + 4 reg heads)",
+        "**Model:** 4-cell-line multi-task D-MPNN (4 cls + 4 reg heads)",
         f"**Split:** {'scaffold (Bemis-Murcko) 70/10/20' if args.scaffold_split else 'random 70/10/20'}",
         f"**Seeds:** {args.seeds}  ",
         f"**Epochs:** {args.epochs}, lr={args.lr}, batch={args.batch_size}, alpha={args.alpha}",
@@ -1023,7 +1032,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         aggregate_path, json.dumps(full_payload, indent=2, default=str)
     )
     print(
-        f"\n[metric2] === AGGREGATE ===",
+        "\n[metric2] === AGGREGATE ===",
         f"\n[metric2] AUC mean = {aggregate['auc_mean_avg']:.4f} ± {aggregate['auc_mean_std']:.4f}",
         f"\n[metric2] A2780cis  = {aggregate['auc_A2780cis_avg']:.4f} ± {aggregate['auc_A2780cis_std']:.4f}",
         flush=True,

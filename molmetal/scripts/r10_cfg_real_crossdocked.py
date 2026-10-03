@@ -150,7 +150,6 @@ def decode_learned_bond_graph(
         from molmetal.models.bond_head import (
             AtomCloud,
             BondAwareDecoder,
-            BondOrderHead,
             ConnectivityAwareDecoder,
             default_trained_head,
         )
@@ -865,7 +864,6 @@ def main():
         from molmetal.molmetal_lam.lam_chem.data_diversity import (
             build_combined_pool,
             cache_csv,
-            load_platinai_smiles,
         )
 
         if args.data_source == "platinai":

@@ -17,7 +17,7 @@
 # Per Wf-334: GPU smoke was DEFERRED for Wf-264 + Vina 4-step + Triangle
 # due to VRAM occupied (G6 on GPU 1, sunlong/dfine_t146 on GPU 0).
 # This wrapper IS the pipeline script that autonomously watches VRAM and
-# launches the 3 smoke targets as soon as the second GPU (cuda:1) frees
+# launches the 3 smoke targets as soon as the second GPU (cuda:0) frees
 # up — this is the "pipeline script, not polling" pattern honored per
 # user memory "Don't poll GPU, write pipelines" (2026-09-29).
 #
@@ -46,7 +46,7 @@
 #       * Vina 4-step smoke: BLOCKED on Vina 1.2.7 conda install
 #         (per AGENTS.md §5.4 + Wf-299B); steps 1+2 (receptor/ligand
 #         prep) run as smoke, step 3 (Vina dock) is BLOCKED
-#       * Triangle smoke: ~5 min GPU on cuda:1 (Wf-333-G2 wrapper,
+#       * Triangle smoke: ~5 min GPU on cuda:0 (Wf-333-G2 wrapper,
 #         1-seed × 5-epoch smoke run)
 #   - Each target's MEASURED-vs-PROJECTED label preserved; pre-flight
 #     v3 62/62 PASS gate preserved from Wf-328-SYN baseline
@@ -82,7 +82,7 @@ LOG_DIR="${PROJECT_ROOT}/molmetal/reports/wf337u3_gpu_smoke"
 WRAPPER_LOG="${LOG_DIR}/wrapper.log"
 STATE_FILE="${LOG_DIR}/state.json"
 
-# VRAM budget threshold (MiB) — Triangle GPU smoke needs ≥ 24 GB on cuda:1
+# VRAM budget threshold (MiB) — Triangle GPU smoke needs ≥ 24 GB on cuda:0
 VRAM_FREE_MIN_MIB=24576  # 24 GB
 VRAM_POLL_INTERVAL_SEC=60
 VRAM_MAX_WAIT_MIN=120    # wait up to 2 hr before declaring VRAM_BLOCKED
@@ -126,7 +126,7 @@ probe_vram() {
 }
 
 parse_vram_for_index() {
-  local gpu_idx="${1:-1}"
+  local gpu_idx="${1:-0}"
   local probe_out
   probe_out=$(probe_vram) || { echo "0"; return 1; }
   echo "${probe_out}" | awk -F',' -v idx="${gpu_idx}" '
@@ -172,7 +172,7 @@ check_user_ok() {
 # VRAM wait (polls every 60s, up to VRAM_MAX_WAIT_MIN)
 # -----------------------------------------------------------------------------
 wait_for_vram() {
-  local gpu_idx="${1:-1}"
+  local gpu_idx="${1:-0}"
   local free_mib
   local waited_min=0
   while [ "${waited_min}" -lt "${VRAM_MAX_WAIT_MIN}" ]; do
@@ -244,7 +244,7 @@ launch_vina_4step_smoke() {
 # -----------------------------------------------------------------------------
 launch_triangle_smoke() {
   local target_log="${LOG_DIR}/triangle_smoke.log"
-  log "Launching Triangle 12-d GPU smoke on cuda:1"
+  log "Launching Triangle 12-d GPU smoke on cuda:0"
   log "  wrapper: molmetal/scripts/wf333g2_triangle_12d_gpu_wrapper.py"
   log "  Wf-328+Wf-335 fixes:"
   log "    --torch-compile-mode-v2 max-autotune-no-cudagraphs (Wf-335-R1)"
@@ -252,13 +252,13 @@ launch_triangle_smoke() {
   log "    --num-workers 8 (Wf-328-W6 / Wf-326B OPTIMAL_NUM_WORKERS)"
   log "    --cpu-num-workers 8 (Wf-328-W2)"
   log "    --w2-gradient-mode sort (Wf-328-W5)"
-  log "  expected wall: ~5 min GPU cuda:1 (1-seed × 5-epoch smoke)"
+  log "  expected wall: ~5 min GPU cuda:0 (1-seed × 5-epoch smoke)"
   if [ "${DRY_RUN:-0}" = "1" ]; then
-    echo "[DRY-RUN] USER_OK=1 ${PY} molmetal/scripts/wf333g2_triangle_12d_gpu_wrapper.py --cuda-visible-devices 1 --output molmetal/reports/wf337u3_triangle_smoke" | tee -a "${target_log}"
+    echo "[DRY-RUN] USER_OK=1 ${PY} molmetal/scripts/wf333g2_triangle_12d_gpu_wrapper.py --cuda-visible-devices 0 --output molmetal/reports/wf337u3_triangle_smoke" | tee -a "${target_log}"
     return 0
   fi
   USER_OK=1 nohup "${PY}" "${SCRIPTS_DIR}/wf333g2_triangle_12d_gpu_wrapper.py" \
-    --cuda-visible-devices 1 \
+    --cuda-visible-devices 0 \
     --output "${PROJECT_ROOT}/molmetal/reports/wf337u3_triangle_smoke" \
     > "${target_log}" 2>&1 &
   local pid=$!
@@ -311,12 +311,12 @@ main() {
   # Initial VRAM probe
   local vram_free
   vram_free=$(parse_vram_for_index 1 | head -1)
-  log "Initial VRAM probe: cuda:1 free=${vram_free:-?} MiB"
+  log "Initial VRAM probe: cuda:0 free=${vram_free:-?} MiB"
 
   # Watch mode: wait until VRAM is free, then launch
   if [ "${WATCH_MODE:-0}" = "1" ] || [ "${DRY_RUN:-0}" != "1" ]; then
     if ! wait_for_vram 1; then
-      log "ABORT: VRAM not free on cuda:1 after ${VRAM_MAX_WAIT_MIN} min"
+      log "ABORT: VRAM not free on cuda:0 after ${VRAM_MAX_WAIT_MIN} min"
       exit 1
     fi
   fi

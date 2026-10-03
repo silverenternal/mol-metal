@@ -50,7 +50,7 @@
 #   - MEASURED: --w2-gradient-mode sort MEASURED 2-3× W₂ step speedup
 #     over sliced on RTX PRO 6000 Blackwell sm_120 (per Wf-326A quick wins
 #     + Wf-328-W5 ship).
-#   - PROJECTED wall: ~5 min GPU on cuda:1 (100 ligands × 1 seed ×
+#   - PROJECTED wall: ~5 min GPU on cuda:0 (100 ligands × 1 seed ×
 #     1-epoch smoke run).
 #   - HONEST_NEGATIVE_HISTORICAL: prior Wf-334 GPU smoke did NOT exercise
 #     the sliced mode (only the sort default path). This wrapper closes
@@ -83,7 +83,7 @@ LOG_DIR="${PROJECT_ROOT}/molmetal/reports/wf338f1_w2_sliced_smoke"
 WRAPPER_LOG="${LOG_DIR}/wrapper.log"
 STATE_FILE="${LOG_DIR}/state.json"
 
-# VRAM budget threshold (MiB) — sliced W₂ GPU smoke needs ≥ 24 GB on cuda:1
+# VRAM budget threshold (MiB) — sliced W₂ GPU smoke needs ≥ 24 GB on cuda:0
 VRAM_FREE_MIN_MIB=24576  # 24 GB
 VRAM_POLL_INTERVAL_SEC=60
 VRAM_MAX_WAIT_MIN=120    # wait up to 2 hr before declaring VRAM_BLOCKED
@@ -125,7 +125,7 @@ probe_vram() {
 }
 
 parse_vram_for_index() {
-  local gpu_idx="${1:-1}"
+  local gpu_idx="${1:-0}"
   local probe_out
   probe_out=$(probe_vram) || { echo "0"; return 1; }
   echo "${probe_out}" | awk -F',' -v idx="${gpu_idx}" '
@@ -171,7 +171,7 @@ check_user_ok() {
 # VRAM wait (polls every 60s, up to VRAM_MAX_WAIT_MIN)
 # -----------------------------------------------------------------------------
 wait_for_vram() {
-  local gpu_idx="${1:-1}"
+  local gpu_idx="${1:-0}"
   local free_mib
   local waited_min=0
   while [ "${waited_min}" -lt "${VRAM_MAX_WAIT_MIN}" ]; do
@@ -199,7 +199,7 @@ wait_for_vram() {
 # -----------------------------------------------------------------------------
 launch_w2_sliced_smoke() {
   local target_log="${LOG_DIR}/w2_sliced_smoke.log"
-  log "Launching W₂ sliced GPU smoke on cuda:1"
+  log "Launching W₂ sliced GPU smoke on cuda:0"
   log "  trainer: molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
   log "  Wf-328+Wf-335 fixes:"
   log "    --w2-gradient-mode sliced (this smoke — production default is 'sort' per Wf-328-W5)"
@@ -208,11 +208,11 @@ launch_w2_sliced_smoke() {
   log "    --num-workers 8 (Wf-328-W6 / Wf-326B OPTIMAL_NUM_WORKERS)"
   log "    --cpu-num-workers 8 (Wf-328-W2)"
   log "    --bf16 / --tf32 (Wf-328-W3, W4)"
-  log "  expected wall: ~5 min GPU cuda:1 (100 ligands × 1 seed × 1-epoch smoke)"
+  log "  expected wall: ~5 min GPU cuda:0 (100 ligands × 1 seed × 1-epoch smoke)"
 
   if [ "${DRY_RUN:-0}" = "1" ]; then
     echo "[DRY-RUN] USER_OK=1 ${PY} molmetal/scripts/train_dmpnn_multitask_wasserstein.py \\" | tee -a "${target_log}"
-    echo "    --cuda-visible-devices 1 \\" | tee -a "${target_log}"
+    echo "    --cuda-visible-devices 0 \\" | tee -a "${target_log}"
     echo "    --w2-gradient-mode sliced \\" | tee -a "${target_log}"
     echo "    --epochs 1 --seeds 0 --smoke --num-workers 8 --cpu-num-workers 8 \\" | tee -a "${target_log}"
     echo "    --torch-compile-mode-v2 max-autotune-no-cudagraphs --no-cuda-graphs \\" | tee -a "${target_log}"
@@ -222,7 +222,7 @@ launch_w2_sliced_smoke() {
   fi
 
   USER_OK=1 nohup "${PY}" "${SCRIPTS_DIR}/train_dmpnn_multitask_wasserstein.py" \
-    --cuda-visible-devices 1 \
+    --cuda-visible-devices 0 \
     --w2-gradient-mode sliced \
     --epochs 1 --seeds 0 --smoke \
     --num-workers 8 --cpu-num-workers 8 \
@@ -284,12 +284,12 @@ main() {
   # Initial VRAM probe
   local vram_free
   vram_free=$(parse_vram_for_index 1 | head -1)
-  log "Initial VRAM probe: cuda:1 free=${vram_free:-?} MiB"
+  log "Initial VRAM probe: cuda:0 free=${vram_free:-?} MiB"
 
   # Watch mode: wait until VRAM is free, then launch
   if [ "${WATCH_MODE:-0}" = "1" ] || [ "${DRY_RUN:-0}" != "1" ]; then
     if ! wait_for_vram 1; then
-      log "ABORT: VRAM not free on cuda:1 after ${VRAM_MAX_WAIT_MIN} min"
+      log "ABORT: VRAM not free on cuda:0 after ${VRAM_MAX_WAIT_MIN} min"
       exit 1
     fi
   fi

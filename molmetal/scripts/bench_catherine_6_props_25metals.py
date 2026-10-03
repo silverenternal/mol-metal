@@ -76,7 +76,7 @@ import warnings
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 # ---------------------------------------------------------------------------
 # Repo-root path injection
@@ -226,7 +226,6 @@ def _run_closure_for_metal(
 
     try:
         from molmetal_lam.lam_chem.closure import (
-            ProductiveSpace,
             closure_theorem,
         )
         from molmetal_lam.molecules.closed_term import MoleculeClosedTerm

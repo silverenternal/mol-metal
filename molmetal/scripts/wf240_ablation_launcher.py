@@ -49,7 +49,6 @@ import argparse
 import json
 import os
 import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -448,12 +447,12 @@ def main():
     # Human-readable synthesis
     syn = OUT_DIR / "synthesis.md"
     with open(syn, "w") as f:
-        f.write(f"# Wf-240 per-innovation ablation — EXTENSION of Wf-229\n\n")
+        f.write("# Wf-240 per-innovation ablation — EXTENSION of Wf-229\n\n")
         f.write(
-            f"**Purpose**: Wf-229 only completed 2/11 configs at 5 epochs and showed K-only lift=0 within noise. "
-            f"This extension re-runs ALL configs at 50 epochs for a MEASURED signal.\n\n"
+            "**Purpose**: Wf-229 only completed 2/11 configs at 5 epochs and showed K-only lift=0 within noise. "
+            "This extension re-runs ALL configs at 50 epochs for a MEASURED signal.\n\n"
         )
-        f.write(f"3 levers: K (Kendall loss), D (DANN), F (four-domain)\n")
+        f.write("3 levers: K (Kendall loss), D (DANN), F (four-domain)\n")
         f.write(
             f"Total runs: {len(all_results)} (8 unique configs @ seed=0 + {len(extra_seeds)} baseline seeds)\n"
         )
@@ -483,12 +482,12 @@ def main():
         f.write(f"- AUCs: {baseline_aucs}\n")
         f.write(f"- Mean: {baseline_mean}\n")
         f.write(f"- Stdev: {baseline_std}\n")
-        f.write(f"\n## Honest framing (party-twenty-spirit §3.5)\n\n")
+        f.write("\n## Honest framing (party-twenty-spirit §3.5)\n\n")
         f.write(
             "- **Wf-229 result was 'K-only lift=0 within noise' at 5 epochs.** This extension is the wall-time test of whether that negative is real (no lever effect) or just slow-convergence (levers need more epochs to lift).\n"
         )
         f.write(
-            f"- 50 epochs (vs Wf-229's 5; vs Wf-124 P3's 30 with h=128 d=3) — within-cohort attribution only; NOT comparable to absolute Wf-124 P3 anchor at +0.049.\n"
+            "- 50 epochs (vs Wf-229's 5; vs Wf-124 P3's 30 with h=128 d=3) — within-cohort attribution only; NOT comparable to absolute Wf-124 P3 anchor at +0.049.\n"
         )
         f.write(
             "- Per-lever attribution uses seed=0 only; baseline seeds 1/2/3 reported as variance bars.\n"

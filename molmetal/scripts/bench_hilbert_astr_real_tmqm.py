@@ -107,7 +107,7 @@ Usage
 
 ::
 
-    CUDA_VISIBLE_DEVICES=1 molmetal/.venvs/mol-metal-venv/bin/python \\
+    .venv/bin/python \\
         molmetal/scripts/bench_hilbert_astr_real_tmqm.py \\
         --dataset tmqm_dblock --elements \\
         --seeds 0 1 2 3 4 --epochs 50 --strict-scaffold \\
@@ -127,7 +127,6 @@ import argparse
 import csv
 import json
 import math
-import os
 import sys
 import time
 from collections import defaultdict
@@ -804,7 +803,19 @@ def evaluate_element(
     r2_astr_per_seed: List[float] = []
 
     if device != "cpu":
-        os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
+        # Canonical CUDA default (GPU 0; "" = CPU-only still wins).
+        # Loaded via the sibling shim so no molmetal package import is
+        # needed (see molmetal/scripts/_cuda_default.py).
+        import os as _co
+        import sys as _cs
+
+        _cdir = _co.path.dirname(_co.path.abspath(__file__))
+        if _cdir not in _cs.path:
+            _cs.path.append(_cdir)
+        from _cuda_default import ensure_cuda_visible_devices_default as _ensure_cvd
+
+        _ensure_cvd()
+        del _ensure_cvd, _cdir, _co, _cs
 
     for seed in seeds:
         splits = _kfold_indices(

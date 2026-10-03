@@ -129,7 +129,7 @@ DEFAULT_N_FOLDS: int = 5
 # Mixed-precision vocabulary (per _common_train_args.MIXED_PRECISION_CHOICES).
 DEFAULT_MIXED_PRECISION: str = "bf16"
 DEFAULT_NUM_WORKERS: int = 4
-DEFAULT_CUDA_VISIBLE_DEVICES: str = "1"  # RTX 5090 — GPU 0 reserved for VLM.
+DEFAULT_CUDA_VISIBLE_DEVICES: str = "0"  # GPU 0 — RTX PRO 6000 Blackwell.
 
 # torch.compile knobs — only used when --torch-compile.
 DEFAULT_TORCH_COMPILE_MODE: str = "reduce-overhead"
@@ -251,8 +251,11 @@ class TriangleGPUConfig:
     num_workers : int
         DataLoader worker count (default 4).
     cuda_visible_devices : str
-        CUDA_VISIBLE_DEVICES value (default "1" — RTX 5090 GPU 0
-        is reserved for the VLM venv).
+        CUDA_VISIBLE_DEVICES value (default :data:`DEFAULT_CUDA_VISIBLE_DEVICES`
+        = ``"0"`` — RTX PRO 6000 Blackwell, 98 GB).  The old ``"1"`` default
+        encoded a kanzi-era "GPU 0 is reserved for the VLM venv" split that
+        no longer exists on this host (CUDA_VISIBLE_DEVICES unification,
+        2026-10-03).
     torch_compile : bool
         Wrap the hot path in ``torch.compile`` (default ``False`` —
         first-call latency ~30s).
@@ -499,8 +502,8 @@ def add_wf333g2_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser
         type=str,
         default=DEFAULT_CUDA_VISIBLE_DEVICES,
         help=(
-            "CUDA_VISIBLE_DEVICES override (default '1' — "
-            "RTX 5090 GPU 0 reserved for VLM venv)."
+            "CUDA_VISIBLE_DEVICES override (default '0' — "
+            "GPU 0, RTX PRO 6000 Blackwell)."
         ),
     )
     # --- torch.compile (Wf-326/328 wire-in) ---
@@ -800,6 +803,8 @@ def hilbert_pd_step_torch(
 
     Returns the new parameter tensor (mutates ``module.x``).
     """
+    import torch
+
     feats_t = feats
     res = residual
     # grad = (Xᵀ(Xx - y))/N + ridge_alpha * x
@@ -1106,7 +1111,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     the wrapper emits ``PASS`` / ``FAIL`` / ``SKIP`` markers.
     """
     config = parse_args(argv)
-    print(f"Wf-333-G2 — Triangle 12-d GPU launch wrapper (dry-run default)")
+    print("Wf-333-G2 — Triangle 12-d GPU launch wrapper (dry-run default)")
     print(f"  feature_mode = {config.feature_mode}")
     print(f"  hilbert_dim  = {config.hilbert_dim}")
     print(f"  epochs       = {config.epochs}")

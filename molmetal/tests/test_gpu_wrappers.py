@@ -33,9 +33,7 @@ marker.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-from typing import Iterable, List
 
 import numpy as np
 import pytest
@@ -659,7 +657,6 @@ class TestBenchmarkEmitsJSON:
             HilbertCUDAParams,
         )
         from molmetal.scoring.gpu_wrappers.vina_gpu import (
-            EngineInfo,
             _select_engine,
         )
 

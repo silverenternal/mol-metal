@@ -20,7 +20,7 @@ Per the wf84 brief:
   * **output** = per-metal per-seed ``.pt`` checkpoint + ``per_seed_metrics.json``
 
 **Hardware**: CPU primary; CUDA if ``--device cuda:0`` (RTX 5090 GPU-1
-when invoked with ``CUDA_VISIBLE_DEVICES=1``).
+when invoked with ``CUDA_VISIBLE_DEVICES=0``).
 
 **Honest framing** (per ``party-twenty-spirit §3.5``):
   * Smaller metals (Rh/Os/Re < 1.2 k rows each) give noisy pIC50 R²; we
@@ -33,7 +33,7 @@ when invoked with ``CUDA_VISIBLE_DEVICES=1``).
 -----
 ::
     source env.sh
-    CUDA_VISIBLE_DEVICES=1 \
+    \
     python molmetal/scripts/train_dmpnn_pic50_real.py \\
         --dataset metalcytotox_5metal \\
         --seeds 0 1 2 --epochs 30 \\
@@ -43,23 +43,33 @@ when invoked with ``CUDA_VISIBLE_DEVICES=1``).
 from __future__ import annotations
 
 
-# --- Wf-130 GPU default -----------------------------------------
-# RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
-# BEFORE `import torch` so CUDA init sees the env var.
+# --- CUDA_VISIBLE_DEVICES default (canonical resolver) ----------
+# Default GPU 0 (RTX PRO 6000 Blackwell, 98 GB) unless the env var is
+# already set (incl. "" = CPU-only).  Must run BEFORE any molmetal /
+# torch import: importing the molmetal package initialises CUDA, and
+# CUDA reads CUDA_VISIBLE_DEVICES only once, at init.  Source of
+# truth: molmetal/molmetal_lam/sbdd_env/training_utils.py (loaded
+# package-free via molmetal/scripts/_cuda_default.py).
 import os as _wf130_os
+import sys as _wf130_sys
 
-_wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
-del _wf130_os
-# --- end Wf-130 ------------------------------------------------
+_wf130_dir = _wf130_os.path.dirname(_wf130_os.path.abspath(__file__))
+if _wf130_dir not in _wf130_sys.path:
+    _wf130_sys.path.append(_wf130_dir)
+from _cuda_default import ensure_cuda_visible_devices_default as _wf130_cvd
+
+_wf130_cvd()
+del _wf130_cvd, _wf130_dir, _wf130_os, _wf130_sys
+# --- end CUDA default --------------------------------------------
 
 import argparse
 import json
 import pickle
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -75,7 +85,6 @@ from molmetal.baselines.dmpnn import (
     featurize_smiles_list,
 )
 from molmetal.baselines.dmpnn_multitask import (
-    DMPNNMultiTaskBaseline,
     DMPNNMultiTaskModel,
     MT_BATCH_SIZE,
     MT_DEPTH,
@@ -92,10 +101,8 @@ from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 # Wf-120 P3 — pure-stdlib SHA256 overwrite guards (no pandas/torch deps).
 # See molmetal/scripts/_dmpnn_sha256_guard.py for the canonical helpers.
 from molmetal.scripts._dmpnn_sha256_guard import (
-    GUARD_TAG as _DMPNN_SHA256_GUARD_TAG,
     post_save_sha256_overwrite_guard,
     pre_train_sha256_overwrite_guard,
-    sha256_of_file as _sha256_of_file_guard,
 )
 
 try:

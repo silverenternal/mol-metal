@@ -41,7 +41,7 @@ Usage
 ::
 
     CUDA_VISIBLE_DEVICES=0 \\
-    molmetal/.venvs/mol-metal-venv/bin/python \\
+    molmetal/.venv/bin/python \\
         molmetal/scripts/bench_sa_closure_bias.py \\
         --cohort closure_bounded \\
         --seeds 0 1 2 \\
@@ -65,11 +65,10 @@ import csv
 import json
 import logging
 import math
-import os
 import statistics
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -299,7 +298,6 @@ def _run_one(
     """
     from molmetal.molmetal_lam.reward.pocket_closure_bias import (
         closure_bounded_smiles_generation,
-        closure_oversample,
         SUPPORTED_POCKETS,
     )
 

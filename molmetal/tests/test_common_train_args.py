@@ -17,13 +17,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
 
 import pytest
 
@@ -168,13 +165,15 @@ def test_add_common_args_optional_includes() -> None:
 def test_add_gpu_args_exposes_env_flags() -> None:
     """GPU env flags exist with the right defaults.
 
-    Wf-130 — ``--cuda-visible-devices`` defaults to ``"1"`` (RTX 5090
-    on kanzi; GPU 0 is the VLM venv).  Pass ``--cuda-visible-devices=``
-    (empty) to inherit the shell env.
+    Wf-130 — ``--cuda-visible-devices`` defaults to ``None`` (unset): no
+    value is forced, so :func:`setup_gpu_env` delegates to the canonical
+    resolver (a set env var wins — incl. ``""`` = CPU-only — else the
+    ``"0"`` GPU-0 default applies).  Pass ``--cuda-visible-devices=``
+    (empty) to explicitly leave the environment untouched.
     """
     p = _fresh_parser()
     args = p.parse_args([])
-    assert args.cuda_visible_devices == "1"
+    assert args.cuda_visible_devices is None
     assert args.mixed_precision == "bf16"
     assert args.num_workers == 4
 
@@ -246,8 +245,9 @@ def test_setup_gpu_env_no_op_when_unset(monkeypatch: pytest.MonkeyPatch) -> None
     """Empty ``--cuda-visible-devices`` (explicit ``--cuda-visible-devices=""``)
     is a no-op (does not write the env var).
 
-    Wf-130 — the *default* ``--cuda-visible-devices`` is ``"1"``, so this
-    test must pass the empty string explicitly to assert no-op behaviour.
+    Wf-130 — the *default* ``--cuda-visible-devices`` is ``None`` (the
+    resolver path), so this test passes the empty string explicitly to
+    assert no-op ("inherit") behaviour.
     """
     monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
     p = _fresh_parser()
@@ -256,15 +256,28 @@ def test_setup_gpu_env_no_op_when_unset(monkeypatch: pytest.MonkeyPatch) -> None
     assert "CUDA_VISIBLE_DEVICES" not in os.environ
 
 
-def test_setup_gpu_env_default_is_gpu_one(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_setup_gpu_env_default_is_gpu_zero(monkeypatch: pytest.MonkeyPatch) -> None:
     """Wf-130 — when the user does NOT pass ``--cuda-visible-devices``,
-    :func:`setup_gpu_env` defaults to ``"1"`` (RTX 5090 on kanzi).
+    :func:`setup_gpu_env` applies the canonical default ``"0"`` (GPU 0,
+    RTX PRO 6000 Blackwell).
     """
     monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
     p = _fresh_parser()
     args = p.parse_args([])  # no override
     cta.setup_gpu_env(args)
+    assert os.environ.get("CUDA_VISIBLE_DEVICES") == "0"
+
+
+def test_setup_gpu_env_default_respects_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No flag + env already set → the env value wins (resolver contract)."""
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "1")
+    p = _fresh_parser()
+    args = p.parse_args([])  # no override
+    state = cta.setup_gpu_env(args)
     assert os.environ.get("CUDA_VISIBLE_DEVICES") == "1"
+    assert state.cuda_visible_devices == "1"
 
 
 def test_setup_gpu_env_seeds_torch() -> None:

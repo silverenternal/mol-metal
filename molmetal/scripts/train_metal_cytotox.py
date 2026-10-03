@@ -27,14 +27,24 @@ Usage
 from __future__ import annotations
 
 
-# --- Wf-130 GPU default -----------------------------------------
-# RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
-# BEFORE `import torch` so CUDA init sees the env var.
+# --- CUDA_VISIBLE_DEVICES default (canonical resolver) ----------
+# Default GPU 0 (RTX PRO 6000 Blackwell, 98 GB) unless the env var is
+# already set (incl. "" = CPU-only).  Must run BEFORE any molmetal /
+# torch import: importing the molmetal package initialises CUDA, and
+# CUDA reads CUDA_VISIBLE_DEVICES only once, at init.  Source of
+# truth: molmetal/molmetal_lam/sbdd_env/training_utils.py (loaded
+# package-free via molmetal/scripts/_cuda_default.py).
 import os as _wf130_os
+import sys as _wf130_sys
 
-_wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
-del _wf130_os
-# --- end Wf-130 ------------------------------------------------
+_wf130_dir = _wf130_os.path.dirname(_wf130_os.path.abspath(__file__))
+if _wf130_dir not in _wf130_sys.path:
+    _wf130_sys.path.append(_wf130_dir)
+from _cuda_default import ensure_cuda_visible_devices_default as _wf130_cvd
+
+_wf130_cvd()
+del _wf130_cvd, _wf130_dir, _wf130_os, _wf130_sys
+# --- end CUDA default --------------------------------------------
 
 import argparse
 import json
@@ -42,19 +52,14 @@ import statistics
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import numpy as np
-import torch
 
-from molmetal.baselines.dmpnn import (
-    DMPNN_BATCH_SIZE,
-    DMPNN_LR,
-)
 from molmetal.baselines.dmpnn_multitask import (
     DMPNNMultiTaskBaseline,
     MT_ALPHA,
@@ -62,7 +67,7 @@ from molmetal.baselines.dmpnn_multitask import (
     MT_DEPTH,
     MT_DROPOUT,
 )
-from molmetal.baselines.eval_utils import compute_metrics, per_cell_line_auc
+from molmetal.baselines.eval_utils import compute_metrics
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 
 try:
@@ -358,7 +363,7 @@ def _write_report(
         f"**Date:** {time.strftime('%Y-%m-%d')}",
         f"**Metal:** {args.metal}  ",
         f"**Split:** {args.split} (Bemis-Murcko scaffold, 70/10/20)",
-        f"**Model:** Multi-task D-MPNN (pIC50 regression + activity classification)",
+        "**Model:** Multi-task D-MPNN (pIC50 regression + activity classification)",
         f"**Seeds:** {args.seeds}  ",
         f"**Epochs:** {args.epochs}, lr={args.lr}, batch={args.batch_size}, alpha={args.alpha}",
         "",
@@ -467,7 +472,7 @@ def main(argv: list[str] | None = None) -> int:
     _wf416_atomic_write_text(
         aggregate_path, json.dumps(full_payload, indent=2, default=str)
     )
-    print(f"\n[metric1] === AGGREGATE ===", flush=True)
+    print("\n[metric1] === AGGREGATE ===", flush=True)
     print(
         f"[metric1] test AUC = {auc_mean:.4f} ± {auc_std:.4f}  "
         f"(n={aggregate['n_seeds']} seeds, gate ≥ {GATE})  "

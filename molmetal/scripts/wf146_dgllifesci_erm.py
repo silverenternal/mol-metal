@@ -31,10 +31,8 @@ import argparse
 import csv
 import json
 import logging
-import os
 import sys
 import time
-from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -50,7 +48,6 @@ from dgllife.model import GCNPredictor
 from dgllife.utils import smiles_to_bigraph
 from dgllife.utils.featurizers import CanonicalAtomFeaturizer, CanonicalBondFeaturizer
 from rdkit import Chem
-from rdkit.Chem import AllChem
 from rdkit.Chem.SaltRemover import SaltRemover
 
 

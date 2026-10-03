@@ -20,8 +20,8 @@ Test surface — 2 tests (per Wf-333-G2 task spec)
      * ``feature_mode = "12d"`` (the Wf-331-R2 ship surface).
      * ``launch = False`` (dry-run default per AGENTS.md §5.1).
      * ``mixed_precision = "bf16"`` (the Wf-326 default).
-     * ``cuda_visible_devices = "1"`` (RTX 5090 GPU 0 reserved
-       for VLM venv).
+     * ``cuda_visible_devices = "0"`` (GPU 0 — RTX PRO 6000
+       Blackwell).
      * ``torch_compile = False`` (off by default — first-call
        latency ~30s).
      * ``--feature-mode 12d`` parses correctly.
@@ -71,7 +71,6 @@ from molmetal.scripts.wf333g2_triangle_12d_gpu_wrapper import (  # noqa: E402
     TriangleGPUSummary,
     add_wf333g2_args,
     build_triangle_gpu_trainer,
-    build_hilbert_torch_module,
     build_toy_design_matrix,
     honesty_gate_verdict,
     parse_args,
@@ -223,7 +222,7 @@ def test_wrapper_cli_args_and_default_config() -> None:
     assert config.seeds == DEFAULT_SEEDS == 5
     assert config.n_folds == DEFAULT_N_FOLDS == 5
     assert config.mixed_precision == DEFAULT_MIXED_PRECISION == "bf16"
-    assert config.cuda_visible_devices == DEFAULT_CUDA_VISIBLE_DEVICES == "1"
+    assert config.cuda_visible_devices == DEFAULT_CUDA_VISIBLE_DEVICES == "0"
     assert config.torch_compile == DEFAULT_TORCH_COMPILE is False
     assert config.launch is False
     assert config.output == "molmetal/reports/wf333g2_triangle_gpu"

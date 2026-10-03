@@ -18,14 +18,24 @@ Usage
 
 from __future__ import annotations
 
-# --- Wf-130 GPU default -----------------------------------------
-# RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
-# BEFORE `import torch` so CUDA init sees the env var.
+# --- CUDA_VISIBLE_DEVICES default (canonical resolver) ----------
+# Default GPU 0 (RTX PRO 6000 Blackwell, 98 GB) unless the env var is
+# already set (incl. "" = CPU-only).  Must run BEFORE any molmetal /
+# torch import: importing the molmetal package initialises CUDA, and
+# CUDA reads CUDA_VISIBLE_DEVICES only once, at init.  Source of
+# truth: molmetal/molmetal_lam/sbdd_env/training_utils.py (loaded
+# package-free via molmetal/scripts/_cuda_default.py).
 import os as _wf130_os
+import sys as _wf130_sys
 
-_wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
-del _wf130_os
-# --- end Wf-130 ------------------------------------------------
+_wf130_dir = _wf130_os.path.dirname(_wf130_os.path.abspath(__file__))
+if _wf130_dir not in _wf130_sys.path:
+    _wf130_sys.path.append(_wf130_dir)
+from _cuda_default import ensure_cuda_visible_devices_default as _wf130_cvd
+
+_wf130_cvd()
+del _wf130_cvd, _wf130_dir, _wf130_os, _wf130_sys
+# --- end CUDA default --------------------------------------------
 
 # Wf-50 pre-condition: ensure MOLMETAL_DATA_DIR defaults to project-local data dir
 # (overridable via env var; previously hard-coded to /mnt/storage which does not exist
@@ -47,7 +57,7 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, List, Tuple
+from typing import Dict, List
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -66,7 +76,6 @@ from molmetal.baselines.dmpnn_multitask import (
     MT_HIDDEN,
     MT_LR,
 )
-from molmetal.baselines.eval_utils import compute_metrics
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 from molmetal.data.splits import SplitResult
 
@@ -466,8 +475,8 @@ def _write_report(
         "",
         f"- **Mean LOMO test AUC** = **{auc_mean:.4f}** ± {auc_std:.4f}  "
         f"(n={aggregate['n_runs']} runs across {aggregate['n_folds']} folds)",
-        f"- Gate threshold (TODO/METRICS_TARGETS.md §2 / Metric 19): mean ≥ 0.70",
-        f"- **Verdict:** "
+        "- Gate threshold (TODO/METRICS_TARGETS.md §2 / Metric 19): mean ≥ 0.70",
+        "- **Verdict:** "
         + (
             "PASS — mean LOMO AUC ≥ 0.70 (transfer to held-out metal is non-trivial)"
             if gate_pass

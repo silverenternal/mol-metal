@@ -5,7 +5,7 @@ Verifies the GPU-default helpers do what they claim:
 * :func:`ensure_cuda_visible_devices_default` is module-top safe (does
   not import torch, only sets the env var).
 * :func:`apply_default_cuda_visible_devices` honours CLI override +
-  shell env + default-to-``"1"``.
+  shell env + default-to-``"0"`` (GPU 0, RTX PRO 6000 Blackwell).
 * :func:`detect_training_gpu` always returns a dict (never raises).
 * :func:`resolve_default_device` returns ``cuda:0`` on a CUDA host,
   ``cpu`` otherwise, and emits a single INFO log line.
@@ -36,21 +36,34 @@ def test_ensure_default_does_not_import_torch(monkeypatch: pytest.MonkeyPatch) -
     # The import of training_utils above is fine — we just call the
     # function and verify torch isn't imported as a side effect.
     out = tu.ensure_cuda_visible_devices_default()
-    assert out == "1"
-    assert os.environ["CUDA_VISIBLE_DEVICES"] == "1"
-
-
-def test_ensure_default_respects_existing_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """When the env var is already set, ``ensure_default`` does nothing."""
-    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "0")
-    out = tu.ensure_cuda_visible_devices_default()
     assert out == "0"
     assert os.environ["CUDA_VISIBLE_DEVICES"] == "0"
 
 
+def test_ensure_default_respects_existing_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """When the env var is already set, ``ensure_default`` does nothing."""
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "1")
+    out = tu.ensure_cuda_visible_devices_default()
+    assert out == "1"
+    assert os.environ["CUDA_VISIBLE_DEVICES"] == "1"
+
+
+def test_ensure_default_respects_empty_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An explicit ``""`` counts as *set* (CPU-only) and is preserved.
+
+    ``is not None`` semantics (Wf-A9): the wf385a3 SCAFFOLD gate and the
+    §5.7 CPU smokes spawn with ``CUDA_VISIBLE_DEVICES=""`` and rely on it
+    surviving ``ensure_cuda_visible_devices_default``.
+    """
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "")
+    out = tu.ensure_cuda_visible_devices_default()
+    assert out == ""
+    assert os.environ["CUDA_VISIBLE_DEVICES"] == ""
+
+
 def test_ensure_default_constant() -> None:
-    """The module-level DEFAULT_CUDA_VISIBLE_DEVICES is ``"1"`` (Wf-130)."""
-    assert tu.DEFAULT_CUDA_VISIBLE_DEVICES == "1"
+    """The module-level DEFAULT_CUDA_VISIBLE_DEVICES is ``"0"`` (GPU 0)."""
+    assert tu.DEFAULT_CUDA_VISIBLE_DEVICES == "0"
 
 
 # ---------------------------------------------------------------------------
@@ -64,20 +77,34 @@ def test_apply_prefers_cli_override(monkeypatch: pytest.MonkeyPatch) -> None:
     assert os.environ["CUDA_VISIBLE_DEVICES"] == "0,1"
 
 
-def test_apply_falls_back_to_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """When CLI is empty, env wins over default."""
+def test_apply_empty_override_forces_cpu(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An explicit ``""`` override wins over env and forces CPU-only.
+
+    This is the Wf-415-A3 contract: a *non-None* ``""`` means "force no
+    visible GPUs" — not "fall through to env/default".
+    """
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "0")
     out = tu.apply_default_cuda_visible_devices(override="")
-    assert out == "0"
-    assert os.environ["CUDA_VISIBLE_DEVICES"] == "0"
+    assert out == ""
+    assert os.environ["CUDA_VISIBLE_DEVICES"] == ""
 
 
-def test_apply_falls_back_to_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    """When CLI is empty AND env is unset, default ``"1"`` is used."""
-    monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
-    out = tu.apply_default_cuda_visible_devices(override="")
+def test_apply_none_override_falls_back_to_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``None`` override + env set → the env value wins (no clobber)."""
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "1")
+    out = tu.apply_default_cuda_visible_devices(override=None)
     assert out == "1"
     assert os.environ["CUDA_VISIBLE_DEVICES"] == "1"
+
+
+def test_apply_none_override_uses_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``None`` override AND env unset → default ``"0"`` (GPU 0) applies."""
+    monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
+    out = tu.apply_default_cuda_visible_devices(override=None)
+    assert out == "0"
+    assert os.environ["CUDA_VISIBLE_DEVICES"] == "0"
 
 
 # ---------------------------------------------------------------------------
@@ -123,4 +150,4 @@ def test_setup_returns_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
     assert snap["seed"] == 7
     assert snap["deterministic"] is False
     assert "gpu_info" in snap
-    assert snap["gpu_info"]["cuda_visible_devices"] == "1"
+    assert snap["gpu_info"]["cuda_visible_devices"] == "0"

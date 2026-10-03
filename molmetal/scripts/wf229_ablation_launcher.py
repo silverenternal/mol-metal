@@ -50,7 +50,6 @@ import argparse
 import json
 import os as _os
 import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -156,6 +155,7 @@ def _run_subprocess(cfg: dict, seed: int, epochs: int, *, quick: bool = False) -
     sub_env = dict(_os.environ)
     if quick:
         sub_env["MOLMETAL_ALLOW_CPU"] = "1"
+        # DO-NOT-MIGRATE: "" = CPU-only by design (not subject to the GPU-0 default).
         sub_env["CUDA_VISIBLE_DEVICES"] = ""
     with open(log, "w") as lf:
         proc = subprocess.run(cmd, stdout=lf, stderr=subprocess.STDOUT, env=sub_env)
@@ -540,8 +540,8 @@ def main():
     # Human-readable synthesis
     syn = OUT_DIR / "synthesis.md"
     with open(syn, "w") as f:
-        f.write(f"# Wf-229 per-innovation ablation — train_dmpnn_multitask.py\n\n")
-        f.write(f"3 levers: K (Kendall loss), D (DANN), F (four-domain)\n")
+        f.write("# Wf-229 per-innovation ablation — train_dmpnn_multitask.py\n\n")
+        f.write("3 levers: K (Kendall loss), D (DANN), F (four-domain)\n")
         f.write(
             f"Total runs: {len(all_results)} (8 unique configs @ seed=0 + {len(extra_seeds)} baseline seeds)\n"
         )
@@ -564,7 +564,7 @@ def main():
         f.write(
             f"\n## Full recipe (111) lift: {attribution.get('full_recipe_lift', 0):+.4f}\n"
         )
-        f.write(f"\n## Honest framing (party-twenty-spirit §3.5)\n\n")
+        f.write("\n## Honest framing (party-twenty-spirit §3.5)\n\n")
         f.write(
             "- 5 epochs only — metric deltas are RELATIVE within this cohort, NOT comparable to Wf-124 P3 absolute anchor at 30 epochs / h=128.\n"
         )

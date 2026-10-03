@@ -93,7 +93,7 @@ Usage
 
 ::
 
-    molmetal/.venvs/mol-metal-venv/bin/python -u \\
+    molmetal/.venv/bin/python -u \\
         molmetal/scripts/bench_hilbert_only_real.py \\
         --dataset platinai_4cell \\
         --cell-lines mcf7 a549 a2780 a2780cis \\
@@ -114,10 +114,9 @@ import argparse
 import csv
 import json
 import math
-import os
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -419,8 +418,6 @@ def _strict_scaffold_split(
 
     Returns ``(train_idx, val_idx, test_idx)`` as int64 numpy arrays.
     """
-    from rdkit import Chem, RDLogger
-    from rdkit.Chem.Scaffolds import MurckoScaffold
     from rdkit import RDLogger as _RDL
 
     try:
@@ -760,7 +757,19 @@ def evaluate_cell_line(
     n, d_feat = X.shape
 
     if device != "cpu":
-        os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
+        # Canonical CUDA default (GPU 0; "" = CPU-only still wins).
+        # Loaded via the sibling shim so no molmetal package import is
+        # needed (see molmetal/scripts/_cuda_default.py).
+        import os as _co
+        import sys as _cs
+
+        _cdir = _co.path.dirname(_co.path.abspath(__file__))
+        if _cdir not in _cs.path:
+            _cs.path.append(_cdir)
+        from _cuda_default import ensure_cuda_visible_devices_default as _ensure_cvd
+
+        _ensure_cvd()
+        del _ensure_cvd, _cdir, _co, _cs
 
     per_seed: List[Dict[str, Any]] = []
     r2_test_per_seed: List[float] = []

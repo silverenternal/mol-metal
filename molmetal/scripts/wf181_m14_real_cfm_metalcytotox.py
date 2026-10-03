@@ -73,10 +73,7 @@ try:
     from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
         CFMJointModel,
         YuelBondBondDecoder,
-        _decode_with_rdkit_strict,
         evaluate_decode_ratio,
-        build_reference_positions,
-        NUM_BOND_CLASSES,
         DEFAULT_HIDDEN_DIM,
         DEFAULT_N_LAYERS,
     )
@@ -621,7 +618,7 @@ def main() -> int:
     lines = [
         "# Wf-181 — m14 real CFM decode benchmark (MetalCytoToxDB)",
         "",
-        f"**Date**: 2026-09-27",
+        "**Date**: 2026-09-27",
         f"**Checkpoint**: `{report.checkpoint_path}`",
         f"**Data**: `{report.data_path}` (n_total={report.n_total_metalcytotox})",
         f"**Device**: {device}",

@@ -94,7 +94,7 @@ R3_BUDGET_HR=3.0        # Wf-355-B2 R3 full (6 pairs × ~30 min on RTX 5090)
 
 # Per-phase GPU assignment (per Wf-124 P3 + Wf-262 §0.5)
 R1_GPU="cpu"
-R3_GPU="cuda:1"
+R3_GPU="cuda:0"
 
 # VRAM budget (per AGENTS.md §5.1 — RTX 5090 32GB or RTX PRO 6000 98GB).
 # Wf-146 hidden=64/depth=2 smoke backbone uses ~2-3 GB peak VRAM (per
@@ -515,7 +515,7 @@ phase_R3_dry_run_log() {
 # -----------------------------------------------------------------------------
 phase_R3() {
     local out="${REPORTS_DIR}/r3"
-    log "Wf-355-B2 R3 plan: Wf-146 chemprop LOMO 6 DEFERRED pairs × 50 epochs (~3 hr cuda:1)"
+    log "Wf-355-B2 R3 plan: Wf-146 chemprop LOMO 6 DEFERRED pairs × 50 epochs (~3 hr cuda:0)"
     log "  Wf-146 driver: --epochs 50 --hidden 64 --depth 2 --bf16"
     local pairs
     mapfile -t pairs < <(select_pairs)

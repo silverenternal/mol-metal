@@ -71,7 +71,7 @@ SEEDS=(0 1 2)              # 3 seeds per Wf-219 P1 ship pattern
 EPOCHS=50
 HIDDEN=300                 # chemprop v2 production (vs Wf-219 smoke 64)
 DEPTH=3                    # chemprop v2 production (vs Wf-219 smoke 2)
-GPU="cuda:1"               # RTX 5090 GPU-1
+GPU="cuda:0"               # RTX PRO 6000 Blackwell GPU-0 (serial execution)
 WALL_BUDGET_MIN=80         # 80-min wall per Wf-219 §4.2 (best case for 12 non-Ru runs)
 WALL_BUDGET_MAX_MIN=110    # 110-min worst case (with Ru)
 
@@ -194,7 +194,7 @@ ok "plan emitted → ${PLAN_JSON}"
 if [ "${DRY_RUN}" = "1" ]; then
     log "DRY-RUN: skipping GPU launch (USER_OK + PAPER_OK gates were still required)"
     log "DRY-RUN: actual invocation would be:"
-    log "  CUDA_VISIBLE_DEVICES=1 ${PY} ${TRAINER} \\"
+    log "  CUDA_VISIBLE_DEVICES=0 ${PY} ${TRAINER} \\"
     log "    --metals ${RUN_METALS[*]} --seeds ${SEEDS[*]} \\"
     log "    --epochs ${EPOCHS} --hidden ${HIDDEN} --depth ${DEPTH} \\"
     log "    --device cuda \\"
@@ -216,7 +216,9 @@ start_ts=$(date +%s)
 for METAL in "${RUN_METALS[@]}"; do
     for SEED in "${SEEDS[@]}"; do
         log "=== metal=${METAL} seed=${SEED} hidden=${HIDDEN}/depth=${DEPTH} on ${GPU} ==="
-        if CUDA_VISIBLE_DEVICES=1 "${PY}" "${TRAINER}" \
+        # GPU 0 (RTX PRO 6000 Blackwell) per the 2026-10-03 all-GPU-0
+        # directive; this call site is serial with every other job.
+        if CUDA_VISIBLE_DEVICES=0 "${PY}" "${TRAINER}" \
                 --metals "${METAL}" \
                 --seeds "${SEED}" \
                 --epochs "${EPOCHS}" \

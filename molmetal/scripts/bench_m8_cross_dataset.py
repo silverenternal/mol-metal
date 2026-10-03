@@ -71,13 +71,11 @@ import argparse
 import csv
 import json
 import logging
-import math
-import os
 import random
 import statistics
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -633,7 +631,7 @@ def write_synthesis_md(
         f"- Real PB installed on this host: **{pb_installed}**",
         f"- Headline pass_rate (last seed): **{overall:.4f}**",
         f"- Target >= {TARGET_PASS_RATE}: **{target_met}**",
-        f"- If target not met → R20 backlog (TODO-93/94/95) is the path forward.",
+        "- If target not met → R20 backlog (TODO-93/94/95) is the path forward.",
         "",
     ]
     out_path = out_dir / "synthesis.md"

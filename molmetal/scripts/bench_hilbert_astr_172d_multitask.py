@@ -58,7 +58,7 @@ Constraints honored
 * **No D-MPNN fine-tune** — this is the **172-d + multi-task +
   Wasserstein** anchor; D-MPNN finetune is a separate workstream
   (Wf-131 P1 ships the 5-metal D-MPNN variant for Ru/Ir/Os/Rh/Re).
-* **CPU primary; GPU-1 RTX 5090 (CUDA_VISIBLE_DEVICES=1) optional**.
+* **CPU primary; GPU-1 RTX 5090 (CUDA_VISIBLE_DEVICES=0) optional**.
 * **Honest framing** — per-fold + per-seed R² always reported;
   collapse detector flags ``pred_std / y_test_std < 0.10``.
 
@@ -88,7 +88,7 @@ Usage
 -----
 ::
 
-    CUDA_VISIBLE_DEVICES=1 molmetal/.venvs/mol-metal-venv/bin/python \\
+    molmetal/.venv/bin/python \\
         molmetal/scripts/bench_hilbert_astr_172d_multitask.py \\
         --dataset platinai_4cell --cell-lines \\
         --seeds 0 1 2 3 4 --epochs 50 --strict-scaffold \\
@@ -109,11 +109,10 @@ import argparse
 import csv
 import json
 import math
-import os
 import sys
 import time
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -801,7 +800,19 @@ def evaluate_cell_line(
         )
 
     if device != "cpu":
-        os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
+        # Canonical CUDA default (GPU 0; "" = CPU-only still wins).
+        # Loaded via the sibling shim so no molmetal package import is
+        # needed (see molmetal/scripts/_cuda_default.py).
+        import os as _co
+        import sys as _cs
+
+        _cdir = _co.path.dirname(_co.path.abspath(__file__))
+        if _cdir not in _cs.path:
+            _cs.path.append(_cdir)
+        from _cuda_default import ensure_cuda_visible_devices_default as _ensure_cvd
+
+        _ensure_cvd()
+        del _ensure_cvd, _cdir, _co, _cs
     dev = torch.device(device if torch.cuda.is_available() else "cpu")
 
     n, d_feat = X.shape
@@ -976,8 +987,8 @@ def write_synthesis(out_dir: Path, all_results: List[Dict[str, Any]]) -> None:
         "**Date**: 2026-09-27",
         "**Constraint**: 172-d feature stack (12 RDKit + 32 Multi-PH + 128 PLL) + multi-task "
         "shared-trunk + 4 per-cell-line regression heads + Wasserstein pIC50 regularization.",
-        f"  Per `party-twenty-spirit §3.5` honest framing.",
-        f"**Hardware**: GPU-1 RTX 5090 (CUDA_VISIBLE_DEVICES=1) when available; CPU fp32 fallback.",
+        "  Per `party-twenty-spirit §3.5` honest framing.",
+        "**Hardware**: GPU-1 RTX 5090 (CUDA_VISIBLE_DEVICES=0) when available; CPU fp32 fallback.",
         f"**Split**: 5-fold CV with **{strict_str}** scaffold assignment per cell line.",
         f"**Wasserstein weight**: {w_w} (per Wf-123 P1 spec).",
         f"**Epochs**: {epochs} per fold × 5 seeds × 5 folds.",

@@ -97,6 +97,7 @@ from __future__ import annotations
 # default simply keeps the smoke import-safe on a CUDA host.
 import os as _wf130_os
 
+# DO-NOT-MIGRATE: "" = CPU-only by design (not subject to the GPU-0 default).
 _wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 del _wf130_os
 # --- end Wf-130 ------------------------------------------------
@@ -104,7 +105,6 @@ del _wf130_os
 import argparse
 import json
 import os
-import re
 import subprocess
 import sys
 import tempfile

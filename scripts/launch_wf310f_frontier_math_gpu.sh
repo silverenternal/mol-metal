@@ -21,7 +21,7 @@
 #            Wires ``augment_pocket_embedding`` into the CFM trainer
 #            (``train_cfm_yuelbond_wasserstein.py``) and re-runs the P1.4
 #            smoke with the augmented pocket embedding.
-#   Wave B — TODO-182 G6 frontier-SE3 smoke (~0.5 hr, cuda:1).
+#   Wave B — TODO-182 G6 frontier-SE3 smoke (~0.5 hr, cuda:0).
 #            Wires ``SE3LipmanSolver`` into the D-MPNN multi-task
 #            trainer (``train_dmpnn_multitask_wasserstein.py``) and
 #            re-runs the G6 no_wass smoke on the SE(3) manifold.
@@ -91,7 +91,7 @@ WAVE_C_BUDGET_HR=2.5
 
 # Per-wave GPU assignment.
 WAVE_A_GPU="cuda:0"      # PRO 6000 Blackwell
-WAVE_B_GPU="cuda:1"      # RTX 5090
+WAVE_B_GPU="cuda:0"      # RTX PRO 6000 Blackwell GPU-0 (serial execution)
 WAVE_C_GPU="cuda:0"      # PRO 6000 Blackwell (joint sweep)
 
 # Color codes (only when stdout is a tty).
@@ -287,13 +287,13 @@ wave_A() {
 # -----------------------------------------------------------------------------
 wave_B() {
     local out="${REPORTS_DIR}/wave_b"
-    log "Wave B plan: G6 D-MPNN multi-task trainer with --frontier-se3 (~0.5 hr, cuda:1)"
+    log "Wave B plan: G6 D-MPNN multi-task trainer with --frontier-se3 (~0.5 hr, cuda:0)"
     log "  wires SE3LipmanSolver (Integration 1) into the trainer manifold"
     run_wave "B" "${WAVE_B_BUDGET_HR}" \
         "${DMPNN_TRAINER}" "${G6_CONFIG}" "${WAVE_B_GPU}" "${out}" \
         --metals Ru --seeds 0 --epochs 10 --batch-size 64 --lr 1e-3 \
         --alpha 0.5 --wasserstein-weight 0.0 \
-        --device cuda:1 --frontier-se3 \
+        --device cuda:0 --frontier-se3 \
         --out-dir "${out}/frontier_se3_ru" || true
     ok "Wave B complete"
 }

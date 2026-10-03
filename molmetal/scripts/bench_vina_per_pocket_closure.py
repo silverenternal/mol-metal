@@ -52,7 +52,7 @@ Usage
 ::
 
     CUDA_VISIBLE_DEVICES=0 \\
-    molmetal/.venvs/mol-metal-venv/bin/python \\
+    molmetal/.venv/bin/python \\
         molmetal/scripts/bench_vina_per_pocket_closure.py \\
         --pockets 1h36 3eml 3ny8 4aaw 4rlu \\
         --seeds 0 1 2 \\
@@ -73,14 +73,13 @@ import argparse
 import csv
 import json
 import logging
-import math
 import os
 import shutil
 import statistics
 import subprocess
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -511,9 +510,6 @@ def _wasserstein_pocket_alignment(
         from rdkit.Chem import AllChem  # type: ignore
         from molmetal.molmetal_lam.reward.wasserstein_loss import (
             wasserstein_pocket_loss,
-        )
-        from molmetal.molmetal_lam.reward.pocket_closure_bias import (
-            per_pocket_pharmacophore_lookup,
         )
     except Exception as exc:  # pragma: no cover
         return {

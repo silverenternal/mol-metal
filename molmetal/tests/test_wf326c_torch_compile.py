@@ -48,11 +48,9 @@ from __future__ import annotations
 import math
 import sys
 import time
-import warnings
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Tuple
 
-import numpy as np
 import pytest
 import torch
 import torch.nn as nn
@@ -66,16 +64,13 @@ from molmetal.baselines.dmpnn import (
     BOND_FEATURE_DIM,
     DMPNNModel,
     _GRUUpdate,
-    collate_graphs,
 )
 from molmetal.baselines.dmpnn_multitask import (
     DMPNNMultiTaskModel,
     MultiTaskLoss,
 )
 from molmetal.molmetal_lam.reward.wasserstein_loss import (
-    WassersteinConfig,
     wasserstein_pic50_gradient,
-    wasserstein_pic50_loss,
 )
 
 

@@ -203,7 +203,7 @@ waves:
     wall_time_estimate: 1.0
   total_wall_time_estimate: 6.5
 compute:
-  gpu: cuda:1
+  gpu: cuda:0
   cpu_workers: 4
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16' removed (ZERO bf16/autocast/GradScaler occurrences in either trainer; claimed an AMP path that does not exist).
 directives:
@@ -221,7 +221,7 @@ entry:
   script: molmetal/scripts/train_dmpnn_multitask_wasserstein.py
   command_template: python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path}
     \ \\\\\n  --metals {metal} \\\\\n  --seeds {seed} \\\\\n  --epochs 50 \\\\\n  --batch-size 64 \\\\\n  --lr 1e-3 \\\\\n\
-    \  --alpha 0.5 \\\\\n  --wasserstein-weight 0.05 \\\\\n  --use-l2-guard \\\\\n  --device cuda:1 \\\\\n  --out-dir {out_dir}\
+    \  --alpha 0.5 \\\\\n  --wasserstein-weight 0.05 \\\\\n  --use-l2-guard \\\\\n  --device cuda:0 \\\\\n  --out-dir {out_dir}\
     \ \\\\\n  --ckpt-dir {ckpt_dir} \\\\\n  --no-enforce-budget\n"
   warm_start_checkpoint: n/a
 honest_framing:

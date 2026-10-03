@@ -226,7 +226,7 @@ emit_dry_run_log "${LOG_DIR}/DRY_RUN.log" \
     --trainer "${WF299_LAUNCHER}" \
     --subset "Wf-299 3-wave CFM main (TODO-119 P1.4 + TODO-182 G6)" \
     --flags "${FLAGS_DISPLAY}" \
-    --gpu "cuda:0 (Wave A) | cuda:1 (Wave B + Wave C)" \
+    --gpu "cuda:0 (all waves, serial)" \
     --budget-hr "${PAIR_BUDGET_HR}" \
     --user-ok "REQUIRED" \
     "${PAIR_ARGS[@]}"
@@ -257,8 +257,8 @@ cat > "${LOG_DIR}/plan.json" <<EOF
     "pair_budget_hr": ${PAIR_BUDGET_HR},
     "gpu_assignment": {
         "A": "cuda:0 (PRO 6000 Blackwell)",
-        "B": "cuda:1 (RTX 5090)",
-        "C": "cuda:1 (RTX 5090)"
+        "B": "cuda:0 (RTX 5090)",
+        "C": "cuda:0 (RTX 5090)"
     },
     "sister_wrappers": [
         "scripts/launch_wf299_cfm_main.sh",

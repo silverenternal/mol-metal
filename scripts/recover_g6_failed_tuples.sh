@@ -156,7 +156,7 @@ COMMON_ARGS=(
   --n-mc 256
   --use-l2-guard
   --device "${GPU}"
-  --cuda-visible-devices 1
+  --cuda-visible-devices 0
   # Per Wf-328-W2: --cpu-num-workers 8 (Wf-326B OPTIMAL_NUM_WORKERS on 24-core host)
   --cpu-num-workers 8
   # Per Wf-328-W6: --num-workers 8 (Wf-326B build_optimized_loader() factory;
@@ -360,7 +360,9 @@ run_tuple() {
     --pairs-metals "${metal}" --pairs-seeds "${seed}" \
     --skip-live \
     || { echo "=== $(date '+%H:%M:%S') FAIL ${cfg}/${metal}/seed=${seed} (per-wave check) ===" | tee -a "${LOG}"; return 1; }
-  CUDA_VISIBLE_DEVICES=1 ${PY} ${SCRIPT} \
+  # GPU 0 (RTX PRO 6000 Blackwell) — pairs with --cuda-visible-devices 0
+  # above; keep as-is (do not flip to the GPU-0 resolver default).
+  CUDA_VISIBLE_DEVICES=0 ${PY} ${SCRIPT} \
     --metals "${metal}" \
     --seeds "${seed}" \
     --data-csv "${DATA_CSV}" \

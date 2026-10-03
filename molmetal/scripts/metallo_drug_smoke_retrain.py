@@ -372,7 +372,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"[metallo_smoke] === METALLODRUG CFM SMOKE RETRAIN ===")
+    print("[metallo_smoke] === METALLODRUG CFM SMOKE RETRAIN ===")
     print(f"[metallo_smoke] out_dir: {args.out_dir}")
     print(f"[metallo_smoke] CSV: {args.csv}  n_train={args.n_train}")
     print(f"[metallo_smoke] steps={args.steps} batch={args.batch_size} lr={args.lr}")
@@ -404,7 +404,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         n_skipped = cached["n_skipped"]
         print(f"[metallo_smoke] cache hit: {len(mols)} mols (skipped {n_skipped})")
     else:
-        print(f"[metallo_smoke] embedding 3D conformers (RDKit ETKDGv3 + MMFF94)...")
+        print("[metallo_smoke] embedding 3D conformers (RDKit ETKDGv3 + MMFF94)...")
         t_embed = time.time()
         mols = []
         n_skipped = 0
@@ -432,7 +432,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
 
     # -- 3. Build adapter with P0+P1 fixes stacked ----------------------
-    print(f"[metallo_smoke] building LipmanFlowMatchingAdapter...")
+    print("[metallo_smoke] building LipmanFlowMatchingAdapter...")
     use_bond_head = args.bond_head == "learned"
     # Suppress the hidden_dim<64 warning — we are deliberately using 128.
     with warnings.catch_warnings():

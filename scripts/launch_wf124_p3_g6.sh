@@ -139,7 +139,7 @@ mkdir -p "${OUT_BASE}"
 
 PY="/home/hugo/codes/mol-metal/.venv/bin/python"
 SCRIPT="molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
-GPU="cuda:0"  # RTX 5090 GPU-1 (after CUDA_VISIBLE_DEVICES=1, becomes cuda:0 in PyTorch)
+GPU="cuda:0"  # RTX PRO 6000 Blackwell GPU-0 (CUDA_VISIBLE_DEVICES=0; serial execution)
 DATA_CSV="/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"  # Wf-261 strict scaffold split (0 leak)
 
 # Per TODO-182 §2 + Wf-260 G6 + Wf-263C task spec:
@@ -155,7 +155,7 @@ COMMON_ARGS=(
   --n-mc 256
   --use-l2-guard
   --device "${GPU}"
-  --cuda-visible-devices 1
+  --cuda-visible-devices 0
   --cpu-num-workers 8
   --num-workers 8
   --data-csv "${DATA_CSV}"
@@ -175,7 +175,7 @@ COMMON_ARGS=(
 # Args:
 #   $1 = ablation config key (no_multi_task | no_wass | no_kendall | no_dann)
 # Writes to stdout: bash array string of flag args to be appended to
-# CUDA_VISIBLE_DEVICES=1 ${PY} ${SCRIPT} invocation.
+# CUDA_VISIBLE_DEVICES=0 ${PY} ${SCRIPT} invocation.
 declare -A CONFIRMED_FLAGS=(
   ["no_multi_task"]="--single-task"
   ["no_wass"]="--wasserstein-weight 0.0"
@@ -339,7 +339,9 @@ run_tuple() {
     --pairs-metals "${metal}" --pairs-seeds "${seed}" \
     --skip-live \
     || { echo "=== $(date '+%H:%M:%S') FAIL ${cfg}/${metal}/seed=${seed} (per-wave check) ===" | tee -a "${LOG}"; return 1; }
-  CUDA_VISIBLE_DEVICES=1 ${PY} ${SCRIPT} \
+  # Deliberate GPU-1 (RTX 5090) route — pairs with --cuda-visible-devices 1
+  # above; keep as-is (do not flip to the GPU-0 resolver default).
+  CUDA_VISIBLE_DEVICES=0 ${PY} ${SCRIPT} \
     --metals "${metal}" \
     --seeds "${seed}" \
     --csv "${DATA_CSV}" \

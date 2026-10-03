@@ -44,7 +44,7 @@ see ``build_platinai_4cell.py`` honest framing).
     for fast iteration.
 
 **Hardware**: CPU-only primary; CUDA optional (RTX 5090 GPU-1 if
-``--device cuda:1`` is passed).
+``--device cuda:0`` is passed).
 
 **Usage**
 -----
@@ -62,7 +62,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import statistics
 import sys
 import time
 from dataclasses import dataclass
@@ -84,21 +83,15 @@ import torch
 from molmetal.scripts.wf386a3_atomic_write import (
     atomic_write_file,
     safe_overwrite_check,
-    detect_truncation,
 )
 
 from molmetal.baselines.dmpnn import (
-    ATOM_FEATURE_DIM,
-    BOND_FEATURE_DIM,
     featurize_smiles_list,
 )
 from molmetal.scripts.train_platinai_4cell import (
     CELL_LINES,
-    DMPNNFourCellModel,
     FourCellDMPNNRunner,
-    IC50_COLS,
     PlatinAI4Cell,
-    _predict,
 )
 
 try:
@@ -397,7 +390,7 @@ def build_synthesis_md(
         f"**Date**: {time.strftime('%Y-%m-%d')}",
         f"**Model**: 4-cell-line multi-task D-MPNN "
         f"(hidden={args.hidden}, depth={args.depth}, dropout={args.dropout})",
-        f"**Split**: scaffold (Bemis-Murcko) 70/10/20 (per-seed)",
+        "**Split**: scaffold (Bemis-Murcko) 70/10/20 (per-seed)",
         f"**Seeds**: {list(args.seeds)}  ",
         f"**Epochs**: {args.epochs}, lr={args.lr}, batch={args.batch_size}, alpha={args.alpha}",
         f"**Device**: {args.device or ('cuda:0' if torch.cuda.is_available() else 'cpu')}",

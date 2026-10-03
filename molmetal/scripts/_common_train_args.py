@@ -78,11 +78,9 @@ from typing import (
     Any,
     Callable,
     Dict,
-    Iterable,
     List,
     Mapping,
     Optional,
-    Sequence,
     Tuple,
 )
 
@@ -392,16 +390,21 @@ def add_gpu_args(
     *,
     default_mixed_precision: str = MIXED_PRECISION_DEFAULT,
     default_num_workers: int = 4,
-    default_cuda_visible_devices: str = "1",
+    default_cuda_visible_devices: Optional[str] = None,
 ) -> argparse.ArgumentParser:
     """Attach GPU-environment CLI flags.
 
     Flags
     -----
     --cuda-visible-devices  : int or comma-separated list
-        Sets ``CUDA_VISIBLE_DEVICES`` *before* importing torch.
-        Default ``"1"`` (Wf-130: RTX 5090 on kanzi — GPU 0 is occupied
-        by the VLM venv process).  Pass ``"0"`` to override.
+        Sets ``CUDA_VISIBLE_DEVICES`` before the first torch import.
+        Default ``None`` — no value is forced, so :func:`setup_gpu_env`
+        delegates to the canonical resolver
+        (``molmetal.molmetal_lam.sbdd_env.training_utils``): an already
+        set env var wins (incl. ``""`` = CPU-only), else
+        ``DEFAULT_CUDA_VISIBLE_DEVICES`` = ``"0"`` applies (GPU 0,
+        RTX PRO 6000 Blackwell; ``"1"`` was the retired kanzi default).
+        Pass ``"1"`` explicitly for the RTX 5090.
     --mixed-precision       : {bf16, fp16, none}
         Autocast dtype.  Default ``bf16``.
     --num-workers           : int
@@ -419,10 +422,11 @@ def add_gpu_args(
         type=str,
         default=default_cuda_visible_devices,
         help=(
-            "Comma-separated GPU ids to expose.  Default '1' "
-            "(Wf-130 — RTX 5090 on kanzi, GPU 0 reserved for VLM "
-            "venv).  Empty string '' = inherit from the shell.  "
-            "Applied via CUDA_VISIBLE_DEVICES before importing torch."
+            "Comma-separated GPU ids to expose.  Default: unset — the "
+            "canonical resolver honours CUDA_VISIBLE_DEVICES or applies "
+            "its default '0' (GPU 0, RTX PRO 6000).  Empty string '' = "
+            "inherit from the shell.  Applied via CUDA_VISIBLE_DEVICES "
+            "before importing torch."
         ),
     )
     _add(
@@ -526,10 +530,14 @@ def setup_gpu_env(
 
     Reads from ``args``:
 
-    * ``args.cuda_visible_devices`` — exported as ``CUDA_VISIBLE_DEVICES``.
-      Wf-130 default is ``"1"`` (RTX 5090 on kanzi — GPU 0 is the
-      VLM venv).  Pass ``""`` to inherit from the shell, ``"0"`` for
-      the first GPU, or ``"0,1"`` for both.
+    * ``args.cuda_visible_devices`` — when a non-empty string, exported
+      as ``CUDA_VISIBLE_DEVICES`` verbatim.  When ``None`` (the default
+      — the CLI flag was not passed), the canonical resolver
+      (``molmetal.molmetal_lam.sbdd_env.training_utils``) applies: an
+      already-set env var wins (incl. ``""`` = CPU-only), else
+      ``DEFAULT_CUDA_VISIBLE_DEVICES`` = ``"0"`` (GPU 0, RTX PRO 6000).
+      Pass ``""`` to leave the environment untouched (inherit from the
+      shell), ``"0"`` for the first GPU, or ``"0,1"`` for all.
     * ``args.mixed_precision``       — accepted (kept for downstream
       code that looks at the autocast dtype).
     * ``args.num_workers``           — accepted (no side effect here;
@@ -556,14 +564,32 @@ def setup_gpu_env(
         Snapshot of what was actually applied (useful for tagging the
         metrics JSON via :func:`tag_metrics_payload`).
     """
-    cvd = getattr(args, "cuda_visible_devices", "") or ""
-    if cvd:
+    cvd = getattr(args, "cuda_visible_devices", None)
+    if cvd is None:
+        # No --cuda-visible-devices value: delegate to the canonical
+        # resolver (Wf-130 + Wf-A9).  It honours a pre-set env var
+        # (including "" = CPU-only) and otherwise applies
+        # DEFAULT_CUDA_VISIBLE_DEVICES = "0" (GPU 0, RTX PRO 6000
+        # Blackwell; "1" was the retired kanzi default).
+        from molmetal.molmetal_lam.sbdd_env.training_utils import (
+            apply_default_cuda_visible_devices,
+        )
+
+        applied = apply_default_cuda_visible_devices()
+        # Wf-130: log so the caller can see what was applied.
+        sys.stderr.write(
+            f"[setup_gpu_env] CUDA_VISIBLE_DEVICES={applied} "
+            f"(canonical resolver: env > default GPU 0).\n"
+        )
+    elif str(cvd):
         os.environ["CUDA_VISIBLE_DEVICES"] = str(cvd)
         # Wf-130: log so the caller can see what was applied.
         sys.stderr.write(
             f"[setup_gpu_env] CUDA_VISIBLE_DEVICES={cvd} (from "
             f"--cuda-visible-devices flag).\n"
         )
+    # else: explicit "" — leave the environment untouched ("inherit"
+    # contract; keeps a shell-exported value, incl. "" = CPU-only).
 
     mixed_precision = getattr(args, "mixed_precision", MIXED_PRECISION_DEFAULT)
     num_workers = int(getattr(args, "num_workers", 4))
@@ -596,7 +622,8 @@ def setup_gpu_env(
                 pass
 
     return GpuEnvState(
-        cuda_visible_devices=str(cvd),
+        # Effective value after the flag / resolver / env chain ran.
+        cuda_visible_devices=str(os.environ.get("CUDA_VISIBLE_DEVICES", "")),
         mixed_precision=str(mixed_precision),
         num_workers=num_workers,
         seed=seed,

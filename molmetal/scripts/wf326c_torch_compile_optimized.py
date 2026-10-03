@@ -60,11 +60,10 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import pickle
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -79,13 +78,10 @@ from molmetal.baselines.dmpnn import (
     ATOM_FEATURE_DIM,
     BOND_FEATURE_DIM,
     DMPNNModel,
-    _GRUUpdate,
-    featurize_smiles_list,
 )
 from molmetal.baselines.dmpnn_multitask import (
     DMPNNMultiTaskModel,
     MultiTaskLoss,
-    regression_metrics,
 )
 from molmetal.molmetal_lam.reward.wasserstein_loss import (
     WassersteinConfig,

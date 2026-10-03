@@ -55,7 +55,7 @@ Usage::
 
     cd /home/hugo/codes/mol-metal
     CUDA_VISIBLE_DEVICES=0 \\
-      molmetal/.venvs/mol-metal-venv/bin/python \\
+      molmetal/.venv/bin/python \\
         molmetal/scripts/bench_multiph_pll_end_to_end_guarded.py \\
         --dataset platinai_4cell --seeds 0 1 2 3 4 --epochs 50 \\
         --use-l2-guard --use-astr-scale-guard --wasserstein-weight 0.05 \\
@@ -894,7 +894,7 @@ def render_synthesis(
     lines = [
         "# Wf-129 Phase 3 — Multi-PH + PLL end-to-end retrain with Hilbert L2 guard + ASTSR scale guard",
         "",
-        f"**Date**: 2026-09-27  ",
+        "**Date**: 2026-09-27  ",
         f"**Dataset**: {dataset_name}  ",
         f"**Seeds**: {list(seeds)}  ",
         f"**Epochs/seed**: {epochs}  ",
@@ -903,7 +903,7 @@ def render_synthesis(
         "## §1 Head-claim R^2 summary",
         "",
         f"* Mean R^2 across {len(cohort_summaries)} cell-lines: **{head_r2:+.4f}** (std {head_std:.4f})",
-        f"* Target: R^2 >= +0.30 (LAMBDA_ROADMAP §4.2 L7 + R20-P3 gate).",
+        "* Target: R^2 >= +0.30 (LAMBDA_ROADMAP §4.2 L7 + R20-P3 gate).",
         f"* Verdict: {'PASS' if head_r2 >= target_r2 else 'HONEST-NEGATIVE'}.",
         "",
         "## §2 Per-cell-line R^2 summary",
@@ -963,7 +963,7 @@ def render_synthesis(
             "|---|---|---|",
             "| Wf-37 P3 (R17 ship) | +0.087 ± 0.081 | n=200, 3 seeds, no L2/ASTR guards |",
             f"| Wf-129 P3 (this run) | {head_r2:+.4f} ± {head_std:.4f} | n={cohort_summaries[0]['n_target_rows'] if cohort_summaries else 0}, {len(seeds)} seeds, guards ON |",
-            f"| Target gate | ≥ +0.30 | LAMBDA_ROADMAP §4.2 L7 R20-P3 |",
+            "| Target gate | ≥ +0.30 | LAMBDA_ROADMAP §4.2 L7 R20-P3 |",
             "",
             f"## §6 Verdict — {'PASS' if head_r2 >= target_r2 else 'HONEST-NEGATIVE'}",
             "",
@@ -1065,7 +1065,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if args.device == "cuda":
-        os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
+        # Canonical CUDA default (GPU 0; "" = CPU-only still wins).
+        # Loaded via the sibling shim so no molmetal package import is
+        # needed (see molmetal/scripts/_cuda_default.py).
+        import os as _co
+        import sys as _cs
+
+        _cdir = _co.path.dirname(_co.path.abspath(__file__))
+        if _cdir not in _cs.path:
+            _cs.path.append(_cdir)
+        from _cuda_default import ensure_cuda_visible_devices_default as _ensure_cvd
+
+        _ensure_cvd()
+        del _ensure_cvd, _cdir, _co, _cs
 
     cohort_summaries: List[Dict[str, Any]] = []
     cohort_keys: List[str] = []

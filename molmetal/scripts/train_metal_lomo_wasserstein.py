@@ -57,29 +57,38 @@ Constraints honoured:
 * ``TODO/pending/84_no_paper_task_without_authorization.md`` — paper
   untouched; this is a metrics / ablation re-bench only.
 * ``party-twenty-spirit §3.5`` — honest MEASURED-vs-PROJECTED framing.
-* GPU-1 budget honoured when ``--device cuda:1`` is set.
+* GPU budget honoured when ``--device cuda:0`` is set (all-GPU-0 since 2026-10-03).
 """
 
 from __future__ import annotations
 
 
-# --- Wf-130 GPU default -----------------------------------------
-# RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
-# BEFORE `import torch` so CUDA init sees the env var.
+# --- CUDA_VISIBLE_DEVICES default (canonical resolver) ----------
+# Default GPU 0 (RTX PRO 6000 Blackwell, 98 GB) unless the env var is
+# already set (incl. "" = CPU-only).  Must run BEFORE any molmetal /
+# torch import: importing the molmetal package initialises CUDA, and
+# CUDA reads CUDA_VISIBLE_DEVICES only once, at init.  Source of
+# truth: molmetal/molmetal_lam/sbdd_env/training_utils.py (loaded
+# package-free via molmetal/scripts/_cuda_default.py).
 import os as _wf130_os
+import sys as _wf130_sys
 
-_wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
-del _wf130_os
-# --- end Wf-130 ------------------------------------------------
+_wf130_dir = _wf130_os.path.dirname(_wf130_os.path.abspath(__file__))
+if _wf130_dir not in _wf130_sys.path:
+    _wf130_sys.path.append(_wf130_dir)
+from _cuda_default import ensure_cuda_visible_devices_default as _wf130_cvd
+
+_wf130_cvd()
+del _wf130_cvd, _wf130_dir, _wf130_os, _wf130_sys
+# --- end CUDA default --------------------------------------------
 
 import argparse
 import json
 import logging
-import os
 import statistics
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -101,7 +110,6 @@ import numpy as np
 import torch
 
 from molmetal.baselines.dmpnn_multitask import (
-    DMPNNMultiTaskBaseline,
     DMPNNMultiTaskModel,
     MT_ALPHA,
     MT_BATCH_SIZE,
@@ -424,12 +432,11 @@ class WassersteinLOMORunner:
         self.batch_size = batch_size
         self.alpha = float(alpha)
         self.seed = int(seed)
+        # Serial execution on GPU 0 (2026-10-03 directive): the old
+        # ">1 GPU visible -> cuda:1" auto-pick routed every multi-GPU host
+        # to the second card.
         self.device = device or torch.device(
-            "cuda:1"
-            if torch.cuda.is_available() and torch.cuda.device_count() > 1
-            else "cuda:0"
-            if torch.cuda.is_available()
-            else "cpu"
+            "cuda:0" if torch.cuda.is_available() else "cpu"
         )
         self.splitter = WassersteinLOMOSplitter(
             held_out_metal=held_out_metal, seed=self.seed
@@ -777,7 +784,7 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--device",
         type=str,
         default=None,
-        help="Explicit device (e.g. cuda:1). Default: auto.",
+        help="Explicit device (e.g. cuda:0). Default: auto (GPU 0).",
     )
     p.add_argument(
         "--n-mc",
@@ -1022,8 +1029,7 @@ def _write_synthesis(
         "   clips grad-norm to ``≤ {l2_max:.1f}`` each step. Belt-and-braces",
         "   against the W₂ penalty blowing up the optimisation; off by",
         "   default to preserve Wf-125 P2 ship behaviour.".format(
-            l2_max=args.l2_guard_max_norm
-        ),
+            ),
         "5. **Wf-127 P3 ASTSR scale clip** (engaged by ``--use-astr-scale-guard``)",
         "   — value-space clip on predicted pIC50 at test time to",
         f"   ``[{args.astr_scale_clip_min}, {args.astr_scale_clip_max}]``.",

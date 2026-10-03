@@ -101,7 +101,7 @@ R3_BUDGET_HR=8.0        # Wf-355-A2 R3 full GPU (3 seeds × 50 ep)
 
 # Per-phase GPU assignment (per Wf-130 default kanzi GPU 1)
 R1_GPU="cpu"            # R1 is CPU verification
-R3_GPU="cuda:1"         # R3 is RTX 5090
+R3_GPU="cuda:0"         # RTX PRO 6000 Blackwell GPU-0 (serial execution)
 
 # Wf-328 wire-up flags (mirror the production trainer defaults)
 WF328_NUM_WORKERS=8
@@ -484,7 +484,7 @@ phase_R1() {
 # -----------------------------------------------------------------------------
 phase_R3() {
     local out="${REPORTS_DIR}/r3"
-    log "Wf-355-A2 R3 plan: BindingDB chemprop v2 full 3-seed × 50-epoch (~7 hr, cuda:1)"
+    log "Wf-355-A2 R3 plan: BindingDB chemprop v2 full 3-seed × 50-epoch (~7 hr, cuda:0)"
     log "  Wf-328 wire-ups: --cpu-num-workers 8 --w2-gradient-mode sort"
     log "                   --use-kendall --hidden 300 --depth 3 --batch-size 64 --lr 1e-3"
     local args

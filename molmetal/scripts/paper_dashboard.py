@@ -59,10 +59,9 @@ import argparse
 import datetime as _dt
 import html
 import json
-import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 # Wf-304A: AnchorGuard adoption at every paper-grade JSON read site.
 # Per Wf-302A honest caveat, downstream consumers (this script included)

@@ -65,7 +65,7 @@ Usage
 
     cd /home/hugo/codes/mol-metal
     source env.sh
-    CUDA_VISIBLE_DEVICES=1 \\
+    \\
       uv run --no-sync python -u molmetal/scripts/train_cfm_yuelbond_wasserstein.py \\
         --epochs 50 \\
         --batch-size 64 \\
@@ -89,22 +89,31 @@ component independently.
 from __future__ import annotations
 
 
-# --- Wf-130 GPU default -----------------------------------------
-# RTX 5090 on kanzi (GPU 0 is the VLM venv process).  Must run
-# BEFORE `import torch` so CUDA init sees the env var.
+# --- CUDA_VISIBLE_DEVICES default (canonical resolver) ----------
+# Default GPU 0 (RTX PRO 6000 Blackwell, 98 GB) unless the env var is
+# already set (incl. "" = CPU-only).  Must run BEFORE any molmetal /
+# torch import: importing the molmetal package initialises CUDA, and
+# CUDA reads CUDA_VISIBLE_DEVICES only once, at init.  Source of
+# truth: molmetal/molmetal_lam/sbdd_env/training_utils.py (loaded
+# package-free via molmetal/scripts/_cuda_default.py).
 import os as _wf130_os
+import sys as _wf130_sys
 
-_wf130_os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
-del _wf130_os
-# --- end Wf-130 ------------------------------------------------
+_wf130_dir = _wf130_os.path.dirname(_wf130_os.path.abspath(__file__))
+if _wf130_dir not in _wf130_sys.path:
+    _wf130_sys.path.append(_wf130_dir)
+from _cuda_default import ensure_cuda_visible_devices_default as _wf130_cvd
+
+_wf130_cvd()
+del _wf130_cvd, _wf130_dir, _wf130_os, _wf130_sys
+# --- end CUDA default --------------------------------------------
 
 import argparse
 import csv
 import json
-import math
 import sys
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -132,12 +141,10 @@ del _wf50_os, _wf50_default_data
 from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
     YuelBondBondDecoder,
     build_synthetic_pt_click_clouds,
-    covalent_valence_table,
 )
 from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
     YuelBondDecoderHead,
     _YUELBOND_Z_TABLE,
-    _YUELBOND_Z_TO_IDX,
 )
 
 
@@ -551,11 +558,9 @@ from molmetal.molmetal_lam.reward.wasserstein_loss import (
     WassersteinConfig,
     wasserstein_decay_check,
     wasserstein_loss,
-    wasserstein_pose_loss,
 )
 from molmetal.molmetal_lam.reward.pocket_closure_bias import (
     pocket_specific_closure_bias,
-    per_pocket_pharmacophore_lookup,
 )
 from molmetal.math_skills.catherine_properties import (
     verify_all_catherine_properties,
@@ -563,11 +568,8 @@ from molmetal.math_skills.catherine_properties import (
 from molmetal.models.bond_head import (
     AtomCloud,
     BOND_AROMATIC,
-    BOND_LABELS,
     BOND_NO_BOND,
     BOND_SINGLE,
-    BOND_DOUBLE,
-    BOND_TRIPLE,
     NUM_BOND_CLASSES,
 )
 
@@ -1389,9 +1391,6 @@ def train_one_epoch(
                 import torch as _t
 
                 if _t.cuda.is_available() and batch_velocities:
-                    from molmetal.adapters.flow_matching_lipman import (
-                        shortcut_distillation as _sd,
-                    )
 
                     # CPU-safe short-circuit: stub distillation loss on
                     # a synthetic teacher-student pair (zero-grad
@@ -1424,9 +1423,6 @@ def train_one_epoch(
         consistency_term = torch.zeros((), device=device)
         if float(consistency_weight) > 0.0 and batch_velocities:
             try:
-                from molmetal.adapters.flow_matching_lipman import (
-                    consistency_regularization as _cr,
-                )
 
                 # CPU-safe scaffold: set weight to 0 (the user's
                 # consistency_weight multiplier is applied below) so
@@ -1814,7 +1810,6 @@ def build_training_cohort(
 # ---------------------------------------------------------------------------
 try:
     from molmetal.adapters.flow_matching_lipman.sa_penalty import (  # noqa: E402
-        DEFAULT_TARGET_SA as _SA_PENALTY_DEFAULT_TARGET_SA,
         sa_aware_sampling_penalty,
     )
 
@@ -2139,8 +2134,8 @@ def parse_args() -> argparse.Namespace:
             "resolution.  Empty '' (the default) = inherit the "
             "shell env — scripts/start.sh exports it from the "
             "yaml `compute.gpu` field.  If neither is set, "
-            "training_utils falls back to its own default ('1'). "
-            "Pass a non-empty value to force a specific GPU."
+            "training_utils falls back to its own default ('0' — "
+            "GPU 0).  Pass a non-empty value to force a specific GPU."
         ),
     )
     p.add_argument(
@@ -2879,8 +2874,8 @@ def parse_args() -> argparse.Namespace:
 # ---------------------------------------------------------------------------
 def main() -> int:
     args = parse_args()
-    # Wf-130 — GPU-first device defaults (RTX 5090 via
-    # CUDA_VISIBLE_DEVICES=1 on kanzi) when allocatable.
+    # Wf-130 — GPU-first device defaults (GPU 0 — RTX PRO 6000 Blackwell
+    # by default) when allocatable.
     from molmetal.molmetal_lam.sbdd_env.training_utils import (
         apply_default_cuda_visible_devices,
         resolve_default_device,
@@ -2888,7 +2883,7 @@ def main() -> int:
 
     # Wf-A9 FIX (2026-10-03) — ``args.cuda_visible_devices`` defaults to
     # the empty string, which the argparse help documents as "inherit
-    # shell env or fall back to '1'".  ``apply_default_cuda_visible_devices``
+    # shell env or fall back to '0'".  ``apply_default_cuda_visible_devices``
     # however treats a *non-None* ``""`` as an explicit "force no GPUs"
     # override (Wf-415-A3 SCAFFOLD-gate contract), so passing the default
     # straight through asked every normal launch for CPU.  Coerce empty →
@@ -3503,7 +3498,7 @@ def main() -> int:
         "# Wf-124 Phase 2 — Full CFM retrain: YuelBond + Wasserstein "
         "+ Catherine closure-bounded",
         "",
-        f"**Date**: 2026-09-27  ",
+        "**Date**: 2026-09-27  ",
         f"**Device**: {device}  ",
         f"**Best decode_ratio RDKit-strict**: {best_decode_ratio:.3f} "
         f"({(per_epoch[best_epoch].decode_ratio_val if best_epoch >= 0 else 0)}/"

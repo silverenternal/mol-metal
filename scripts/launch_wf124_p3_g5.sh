@@ -326,7 +326,10 @@ run_pair() {
   echo "PAIR_BUDGET_START ${metal} seed=${seed} epoch=$(date '+%s')" | tee -a "${LOG}"
 
   echo "=== $(date '+%H:%M:%S') START ${metal} seed=${seed} ===" | tee -a "${LOG}"
-  CUDA_VISIBLE_DEVICES=1 ${PY} ${SCRIPT} \
+  # GPU 0 (RTX PRO 6000) — aligns with this script's GPU="cuda:0" header
+  # and the --cuda-visible-devices 0 flag above; the old '1' predated the
+  # GPU-0 resolver default.  (G6 recovery holds GPU-1.)
+  CUDA_VISIBLE_DEVICES=0 ${PY} ${SCRIPT} \
     --metals "${metal}" \
     --seeds "${seed}" \
     --csv "${DATA_CSV}" \
